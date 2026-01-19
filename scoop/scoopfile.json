@@ -1,0 +1,433 @@
+{
+    "buckets": [
+        {
+            "Name": "main",
+            "Source": "https://github.com/ScoopInstaller/Main",
+            "Updated": "2026-01-19T08:47:44+08:00",
+            "Manifests": 1419
+        },
+        {
+            "Name": "extras",
+            "Source": "https://github.com/ScoopInstaller/Extras",
+            "Updated": "2026-01-19T08:48:10+08:00",
+            "Manifests": 2257
+        },
+        {
+            "Name": "versions",
+            "Source": "https://github.com/ScoopInstaller/Versions",
+            "Updated": "2026-01-19T04:40:00+08:00",
+            "Manifests": 550
+        },
+        {
+            "Name": "sysinternals",
+            "Source": "https://github.com/niheaven/scoop-sysinternals",
+            "Updated": "2025-12-17T10:21:17+08:00",
+            "Manifests": 75
+        },
+        {
+            "Name": "nerd-fonts",
+            "Source": "https://github.com/matthewjberger/scoop-nerd-fonts",
+            "Updated": "2026-01-14T18:31:41+08:00",
+            "Manifests": 367
+        },
+        {
+            "Name": "java",
+            "Source": "https://github.com/ScoopInstaller/Java",
+            "Updated": "2026-01-13T16:33:01+08:00",
+            "Manifests": 324
+        },
+        {
+            "Name": "okibcn_Bucket",
+            "Source": "https://github.com/okibcn/Bucket",
+            "Updated": "2026-01-09T16:46:27+08:00",
+            "Manifests": 11
+        }
+    ],
+    "apps": [
+        {
+            "Updated": "2026-01-07T10:15:50.9750185+08:00",
+            "Version": "25.01",
+            "Info": "",
+            "Source": "main",
+            "Name": "7zip"
+        },
+        {
+            "Updated": "2026-01-07T11:08:35.9831306+08:00",
+            "Version": "1.7.1",
+            "Info": "",
+            "Source": "extras",
+            "Name": "another-redis-desktop-manager"
+        },
+        {
+            "Updated": "2026-01-13T15:23:30.8610498+08:00",
+            "Version": "1.3.6",
+            "Info": "",
+            "Source": "main",
+            "Name": "bun"
+        },
+        {
+            "Updated": "2026-01-07T11:04:54.39883+08:00",
+            "Version": "3.4.0",
+            "Info": "",
+            "Source": "nerd-fonts",
+            "Name": "cascadiacode-nf-mono"
+        },
+        {
+            "Updated": "2026-01-14T08:26:22.3656312+08:00",
+            "Version": "1.9.9",
+            "Info": "",
+            "Source": "main",
+            "Name": "clink"
+        },
+        {
+            "Updated": "2026-01-07T11:10:31.8920033+08:00",
+            "Version": "9.7.2",
+            "Info": "",
+            "Source": "extras",
+            "Name": "crystaldiskinfo"
+        },
+        {
+            "Updated": "2026-01-09T09:46:30.800752+08:00",
+            "Version": "8.18.0_1",
+            "Info": "",
+            "Source": "main",
+            "Name": "curl"
+        },
+        {
+            "Updated": "2026-01-07T12:29:28.3343685+08:00",
+            "Version": "3.14.1",
+            "Info": "",
+            "Source": "main",
+            "Name": "dark"
+        },
+        {
+            "Updated": "2026-01-19T09:39:05.8286219+08:00",
+            "Version": "29.1.5",
+            "Info": "",
+            "Source": "main",
+            "Name": "docker"
+        },
+        {
+            "Updated": "2026-01-07T11:11:34.8069386+08:00",
+            "Version": "5.0.1",
+            "Info": "",
+            "Source": "main",
+            "Name": "docker-compose"
+        },
+        {
+            "Updated": "2026-01-15T08:11:24.9811865+08:00",
+            "Version": "2.57.1",
+            "Info": "",
+            "Source": "main",
+            "Name": "fastfetch"
+        },
+        {
+            "Updated": "2026-01-07T13:57:47.6508301+08:00",
+            "Version": "8.0.1",
+            "Info": "",
+            "Source": "main",
+            "Name": "ffmpeg"
+        },
+        {
+            "Updated": "2026-01-07T11:12:29.6969107+08:00",
+            "Version": "2.15.3",
+            "Info": "",
+            "Source": "extras",
+            "Name": "fork"
+        },
+        {
+            "Updated": "2026-01-07T10:16:14.4456904+08:00",
+            "Version": "2.52.0",
+            "Info": "",
+            "Source": "main",
+            "Name": "git"
+        },
+        {
+            "Updated": "2026-01-12T09:29:21.229325+08:00",
+            "Version": "0.154.5",
+            "Info": "",
+            "Source": "main",
+            "Name": "hugo"
+        },
+        {
+            "Updated": "2026-01-12T09:29:26.7559102+08:00",
+            "Version": "0.154.5",
+            "Info": "",
+            "Source": "main",
+            "Name": "hugo-extended"
+        },
+        {
+            "Updated": "2026-01-07T11:13:47.0517454+08:00",
+            "Version": "2.304",
+            "Info": "",
+            "Source": "nerd-fonts",
+            "Name": "jetbrains-mono"
+        },
+        {
+            "Updated": "2026-01-07T11:14:02.0376446+08:00",
+            "Version": "3.2.0.65851",
+            "Info": "",
+            "Source": "extras",
+            "Name": "jetbrains-toolbox"
+        },
+        {
+            "Updated": "2026-01-07T11:14:32.6515397+08:00",
+            "Version": "5.6.3",
+            "Info": "",
+            "Source": "extras",
+            "Name": "jmeter"
+        },
+        {
+            "Updated": "2026-01-19T09:40:27.811591+08:00",
+            "Version": "3.5.12",
+            "Info": "",
+            "Source": "extras",
+            "Name": "joplin"
+        },
+        {
+            "Updated": "2026-01-19T09:40:53.2873528+08:00",
+            "Version": "2.1.9",
+            "Info": "",
+            "Source": "extras",
+            "Name": "kafkio"
+        },
+        {
+            "Updated": "2026-01-07T12:25:21.7503065+08:00",
+            "Version": "1.35.0",
+            "Info": "",
+            "Source": "main",
+            "Name": "kubectl"
+        },
+        {
+            "Updated": "2026-01-12T09:29:31.5003352+08:00",
+            "Version": "1.35.2",
+            "Info": "",
+            "Source": "extras",
+            "Name": "kubelogin"
+        },
+        {
+            "Updated": "2026-01-19T11:03:06.4699775+08:00",
+            "Version": "2026.1.161237-latest",
+            "Info": "",
+            "Source": "extras",
+            "Name": "lens"
+        },
+        {
+            "Updated": "2026-01-07T12:26:54.4992212+08:00",
+            "Version": "7.9",
+            "Info": "",
+            "Source": "nerd-fonts",
+            "Name": "maple-mono-autohint"
+        },
+        {
+            "Updated": "2026-01-09T16:06:28.793766+08:00",
+            "Version": "3.9.12",
+            "Info": "",
+            "Source": "versions",
+            "Name": "maven3"
+        },
+        {
+            "Updated": "2026-01-07T12:27:17.2774361+08:00",
+            "Version": "1.12.1",
+            "Info": "",
+            "Source": "extras",
+            "Name": "mqttx"
+        },
+        {
+            "Updated": "2026-01-07T12:27:47.6034557+08:00",
+            "Version": "1.5.0",
+            "Info": "",
+            "Source": "extras",
+            "Name": "nexttrace"
+        },
+        {
+            "Updated": "2026-01-07T12:28:01.4570466+08:00",
+            "Version": "8.9",
+            "Info": "",
+            "Source": "extras",
+            "Name": "notepadplusplus"
+        },
+        {
+            "Updated": "2026-01-07T12:28:27.3821478+08:00",
+            "Version": "1.2.2",
+            "Info": "",
+            "Source": "main",
+            "Name": "nvm"
+        },
+        {
+            "Updated": "2026-01-07T12:28:40.255897+08:00",
+            "Version": "2.26.1",
+            "Info": "",
+            "Source": "extras",
+            "Name": "onefetch"
+        },
+        {
+            "Updated": "2026-01-07T12:29:15.4085211+08:00",
+            "Version": "11.68.0",
+            "Info": "",
+            "Source": "extras",
+            "Name": "postman"
+        },
+        {
+            "Updated": "2026-01-07T12:30:30.8788808+08:00",
+            "Version": "3.11.9",
+            "Info": "",
+            "Source": "versions",
+            "Name": "python311"
+        },
+        {
+            "Updated": "2026-01-07T12:31:40.6497233+08:00",
+            "Version": "3.13.11",
+            "Info": "",
+            "Source": "versions",
+            "Name": "python313"
+        },
+        {
+            "Updated": "2026-01-07T13:34:04.4155802+08:00",
+            "Version": "1.61",
+            "Info": "",
+            "Source": "sysinternals",
+            "Name": "rammap"
+        },
+        {
+            "Updated": "2026-01-07T13:35:12.1090691+08:00",
+            "Version": "1.28.2",
+            "Info": "",
+            "Source": "main",
+            "Name": "rustup"
+        },
+        {
+            "Updated": "2026-01-07T13:46:21.884733+08:00",
+            "Version": "4.47.69",
+            "Info": "",
+            "Source": "extras",
+            "Name": "slack"
+        },
+        {
+            "Updated": "2026-01-07T10:25:47.2048609+08:00",
+            "Version": "1.24.2",
+            "Info": "",
+            "Source": "main",
+            "Name": "starship"
+        },
+        {
+            "Updated": "2026-01-07T13:46:39.7547455+08:00",
+            "Version": "4-4200",
+            "Info": "",
+            "Source": "extras",
+            "Name": "sublime-text"
+        },
+        {
+            "Updated": "2026-01-07T13:47:51.2967659+08:00",
+            "Version": "11.0.29-7",
+            "Info": "",
+            "Source": "java",
+            "Name": "temurin11-jdk"
+        },
+        {
+            "Updated": "2026-01-07T13:48:10.5997911+08:00",
+            "Version": "17.0.17-10",
+            "Info": "",
+            "Source": "java",
+            "Name": "temurin17-jdk"
+        },
+        {
+            "Updated": "2026-01-07T13:48:27.337463+08:00",
+            "Version": "21.0.9-10.0",
+            "Info": "",
+            "Source": "java",
+            "Name": "temurin21-jdk"
+        },
+        {
+            "Updated": "2026-01-07T13:48:40.3511052+08:00",
+            "Version": "25.0.1-8.0",
+            "Info": "",
+            "Source": "java",
+            "Name": "temurin25-jdk"
+        },
+        {
+            "Updated": "2026-01-07T13:47:28.0093831+08:00",
+            "Version": "8.0.472-8",
+            "Info": "",
+            "Source": "java",
+            "Name": "temurin8-jdk"
+        },
+        {
+            "Updated": "2026-01-14T08:27:05.7761085+08:00",
+            "Version": "140.7.0esr",
+            "Info": "",
+            "Source": "extras",
+            "Name": "thunderbird-esr"
+        },
+        {
+            "Updated": "2026-01-07T13:51:55.6223493+08:00",
+            "Version": "3.0.7",
+            "Info": "",
+            "Source": "extras",
+            "Name": "unicodia"
+        },
+        {
+            "Updated": "2026-01-07T13:52:11.3169066+08:00",
+            "Version": "3.3.6",
+            "Info": "",
+            "Source": "extras",
+            "Name": "unigetui"
+        },
+        {
+            "Updated": "2026-01-16T13:51:18.3096256+08:00",
+            "Version": "0.9.26",
+            "Info": "",
+            "Source": "main",
+            "Name": "uv"
+        },
+        {
+            "Updated": "2026-01-07T13:52:35.664169+08:00",
+            "Version": "9.1.1825",
+            "Info": "",
+            "Source": "main",
+            "Name": "vim"
+        },
+        {
+            "Updated": "2026-01-07T13:52:54.6392949+08:00",
+            "Version": "0.2018.07.25",
+            "Info": "",
+            "Source": "main",
+            "Name": "vimtutor"
+        },
+        {
+            "Updated": "2026-01-15T08:35:51.1535443+08:00",
+            "Version": "1.108.1",
+            "Info": "",
+            "Source": "extras",
+            "Name": "vscode"
+        },
+        {
+            "Updated": "2026-01-07T13:54:08.9923948+08:00",
+            "Version": "1.12.440",
+            "Info": "",
+            "Source": "main",
+            "Name": "winget"
+        },
+        {
+            "Updated": "2026-01-07T13:55:09.7476239+08:00",
+            "Version": "1.12.440",
+            "Info": "",
+            "Source": "main",
+            "Name": "winget-ps"
+        },
+        {
+            "Updated": "2026-01-07T13:55:21.3896933+08:00",
+            "Version": "1.10.0",
+            "Info": "",
+            "Source": "extras",
+            "Name": "wsl2-distro-manager"
+        },
+        {
+            "Updated": "2026-01-07T13:55:32.3348364+08:00",
+            "Version": "2025.12.08",
+            "Info": "",
+            "Source": "main",
+            "Name": "yt-dlp"
+        }
+    ]
+}
