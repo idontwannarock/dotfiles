@@ -1,0 +1,107 @@
+:set rnu
+:set surround
+:set easymotion
+nmap z; $a;<Esc>
+imap z; <Esc>$a;
+
+nmap ,p "0p
+nmap ,P "0P
+imap z,p <Esc>"0pa
+imap z,P <Esc>"0Pa
+:nmap z, vi)
+:nmap z. vi}
+:nmap z) vi)
+:nmap z} vi}
+:nmap z> vit
+:nmap c> cit
+:nmap z" vi"
+:nmap z' vi'
+:nmap zxx ci]
+":vmap <Esc> <Esc><Esc><Esc>
+:imap jj <Esc>
+:nmap <BS> a<BS>
+:nmap zh ^
+:nmap hh ^
+:imap zh <Esc>^i
+:nmap zl $
+:nmap ll $
+:imap zl <End>
+":nmap zt zt2k2j
+:nmap hc ^C
+:nmap zb ciw
+:vmap zb <Esc>ciw
+:imap zd <Esc>dd
+"nmap j gj
+"nmap k gk
+nmap qq ZQ
+nmap zq :wq<CR>
+:nmap <BS> a<BS>
+
+imap <F1> <Esc>mby?def test<CR>`bp?def test_<CR>f_la<Esc>
+nmap <F1> mby?def test<CR>`bp?def test_<CR>f_la<Esc>
+imap <A-F1> <CR><Esc>y?it <CR>kPNf'lzz
+nmap <A-F1> y?it <CR>kPNf'lzz
+
+nmap zk :action Back<CR>
+imap zk <Esc>:action Back<CR>
+nmap zj :action Forward<CR>
+imap zj <Esc>:action Forward<CR>
+nmap zn :action GotoNextError<CR>
+nmap zf :action GotoDeclaration<CR>
+imap zf <Esc>:action GotoDeclaration<CR>
+nmap zgc zz:action CheckinProject<CR>
+
+nmap zra zz:action RearrangeCode<CR>zz:action ReformatCode<CR>zz:action Rerun<CR>
+imap zra <Esc>zz:action RearrangeCode<CR>zz:action ReformatCode<CR>zz:action Rerun<CR>
+
+map zrr :action RenameElement<CR>
+
+map zri :action Inline<CR>
+imap zri <Esc>:action Inline<CR>
+map zrf :action IntroduceField<CR>
+imap zrf <Esc>:action IntroduceField<CR>
+map zrp :action IntroduceParameter<CR>
+imap zrp <Esc>:action IntroduceParameter<CR>
+
+nmap zsp f':action IntroduceParameter<CR>
+
+map zrv :action IntroduceVariable<CR>
+vmap zrv <Esc>:action IntroduceVariable<CR>
+imap zrv <Esc>:action IntroduceVariable<CR>
+"vmap zrm :<bs><bs><bs><bs><bs>action VimVisualSwapSelections<CR>:action ExtractMethod<CR><ESC>
+"vmap M :<bs><bs><bs><bs><bs>action VimVisualSwapSelections<CR>:action ExtractMethod<CR><ESC>
+vmap zrm :action ExtractMethod<CR>
+vmap M :action ExtractMethod<CR>
+vmap \s :action SurroundWithLiveTemplate<CR>
+map zrt :action SearchEverywhere<CR>
+imap zrt <Esc>:action SearchEverywhere<CR>
+map zro :action Move<CR>
+imap zro <Esc>:action Move<CR>
+map <C-D> :action EditorDuplicateLines<CR>
+imap <C-D> <Esc>:action EditorDuplicateLines<CR>
+map <C-A-K> :action MoveLineUp<CR>:action VimAutoIndentLines<CR>
+imap <C-A-K> <Esc>:action MoveLineUp<CR>:action VimAutoIndentLines<CR>
+map <C-A-J> :action MoveLineDown<CR>:action VimAutoIndentLines<CR>
+imap <C-A-J> <Esc>:action MoveLineDown<CR>:action VimAutoIndentLines<CR>
+map <A-D> :action EditorDeleteLine<CR>
+imap <A-D> <Esc>:action EditorDeleteLine<CR>
+:nmap ,m :action FileStructurePopup<CR>
+:nmap zcc ci'
+:nmap zaa ca'
+nmap <A-u> :redo<CR>
+
+nmap ,g :action Generate<CR>
+nmap ,c :action NewElementSamePlace<CR>
+
+nmap <Space> :action AceAction<CR>
+nmap <C-\> :action AceTargetAction<CR>
+
+nmap \\yv ?if<CR>wvt:y
+nmap \\v ?if<CR>wvt::action IntroduceVariable<CR><Esc>
+nmap \\s :action ChangeSignature<CR>
+imap <A-;> <Esc>:action IntroduceVariable<CR>
+nmap <A-;> :action IntroduceVariable<CR>
+imap <A-.> self.
+nmap <A-.> iself.
+nmap <A-L> :set rnu!<CR>
+nmap zsi ^df:j$ps else <Esc>Jde

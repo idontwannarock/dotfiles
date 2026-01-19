@@ -1,0 +1,65 @@
+:set surround
+:set nu rnu
+:set easymotion
+nmap z; A;<Esc>
+imap z; <Esc>A;
+
+nmap ,p "0p
+nmap ,P "0P
+imap z,p <Esc>"0pa
+imap z,P <Esc>"0Pa
+:nmap z, vi)
+:nmap z. vi}
+:nmap z) vi)
+:nmap z} vi}
+:nmap z> vit
+:nmap c> cit
+:nmap z" vi"
+:nmap z' vi'
+:nmap zxx ci]
+:imap jj <Esc>
+:nmap <BS> a<BS>
+:nmap zh ^
+:nmap hh ^
+:imap zh <Esc>I
+:nmap zl $
+:nmap ll $
+:imap zl <End>
+:nmap hc ^C
+:nmap zb ciw
+:vmap zb <Esc>ciw
+:imap zd <Esc>dd
+nmap qq ZQ
+nmap zq :wq<CR>
+:nmap <BS> a<BS>
+
+
+nmap zk :action Back<CR>
+imap zk <Esc>:action Back<CR>
+nmap zj :action Forward<CR>
+imap zj <Esc>:action Forward<CR>
+nmap zn :action GotoNextError<CR>
+imap zn <Esc>:action GotoNextError<CR>
+nmap zf :action GotoDeclaration<CR>
+imap zf <Esc>:action GotoDeclaration<CR>
+nmap zgc zz:action CheckinProject<CR>
+
+nmap zra zz:action RearrangeCode<CR>zz:action ReformatCode<CR>zz:action Rerun<CR>
+imap zra <Esc>zz:action RearrangeCode<CR>zz:action ReformatCode<CR>zz:action Rerun<CR>
+
+map zrr :action RenameElement<CR>
+
+map zri :action Inline<CR>
+imap zri <Esc>:action Inline<CR>
+map zrf :action IntroduceField<CR>
+imap zrf <Esc>:action IntroduceField<CR>
+map zrp :action IntroduceParameter<CR>
+imap zrp <Esc>:action IntroduceParameter<CR>
+
+nmap zsp vi":action IntroduceParameter<CR>
+
+:nmap zcc ci"
+:nmap zaa ca"
+
+nmap ,g :action Generate<CR>
+nmap ,c :action NewElementSamePlace<CR>

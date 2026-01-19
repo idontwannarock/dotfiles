@@ -1,0 +1,101 @@
+:set rnu
+:set surround
+nmap z; A;<Esc>
+imap z; <Esc>A;
+
+nmap ,p "0p
+nmap ,P "0P
+imap z,p <Esc>"0pa
+imap z,P <Esc>"0Pa
+:nmap z, vi)
+:nmap z. vi}
+:nmap z) vi)
+:nmap z} vi}
+:nmap z> vit
+:nmap c> cit
+:nmap z" vi"
+:nmap z' vi'
+:nmap zxx ci]
+:imap jj <Esc>
+:nmap <BS> a<BS>
+:nmap zh ^
+:nmap hh ^
+:imap zh <Esc>^i
+:nmap zl $
+:nmap ll $
+:imap zl <End>
+:nmap hc ^C
+:nmap zb ciw
+:vmap zb <Esc>ciw
+:imap zd <Esc>dd
+nmap qq ZQ
+nmap zq :wq<CR>
+:nmap <BS> a<BS>
+imap <F1> <Esc>mb"2y?@test<CR>"1y?/<CR>`b"1p"2p?function<CR>wzz
+nmap <F1> mb"2y?@test<CR>"1y?/<CR>`b"1p"2p?function<CR>wzz
+
+imap <C-F1> <Esc>mb"by?function test<CR>"ay^`b"ap"bp?public<CR>J3ft2lzz<Esc>
+nmap <C-F1> mb"by?function test<CR>"ay^`b"ap"bp?public<CR>J3ft2lzz<Esc>
+
+imap <A-.> ->
+imap <A-,> =>
+
+nmap zk :action Back<CR>
+imap zk <Esc>:action Back<CR>
+nmap zj :action Forward<CR>
+imap zj <Esc>:action Forward<CR>
+nmap zn :action GotoNextError<CR>
+imap zn <Esc>:action GotoNextError<CR>
+nmap zf :action GotoDeclaration<CR>
+imap zf <Esc>:action GotoDeclaration<CR>
+nmap zgc zz:action CheckinProject<CR>
+
+map zra zz:action ReformatCode<CR>:action Rerun<CR>
+imap zra <Esc>zz:action ReformatCode<CR>:action Rerun<CR>
+
+map zrr :action RenameElement<CR>
+
+map zri :action Inline<CR>
+imap zri <Esc>:action Inline<CR>
+map zrf :action IntroduceField<CR>
+imap zrf <Esc>:action IntroduceField<CR>
+map zrp :action IntroduceParameter<CR>
+imap zrp <Esc>:action IntroduceParameter<CR>
+
+nmap zsp va':<bs><bs><bs><bs><bs>action IntroduceParameter<CR>
+
+map zrv :action IntroduceVariable<CR>
+vmap zrv <Esc>:action IntroduceVariable<CR>
+imap zrv <Esc>:action IntroduceVariable<CR>
+nmap zrm :action ExtractMethod<CR>
+vmap zrm :action ExtractMethod<CR>
+vmap M :action ExtractMethod<CR>
+map zrt :action SearchEverywhere<CR>
+imap zrt <Esc>:action SearchEverywhere<CR>
+map zro :action Move<CR>
+imap zro <Esc>:action Move<CR>
+map <C-D> :action EditorDuplicateLines<CR>
+imap <C-D> <Esc>:action EditorDuplicateLines<CR>
+map <C-A-K> :action MoveLineUp<CR>:action VimAutoIndentLines<CR>
+imap <C-A-K> <Esc>:action MoveLineUp<CR>:action VimAutoIndentLines<CR>
+map <C-A-J> :action MoveLineDown<CR>:action VimAutoIndentLines<CR>
+imap <C-A-J> <Esc>:action MoveLineDown<CR>:action VimAutoIndentLines<CR>
+map <A-D> :action EditorDeleteLine<CR>
+imap <A-D> <Esc>:action EditorDeleteLine<CR>
+:nmap ,m :action FileStructurePopup<CR>
+
+:nmap zcc ci'
+:nmap zaa ca'
+nmap <A-u> :redo<CR>
+:vmap \s :action SurroundWith<CR>
+:nmap <A-s> dd?class<CR>joprotected function setUp(){}<Left><CR><Esc>p:action RearrangeCode<CR>
+:nmap <A-x> dd?setUp<CR>jp:action RearrangeCode<CR>
+
+nmap ,g :action Generate<CR>
+nmap ,c :action NewElementSamePlace<CR>
+nmap <space> :action AceAction<CR>
+nmap <C-\> :action AceTargetAction<CR>
+nmap <A-L> :set rnu!<CR>
+
+nnoremap <Tab> >>
+nnoremap <S-Tab> <<
