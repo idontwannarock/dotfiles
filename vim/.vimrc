@@ -65,6 +65,12 @@ if has('termguicolors')
 endif
 syntax on                   " 語法高亮
 
+" 禁用滑鼠（不選取、不滾動）
+set mouse=
+
+" 使用系統剪貼簿（y/p 直接跨應用程式）
+set clipboard=unnamed,unnamedplus
+
 " Leader 鍵設為空白（很常見的設定）
 let mapleader = ' '
 
