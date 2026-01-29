@@ -94,6 +94,10 @@ map <Leader>k <Plug>(easymotion-k)
 " set ignorecase smartcase
 " ...
 
+" Visual mode 下用 J/K 上下移動選中的行（類似 JetBrains IDE）
+vnoremap J :m '>+1<CR>gv=gv
+vnoremap K :m '<-2<CR>gv=gv
+
 " ============================================================================
 " 自動安裝/偵測輸入法切換工具
 "   - Windows/macOS：自動下載 im-select 到 ~/.vim/bin/
