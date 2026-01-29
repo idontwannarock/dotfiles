@@ -14,7 +14,8 @@ import (
 
 // Claude Code JSON 結構
 type ClaudeData struct {
-	Model struct {
+	SessionID string `json:"session_id"`
+	Model     struct {
 		DisplayName string `json:"display_name"`
 	} `json:"model"`
 	Workspace struct {
@@ -211,20 +212,25 @@ func getMCPInfo() *MCPCache {
 	return result
 }
 
-// 取得當前 session ID（基於 PID 或環境）
-func getSessionID() string {
-	// 使用 PPID（父進程）作為 session 識別
+// 取得 session ID（使用 Claude Code 傳入的 session_id）
+func getSessionID(sessionID string) string {
+	if sessionID != "" {
+		// 使用 Claude Code 提供的 session_id 的 hash
+		hash := md5.Sum([]byte(sessionID))
+		return fmt.Sprintf("%x", hash[:8])
+	}
+	// fallback: 使用 PPID
 	ppid := os.Getppid()
 	hash := md5.Sum([]byte(fmt.Sprintf("%d", ppid)))
 	return fmt.Sprintf("%x", hash[:8])
 }
 
 // 更新 session 並計算今日總時數
-func updateSessionAndGetStats() (totalHours int, totalMins int, activeSessions int) {
+func updateSessionAndGetStats(claudeSessionID string) (totalHours int, totalMins int, activeSessions int) {
 	now := time.Now()
 	today := now.Format("2006-01-02")
 	currentTime := now.Unix()
-	sessionID := getSessionID()
+	sessionID := getSessionID(claudeSessionID)
 
 	// 更新當前 session
 	sessionFile := filepath.Join(sessionsDir, sessionID+".json")
@@ -355,7 +361,7 @@ func main() {
 	}
 
 	// Session 時間統計
-	totalHours, totalMins, activeSessions := updateSessionAndGetStats()
+	totalHours, totalMins, activeSessions := updateSessionAndGetStats(data.SessionID)
 
 	// 取得外部資料
 	ccusageCost := getCcusageCosts()
