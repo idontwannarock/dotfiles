@@ -102,12 +102,15 @@ go build -o statusline statusline.go       # macOS/Linux
 
 ### Session 追蹤
 
-使用心跳機制追蹤使用時間：
+**使用時間計算**（基於心跳機制）：
 - 每次 statusline 執行時更新心跳
 - 只計算連續活動時間（心跳間隔 ≤ 60 秒）
-- 10 分鐘無心跳視為 session 結束
+- Session 檔案位於 `~/.claude/statusline-sessions/`
 
-Session 檔案位於 `~/.claude/statusline-sessions/`
+**活躍 Session 數量**（直接計算進程）：
+- Windows: 使用 PowerShell 計算 `claude` 進程數
+- macOS/Linux: 使用 `pgrep` 計算 `claude` 進程數
+- 精準反映當前開啟的 Claude Code 數量
 
 ### 參考
 

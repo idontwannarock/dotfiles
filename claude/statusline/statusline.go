@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -102,6 +104,41 @@ func runCommand(name string, args ...string) string {
 		return ""
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// 計算運行中的 Claude Code 進程數量（跨平台）
+func countClaudeProcesses() int {
+	if runtime.GOOS == "windows" {
+		// Windows: 使用 PowerShell 計算 claude 進程數
+		cmd := exec.Command("powershell", "-Command",
+			"(Get-Process -Name 'claude' -ErrorAction SilentlyContinue | Measure-Object).Count")
+		out, err := cmd.Output()
+		if err != nil {
+			return 1 // fallback: 假設至少有當前這個
+		}
+		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
+		if err != nil {
+			return 1
+		}
+		return count
+	}
+
+	// Unix/macOS: 使用 pgrep 計算
+	cmd := exec.Command("pgrep", "-c", "claude")
+	out, err := cmd.Output()
+	if err != nil {
+		// pgrep 找不到時會返回錯誤，嘗試用 ps
+		cmd = exec.Command("sh", "-c", "ps aux | grep -c '[c]laude'")
+		out, err = cmd.Output()
+		if err != nil {
+			return 1
+		}
+	}
+	count, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		return 1
+	}
+	return count
 }
 
 func getGitInfo(dir string) (branch string, dirty bool) {
@@ -259,23 +296,20 @@ func updateSessionAndGetStats(claudeSessionID string) (totalHours int, totalMins
 	data, _ = json.Marshal(session)
 	os.WriteFile(sessionFile, data, 0644)
 
-	// 統計今日所有 session
+	// 統計今日所有 session 的累計時間
 	var totalSeconds int64 = 0
-	activeSessions = 0
-
 	files, _ := filepath.Glob(filepath.Join(sessionsDir, "*.json"))
 	for _, f := range files {
 		var s SessionData
 		if data, err := os.ReadFile(f); err == nil {
 			if json.Unmarshal(data, &s) == nil && s.Date == today {
 				totalSeconds += s.TotalSeconds
-				// 活躍 session：10 分鐘內有心跳
-				if currentTime-s.LastHeartbeat < 600 {
-					activeSessions++
-				}
 			}
 		}
 	}
+
+	// 活躍 session：直接計算系統中運行的 claude 進程數
+	activeSessions = countClaudeProcesses()
 
 	totalHours = int(totalSeconds / 3600)
 	totalMins = int((totalSeconds % 3600) / 60)
