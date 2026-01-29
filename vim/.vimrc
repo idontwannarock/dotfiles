@@ -53,6 +53,18 @@ set fileencodings=utf-8,ucs-bom,latin1
 set termencoding=utf-8
 set encoding=utf-8
 
+" 顏色設定（跨平台）
+set t_Co=256                " 至少 256 色
+if has('termguicolors')
+  " 修正某些終端機的 true color 支援
+  if !has('gui_running') && &term =~ '^\%(screen\|tmux\)'
+    let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
+    let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
+  endif
+  set termguicolors         " 啟用 24-bit true color
+endif
+syntax on                   " 語法高亮
+
 " Leader 鍵設為空白（很常見的設定）
 let mapleader = ' '
 
@@ -65,11 +77,22 @@ call plug#begin('~/.vim/plugged')
 " 你的 EasyMotion 插件
 Plug 'easymotion/vim-easymotion'
 
+" Git 整合
+Plug 'tpope/vim-fugitive'
+
+" Statusline 美化（自動整合 fugitive 顯示 git 狀態）
+Plug 'vim-airline/vim-airline'
+Plug 'vim-airline/vim-airline-themes'
+
 " 未來想加其他插件，就直接加在這裡，例如：
 " Plug 'preservim/nerdtree'
-" Plug 'tpope/vim-fugitive'
 
 call plug#end()
+
+" 自動安裝缺少的插件
+autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
+  \| PlugInstall --sync | source $MYVIMRC
+\| endif
 
 " ============================================================================
 " EasyMotion 專屬設定
@@ -79,12 +102,14 @@ let g:EasyMotion_smartcase = 1      " 智慧大小寫
 
 " 用 <Leader>s 觸發雙字元跳轉（推薦，平均最舒服）
 nmap <Leader>s <Plug>(easymotion-overwin-f2)
+
 " 單字元跳轉（如果你喜歡更快速）
 " nmap <Leader>s <Plug>(easymotion-overwin-f)
 
 " JK 快速上下移動（可選，註解掉就不用）
 map <Leader>j <Plug>(easymotion-j)
 map <Leader>k <Plug>(easymotion-k)
+
 " ============================================================================
 " 其他自訂設定（可繼續加在這裡）
 " ============================================================================
@@ -97,6 +122,31 @@ map <Leader>k <Plug>(easymotion-k)
 " Visual mode 下用 J/K 上下移動選中的行（類似 JetBrains IDE）
 vnoremap J :m '>+1<CR>gv=gv
 vnoremap K :m '<-2<CR>gv=gv
+
+" hh 跳到行首，ll 跳到行尾（normal/visual mode）
+nnoremap hh ^
+nnoremap ll $
+vnoremap hh ^
+vnoremap ll $
+
+" ============================================================================
+" vim-airline 設定
+" ============================================================================
+set laststatus=2                         " 永遠顯示狀態列
+let g:airline_theme = 'bubblegum'                     " 主題
+
+" 上方 tabline 顯示完整檔案路徑
+set showtabline=2                        " 永遠顯示 tabline
+set tabline=%F                           " 完整路徑
+
+" 底部 statusline 簡化：只顯示檔名 + git 狀態
+let g:airline_section_c = '%t%m'                      " 檔名 + 修改狀態
+let g:airline#extensions#branch#enabled = 1           " 顯示 git branch
+let g:airline#extensions#hunks#enabled = 1            " 顯示 git diff 狀態 (+~-)
+let g:airline#extensions#wordcount#filetypes = []     " 字數統計只在選取時顯示
+let g:airline_section_x = ''                          " 清空 filetype 區塊
+let g:airline_section_y = '%{&fileencoding?&fileencoding:&encoding}[%{&fileformat=="unix"?"LF":&fileformat=="dos"?"CRLF":"CR"}]'  " 編碼[換行]
+let g:airline_section_z = '%l:%c %p%%'                " 行:欄 百分比
 
 " ============================================================================
 " 自動安裝/偵測輸入法切換工具
