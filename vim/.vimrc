@@ -94,4 +94,94 @@ map <Leader>k <Plug>(easymotion-k)
 " set ignorecase smartcase
 " ...
 
+" ============================================================================
+" 自動安裝/偵測輸入法切換工具
+"   - Windows/macOS：自動下載 im-select 到 ~/.vim/bin/
+"   - Linux：偵測系統已安裝的 fcitx5-remote / fcitx-remote / ibus
+" ============================================================================
+let s:im_select_bin_dir = expand('~/.vim/bin')
+let s:im_select_path = ''
+let s:im_select_url = ''
+let g:im_select_default = ''
+let g:im_select_get_cmd = ''
+let g:im_select_set_cmd = ''
+
+if has('win32') || has('win64')
+  let s:im_select_path = s:im_select_bin_dir . '/im-select.exe'
+  let s:im_select_url = 'https://github.com/daipeihust/im-select/raw/master/win/out/x64/im-select.exe'
+  let g:im_select_default = '1033'
+  let g:im_select_get_cmd = s:im_select_path
+  let g:im_select_set_cmd = s:im_select_path . ' '
+
+elseif has('mac')
+  let s:im_select_path = s:im_select_bin_dir . '/im-select'
+  let s:im_select_url = 'https://github.com/daipeihust/im-select/raw/master/macOS/out/apple/im-select'
+  let g:im_select_default = 'com.apple.keylayout.ABC'
+  let g:im_select_get_cmd = s:im_select_path
+  let g:im_select_set_cmd = s:im_select_path . ' '
+
+elseif has('unix')
+  " Linux: 偵測已安裝的輸入法框架
+  if executable('fcitx5-remote')
+    let g:im_select_default = '1'  " 1 = 關閉（英文）
+    let g:im_select_get_cmd = 'fcitx5-remote'
+    let g:im_select_set_cmd = 'fcitx5-remote -t'
+  elseif executable('fcitx-remote')
+    let g:im_select_default = '1'
+    let g:im_select_get_cmd = 'fcitx-remote'
+    let g:im_select_set_cmd = 'fcitx-remote -t'
+  elseif executable('ibus')
+    let g:im_select_default = 'xkb:us::eng'
+    let g:im_select_get_cmd = 'ibus engine'
+    let g:im_select_set_cmd = 'ibus engine '
+  endif
+endif
+
+" Windows/macOS: 自動下載 im-select
+if s:im_select_url != '' && !empty(s:im_select_path) && empty(glob(s:im_select_path))
+  if !isdirectory(s:im_select_bin_dir)
+    call mkdir(s:im_select_bin_dir, 'p')
+  endif
+
+  echo 'Installing im-select...'
+  if has('win32') || has('win64')
+    if executable('curl')
+      silent execute '!curl -fLo "' . s:im_select_path . '" ' . s:im_select_url
+    else
+      silent execute '!powershell -Command "Invoke-WebRequest -Uri ''' . s:im_select_url . ''' -OutFile ''' . s:im_select_path . '''"'
+    endif
+  elseif has('mac')
+    silent execute '!curl -fLo "' . s:im_select_path . '" ' . s:im_select_url
+    silent execute '!chmod +x "' . s:im_select_path . '"'
+  endif
+  echo 'im-select installed!'
+endif
+
+" ============================================================================
+" 輸入法自動切換（離開 Insert Mode 切英文，進入時恢復）
+" ============================================================================
+if g:im_select_get_cmd != ''
+  let g:im_select_saved = ''
+
+  function! IMSelectSave()
+    let g:im_select_saved = substitute(system(g:im_select_get_cmd), '\n\|\r', '', 'g')
+  endfunction
+
+  function! IMSelectRestore()
+    if g:im_select_saved != '' && g:im_select_saved != g:im_select_default
+      silent call system(g:im_select_set_cmd . g:im_select_saved)
+    endif
+  endfunction
+
+  function! IMSelectDefault()
+    silent call system(g:im_select_set_cmd . g:im_select_default)
+  endfunction
+
+  augroup im_select
+    autocmd!
+    autocmd InsertLeave * call IMSelectSave() | call IMSelectDefault()
+    autocmd InsertEnter * call IMSelectRestore()
+  augroup END
+endif
+
 " 結束！存檔後重新開 Vim，第一次會自動安裝插件
