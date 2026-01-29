@@ -43,12 +43,47 @@ MCP: ✓ playwright, chrome-devtools │ ✗ failed-server
 ### 依賴
 
 - Go 1.18+（編譯用）
+- [Bun](https://bun.sh/)（執行 ccusage 用）
 - [ccusage](https://github.com/ryoppippi/ccusage)（費用統計，透過 `bunx ccusage` 執行）
 - Claude CLI（MCP 狀態檢查）
 
 ### 安裝
 
-#### 1. 複製並編譯
+#### 1. 安裝依賴
+
+**Go（編譯 statusline 用）：**
+
+```bash
+# Ubuntu/Debian
+sudo apt install -y golang-go
+
+# macOS
+brew install go
+
+# Windows (Scoop)
+scoop install go
+```
+
+**Bun（執行 ccusage 用）：**
+
+```bash
+# macOS/Linux
+curl -fsSL https://bun.sh/install | bash
+
+# Windows (PowerShell)
+powershell -c "irm bun.sh/install.ps1 | iex"
+```
+
+安裝後重新載入 shell：
+```bash
+source ~/.bashrc  # 或 source ~/.zshrc
+```
+
+**ccusage（費用統計）：**
+
+ccusage 不需要預先安裝，`bunx ccusage` 會自動下載並執行。首次執行會稍慢，之後會使用快取。
+
+#### 2. 複製並編譯
 
 ```bash
 # 複製 statusline.go 到 ~/.claude/
@@ -60,7 +95,7 @@ go build -o statusline.exe statusline.go   # Windows
 go build -o statusline statusline.go       # macOS/Linux
 ```
 
-#### 2. 設定 Claude Code
+#### 3. 設定 Claude Code
 
 編輯 `~/.claude/settings.json`，加入 statusLine 設定：
 
@@ -86,7 +121,7 @@ go build -o statusline statusline.go       # macOS/Linux
 }
 ```
 
-#### 3. 重啟 Claude Code
+#### 4. 重啟 Claude Code
 
 ### 緩存機制
 
