@@ -109,8 +109,8 @@ func runCommand(name string, args ...string) string {
 // 計算運行中的 Claude Code 進程數量（跨平台）
 func countClaudeProcesses() int {
 	if runtime.GOOS == "windows" {
-		// Windows: 使用 PowerShell 計算 claude 進程數
-		cmd := exec.Command("powershell", "-Command",
+		// Windows: 使用 PowerShell 計算 claude 進程數（-NoProfile 避免載入 profile）
+		cmd := exec.Command("powershell", "-NoProfile", "-Command",
 			"(Get-Process -Name 'claude' -ErrorAction SilentlyContinue | Measure-Object).Count")
 		out, err := cmd.Output()
 		if err != nil {
