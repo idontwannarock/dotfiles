@@ -3,12 +3,16 @@
 # Programming languages
 *.go text eol=lf
 
-# Scripts
+# Scripts (Unix)
 *.sh text eol=lf
 *.bash text eol=lf
 *.zsh text eol=lf
-*.ps1 text eol=lf
 *.py text eol=lf
+
+# Scripts (Windows)
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
 
 # Config files
 *.md text eol=lf
