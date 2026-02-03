@@ -1,2 +1,5 @@
 # Compiled binaries
 *.exe
+
+# Claude Code local settings
+.claude/settings.local.json
