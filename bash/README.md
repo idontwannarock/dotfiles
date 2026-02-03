@@ -1,19 +1,56 @@
-# Bash Profile (WSL)
+# Bash Profile (WSL/Linux)
 
-WSL Bash 設定檔，主要用於 Windows Terminal 整合。
+Bash 設定檔，適用於 WSL 和 Linux 環境。
 
-> **注意**：這是一個片段設定，應該 **附加** 到現有的 `~/.bashrc`，而非覆蓋。
+> **注意**：`.bashrc` 是片段設定，應該 **附加** 到現有的 `~/.bashrc`，而非覆蓋。
+
+## 檔案說明
+
+| 檔案 | 說明 |
+|------|------|
+| `.bashrc` | Windows Terminal 整合設定（附加用） |
+| `.bash_aliases` | Alias 設定（複製到 `~/.bash_aliases`） |
+| `set-worklogs-path.sh` | 搜尋並設定 `WORKLOGS_PATH` 環境變數 |
 
 ## 安裝
 
-將 `.bashrc` 內容**附加**到你的 `~/.bashrc`：
+### 1. 附加 `.bashrc` 設定
 
 ```bash
 cat .bashrc >> ~/.bashrc
-source ~/.bashrc
 ```
 
 ⚠️ **請勿使用 `cp` 覆蓋**，這會導致系統預設的 bashrc 設定遺失。
+
+### 2. 安裝 `.bash_aliases`
+
+```bash
+cp .bash_aliases ~/.bash_aliases
+```
+
+> Ubuntu/Debian 的預設 `.bashrc` 會自動載入 `~/.bash_aliases`。
+
+### 3. 設定 Worklogs 路徑（可選）
+
+```bash
+./set-worklogs-path.sh
+source ~/.bashrc
+```
+
+此腳本會依序搜尋以下位置尋找 `worklogs` git repo：
+1. `$HOME`（深度 4）
+2. `/home`（深度 5）
+3. `/opt`、`/usr/local`、`/var`（深度 4）
+4. `/`（深度 6，排除系統目錄）
+
+## Worklogs Aliases
+
+設定 `WORKLOGS_PATH` 後，可使用以下 alias：
+
+| Alias | 說明 |
+|-------|------|
+| `createnewlog` | 建立新的 worklog |
+| `gitpushlog` | Push worklog 到遠端 |
 
 ## Windows Terminal 整合
 
