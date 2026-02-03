@@ -64,3 +64,37 @@ PowerShell profile 採用模組化設計，將設定拆分到 `profile.d/` 目�
 | `which <command>` | 顯示指令的完整路徑（類似 Linux 的 which） |
 | `wtsettings` | 用 vim 開啟 Windows Terminal 的 settings.json |
 | `scoopupdate` | 互動式更新 scoop 套件 |
+| `createnewlog` | 建立新的 worklog（需設定 WORKLOGS_PATH） |
+| `gitpushlog` | 推送 worklogs 變更（需設定 WORKLOGS_PATH） |
+
+## 選用設定
+
+### Worklogs 整合
+
+如果你有使用 [worklogs](https://github.com/idontwannarock/worklogs) 專案，可執行設定腳本自動搜尋 repo 位置並設定環境變數：
+
+```powershell
+.\Set-WorklogsPath.ps1
+```
+
+此腳本會：
+1. 優先使用 [Everything CLI](https://www.voidtools.com/) (`es.exe`) 快速搜尋
+2. 若無 Everything，則從各磁碟根目錄遞迴搜尋
+3. 找到後設定 `WORKLOGS_PATH` 環境變數（永久）
+
+設定完成後重啟 shell，即可使用 `createnewlog` 和 `gitpushlog` 別名。
+
+**推薦安裝 Everything 加速搜尋：**
+
+> **注意：** 必須安裝完整版 `everything`，`everything-lite` 不支援 IPC。
+
+```powershell
+scoop install everything everything-cli
+```
+
+安裝後需啟用 Everything 服務：**工具** → **選項** → **一般** → 勾選 **「Everything 服務」**
+
+**手動設定：**
+```powershell
+[Environment]::SetEnvironmentVariable("WORKLOGS_PATH", "D:\path\to\worklogs", "User")
+```
