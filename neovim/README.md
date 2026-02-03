@@ -1,5 +1,11 @@
 # NeoVim Config files
 
+> ⚠️ **已棄用 (Deprecated)**
+>
+> 此 NeoVim 設定因安裝過於繁瑣已停止維護。建議改用 [vim](../vim/) 設定。
+
+---
+
 This NeoVim settings repo is for personal use, but you are welcome to use and free to ask any questions about it!
 
 ## Pre-requisite

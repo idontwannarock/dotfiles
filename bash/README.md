@@ -1,15 +1,19 @@
 # Bash Profile (WSL)
 
-WSL Bash 設定檔。
+WSL Bash 設定檔，主要用於 Windows Terminal 整合。
+
+> **注意**：這是一個片段設定，應該 **附加** 到現有的 `~/.bashrc`，而非覆蓋。
 
 ## 安裝
 
-將 `.bashrc` 內容加到你的 `~/.bashrc`：
+將 `.bashrc` 內容**附加**到你的 `~/.bashrc`：
 
 ```bash
 cat .bashrc >> ~/.bashrc
 source ~/.bashrc
 ```
+
+⚠️ **請勿使用 `cp` 覆蓋**，這會導致系統預設的 bashrc 設定遺失。
 
 ## Windows Terminal 整合
 

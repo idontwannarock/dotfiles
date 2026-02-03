@@ -1,6 +1,35 @@
-# TL;DR
+# Vim 設定
 
-For Linux and MacOS:
+## 依賴
+
+| 依賴 | 用途 | 安裝方式 |
+|------|------|----------|
+| vim | Vim 編輯器 | 見下方 |
+| curl | 自動下載 vim-plug | 通常已預裝 |
+| git | vim-plug 下載插件 | 通常已預裝 |
+
+### Linux 安裝 Vim
+
+```bash
+# Ubuntu/Debian
+sudo apt install vim
+
+# Fedora
+sudo dnf install vim
+
+# Arch
+sudo pacman -S vim
+```
+
+### macOS 安裝 Vim
+
+```bash
+brew install vim
+```
+
+## TL;DR
+
+For Linux and macOS:
 
 ```bash
 cp .ideavimrc ~/.ideavimrc
@@ -15,6 +44,8 @@ Copy-Item .ideavimrc ~/.ideavimrc
 Copy-Item .vimrc ~/.vimrc
 Copy-Item -Recurse .vim ~/.vim
 ```
+
+首次啟動 Vim 時，會自動下載 [vim-plug](https://github.com/junegunn/vim-plug) 並安裝插件。
 
 ## 功能
 
