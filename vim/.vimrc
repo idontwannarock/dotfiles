@@ -90,6 +90,9 @@ Plug 'tpope/vim-fugitive'
 Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 
+" Markdown 增強（支援 code block 折疊）
+Plug 'SidOfc/mkdx'
+
 " 未來想加其他插件，就直接加在這裡，例如：
 " Plug 'preservim/nerdtree'
 
@@ -153,6 +156,20 @@ let g:airline#extensions#wordcount#filetypes = []     " 字數統計只在選取
 let g:airline_section_x = ''                          " 清空 filetype 區塊
 let g:airline_section_y = '%{&fileencoding?&fileencoding:&encoding}[%{&fileformat=="unix"?"LF":&fileformat=="dos"?"CRLF":"CR"}]'  " 編碼[換行]
 let g:airline_section_z = '%l:%c %p%%'                " 行:欄 百分比
+
+" ============================================================================
+" mkdx - Markdown 增強 (code block 折疊)
+" ============================================================================
+let g:mkdx#settings = {
+    \ 'fold': {
+    \     'enable': 1,
+    \     'components': ['fence']
+    \ },
+    \ 'map': { 'enable': 0 }
+    \ }
+
+" 預設展開所有折疊
+autocmd FileType markdown setlocal foldlevel=99
 
 " ============================================================================
 " 自動安裝/偵測輸入法切換工具

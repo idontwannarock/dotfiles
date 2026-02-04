@@ -47,6 +47,34 @@ Copy-Item -Recurse .vim ~/.vim
 
 首次啟動 Vim 時，會自動下載 [vim-plug](https://github.com/junegunn/vim-plug) 並安裝插件。
 
+## 快捷鍵
+
+Leader 鍵設為 `空白鍵`。
+
+### 移動
+
+| 快捷鍵 | 模式 | 功能 |
+|--------|------|------|
+| `<Leader>s` | Normal | EasyMotion 雙字元跳轉 |
+| `<Leader>j` | Normal | EasyMotion 向下快速移動 |
+| `<Leader>k` | Normal | EasyMotion 向上快速移動 |
+| `hh` | Normal/Visual | 跳到行首 |
+| `ll` | Normal/Visual | 跳到行尾 |
+| `J` | Visual | 向下移動選中的行 |
+| `K` | Visual | 向上移動選中的行 |
+
+### Markdown 折疊
+
+在 Markdown 檔案中可折疊 code block（需 mkdx 插件）：
+
+| 快捷鍵 | 功能 |
+|--------|------|
+| `za` | 切換當前折疊 |
+| `zo` | 展開當前折疊 |
+| `zc` | 關閉當前折疊 |
+| `zM` | 關閉所有折疊 |
+| `zR` | 展開所有折疊 |
+
 ## 功能
 
 ### 輸入法自動切換
