@@ -19,8 +19,8 @@ Invoke-Expression (&starship init powershell)
 
 #f45873b3-b655-43a6-b217-97c00aa0db58 PowerToys CommandNotFound module
 if ($PSVersionTable.PSVersion.Major -ge 7) {
-    # PowerShell 7+: 使用 PowerToys 模組
-    Import-Module -Name Microsoft.WinGet.CommandNotFound
+    # PowerShell 7+: 使用 PowerToys 模組 (需安裝 PowerToys 並啟用 CommandNotFound)
+    Import-Module -Name Microsoft.WinGet.CommandNotFound -ErrorAction SilentlyContinue
 } else {
     # Windows PowerShell 5.x: CommandNotFoundAction fallback
     $ExecutionContext.InvokeCommand.CommandNotFoundAction = {

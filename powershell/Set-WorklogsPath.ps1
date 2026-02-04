@@ -78,9 +78,14 @@ if (-not $repoPath) {
 if ($repoPath) {
     [Environment]::SetEnvironmentVariable("WORKLOGS_PATH", $repoPath, "User")
     $env:WORKLOGS_PATH = $repoPath
+
+    # 設定別名讓當前 session 也能使用
+    Set-Alias -Name createnewlog -Value "$repoPath\create-new-log.ps1" -Scope Global
+    Set-Alias -Name gitpushlog -Value "$repoPath\git-push.ps1" -Scope Global
+
     Write-Host ""
     Write-Host "Found and configured: $repoPath" -ForegroundColor Green
-    Write-Host "Restart your shell to use the aliases." -ForegroundColor Yellow
+    Write-Host "Aliases 'createnewlog' and 'gitpushlog' are now available." -ForegroundColor Cyan
 } else {
     Write-Host ""
     Write-Host "worklogs repo not found." -ForegroundColor Red

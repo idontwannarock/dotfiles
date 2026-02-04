@@ -57,6 +57,18 @@ PowerShell profile 採用模組化設計，將設定拆分到 `profile.d/` 目�
 - **PowerShell 7+**: 使用 PowerToys 的 `Microsoft.WinGet.CommandNotFound` 模組
 - **Windows PowerShell 5.x**: 使用 `CommandNotFoundAction` 替代方案
 
+### PowerShell 7+ 啟用方式
+
+需要安裝 [PowerToys](https://github.com/microsoft/PowerToys) 並啟用 Command Not Found 功能：
+
+```powershell
+scoop install powertoys
+```
+
+安裝後開啟 PowerToys Settings → **Command Not Found** → 啟用功能
+
+> 如果未安裝 PowerToys，PowerShell 7 會靜默跳過此功能，不會顯示錯誤。
+
 ## Functions & Aliases
 
 | Command | Description |
