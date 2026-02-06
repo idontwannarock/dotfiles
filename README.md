@@ -9,9 +9,11 @@ dotfiles/
 ├── bash/          # Bash 設定 (WSL)
 ├── claude/        # Claude Code 設定
 ├── fastfetch/     # Fastfetch 系統資訊顯示設定
+├── git/           # Git 憑證管理設定
 ├── neovim/        # NeoVim 設定 (已棄用)
 ├── powershell/    # PowerShell 設定 (Windows)
 ├── scoop/         # Scoop 套件管理器設定 (Windows)
+├── ssh/           # SSH key 設定
 ├── usr/           # 自訂腳本與工具
 └── vim/           # Vim 設定
 ```
@@ -50,9 +52,11 @@ cp claude/settings.json ~/.claude/settings.json
 | [bash](./bash/) | WSL Bash 與 Windows Terminal 整合 | Linux/WSL |
 | [claude](./claude/) | Claude Code AI 助手設定 | 跨平台 |
 | [fastfetch](./fastfetch/) | 終端機系統資訊顯示 | 跨平台 |
+| [git](./git/) | Git 憑證管理（access token） | 跨平台 |
 | [neovim](./neovim/) | NeoVim 設定 (已棄用) | 跨平台 |
 | [powershell](./powershell/) | PowerShell 設定 | Windows |
 | [scoop](./scoop/) | Scoop 套件管理器 | Windows |
+| [ssh](./ssh/) | SSH key 設定 | 跨平台 |
 | [usr](./usr/) | 自訂腳本與工具 | 跨平台 |
 | [vim](./vim/) | Vim 編輯器設定 | 跨平台 |
 
