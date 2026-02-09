@@ -6,11 +6,61 @@ Claude Code 相關的個人設定檔案。
 
 ```
 claude/
-├── agents/           # 自訂 Agent 提示詞
-├── statusline/       # 自訂狀態列程式
+├── agents/              # 自訂 Agent 提示詞
+├── statusline/          # 自訂狀態列程式
 │   └── statusline.go
+├── setup-plugins.ps1    # Plugin 安裝腳本 (Windows)
+├── setup-plugins.sh     # Plugin 安裝腳本 (Linux/macOS)
 └── README.md
 ```
+
+## Plugins
+
+已安裝的 Claude Code Plugin。
+
+### Plugin 清單
+
+| 名稱 | 來源 | 說明 |
+|------|------|------|
+| superpowers | `claude-plugins-official` marketplace | 提供多種進階技能（brainstorming、TDD、debugging 等） |
+| subtask | `zippoxer/subtask`（手動 clone） | 平行任務分派，將工作委派給多個 AI worker |
+
+### Marketplace
+
+| 名稱 | 來源 | 說明 |
+|------|------|------|
+| claude-plugins-official | `anthropics/claude-plugins-official` | 內建預設 marketplace |
+| superpowers-marketplace | `obra/superpowers-marketplace` | superpowers 系列插件 |
+
+### 安裝
+
+**使用腳本（推薦）：**
+
+```powershell
+# Windows
+.\claude\setup-plugins.ps1
+```
+
+```bash
+# Linux/macOS
+chmod +x claude/setup-plugins.sh
+./claude/setup-plugins.sh
+```
+
+**手動安裝：**
+
+```bash
+# 新增 marketplace
+claude mcp add-marketplace superpowers-marketplace obra/superpowers-marketplace
+
+# 安裝 superpowers plugin
+claude plugin install superpowers
+
+# Clone subtask plugin
+git clone https://github.com/zippoxer/subtask.git ~/.claude/plugins/subtask/
+```
+
+安裝完成後重啟 Claude Code 即可使用。
 
 ## Status Line
 
