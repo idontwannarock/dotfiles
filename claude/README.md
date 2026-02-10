@@ -79,7 +79,7 @@ chmod +x claude/setup-plugins.sh
 
 ```bash
 # 新增 marketplace
-claude mcp add-marketplace superpowers-marketplace obra/superpowers-marketplace
+claude plugin marketplace add obra/superpowers-marketplace
 
 # 安裝 superpowers plugin
 claude plugin install superpowers
@@ -87,15 +87,21 @@ claude plugin install superpowers
 # Clone subtask plugin
 git clone https://github.com/zippoxer/subtask.git ~/.claude/plugins/subtask/
 
-# 安裝 OpenSpec CLI 及產生 skills/commands
+# 安裝 OpenSpec CLI
 npm install -g @fission-ai/openspec
-openspec update
 
 # 複製全域 CLAUDE.md
 cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 ```
 
 安裝完成後重啟 Claude Code 即可使用。
+
+**在各專案啟用 OpenSpec：**
+
+```bash
+cd <project-dir>
+openspec init --tools claude
+```
 
 ## Status Line
 

@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$totalSteps = 6
+$totalSteps = 5
 
 Write-Host "=== Claude Code Plugin Setup ===" -ForegroundColor Cyan
 
@@ -23,7 +23,7 @@ if (-not (Get-Command "npm" -ErrorAction SilentlyContinue)) {
 
 # 1. 新增 superpowers marketplace
 Write-Host "`n[1/$totalSteps] Adding superpowers marketplace..." -ForegroundColor Yellow
-claude mcp add-marketplace superpowers-marketplace obra/superpowers-marketplace
+claude plugin marketplace add obra/superpowers-marketplace
 Write-Host "  Done." -ForegroundColor Green
 
 # 2. 安裝 superpowers plugin (from official marketplace)
@@ -47,13 +47,8 @@ Write-Host "`n[4/$totalSteps] Installing OpenSpec CLI..." -ForegroundColor Yello
 npm install -g @fission-ai/openspec
 Write-Host "  Done." -ForegroundColor Green
 
-# 5. 產生 OpenSpec skills 及 commands
-Write-Host "`n[5/$totalSteps] Updating OpenSpec skills and commands..." -ForegroundColor Yellow
-openspec update
-Write-Host "  Done." -ForegroundColor Green
-
-# 6. 複製全域 CLAUDE.md
-Write-Host "`n[6/$totalSteps] Installing global CLAUDE.md..." -ForegroundColor Yellow
+# 5. 複製全域 CLAUDE.md
+Write-Host "`n[5/$totalSteps] Installing global CLAUDE.md..." -ForegroundColor Yellow
 $claudeMd = Join-Path $scriptDir "CLAUDE.md"
 $targetDir = Join-Path $env:USERPROFILE ".claude"
 $targetFile = Join-Path $targetDir "CLAUDE.md"
@@ -69,3 +64,6 @@ Write-Host "  Done." -ForegroundColor Green
 
 Write-Host "`n=== Setup complete ===" -ForegroundColor Cyan
 Write-Host "Restart Claude Code to activate plugins."
+Write-Host ""
+Write-Host "To enable OpenSpec in a project, run:"
+Write-Host "  cd <project-dir>; openspec init --tools claude"

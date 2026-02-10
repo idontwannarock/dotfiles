@@ -5,7 +5,7 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-total_steps=6
+total_steps=5
 
 echo "=== Claude Code Plugin Setup ==="
 
@@ -15,7 +15,12 @@ if ! command -v claude &>/dev/null; then
     exit 1
 fi
 
-# 檢查 npm 指令是否可用
+# 檢查 npm 指令是否可用（nvm 使用者需先 source nvm）
+if ! command -v npm &>/dev/null; then
+    # 嘗試載入 nvm
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+fi
 if ! command -v npm &>/dev/null; then
     echo "ERROR: npm command not found. Please install Node.js first." >&2
     exit 1
@@ -24,7 +29,7 @@ fi
 # 1. 新增 superpowers marketplace
 echo ""
 echo "[1/$total_steps] Adding superpowers marketplace..."
-claude mcp add-marketplace superpowers-marketplace obra/superpowers-marketplace
+claude plugin marketplace add obra/superpowers-marketplace
 echo "  Done."
 
 # 2. 安裝 superpowers plugin (from official marketplace)
@@ -51,15 +56,9 @@ echo "[4/$total_steps] Installing OpenSpec CLI..."
 npm install -g @fission-ai/openspec
 echo "  Done."
 
-# 5. 產生 OpenSpec skills 及 commands
+# 5. 複製全域 CLAUDE.md
 echo ""
-echo "[5/$total_steps] Updating OpenSpec skills and commands..."
-openspec update
-echo "  Done."
-
-# 6. 複製全域 CLAUDE.md
-echo ""
-echo "[6/$total_steps] Installing global CLAUDE.md..."
+echo "[5/$total_steps] Installing global CLAUDE.md..."
 claude_md="$script_dir/CLAUDE.md"
 target_dir="$HOME/.claude"
 target_file="$target_dir/CLAUDE.md"
@@ -74,3 +73,6 @@ echo "  Done."
 echo ""
 echo "=== Setup complete ==="
 echo "Restart Claude Code to activate plugins."
+echo ""
+echo "To enable OpenSpec in a project, run:"
+echo "  cd <project-dir> && openspec init --tools claude"
