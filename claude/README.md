@@ -9,10 +9,37 @@ claude/
 ├── agents/              # 自訂 Agent 提示詞
 ├── statusline/          # 自訂狀態列程式
 │   └── statusline.go
+├── CLAUDE.md            # 全域指令 (~/.claude/CLAUDE.md)
 ├── setup-plugins.ps1    # Plugin 安裝腳本 (Windows)
 ├── setup-plugins.sh     # Plugin 安裝腳本 (Linux/macOS)
 └── README.md
 ```
+
+## Global Instructions (CLAUDE.md)
+
+全域指令檔，設定 Claude Code 的預設行為。
+
+### 預設工作流程
+
+安裝後，Claude Code 在收到實作需求時會先詢問是否要使用 **OpenSpec + Superpowers** 流程：
+
+- **OpenSpec** — 結構化的變更管理流程（artifact-driven workflow）
+- **Superpowers** — 進階技能集（brainstorming、TDD、systematic debugging 等）
+
+瑣碎任務（改 typo、一行修改）會自動跳過詢問。
+
+### 安裝
+
+透過安裝腳本自動完成（見下方安裝段落），或手動複製：
+
+```bash
+cp claude/CLAUDE.md ~/.claude/CLAUDE.md
+```
+
+### 前置需求
+
+- **superpowers** plugin — 提供 brainstorming 等技能
+- **OpenSpec CLI** (`@fission-ai/openspec`) — 提供 `opsx:new` 等結構化流程
 
 ## Plugins
 
@@ -24,6 +51,7 @@ claude/
 |------|------|------|
 | superpowers | `claude-plugins-official` marketplace | 提供多種進階技能（brainstorming、TDD、debugging 等） |
 | subtask | `zippoxer/subtask`（手動 clone） | 平行任務分派，將工作委派給多個 AI worker |
+| OpenSpec | `@fission-ai/openspec`（npm CLI） | 結構化變更管理，自動產生 skills 及 commands |
 
 ### Marketplace
 
@@ -58,6 +86,13 @@ claude plugin install superpowers
 
 # Clone subtask plugin
 git clone https://github.com/zippoxer/subtask.git ~/.claude/plugins/subtask/
+
+# 安裝 OpenSpec CLI 及產生 skills/commands
+npm install -g @fission-ai/openspec
+openspec update
+
+# 複製全域 CLAUDE.md
+cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 ```
 
 安裝完成後重啟 Claude Code 即可使用。
