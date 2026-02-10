@@ -2,6 +2,13 @@
 
 Git 遠端認證設定。
 
+## 依賴
+
+| 依賴 | 用途 | 備註 |
+|------|------|------|
+| [Git](https://git-scm.com/) | Git 指令 | 各平台皆需安裝 |
+| [Scoop](https://scoop.sh/) 版 Git（含 GCM） | WSL 借用 Windows 端 Git Credential Manager | 僅 WSL 環境需要 |
+
 ## 認證方式選擇
 
 一般情況下建議使用 SSH key 認證（參考 [ssh/](../ssh/)），以下 access token 方式適用於無法使用 SSH 的情境，例如：

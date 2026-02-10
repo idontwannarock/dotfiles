@@ -2,6 +2,12 @@
 
 [Fastfetch](https://github.com/fastfetch-cli/fastfetch) 是一個快速的系統資訊顯示工具。
 
+## 依賴
+
+| 依賴 | 用途 | 備註 |
+|------|------|------|
+| [Fastfetch](https://github.com/fastfetch-cli/fastfetch) | 系統資訊顯示 | 見下方安裝方式 |
+
 ## 安裝 Fastfetch
 
 ### Linux (Ubuntu)

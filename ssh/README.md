@@ -2,6 +2,12 @@
 
 SSH key 設定，適用於 Git 遠端認證、遠端伺服器連線等各種 SSH 使用情境。
 
+## 依賴
+
+| 依賴 | 用途 | 備註 |
+|------|------|------|
+| [OpenSSH](https://www.openssh.com/) | `ssh-keygen`、`ssh-agent`、`ssh-add` | 大多數系統已預裝；Windows 需確認 OpenSSH 功能已啟用 |
+
 ## 產生 SSH Key
 
 各平台指令相同：

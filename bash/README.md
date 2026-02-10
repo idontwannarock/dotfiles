@@ -4,6 +4,14 @@ Bash 設定檔，適用於 WSL 和 Linux 環境。
 
 > **注意**：`.bashrc` 是片段設定，應該 **附加** 到現有的 `~/.bashrc`，而非覆蓋。
 
+## 依賴
+
+| 依賴 | 用途 | 備註 |
+|------|------|------|
+| Bash | Shell 環境 | 通常已預裝 |
+| wslpath | Windows Terminal 整合（路徑轉換） | WSL 內建，僅 WSL 環境需要 |
+| [worklogs](https://github.com/idontwannarock/worklogs) repo | `createnewlog` / `gitpushlog` alias | 選用，需先執行 `set-worklogs-path.sh` |
+
 ## 檔案說明
 
 | 檔案 | 說明 |

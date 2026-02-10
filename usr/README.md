@@ -2,6 +2,13 @@
 
 跨平台的個人腳本，放在 `~/.local/bin`。
 
+## 依賴
+
+| 依賴 | 用途 | 備註 |
+|------|------|------|
+| `~/.local/bin` 已加入 `$PATH` | 執行腳本 | 需自行確認 |
+| [Scoop](https://scoop.sh/) | `scoop-interactive-update.ps1` | 僅 Windows |
+
 ## 安裝
 
 **Windows (PowerShell):**

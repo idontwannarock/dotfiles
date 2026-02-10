@@ -2,6 +2,19 @@
 
 Windows PowerShell 設定檔。
 
+## 依賴
+
+| 依賴 | 用途 | 備註 |
+|------|------|------|
+| [PowerShell](https://github.com/PowerShell/PowerShell) 5.1+ | Shell 環境 | Windows 內建 5.1；建議安裝 7+ |
+| [Starship](https://starship.rs/) | Prompt 美化 | `99-prompt.ps1` |
+| [Fastfetch](https://github.com/fastfetch-cli/fastfetch) | 開啟終端機時顯示系統資訊 | 選用，`25-fastfetch.ps1`，未安裝時靜默跳過 |
+| [onefetch](https://github.com/o2sh/onefetch) | 進入 Git 專案時顯示 repo 資訊 | 選用，`30-git-greeter.ps1` |
+| [Git](https://git-scm.com/) | `30-git-greeter.ps1` 偵測 Git 專案 | 選用，未安裝時 greeter 不生效 |
+| [Vim](https://www.vim.org/) | `wtsettings` 函數編輯 WT 設定 | 選用，`20-functions.ps1` |
+| [PowerToys](https://github.com/microsoft/PowerToys) | PS7 CommandNotFound 模組 | 選用，未安裝時靜默跳過 |
+| [winget](https://github.com/microsoft/winget-cli) | PS5 CommandNotFound 搜尋套件 | 選用，Windows 10/11 內建 |
+
 ## 安裝
 
 ```powershell
