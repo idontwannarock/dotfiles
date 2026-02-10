@@ -1,23 +1,17 @@
 # Claude Code Plugin 安裝腳本 (Windows)
-# 安裝 marketplace、plugin、OpenSpec CLI 及全域指令
+# 安裝 marketplace、plugin 及全域指令
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$totalSteps = 5
+$totalSteps = 6
 
 Write-Host "=== Claude Code Plugin Setup ===" -ForegroundColor Cyan
 
 # 檢查 claude 指令是否可用
 if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
     Write-Host "ERROR: claude command not found. Please install Claude Code first." -ForegroundColor Red
-    exit 1
-}
-
-# 檢查 npm 指令是否可用
-if (-not (Get-Command "npm" -ErrorAction SilentlyContinue)) {
-    Write-Host "ERROR: npm command not found. Please install Node.js first." -ForegroundColor Red
     exit 1
 }
 
@@ -42,13 +36,8 @@ if (Test-Path $subtaskDir) {
 }
 Write-Host "  Done." -ForegroundColor Green
 
-# 4. 安裝 OpenSpec CLI
-Write-Host "`n[4/$totalSteps] Installing OpenSpec CLI..." -ForegroundColor Yellow
-npm install -g @fission-ai/openspec
-Write-Host "  Done." -ForegroundColor Green
-
-# 5. 複製全域 CLAUDE.md
-Write-Host "`n[5/$totalSteps] Installing global CLAUDE.md..." -ForegroundColor Yellow
+# 4. 複製全域 CLAUDE.md
+Write-Host "`n[4/$totalSteps] Installing global CLAUDE.md..." -ForegroundColor Yellow
 $claudeMd = Join-Path $scriptDir "CLAUDE.md"
 $targetDir = Join-Path $env:USERPROFILE ".claude"
 $targetFile = Join-Path $targetDir "CLAUDE.md"
@@ -62,8 +51,27 @@ if (Test-Path $targetFile) {
 Copy-Item $claudeMd $targetFile -Force
 Write-Host "  Done." -ForegroundColor Green
 
+# 5. 複製 ensure-openspec.sh 到 ~/.local/bin/ (WSL 環境用)
+Write-Host "`n[5/$totalSteps] Installing ensure-openspec.sh to ~/.local/bin/ (for WSL)..." -ForegroundColor Yellow
+$localBin = Join-Path $env:USERPROFILE ".local\bin"
+if (-not (Test-Path $localBin)) {
+    New-Item -ItemType Directory -Path $localBin -Force | Out-Null
+}
+$srcScript = Join-Path $scriptDir "ensure-openspec.sh"
+Copy-Item $srcScript (Join-Path $localBin "ensure-openspec.sh") -Force
+Write-Host "  Done." -ForegroundColor Green
+
+# 6. 複製 ensure-openspec.md 到 ~/.claude/commands/
+Write-Host "`n[6/$totalSteps] Installing /ensure-openspec skill..." -ForegroundColor Yellow
+$commandsDir = Join-Path $env:USERPROFILE ".claude\commands"
+if (-not (Test-Path $commandsDir)) {
+    New-Item -ItemType Directory -Path $commandsDir -Force | Out-Null
+}
+$srcSkill = Join-Path $scriptDir "commands\ensure-openspec.md"
+Copy-Item $srcSkill (Join-Path $commandsDir "ensure-openspec.md") -Force
+Write-Host "  Done." -ForegroundColor Green
+
 Write-Host "`n=== Setup complete ===" -ForegroundColor Cyan
 Write-Host "Restart Claude Code to activate plugins."
 Write-Host ""
-Write-Host "To enable OpenSpec in a project, run:"
-Write-Host "  cd <project-dir>; openspec init --tools claude"
+Write-Host "OpenSpec is now available on-demand via /ensure-openspec skill."

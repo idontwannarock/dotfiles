@@ -1,28 +1,17 @@
 #!/usr/bin/env bash
 # Claude Code Plugin 安裝腳本 (Linux/macOS)
-# 安裝 marketplace、plugin、OpenSpec CLI 及全域指令
+# 安裝 marketplace、plugin 及全域指令
 
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-total_steps=5
+total_steps=6
 
 echo "=== Claude Code Plugin Setup ==="
 
 # 檢查 claude 指令是否可用
 if ! command -v claude &>/dev/null; then
     echo "ERROR: claude command not found. Please install Claude Code first." >&2
-    exit 1
-fi
-
-# 檢查 npm 指令是否可用（nvm 使用者需先 source nvm）
-if ! command -v npm &>/dev/null; then
-    # 嘗試載入 nvm
-    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-fi
-if ! command -v npm &>/dev/null; then
-    echo "ERROR: npm command not found. Please install Node.js first." >&2
     exit 1
 fi
 
@@ -50,15 +39,9 @@ else
 fi
 echo "  Done."
 
-# 4. 安裝 OpenSpec CLI
+# 4. 複製全域 CLAUDE.md
 echo ""
-echo "[4/$total_steps] Installing OpenSpec CLI..."
-npm install -g @fission-ai/openspec
-echo "  Done."
-
-# 5. 複製全域 CLAUDE.md
-echo ""
-echo "[5/$total_steps] Installing global CLAUDE.md..."
+echo "[4/$total_steps] Installing global CLAUDE.md..."
 claude_md="$script_dir/CLAUDE.md"
 target_dir="$HOME/.claude"
 target_file="$target_dir/CLAUDE.md"
@@ -70,9 +53,23 @@ fi
 cp "$claude_md" "$target_file"
 echo "  Done."
 
+# 5. 複製 ensure-openspec.sh 到 ~/.local/bin/
+echo ""
+echo "[5/$total_steps] Installing ensure-openspec.sh to ~/.local/bin/..."
+mkdir -p "$HOME/.local/bin"
+cp "$script_dir/ensure-openspec.sh" "$HOME/.local/bin/ensure-openspec.sh"
+chmod +x "$HOME/.local/bin/ensure-openspec.sh"
+echo "  Done."
+
+# 6. 複製 ensure-openspec.md 到 ~/.claude/commands/
+echo ""
+echo "[6/$total_steps] Installing /ensure-openspec skill..."
+mkdir -p "$HOME/.claude/commands"
+cp "$script_dir/commands/ensure-openspec.md" "$HOME/.claude/commands/ensure-openspec.md"
+echo "  Done."
+
 echo ""
 echo "=== Setup complete ==="
 echo "Restart Claude Code to activate plugins."
 echo ""
-echo "To enable OpenSpec in a project, run:"
-echo "  cd <project-dir> && openspec init --tools claude"
+echo "OpenSpec is now available on-demand via /ensure-openspec skill."

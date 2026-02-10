@@ -7,9 +7,12 @@ Claude Code 相關的個人設定檔案。
 ```
 claude/
 ├── agents/              # 自訂 Agent 提示詞
+├── commands/            # 全域 Skill（user-invocable commands）
+│   └── ensure-openspec.md
 ├── statusline/          # 自訂狀態列程式
 │   └── statusline.go
 ├── CLAUDE.md            # 全域指令 (~/.claude/CLAUDE.md)
+├── ensure-openspec.sh   # OpenSpec 檢查/安裝/初始化腳本
 ├── setup-plugins.ps1    # Plugin 安裝腳本 (Windows)
 ├── setup-plugins.sh     # Plugin 安裝腳本 (Linux/macOS)
 └── README.md
@@ -39,7 +42,7 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 ### 前置需求
 
 - **superpowers** plugin — 提供 brainstorming 等技能
-- **OpenSpec CLI** (`@fission-ai/openspec`) — 提供 `opsx:new` 等結構化流程
+- **OpenSpec CLI** (`@fission-ai/openspec`) — 透過 `/ensure-openspec` skill 按需安裝
 
 ## Plugins
 
@@ -51,7 +54,12 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 |------|------|------|
 | superpowers | `claude-plugins-official` marketplace | 提供多種進階技能（brainstorming、TDD、debugging 等） |
 | subtask | `zippoxer/subtask`（手動 clone） | 平行任務分派，將工作委派給多個 AI worker |
-| OpenSpec | `@fission-ai/openspec`（npm CLI） | 結構化變更管理，自動產生 skills 及 commands |
+
+### On-demand 工具
+
+| 名稱 | 觸發方式 | 說明 |
+|------|----------|------|
+| OpenSpec | `/ensure-openspec` skill | 結構化變更管理，按需安裝 CLI 並初始化專案 |
 
 ### Marketplace
 
@@ -59,6 +67,13 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 |------|------|------|
 | claude-plugins-official | `anthropics/claude-plugins-official` | 內建預設 marketplace |
 | superpowers-marketplace | `obra/superpowers-marketplace` | superpowers 系列插件 |
+
+### 依賴
+
+| 依賴 | 用途 | 備註 |
+|------|------|------|
+| [Claude Code](https://claude.com/claude-code) | `claude plugin` 指令 | 必須先安裝 |
+| [Git](https://git-scm.com/) | clone subtask plugin | 通常已預裝 |
 
 ### 安裝
 
@@ -87,21 +102,39 @@ claude plugin install superpowers
 # Clone subtask plugin
 git clone https://github.com/zippoxer/subtask.git ~/.claude/plugins/subtask/
 
-# 安裝 OpenSpec CLI
-npm install -g @fission-ai/openspec
-
 # 複製全域 CLAUDE.md
 cp claude/CLAUDE.md ~/.claude/CLAUDE.md
+
+# 安裝 ensure-openspec skill 及腳本
+cp claude/ensure-openspec.sh ~/.local/bin/ensure-openspec.sh
+chmod +x ~/.local/bin/ensure-openspec.sh
+mkdir -p ~/.claude/commands
+cp claude/commands/ensure-openspec.md ~/.claude/commands/ensure-openspec.md
 ```
 
 安裝完成後重啟 Claude Code 即可使用。
 
-**在各專案啟用 OpenSpec：**
+## /ensure-openspec Skill
 
-```bash
-cd <project-dir>
-openspec init --tools claude
-```
+全域 user-invocable skill，用於按需安裝 OpenSpec CLI 並初始化當前專案。
+
+### 依賴
+
+| 依賴 | 用途 | 備註 |
+|------|------|------|
+| [Node.js](https://nodejs.org/) / npm | 安裝 OpenSpec CLI (`npm install -g`) | 支援透過 [nvm](https://github.com/nvm-sh/nvm) 載入 |
+
+### 功能
+
+1. 檢查 OpenSpec CLI 是否已安裝，沒有則透過 npm 安裝
+2. 檢查當前專案是否已 `openspec init`，沒有則執行初始化
+3. 已初始化的專案會執行 `openspec update`
+
+### 使用方式
+
+在 Claude Code 中輸入 `/ensure-openspec`，Claude 會自動執行腳本並回報結果。
+
+適合在需要使用 OpenSpec 工作流程時按需執行，不需要全域預裝。
 
 ## Status Line
 
@@ -133,10 +166,12 @@ MCP: ✓ playwright, chrome-devtools │ ✗ failed-server
 
 ### 依賴
 
-- Go 1.18+（編譯用）
-- [Bun](https://bun.sh/)（執行 ccusage 用）
-- [ccusage](https://github.com/ryoppippi/ccusage)（費用統計，透過 `bunx ccusage` 執行）
-- Claude CLI（MCP 狀態檢查）
+| 依賴 | 用途 | 備註 |
+|------|------|------|
+| [Go](https://go.dev/) 1.18+ | 編譯 statusline binary | |
+| [Bun](https://bun.sh/) | 執行 ccusage | |
+| [ccusage](https://github.com/ryoppippi/ccusage) | 費用統計 | 透過 `bunx ccusage` 自動下載執行 |
+| [Claude Code](https://claude.com/claude-code) | MCP 狀態檢查 | `claude mcp list` |
 
 ### 安裝
 
