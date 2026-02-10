@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoDir = Split-Path -Parent $scriptDir
-$totalSteps = 8
+$totalSteps = 10
 
 Write-Host "=== Claude Code Plugin Setup ===" -ForegroundColor Cyan
 
@@ -98,6 +98,56 @@ if ($legacyDirs.Count -gt 0) {
     Write-Host "  Removed $($legacyDirs.Count) legacy skill(s)." -ForegroundColor Gray
 } else {
     Write-Host "  No legacy skills found." -ForegroundColor Gray
+}
+Write-Host "  Done." -ForegroundColor Green
+
+# 9. 修復 plugin hook 路徑問題 (Windows: backslash → cygpath workaround)
+Write-Host "`n[9/$totalSteps] Fixing plugin hook paths for Windows..." -ForegroundColor Yellow
+$pluginCache = Join-Path $env:USERPROFILE ".claude\plugins\cache"
+if (Test-Path $pluginCache) {
+    $hooksFiles = Get-ChildItem -Path $pluginCache -Recurse -Filter "hooks.json" | Where-Object {
+        $_.FullName -match "\\hooks\\hooks\.json$"
+    }
+    foreach ($file in $hooksFiles) {
+        $content = Get-Content $file.FullName -Raw
+        # Replace ${CLAUDE_PLUGIN_ROOT}/path/to/script.sh with cygpath wrapper
+        # Match commands that directly reference CLAUDE_PLUGIN_ROOT without already being wrapped
+        if ($content -match '\$\{CLAUDE_PLUGIN_ROOT\}/' -and $content -notmatch 'cygpath') {
+            $lines = $content -split "`n"
+            $result = @()
+            foreach ($line in $lines) {
+                if ($line -match '"command"\s*:\s*"\$\{CLAUDE_PLUGIN_ROOT\}/(.+)"' -and $line -notmatch 'cygpath') {
+                    $scriptPath = $Matches[1]
+                    $hasComma = $line.TrimEnd().EndsWith(',')
+                    $indent = $line -replace '^(\s*).*', '$1'
+                    $newCmd = "bash -c 'FIXED_ROOT=`$(cygpath -u \`"`${CLAUDE_PLUGIN_ROOT}\`" 2>/dev/null || echo \`"`${CLAUDE_PLUGIN_ROOT}\`"); \`"`$FIXED_ROOT/$scriptPath\`"'"
+                    $comma = if ($hasComma) { ',' } else { '' }
+                    $result += "${indent}`"command`": `"$newCmd`"$comma"
+                } else {
+                    $result += $line
+                }
+            }
+            $result -join "`n" | Set-Content $file.FullName -NoNewline -Encoding UTF8
+            Write-Host "  Patched: $($file.FullName)" -ForegroundColor Gray
+        } else {
+            Write-Host "  Already patched or no fix needed: $($file.FullName)" -ForegroundColor Gray
+        }
+    }
+} else {
+    Write-Host "  Plugin cache not found, skipping." -ForegroundColor Gray
+}
+Write-Host "  Done." -ForegroundColor Green
+
+# 10. 修復 plugin hook 腳本 CRLF 問題 (Windows: CRLF → LF)
+Write-Host "`n[10/$totalSteps] Fixing plugin hook script line endings..." -ForegroundColor Yellow
+if (Get-Command "dos2unix" -ErrorAction SilentlyContinue) {
+    $shFiles = Get-ChildItem -Path $pluginCache -Recurse -Filter "*.sh" -ErrorAction SilentlyContinue
+    foreach ($file in $shFiles) {
+        dos2unix $file.FullName 2>$null
+    }
+    Write-Host "  Converted $($shFiles.Count) .sh files to LF." -ForegroundColor Gray
+} else {
+    Write-Host "  dos2unix not found, skipping. Install with: scoop install dos2unix" -ForegroundColor Yellow
 }
 Write-Host "  Done." -ForegroundColor Green
 

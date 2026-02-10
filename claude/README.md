@@ -88,6 +88,29 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 |------|------|------|
 | [Claude Code](https://claude.com/claude-code) | `claude plugin` 指令 | 必須先安裝 |
 | [Git](https://git-scm.com/) | clone subtask plugin | 通常已預裝 |
+| [jq](https://jqlang.github.io/jq/) | plugin hook 腳本 | Windows: `scoop install jq` |
+| [dos2unix](https://dos2unix.sourceforge.io/) | 修復 hook CRLF (Windows) | Windows: `scoop install dos2unix` |
+
+### Windows 已知問題：Plugin Hook Error
+
+Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失敗：
+
+| 問題 | 原因 | 修復方式 |
+|------|------|----------|
+| 路徑反斜線 | `${CLAUDE_PLUGIN_ROOT}` 展開為 `C:\...`，bash 將 `\` 當跳脫字元 | 用 `cygpath` 轉換路徑 |
+| CRLF 換行符 | 部分 plugin 的 `.sh` 被存為 CRLF | 用 `dos2unix` 轉為 LF |
+
+安裝腳本 `setup-plugins.ps1` 已包含自動修復步驟。如果 plugin 更新後問題復發，重新執行安裝腳本即可。
+
+**前置需求：**
+- `jq` — hook 腳本用來解析 JSON（`scoop install jq`）
+- `dos2unix` — 轉換換行符（`scoop install dos2unix`）
+
+**追蹤 Issues：**
+- [#21878](https://github.com/anthropics/claude-code/issues/21878) — Hook scripts fail on Windows: backslash paths
+- [#22906](https://github.com/anthropics/claude-code/issues/22906) / [#22934](https://github.com/anthropics/claude-code/issues/22934) — SessionStart hook errors cause CLI freeze
+
+待官方修復後可移除 workaround。
 
 ### 安裝
 
