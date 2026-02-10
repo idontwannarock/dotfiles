@@ -1,7 +1,3 @@
-if (Get-Command fastfetch -ErrorAction SilentlyContinue) {
-    fastfetch -c "$HOME/.config/fastfetch/config.jsonc"
-}
-
 # Windows Terminal OSC 9;9 - 報告當前工作目錄，讓 duplicate pane 繼承目錄
 # 必須在 Starship 初始化之前定義
 function Invoke-Starship-PreCommand {

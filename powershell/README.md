@@ -21,6 +21,7 @@ PowerShell profile 採用模組化設計，將設定拆分到 `profile.d/` 目�
 | `00-encoding.ps1` | UTF-8 編碼設定、Clear-Host |
 | `10-aliases.ps1` | 常用別名定義 |
 | `20-functions.ps1` | 自訂函數（which, wtsettings 等） |
+| `25-fastfetch.ps1` | 開啟終端機時顯示 fastfetch 系統資訊 |
 | `30-git-greeter.ps1` | 進入 Git 專案時顯示 onefetch |
 | `99-prompt.ps1` | Starship prompt、Windows Terminal 整合、CommandNotFound 功能 |
 
