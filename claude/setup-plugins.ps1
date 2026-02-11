@@ -18,12 +18,22 @@ if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
 
 # 1. 新增 superpowers marketplace
 Write-Host "`n[1/$totalSteps] Adding superpowers marketplace..." -ForegroundColor Yellow
-$output = claude plugin marketplace add obra/superpowers-marketplace 2>&1 | Out-String
-if ($LASTEXITCODE -ne 0 -and $output -match 'already installed') {
-    Write-Host "  Already installed, skipping." -ForegroundColor Gray
-} elseif ($LASTEXITCODE -ne 0) {
-    Write-Host "  ERROR: $output" -ForegroundColor Red
-    exit 1
+try {
+    $ErrorActionPreference = "Continue"
+    $output = claude plugin marketplace add obra/superpowers-marketplace 2>&1 | Out-String
+    $ErrorActionPreference = "Stop"
+    if ($LASTEXITCODE -ne 0 -and $output -match 'already installed') {
+        Write-Host "  Already installed, skipping." -ForegroundColor Gray
+    } elseif ($LASTEXITCODE -ne 0) {
+        throw $output
+    }
+} catch {
+    if ("$_" -match 'already installed') {
+        Write-Host "  Already installed, skipping." -ForegroundColor Gray
+    } else {
+        Write-Host "  ERROR: $_" -ForegroundColor Red
+        exit 1
+    }
 }
 Write-Host "  Done." -ForegroundColor Green
 
@@ -147,10 +157,12 @@ Write-Host "  Done." -ForegroundColor Green
 # 10. 修復 plugin hook 腳本 CRLF 問題 (Windows: CRLF → LF)
 Write-Host "`n[10/$totalSteps] Fixing plugin hook script line endings..." -ForegroundColor Yellow
 if (Get-Command "dos2unix" -ErrorAction SilentlyContinue) {
-    $shFiles = Get-ChildItem -Path $pluginCache -Recurse -Filter "*.sh" -ErrorAction SilentlyContinue
+    $shFiles = @(Get-ChildItem -Path $pluginCache -Recurse -Filter "*.sh" -ErrorAction SilentlyContinue)
+    $ErrorActionPreference = "Continue"
     foreach ($file in $shFiles) {
         dos2unix $file.FullName 2>$null
     }
+    $ErrorActionPreference = "Stop"
     Write-Host "  Converted $($shFiles.Count) .sh files to LF." -ForegroundColor Gray
 } else {
     Write-Host "  dos2unix not found, skipping. Install with: scoop install dos2unix" -ForegroundColor Yellow
