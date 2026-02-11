@@ -16,6 +16,19 @@ claude/
 ├── setup-plugins.ps1    # Plugin 安裝腳本 (Windows)
 ├── setup-plugins.sh     # Plugin 安裝腳本 (Linux/macOS)
 └── README.md
+
+.claude/commands/opsx/   # OPSX 工作流程指令（安裝到 ~/.claude/commands/opsx/）
+├── apply.md
+├── archive.md
+├── bulk-archive.md
+├── cheatsheet.md
+├── continue.md
+├── explore.md
+├── ff.md
+├── new.md
+├── onboard.md
+├── sync.md
+└── verify.md
 ```
 
 ## Global Instructions (CLAUDE.md)
@@ -60,6 +73,7 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 | 名稱 | 觸發方式 | 說明 |
 |------|----------|------|
 | OpenSpec | `/ensure-openspec` skill | 結構化變更管理，按需安裝 CLI 並初始化專案 |
+| OPSX Commands | `/opsx:*` commands | OpenSpec 工作流程指令（cheatsheet、explore、new、ff、apply 等） |
 
 ### Marketplace
 
@@ -110,6 +124,13 @@ cp claude/ensure-openspec.sh ~/.local/bin/ensure-openspec.sh
 chmod +x ~/.local/bin/ensure-openspec.sh
 mkdir -p ~/.claude/commands
 cp claude/commands/ensure-openspec.md ~/.claude/commands/ensure-openspec.md
+
+# 安裝 OPSX commands
+mkdir -p ~/.claude/commands/opsx
+cp .claude/commands/opsx/*.md ~/.claude/commands/opsx/
+
+# 清除舊版 openspec-* skills（如有）
+rm -rf ~/.claude/skills/openspec-*
 ```
 
 安裝完成後重啟 Claude Code 即可使用。

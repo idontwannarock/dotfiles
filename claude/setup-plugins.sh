@@ -5,7 +5,8 @@
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
-total_steps=6
+repo_dir="$(cd "$script_dir/.." && pwd)"
+total_steps=8
 
 echo "=== Claude Code Plugin Setup ==="
 
@@ -68,8 +69,36 @@ mkdir -p "$HOME/.claude/commands"
 cp "$script_dir/commands/ensure-openspec.md" "$HOME/.claude/commands/ensure-openspec.md"
 echo "  Done."
 
+# 7. 複製 opsx commands 到 ~/.claude/commands/opsx/
+echo ""
+echo "[7/$total_steps] Installing /opsx commands..."
+opsx_src="$repo_dir/.claude/commands/opsx"
+opsx_dest="$HOME/.claude/commands/opsx"
+mkdir -p "$opsx_dest"
+cp "$opsx_src"/*.md "$opsx_dest/"
+echo "  Installed $(ls "$opsx_dest"/*.md 2>/dev/null | wc -l) commands."
+echo "  Done."
+
+# 8. 清除舊版 openspec-* skills
+echo ""
+echo "[8/$total_steps] Cleaning up legacy openspec-* skills..."
+legacy_count=0
+for dir in "$HOME/.claude/skills"/openspec-*; do
+    if [ -d "$dir" ]; then
+        rm -rf "$dir"
+        legacy_count=$((legacy_count + 1))
+    fi
+done
+if [ "$legacy_count" -gt 0 ]; then
+    echo "  Removed $legacy_count legacy skill(s)."
+else
+    echo "  No legacy skills found."
+fi
+echo "  Done."
+
 echo ""
 echo "=== Setup complete ==="
 echo "Restart Claude Code to activate plugins."
 echo ""
 echo "OpenSpec is now available on-demand via /ensure-openspec skill."
+echo "OPSX commands (/opsx:*) are installed globally."

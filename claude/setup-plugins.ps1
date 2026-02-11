@@ -5,7 +5,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$totalSteps = 6
+$repoDir = Split-Path -Parent $scriptDir
+$totalSteps = 8
 
 Write-Host "=== Claude Code Plugin Setup ===" -ForegroundColor Cyan
 
@@ -71,7 +72,37 @@ $srcSkill = Join-Path $scriptDir "commands\ensure-openspec.md"
 Copy-Item $srcSkill (Join-Path $commandsDir "ensure-openspec.md") -Force
 Write-Host "  Done." -ForegroundColor Green
 
+# 7. 複製 opsx commands 到 ~/.claude/commands/opsx/
+Write-Host "`n[7/$totalSteps] Installing /opsx commands..." -ForegroundColor Yellow
+$opsxSrc = Join-Path $repoDir ".claude\commands\opsx"
+$opsxDest = Join-Path $env:USERPROFILE ".claude\commands\opsx"
+if (-not (Test-Path $opsxDest)) {
+    New-Item -ItemType Directory -Path $opsxDest -Force | Out-Null
+}
+$copied = Get-ChildItem "$opsxSrc\*.md" | ForEach-Object {
+    Copy-Item $_.FullName $opsxDest -Force
+    $_
+}
+Write-Host "  Installed $($copied.Count) commands." -ForegroundColor Gray
+Write-Host "  Done." -ForegroundColor Green
+
+# 8. 清除舊版 openspec-* skills
+Write-Host "`n[8/$totalSteps] Cleaning up legacy openspec-* skills..." -ForegroundColor Yellow
+$skillsDir = Join-Path $env:USERPROFILE ".claude\skills"
+$legacyDirs = @()
+if (Test-Path $skillsDir) {
+    $legacyDirs = Get-ChildItem -Path $skillsDir -Directory -Filter "openspec-*" -ErrorAction SilentlyContinue
+}
+if ($legacyDirs.Count -gt 0) {
+    $legacyDirs | ForEach-Object { Remove-Item $_.FullName -Recurse -Force }
+    Write-Host "  Removed $($legacyDirs.Count) legacy skill(s)." -ForegroundColor Gray
+} else {
+    Write-Host "  No legacy skills found." -ForegroundColor Gray
+}
+Write-Host "  Done." -ForegroundColor Green
+
 Write-Host "`n=== Setup complete ===" -ForegroundColor Cyan
 Write-Host "Restart Claude Code to activate plugins."
 Write-Host ""
 Write-Host "OpenSpec is now available on-demand via /ensure-openspec skill."
+Write-Host "OPSX commands (/opsx:*) are installed globally."
