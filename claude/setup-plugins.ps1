@@ -18,7 +18,13 @@ if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
 
 # 1. 新增 superpowers marketplace
 Write-Host "`n[1/$totalSteps] Adding superpowers marketplace..." -ForegroundColor Yellow
-claude plugin marketplace add obra/superpowers-marketplace
+$output = claude plugin marketplace add obra/superpowers-marketplace 2>&1 | Out-String
+if ($LASTEXITCODE -ne 0 -and $output -match 'already installed') {
+    Write-Host "  Already installed, skipping." -ForegroundColor Gray
+} elseif ($LASTEXITCODE -ne 0) {
+    Write-Host "  ERROR: $output" -ForegroundColor Red
+    exit 1
+}
 Write-Host "  Done." -ForegroundColor Green
 
 # 2. 安裝 superpowers plugin (from official marketplace)
@@ -91,7 +97,7 @@ Write-Host "`n[8/$totalSteps] Cleaning up legacy openspec-* skills..." -Foregrou
 $skillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $legacyDirs = @()
 if (Test-Path $skillsDir) {
-    $legacyDirs = Get-ChildItem -Path $skillsDir -Directory -Filter "openspec-*" -ErrorAction SilentlyContinue
+    $legacyDirs = @(Get-ChildItem -Path $skillsDir -Directory -Filter "openspec-*" -ErrorAction SilentlyContinue)
 }
 if ($legacyDirs.Count -gt 0) {
     $legacyDirs | ForEach-Object { Remove-Item $_.FullName -Recurse -Force }
