@@ -19,14 +19,20 @@ fi
 # 1. 新增 superpowers marketplace
 echo ""
 echo "[1/$total_steps] Adding superpowers marketplace..."
-claude plugin marketplace add obra/superpowers-marketplace
-echo "  Done."
+if claude plugin marketplace add obra/superpowers-marketplace 2>&1; then
+    echo "  Done."
+else
+    echo "  Already installed, skipping."
+fi
 
 # 2. 安裝 superpowers plugin (from official marketplace)
 echo ""
 echo "[2/$total_steps] Installing superpowers plugin..."
-claude plugin install superpowers
-echo "  Done."
+if claude plugin install superpowers 2>&1; then
+    echo "  Done."
+else
+    echo "  Already installed, skipping."
+fi
 
 # 3. Clone subtask plugin
 echo ""
