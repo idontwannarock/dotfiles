@@ -26,21 +26,35 @@
 
 ### 核心流程
 
-三步確認完成後執行：
+三步確認完成後執行（`[ ]` 為可選步驟）：
 
 **小型：**
 ```
-ensure-openspec → sp:brainstorm → opsx:ff → opsx:apply → opsx:verify → opsx:archive
+[git:sync] → ensure-openspec → sp:brainstorm → opsx:ff → opsx:apply → opsx:verify → opsx:archive → [git:commit → git:push]
 ```
 
 **大型：**
 ```
-ensure-openspec → sp:brainstorm → opsx:new → opsx:continue（重複）→ sp:plan → opsx:apply → sp:verify → opsx:verify → opsx:archive
+[git:sync] → ensure-openspec → sp:brainstorm → opsx:new → opsx:continue（重複）→ sp:plan → opsx:apply → sp:verify → opsx:verify → opsx:archive → [git:commit → git:push]
 ```
+
+**使用 worktree 時：**
+```
+[git:sync] → sp:worktree → ensure-openspec → ... → opsx:archive → git:commit → sp:finish → [git:clean-gone]
+```
+
+#### Git 整合行為
+
+| 時機 | 操作 | 行為 |
+|------|------|------|
+| 流程開始前 | `git:sync` | 自動執行，確保在最新 main 上工作（feature branch 上除外） |
+| `opsx:archive` 之後 | `git:commit` | 提議 commit，使用者確認後執行 |
+| commit 之後 | `git:push` | 詢問是否 push（使用者可能想批次 commit） |
+| `sp:finish` 之後 | `git:clean-gone` | 使用 worktree 時，自動建議清理已合併的本地分支 |
 
 ### 可選擴充
 
-以下 superpowers 技能視情況自動引入，不需要使用者手動觸發：
+以下技能視情況自動引入，不需要使用者手動觸發：
 
 | 技能 | 簡寫 | 觸發時機 |
 |------|------|----------|
