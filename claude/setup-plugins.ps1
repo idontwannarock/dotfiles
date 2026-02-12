@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoDir = Split-Path -Parent $scriptDir
-$totalSteps = 10
+$totalSteps = 9
 
 Write-Host "=== Claude Code Plugin Setup ===" -ForegroundColor Cyan
 
@@ -42,19 +42,8 @@ Write-Host "`n[2/$totalSteps] Installing superpowers plugin..." -ForegroundColor
 claude plugin install superpowers
 Write-Host "  Done." -ForegroundColor Green
 
-# 3. Clone subtask plugin
-Write-Host "`n[3/$totalSteps] Installing subtask plugin..." -ForegroundColor Yellow
-$subtaskDir = Join-Path $env:USERPROFILE ".claude\plugins\subtask"
-if (Test-Path $subtaskDir) {
-    Write-Host "  subtask already exists, pulling latest..." -ForegroundColor Gray
-    git -C $subtaskDir pull
-} else {
-    git clone https://github.com/zippoxer/subtask.git $subtaskDir
-}
-Write-Host "  Done." -ForegroundColor Green
-
-# 4. 複製全域 CLAUDE.md
-Write-Host "`n[4/$totalSteps] Installing global CLAUDE.md..." -ForegroundColor Yellow
+# 3. 複製全域 CLAUDE.md
+Write-Host "`n[3/$totalSteps] Installing global CLAUDE.md..." -ForegroundColor Yellow
 $claudeMd = Join-Path $scriptDir "CLAUDE.md"
 $targetDir = Join-Path $env:USERPROFILE ".claude"
 $targetFile = Join-Path $targetDir "CLAUDE.md"
@@ -68,8 +57,8 @@ if (Test-Path $targetFile) {
 Copy-Item $claudeMd $targetFile -Force
 Write-Host "  Done." -ForegroundColor Green
 
-# 5. 複製 ensure-openspec.sh 到 ~/.local/bin/ (WSL 環境用)
-Write-Host "`n[5/$totalSteps] Installing ensure-openspec.sh to ~/.local/bin/ (for WSL)..." -ForegroundColor Yellow
+# 4. 複製 ensure-openspec.sh 到 ~/.local/bin/ (WSL 環境用)
+Write-Host "`n[4/$totalSteps] Installing ensure-openspec.sh to ~/.local/bin/ (for WSL)..." -ForegroundColor Yellow
 $localBin = Join-Path $env:USERPROFILE ".local\bin"
 if (-not (Test-Path $localBin)) {
     New-Item -ItemType Directory -Path $localBin -Force | Out-Null
@@ -78,8 +67,8 @@ $srcScript = Join-Path $scriptDir "ensure-openspec.sh"
 Copy-Item $srcScript (Join-Path $localBin "ensure-openspec.sh") -Force
 Write-Host "  Done." -ForegroundColor Green
 
-# 6. 複製 ensure-openspec.md 到 ~/.claude/commands/
-Write-Host "`n[6/$totalSteps] Installing /ensure-openspec skill..." -ForegroundColor Yellow
+# 5. 複製 ensure-openspec.md 到 ~/.claude/commands/
+Write-Host "`n[5/$totalSteps] Installing /ensure-openspec skill..." -ForegroundColor Yellow
 $commandsDir = Join-Path $env:USERPROFILE ".claude\commands"
 if (-not (Test-Path $commandsDir)) {
     New-Item -ItemType Directory -Path $commandsDir -Force | Out-Null
@@ -88,8 +77,8 @@ $srcSkill = Join-Path $scriptDir "commands\ensure-openspec.md"
 Copy-Item $srcSkill (Join-Path $commandsDir "ensure-openspec.md") -Force
 Write-Host "  Done." -ForegroundColor Green
 
-# 7. 複製 opsx commands 到 ~/.claude/commands/opsx/
-Write-Host "`n[7/$totalSteps] Installing /opsx commands..." -ForegroundColor Yellow
+# 6. 複製 opsx commands 到 ~/.claude/commands/opsx/
+Write-Host "`n[6/$totalSteps] Installing /opsx commands..." -ForegroundColor Yellow
 $opsxSrc = Join-Path $repoDir ".claude\commands\opsx"
 $opsxDest = Join-Path $env:USERPROFILE ".claude\commands\opsx"
 if (-not (Test-Path $opsxDest)) {
@@ -102,8 +91,8 @@ $copied = Get-ChildItem "$opsxSrc\*.md" | ForEach-Object {
 Write-Host "  Installed $($copied.Count) commands." -ForegroundColor Gray
 Write-Host "  Done." -ForegroundColor Green
 
-# 8. 清除舊版 openspec-* skills
-Write-Host "`n[8/$totalSteps] Cleaning up legacy openspec-* skills..." -ForegroundColor Yellow
+# 7. 清除舊版 openspec-* skills
+Write-Host "`n[7/$totalSteps] Cleaning up legacy openspec-* skills..." -ForegroundColor Yellow
 $skillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $legacyDirs = @()
 if (Test-Path $skillsDir) {
@@ -117,8 +106,8 @@ if ($legacyDirs.Count -gt 0) {
 }
 Write-Host "  Done." -ForegroundColor Green
 
-# 9. 修復 plugin hook 路徑問題 (Windows: backslash → cygpath workaround)
-Write-Host "`n[9/$totalSteps] Fixing plugin hook paths for Windows..." -ForegroundColor Yellow
+# 8. 修復 plugin hook 路徑問題 (Windows: backslash → cygpath workaround)
+Write-Host "`n[8/$totalSteps] Fixing plugin hook paths for Windows..." -ForegroundColor Yellow
 $pluginCache = Join-Path $env:USERPROFILE ".claude\plugins\cache"
 if (Test-Path $pluginCache) {
     $hooksFiles = Get-ChildItem -Path $pluginCache -Recurse -Filter "hooks.json" | Where-Object {
@@ -154,8 +143,8 @@ if (Test-Path $pluginCache) {
 }
 Write-Host "  Done." -ForegroundColor Green
 
-# 10. 修復 plugin hook 腳本 CRLF 問題 (Windows: CRLF → LF)
-Write-Host "`n[10/$totalSteps] Fixing plugin hook script line endings..." -ForegroundColor Yellow
+# 9. 修復 plugin hook 腳本 CRLF 問題 (Windows: CRLF → LF)
+Write-Host "`n[9/$totalSteps] Fixing plugin hook script line endings..." -ForegroundColor Yellow
 if (Get-Command "dos2unix" -ErrorAction SilentlyContinue) {
     $shFiles = @(Get-ChildItem -Path $pluginCache -Recurse -Filter "*.sh" -ErrorAction SilentlyContinue)
     $ErrorActionPreference = "Continue"

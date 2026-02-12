@@ -66,7 +66,6 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 | 名稱 | 來源 | 說明 |
 |------|------|------|
 | superpowers | `claude-plugins-official` marketplace | 提供多種進階技能（brainstorming、TDD、debugging 等） |
-| subtask | `zippoxer/subtask`（手動 clone） | 平行任務分派，將工作委派給多個 AI worker |
 
 ### On-demand 工具
 
@@ -87,7 +86,6 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 | 依賴 | 用途 | 備註 |
 |------|------|------|
 | [Claude Code](https://claude.com/claude-code) | `claude plugin` 指令 | 必須先安裝 |
-| [Git](https://git-scm.com/) | clone subtask plugin | 通常已預裝 |
 | [jq](https://jqlang.github.io/jq/) | plugin hook 腳本 | Windows: `scoop install jq` |
 | [dos2unix](https://dos2unix.sourceforge.io/) | 修復 hook CRLF (Windows) | Windows: `scoop install dos2unix` |
 
@@ -135,9 +133,6 @@ claude plugin marketplace add obra/superpowers-marketplace
 
 # 安裝 superpowers plugin
 claude plugin install superpowers
-
-# Clone subtask plugin
-git clone https://github.com/zippoxer/subtask.git ~/.claude/plugins/subtask/
 
 # 複製全域 CLAUDE.md
 cp claude/CLAUDE.md ~/.claude/CLAUDE.md
