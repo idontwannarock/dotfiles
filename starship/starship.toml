@@ -1,0 +1,6 @@
+# Starship prompt configuration
+# https://starship.rs/config/
+
+# Increase command timeout to avoid git command timeouts on large repos
+# Default is 500ms, which is too short on Windows with Defender real-time scanning
+command_timeout = 1000

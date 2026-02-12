@@ -14,6 +14,7 @@ dotfiles/
 ├── powershell/    # PowerShell 設定 (Windows)
 ├── scoop/         # Scoop 套件管理器設定 (Windows)
 ├── ssh/           # SSH key 設定
+├── starship/      # Starship prompt 設定
 ├── usr/           # 自訂腳本與工具
 └── vim/           # Vim 設定
 ```
@@ -39,6 +40,11 @@ sudo apt update && sudo apt install fastfetch
 cp -r fastfetch ~/.config/fastfetch
 ```
 
+### Starship
+```bash
+cp starship/starship.toml ~/.config/starship.toml
+```
+
 ### Claude Code
 ```bash
 mkdir -p ~/.claude
@@ -57,6 +63,7 @@ cp claude/settings.json ~/.claude/settings.json
 | [powershell](./powershell/) | PowerShell 設定 | Windows |
 | [scoop](./scoop/) | Scoop 套件管理器 | Windows |
 | [ssh](./ssh/) | SSH key 設定 | 跨平台 |
+| [starship](./starship/) | Starship 終端機 prompt 設定 | 跨平台 |
 | [usr](./usr/) | 自訂腳本與工具 | 跨平台 |
 | [vim](./vim/) | Vim 編輯器設定 | 跨平台 |
 
