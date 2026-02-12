@@ -59,7 +59,8 @@ claude/
 ├── review-quick.md     # 快速 review（單一 code-reviewer agent）
 ├── review-linus.md     # Linus Torvalds 風格 review（架構簡潔性、good taste）
 ├── review-security.md  # 安全性 review（silent-failure-hunter + code-reviewer 安全焦點）
-└── review-types.md     # 型別設計 review（type-design-analyzer）
+├── review-types.md     # 型別設計 review（type-design-analyzer）
+└── review-spec.md      # 需求導向 review（帶 OpenSpec artifacts 上下文，檢查 spec 對齊）
 ```
 
 ## Global Instructions (CLAUDE.md)
@@ -106,7 +107,7 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 | OPSX Commands | `/opsx:*` commands | OpenSpec 工作流程指令（cheatsheet、explore、new、ff、apply 等） |
 | SP Commands | `/sp:*` commands | Superpowers 技能簡寫（brainstorm、tdd、debug、plan 等） |
 | Git Commands | `/git:*` commands | Git 操作簡寫（commit、push、sync、amend、undo、clean-gone） |
-| Code Commands | `/code:*` commands | Code Review 指令（review-full、review-quick、review-linus、review-security、review-types） |
+| Code Commands | `/code:*` commands | Code Review 指令（review-full、review-quick、review-linus、review-security、review-types、review-spec） |
 
 ### Marketplace
 

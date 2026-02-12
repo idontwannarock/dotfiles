@@ -30,12 +30,12 @@
 
 **小型：**
 ```
-[git:sync] → ensure-openspec → sp:brainstorm → opsx:ff → opsx:apply → opsx:verify → opsx:archive → [git:commit → git:push]
+[git:sync] → ensure-openspec → sp:brainstorm → opsx:ff → opsx:apply → [code:review-spec] → opsx:verify → opsx:archive → [git:commit → git:push]
 ```
 
 **大型：**
 ```
-[git:sync] → ensure-openspec → sp:brainstorm → opsx:new → opsx:continue（重複）→ sp:plan → opsx:apply → sp:verify → opsx:verify → opsx:archive → [git:commit → git:push]
+[git:sync] → ensure-openspec → sp:brainstorm → opsx:new → opsx:continue（重複）→ sp:plan → opsx:apply → [code:review-spec] → sp:verify → opsx:verify → opsx:archive → [git:commit → git:push]
 ```
 
 **使用 worktree 時：**
@@ -66,3 +66,18 @@
 | `requesting-code-review` | `sp:review` | 完成實作後、merge 前 |
 | `receiving-code-review` | `sp:recv-review` | 收到 code review 回饋時 |
 | `finishing-a-development-branch` | `sp:finish` | 實作完成、測試通過，決定 merge/PR/保留/丟棄 |
+
+#### Code Review 指令
+
+獨立的 agent-based code review 工具，可在流程內外使用：
+
+| 指令 | 說明 |
+|------|------|
+| `code:review-full` | 完整 review（4 agent 平行：code-reviewer + silent-failure-hunter + test-analyzer + linus-torvalds） |
+| `code:review-quick` | 快速 review（單一 code-reviewer） |
+| `code:review-linus` | Linus Torvalds 風格 review（架構簡潔性、good taste） |
+| `code:review-security` | 安全性 review（silent-failure-hunter + code-reviewer 安全焦點） |
+| `code:review-types` | 型別設計 review（type-design-analyzer） |
+| `code:review-spec` | 需求導向 review（帶 OpenSpec artifacts 上下文，檢查 spec 對齊） |
+
+所有指令支援：`/code:review-* [PR number｜branch｜commit range]`，無引數時自動偵測 staged → unstaged → HEAD。
