@@ -184,7 +184,7 @@ rm -rf ~/.claude/skills/openspec-*
 ```
 [💛 Opus 4.5] 📂 project ⚡ main* | ██████░░░░ 52.8% 105.6k | 1h30m [2 sessions]
 🔥 $4.00/hr │ 💰 Today: $6.83 │ ⏱ Reset: 2h 25m
-MCP: ✓ playwright, chrome-devtools │ ✗ failed-server
+MCP: ✓ context7, atlassian, playwright, chrome-devtools │ ✗ github
 ```
 
 #### 第一行
@@ -202,6 +202,7 @@ MCP: ✓ playwright, chrome-devtools │ ✗ failed-server
 
 #### 第三行
 - MCP 伺服器狀態（顯示已連接與失敗的伺服器名稱）
+- Plugin MCP server（`plugin:source:name` 格式）自動取最後一段作為顯示名稱
 
 ### 依賴
 

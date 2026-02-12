@@ -234,10 +234,15 @@ func getMCPInfo() *MCPCache {
 			line = strings.TrimSpace(line)
 			// 格式: "name: cmd ... - ✓ Connected" 或 "name: cmd ... - ✗ Failed"
 			if strings.Contains(line, ": ") && (strings.Contains(line, "Connected") || strings.Contains(line, "Failed") || strings.Contains(line, "Error")) {
-				// 取得名稱（冒號前的部分）
-				colonIdx := strings.Index(line, ":")
+				// 取得名稱（": " 前的部分，支援 plugin:source:name 格式）
+				colonIdx := strings.Index(line, ": ")
 				if colonIdx > 0 {
 					name := strings.TrimSpace(line[:colonIdx])
+					// plugin MCP server 格式為 "plugin:source:name"，取最後一段作為顯示名稱
+					if strings.HasPrefix(name, "plugin:") {
+						parts := strings.Split(name, ":")
+						name = parts[len(parts)-1]
+					}
 					connected := strings.Contains(line, "✓ Connected")
 					result.Servers = append(result.Servers, MCPServer{Name: name, Connected: connected})
 				}
