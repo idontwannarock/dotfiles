@@ -53,6 +53,13 @@ claude/
 ├── amend.md            # 修改上一個 commit
 ├── clean-gone.md       # 清理已刪除的遠端分支
 └── undo.md             # soft reset 上一個 commit
+
+.claude/commands/code/  # Code Review 指令（安裝到 ~/.claude/commands/code/）
+├── review-full.md      # 完整 review（4 agent 平行：code-reviewer + silent-failure-hunter + test-analyzer + linus-torvalds）
+├── review-quick.md     # 快速 review（單一 code-reviewer agent）
+├── review-linus.md     # Linus Torvalds 風格 review（架構簡潔性、good taste）
+├── review-security.md  # 安全性 review（silent-failure-hunter + code-reviewer 安全焦點）
+└── review-types.md     # 型別設計 review（type-design-analyzer）
 ```
 
 ## Global Instructions (CLAUDE.md)
@@ -99,6 +106,7 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 | OPSX Commands | `/opsx:*` commands | OpenSpec 工作流程指令（cheatsheet、explore、new、ff、apply 等） |
 | SP Commands | `/sp:*` commands | Superpowers 技能簡寫（brainstorm、tdd、debug、plan 等） |
 | Git Commands | `/git:*` commands | Git 操作簡寫（commit、push、sync、amend、undo、clean-gone） |
+| Code Commands | `/code:*` commands | Code Review 指令（review-full、review-quick、review-linus、review-security、review-types） |
 
 ### Marketplace
 
@@ -180,6 +188,10 @@ cp .claude/commands/sp/*.md ~/.claude/commands/sp/
 # 安裝 Git commands
 mkdir -p ~/.claude/commands/git
 cp .claude/commands/git/*.md ~/.claude/commands/git/
+
+# 安裝 Code commands (code review)
+mkdir -p ~/.claude/commands/code
+cp .claude/commands/code/*.md ~/.claude/commands/code/
 
 # 清除舊版 openspec-* skills（如有）
 rm -rf ~/.claude/skills/openspec-*
