@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoDir = Split-Path -Parent $scriptDir
-$totalSteps = 9
+$totalSteps = 10
 
 Write-Host "=== Claude Code Plugin Setup ===" -ForegroundColor Cyan
 
@@ -91,8 +91,22 @@ $copied = Get-ChildItem "$opsxSrc\*.md" | ForEach-Object {
 Write-Host "  Installed $($copied.Count) commands." -ForegroundColor Gray
 Write-Host "  Done." -ForegroundColor Green
 
-# 7. 清除舊版 openspec-* skills
-Write-Host "`n[7/$totalSteps] Cleaning up legacy openspec-* skills..." -ForegroundColor Yellow
+# 7. 複製 sp commands 到 ~/.claude/commands/sp/
+Write-Host "`n[7/$totalSteps] Installing /sp commands (superpowers shortcuts)..." -ForegroundColor Yellow
+$spSrc = Join-Path $repoDir ".claude\commands\sp"
+$spDest = Join-Path $env:USERPROFILE ".claude\commands\sp"
+if (-not (Test-Path $spDest)) {
+    New-Item -ItemType Directory -Path $spDest -Force | Out-Null
+}
+$spCopied = Get-ChildItem "$spSrc\*.md" | ForEach-Object {
+    Copy-Item $_.FullName $spDest -Force
+    $_
+}
+Write-Host "  Installed $($spCopied.Count) commands." -ForegroundColor Gray
+Write-Host "  Done." -ForegroundColor Green
+
+# 8. 清除舊版 openspec-* skills
+Write-Host "`n[8/$totalSteps] Cleaning up legacy openspec-* skills..." -ForegroundColor Yellow
 $skillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $legacyDirs = @()
 if (Test-Path $skillsDir) {
@@ -106,8 +120,8 @@ if ($legacyDirs.Count -gt 0) {
 }
 Write-Host "  Done." -ForegroundColor Green
 
-# 8. 修復 plugin hook 路徑問題 (Windows: backslash → cygpath workaround)
-Write-Host "`n[8/$totalSteps] Fixing plugin hook paths for Windows..." -ForegroundColor Yellow
+# 9. 修復 plugin hook 路徑問題 (Windows: backslash → cygpath workaround)
+Write-Host "`n[9/$totalSteps] Fixing plugin hook paths for Windows..." -ForegroundColor Yellow
 $pluginCache = Join-Path $env:USERPROFILE ".claude\plugins\cache"
 if (Test-Path $pluginCache) {
     $hooksFiles = Get-ChildItem -Path $pluginCache -Recurse -Filter "hooks.json" | Where-Object {
@@ -143,8 +157,8 @@ if (Test-Path $pluginCache) {
 }
 Write-Host "  Done." -ForegroundColor Green
 
-# 9. 修復 plugin hook 腳本 CRLF 問題 (Windows: CRLF → LF)
-Write-Host "`n[9/$totalSteps] Fixing plugin hook script line endings..." -ForegroundColor Yellow
+# 10. 修復 plugin hook 腳本 CRLF 問題 (Windows: CRLF → LF)
+Write-Host "`n[10/$totalSteps] Fixing plugin hook script line endings..." -ForegroundColor Yellow
 if (Get-Command "dos2unix" -ErrorAction SilentlyContinue) {
     $shFiles = @(Get-ChildItem -Path $pluginCache -Recurse -Filter "*.sh" -ErrorAction SilentlyContinue)
     $ErrorActionPreference = "Continue"
@@ -163,3 +177,4 @@ Write-Host "Restart Claude Code to activate plugins."
 Write-Host ""
 Write-Host "OpenSpec is now available on-demand via /ensure-openspec skill."
 Write-Host "OPSX commands (/opsx:*) are installed globally."
+Write-Host "SP commands (/sp:*) are installed globally."

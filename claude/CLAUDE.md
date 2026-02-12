@@ -30,25 +30,25 @@
 
 **小型：**
 ```
-ensure-openspec → brainstorming → opsx:ff → opsx:apply → opsx:verify → opsx:archive
+ensure-openspec → sp:brainstorm → opsx:ff → opsx:apply → opsx:verify → opsx:archive
 ```
 
 **大型：**
 ```
-ensure-openspec → brainstorming → opsx:new → opsx:continue（重複）→ writing-plans → opsx:apply → verification-before-completion → opsx:verify → opsx:archive
+ensure-openspec → sp:brainstorm → opsx:new → opsx:continue（重複）→ sp:plan → opsx:apply → sp:verify → opsx:verify → opsx:archive
 ```
 
 ### 可選擴充
 
 以下 superpowers 技能視情況自動引入，不需要使用者手動觸發：
 
-| 技能 | 觸發時機 |
-|------|----------|
-| `using-git-worktrees` | 需要隔離工作區時（大型任務、避免影響主分支） |
-| `subagent-driven-development` | 任務間互相獨立、可平行處理時 |
-| `dispatching-parallel-agents` | 多個不相關任務需同時進行時 |
-| `test-driven-development` | 實作功能或修 bug 時，強制 RED→GREEN→REFACTOR |
-| `systematic-debugging` | 遇到 bug、測試失敗、非預期行為時 |
-| `requesting-code-review` | 完成實作後、merge 前 |
-| `receiving-code-review` | 收到 code review 回饋時 |
-| `finishing-a-development-branch` | 實作完成、測試通過，決定 merge/PR/保留/丟棄 |
+| 技能 | 簡寫 | 觸發時機 |
+|------|------|----------|
+| `using-git-worktrees` | `sp:worktree` | 需要隔離工作區時（大型任務、避免影響主分支） |
+| `subagent-driven-development` | `sp:subagent` | 任務間互相獨立、可平行處理時 |
+| `dispatching-parallel-agents` | `sp:parallel` | 多個不相關任務需同時進行時 |
+| `test-driven-development` | `sp:tdd` | 實作功能或修 bug 時，強制 RED→GREEN→REFACTOR |
+| `systematic-debugging` | `sp:debug` | 遇到 bug、測試失敗、非預期行為時 |
+| `requesting-code-review` | `sp:review` | 完成實作後、merge 前 |
+| `receiving-code-review` | `sp:recv-review` | 收到 code review 回饋時 |
+| `finishing-a-development-branch` | `sp:finish` | 實作完成、測試通過，決定 merge/PR/保留/丟棄 |
