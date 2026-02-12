@@ -103,26 +103,17 @@ Common Pipelines:
 
 # Nice to have
 
-- context7 remote mcp setup: `claude mcp add --transport http context7 https://mcp.context7.com/mcp`
+## MCP Servers
+
+> context7 已透過 plugin 安裝（`/plugin` → context7），不需要手動設定 MCP。
+> spec-workflow-mcp 已由 OpenSpec + Superpowers 流程取代，不再需要。
+
 - grep mcp setup: `claude mcp add --transport http grep https://mcp.grep.app`
-- spec workflow mcp setup: `claude mcp add spec-workflow-mcp -s user -- npx spec-workflow-mcp@latest`
 
 or just add following config in `~/.claude.json` file.
 
 ```json
     "mcpServers": {
-    "spec-workflow-mcp": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "spec-workflow-mcp@latest"
-      ],
-      "env": {}
-    },
-    "context7": {
-      "type": "http",
-      "url": "https://mcp.context7.com/mcp"
-    },
     "grep": {
       "type": "http",
       "url": "https://mcp.grep.app"
