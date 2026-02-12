@@ -29,6 +29,30 @@ claude/
 ├── onboard.md
 ├── sync.md
 └── verify.md
+
+.claude/commands/sp/    # Superpowers 簡寫指令（安裝到 ~/.claude/commands/sp/）
+├── brainstorm.md       # → superpowers:brainstorming
+├── tdd.md              # → superpowers:test-driven-development
+├── debug.md            # → superpowers:systematic-debugging
+├── plan.md             # → superpowers:writing-plans
+├── exec.md             # → superpowers:executing-plans
+├── worktree.md         # → superpowers:using-git-worktrees
+├── subagent.md         # → superpowers:subagent-driven-development
+├── parallel.md         # → superpowers:dispatching-parallel-agents
+├── review.md           # → superpowers:requesting-code-review
+├── recv-review.md      # → superpowers:receiving-code-review
+├── finish.md           # → superpowers:finishing-a-development-branch
+├── verify.md           # → superpowers:verification-before-completion
+├── write-skill.md      # → superpowers:writing-skills（不可命名為 skill.md）
+└── init.md             # → superpowers:using-superpowers
+
+.claude/commands/git/   # Git 操作簡寫指令（安裝到 ~/.claude/commands/git/）
+├── commit.md           # 智慧 commit（逐一 stage、過濾垃圾/敏感檔）
+├── push.md             # push 當前分支
+├── sync.md             # fetch + rebase main
+├── amend.md            # 修改上一個 commit
+├── clean-gone.md       # 清理已刪除的遠端分支
+└── undo.md             # soft reset 上一個 commit
 ```
 
 ## Global Instructions (CLAUDE.md)
@@ -73,6 +97,8 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 |------|----------|------|
 | OpenSpec | `/ensure-openspec` skill | 結構化變更管理，按需安裝 CLI 並初始化專案 |
 | OPSX Commands | `/opsx:*` commands | OpenSpec 工作流程指令（cheatsheet、explore、new、ff、apply 等） |
+| SP Commands | `/sp:*` commands | Superpowers 技能簡寫（brainstorm、tdd、debug、plan 等） |
+| Git Commands | `/git:*` commands | Git 操作簡寫（commit、push、sync、amend、undo、clean-gone） |
 
 ### Marketplace
 
@@ -146,6 +172,14 @@ cp claude/commands/ensure-openspec.md ~/.claude/commands/ensure-openspec.md
 # 安裝 OPSX commands
 mkdir -p ~/.claude/commands/opsx
 cp .claude/commands/opsx/*.md ~/.claude/commands/opsx/
+
+# 安裝 SP commands (superpowers 簡寫)
+mkdir -p ~/.claude/commands/sp
+cp .claude/commands/sp/*.md ~/.claude/commands/sp/
+
+# 安裝 Git commands
+mkdir -p ~/.claude/commands/git
+cp .claude/commands/git/*.md ~/.claude/commands/git/
 
 # 清除舊版 openspec-* skills（如有）
 rm -rf ~/.claude/skills/openspec-*

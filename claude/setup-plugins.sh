@@ -6,7 +6,7 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 repo_dir="$(cd "$script_dir/.." && pwd)"
-total_steps=8
+total_steps=9
 
 echo "=== Claude Code Plugin Setup ==="
 
@@ -83,9 +83,19 @@ cp "$sp_src"/*.md "$sp_dest/"
 echo "  Installed $(ls "$sp_dest"/*.md 2>/dev/null | wc -l) commands."
 echo "  Done."
 
-# 8. 清除舊版 openspec-* skills
+# 8. 複製 git commands 到 ~/.claude/commands/git/
 echo ""
-echo "[8/$total_steps] Cleaning up legacy openspec-* skills..."
+echo "[8/$total_steps] Installing /git commands (git shortcuts)..."
+git_src="$repo_dir/.claude/commands/git"
+git_dest="$HOME/.claude/commands/git"
+mkdir -p "$git_dest"
+cp "$git_src"/*.md "$git_dest/"
+echo "  Installed $(ls "$git_dest"/*.md 2>/dev/null | wc -l) commands."
+echo "  Done."
+
+# 9. 清除舊版 openspec-* skills
+echo ""
+echo "[9/$total_steps] Cleaning up legacy openspec-* skills..."
 legacy_count=0
 for dir in "$HOME/.claude/skills"/openspec-*; do
     if [ -d "$dir" ]; then
@@ -107,3 +117,4 @@ echo ""
 echo "OpenSpec is now available on-demand via /ensure-openspec skill."
 echo "OPSX commands (/opsx:*) are installed globally."
 echo "SP commands (/sp:*) are installed globally."
+echo "Git commands (/git:*) are installed globally."
