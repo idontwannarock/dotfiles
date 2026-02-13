@@ -132,6 +132,9 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 |------|------|----------|
 | 路徑反斜線 | `${CLAUDE_PLUGIN_ROOT}` 展開為 `C:\...`，bash 將 `\` 當跳脫字元 | 用 `cygpath` 轉換路徑 |
 | CRLF 換行符 | 部分 plugin 的 `.sh` 被存為 CRLF | 用 `dos2unix` 轉為 LF |
+| UTF-8 BOM | `hooks.json` 帶有 BOM (`EF BB BF`)，Claude Code 的 JSON parser 無法解析 | 移除 BOM（安裝腳本已自動處理） |
+
+**BOM 問題細節：** PowerShell 5.x 的 `-Encoding UTF8` 會寫入帶 BOM 的 UTF-8。安裝腳本 step 11 修補 hooks.json 後，檔案會被加上 BOM，導致所有 plugin hooks 載入失敗（`JSON Parse error: Unrecognized token '﻿'`）。安裝腳本 step 13 會自動移除 BOM。Plugin 更新後需重新執行安裝腳本。
 
 安裝腳本 `setup-plugins.ps1` 已包含自動修復步驟。如果 plugin 更新後問題復發，重新執行安裝腳本即可。
 

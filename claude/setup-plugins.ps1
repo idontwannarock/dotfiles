@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoDir = Split-Path -Parent $scriptDir
-$totalSteps = 12
+$totalSteps = 13
 
 Write-Host "=== Claude Code Plugin Setup ===" -ForegroundColor Cyan
 
@@ -174,7 +174,8 @@ if (Test-Path $pluginCache) {
                     $result += $line
                 }
             }
-            $result -join "`n" | Set-Content $file.FullName -NoNewline -Encoding UTF8
+            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+            [System.IO.File]::WriteAllText($file.FullName, ($result -join "`n"), $utf8NoBom)
             Write-Host "  Patched: $($file.FullName)" -ForegroundColor Gray
         } else {
             Write-Host "  Already patched or no fix needed: $($file.FullName)" -ForegroundColor Gray
@@ -197,6 +198,33 @@ if (Get-Command "dos2unix" -ErrorAction SilentlyContinue) {
     Write-Host "  Converted $($shFiles.Count) .sh files to LF." -ForegroundColor Gray
 } else {
     Write-Host "  dos2unix not found, skipping. Install with: scoop install dos2unix" -ForegroundColor Yellow
+}
+Write-Host "  Done." -ForegroundColor Green
+
+# 13. 移除 hooks.json 的 UTF-8 BOM（PowerShell 5.x -Encoding UTF8 會加 BOM，Claude Code 的 JSON parser 不支援）
+Write-Host "`n[13/$totalSteps] Removing UTF-8 BOM from hooks.json files..." -ForegroundColor Yellow
+if (Test-Path $pluginCache) {
+    $hooksJsonFiles = @(Get-ChildItem -Path $pluginCache -Recurse -Filter "hooks.json" | Where-Object {
+        $_.FullName -match "\\hooks\\hooks\.json$"
+    })
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    $bomFixed = 0
+    foreach ($file in $hooksJsonFiles) {
+        $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
+        if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+            $content = [System.Text.Encoding]::UTF8.GetString($bytes, 3, $bytes.Length - 3)
+            [System.IO.File]::WriteAllText($file.FullName, $content, $utf8NoBom)
+            Write-Host "  Fixed BOM: $($file.FullName)" -ForegroundColor Gray
+            $bomFixed++
+        }
+    }
+    if ($bomFixed -eq 0) {
+        Write-Host "  No BOM found in any hooks.json." -ForegroundColor Gray
+    } else {
+        Write-Host "  Fixed $bomFixed file(s)." -ForegroundColor Gray
+    }
+} else {
+    Write-Host "  Plugin cache not found, skipping." -ForegroundColor Gray
 }
 Write-Host "  Done." -ForegroundColor Green
 
