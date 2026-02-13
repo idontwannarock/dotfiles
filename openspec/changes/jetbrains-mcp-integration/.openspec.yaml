@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-02-13
+merged-from:
+  - jetbrains-mcp-ide-actions (2026-02-12)
+  - jetbrains-semantic-search-poc (2026-02-13)
