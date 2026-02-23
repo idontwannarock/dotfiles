@@ -27,23 +27,9 @@ sudo pacman -S vim
 brew install vim
 ```
 
-## TL;DR
+## 管理方式
 
-For Linux and macOS:
-
-```bash
-cp .ideavimrc ~/.ideavimrc
-cp .vimrc ~/.vimrc
-cp -r .vim ~/.vim
-```
-
-For Windows (PowerShell):
-
-```powershell
-Copy-Item .ideavimrc ~/.ideavimrc
-Copy-Item .vimrc ~/.vimrc
-Copy-Item -Recurse .vim ~/.vim
-```
+設定檔由 chezmoi 管理，部署到 `~/.vimrc`、`~/.ideavimrc`、`~/.vim/`。詳見根目錄 [README](../README.md) 的操作說明。
 
 首次啟動 Vim 時，會自動下載 [vim-plug](https://github.com/junegunn/vim-plug) 並安裝插件。
 

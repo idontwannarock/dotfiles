@@ -1,0 +1,43 @@
+# shell_common — 由 ~/.bashrc (WSL) 與 ~/.zshrc (macOS) 共同 source
+# 使用 POSIX sh 相容語法
+
+# ── Starship prompt ──────────────────────────────────────────────────────────
+# 由各 rc 檔依 shell 類型初始化（eval "$(starship init bash/zsh)"）
+
+# ── Worklogs aliases ─────────────────────────────────────────────────────────
+# 由 set-worklogs-path.sh 或手動設定 WORKLOGS_PATH 後生效
+if [ -n "$WORKLOGS_PATH" ] && [ -d "$WORKLOGS_PATH" ]; then
+    alias createnewlog="$WORKLOGS_PATH/create-new-log.sh"
+    alias gitpushlog="$WORKLOGS_PATH/git-push.sh"
+fi
+
+# ── 自動 fetch dotfiles 並提示更新 ───────────────────────────────────────────
+_dotfiles_check_update() {
+    local flag_file="$HOME/.local/share/chezmoi-last-fetch"
+    local today
+    today="$(date +%Y%m%d 2>/dev/null)" || return
+
+    # 每天最多 fetch 一次
+    if [ -f "$flag_file" ] && [ "$(cat "$flag_file" 2>/dev/null)" = "$today" ]; then
+        return
+    fi
+
+    # 確認 chezmoi 與 git 都可用
+    command -v chezmoi >/dev/null 2>&1 || return
+    command -v git >/dev/null 2>&1 || return
+
+    mkdir -p "$(dirname "$flag_file")"
+    echo "$today" > "$flag_file"
+
+    # 靜默 fetch
+    chezmoi git -- fetch -q 2>/dev/null || return
+
+    # 計算落後的 commit 數
+    local behind
+    behind="$(chezmoi git -- rev-list HEAD..origin/main --count 2>/dev/null)" || return
+
+    if [ "${behind:-0}" -gt 0 ]; then
+        printf '\n\033[33mdotfiles: %s new commit(s). Run '\''chezmoi update'\'' to apply.\033[0m\n\n' "$behind"
+    fi
+}
+_dotfiles_check_update

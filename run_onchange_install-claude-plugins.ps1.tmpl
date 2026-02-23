@@ -1,0 +1,26 @@
+# chezmoi run_onchange_ script — Claude Code plugin 安裝（Windows）
+# 腳本內容改變時自動重新執行
+
+{{- if ne .chezmoi.os "windows" }}
+# Non-Windows: handled by .sh version
+exit 0
+{{- end }}
+
+Write-Host "=== Claude Code Plugin Setup ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
+    Write-Host "WARNING: claude command not found. Skipping plugin setup." -ForegroundColor Yellow
+    exit 0
+}
+
+# 1. 新增 superpowers marketplace
+Write-Host "[1/2] Adding superpowers marketplace..." -ForegroundColor Yellow
+$ErrorActionPreference = "Continue"
+claude plugin marketplace add obra/superpowers-marketplace 2>&1 | Out-Null
+$ErrorActionPreference = "Stop"
+
+# 2. 安裝 superpowers plugin
+Write-Host "[2/2] Installing superpowers plugin..." -ForegroundColor Yellow
+claude plugin install superpowers 2>&1 | Out-Null
+
+Write-Host "=== Plugin setup complete. Restart Claude Code to activate. ===" -ForegroundColor Cyan

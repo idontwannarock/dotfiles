@@ -1,0 +1,10 @@
+{{- $isWSL := false -}}
+{{- if eq .chezmoi.os "linux" -}}
+{{-   $kernel := output "uname" "-r" | lower -}}
+{{-   if contains "microsoft" $kernel -}}
+{{-     $isWSL = true -}}
+{{-   end -}}
+{{- end -}}
+
+[data]
+    isWSL = {{ $isWSL }}

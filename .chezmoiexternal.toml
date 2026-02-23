@@ -1,0 +1,10 @@
+# statusline binary — 由 GitHub Actions 在 statusline.go 變更時自動編譯並發佈
+# chezmoi apply 時自動依 OS/arch 下載對應版本
+
+{{ $ext := "" -}}
+{{ if eq .chezmoi.os "windows" }}{{ $ext = ".exe" }}{{ end -}}
+
+[".local/bin/statusline{{ $ext }}"]
+    type = "file"
+    executable = true
+    url = "https://github.com/idontwannarock/dotfiles/releases/download/statusline-latest/statusline-{{ .chezmoi.os }}-{{ .chezmoi.arch }}{{ $ext }}"

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# chezmoi run_once_ script — 安裝 fastfetch
+# 只在工具不存在時執行安裝，冪等設計
+
+{{- if eq .chezmoi.os "windows" }}
+exit 0  # Windows: 由 scoop/winget 手動安裝
+{{- end }}
+
+if command -v fastfetch &>/dev/null; then
+    exit 0  # 已安裝，跳過
+fi
+
+echo "Installing fastfetch..."
+
+{{- if eq .chezmoi.os "darwin" }}
+brew install fastfetch
+{{- else }}
+# Linux (WSL/Ubuntu)
+sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch
+sudo apt-get update -q
+sudo apt-get install -y fastfetch
+{{- end }}

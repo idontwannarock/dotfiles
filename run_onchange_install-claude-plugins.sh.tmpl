@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# chezmoi run_onchange_ script — Claude Code plugin 安裝（Unix/macOS/WSL）
+# 腳本內容改變時自動重新執行
+
+{{ if eq .chezmoi.os "windows" -}}
+# Windows 由 .ps1 版本處理
+exit 0
+{{ end -}}
+
+set -euo pipefail
+
+echo "=== Claude Code Plugin Setup ==="
+
+if ! command -v claude &>/dev/null; then
+    echo "WARNING: claude command not found. Skipping plugin setup." >&2
+    exit 0
+fi
+
+# 1. 新增 superpowers marketplace
+echo "[1/2] Adding superpowers marketplace..."
+claude plugin marketplace add obra/superpowers-marketplace 2>&1 || true
+
+# 2. 安裝 superpowers plugin
+echo "[2/2] Installing superpowers plugin..."
+claude plugin install superpowers 2>&1 || true
+
+echo "=== Plugin setup complete. Restart Claude Code to activate. ==="
