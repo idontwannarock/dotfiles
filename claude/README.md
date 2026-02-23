@@ -320,11 +320,13 @@ go build -o statusline statusline.go       # macOS/Linux
 {
   "statusLine": {
     "type": "command",
-    "command": "C:\\Users\\<username>\\.claude\\statusline.exe",
+    "command": "bash -c '/c/Users/<username>/.claude/statusline.exe'",
     "padding": 0
   }
 }
 ```
+
+> **注意（Windows）**：必須用 `bash -c '...'` 包裝，直接呼叫 `.exe` 時 Claude Code 不會透過 shell 執行，stdin 無法 pipe 進去，導致 statusline 空白。
 
 **macOS/Linux:**
 ```json
