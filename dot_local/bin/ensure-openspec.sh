@@ -21,6 +21,10 @@ else
     fi
     npm install -g @fission-ai/openspec
     echo "[openspec] CLI installed: $(openspec --version 2>/dev/null || echo 'unknown version')"
+
+    # 只產生 slash commands，不產生 SKILL.md（避免與全域 opsx/* commands 重複）
+    openspec config set delivery commands
+    echo "[openspec] Set delivery=commands (skip SKILL.md generation)"
 fi
 
 # --- Step 2: 確認當前專案已初始化 ---

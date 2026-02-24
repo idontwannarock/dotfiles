@@ -4,5 +4,9 @@
 # Claude Code local settings
 .claude/settings.local.json
 
+# OpenSpec generated (per-project, managed by openspec CLI)
+.claude/commands/opsx/
+.claude/skills/
+
 # chezmoi
 .chezmoi*.toml.bak
