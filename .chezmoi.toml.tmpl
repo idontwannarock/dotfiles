@@ -6,5 +6,7 @@
 {{-   end -}}
 {{- end -}}
 
+sourceDir = {{ .chezmoi.sourceDir | quote }}
+
 [data]
     isWSL = {{ $isWSL }}

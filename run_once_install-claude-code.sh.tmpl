@@ -1,10 +1,7 @@
+{{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
 # chezmoi run_once_ script — 安裝 Claude Code CLI（Unix/macOS/WSL）
 # 只在 claude 指令不存在時執行安裝，冪等設計
-
-{{- if eq .chezmoi.os "windows" }}
-exit 0  # Windows: 由 .ps1 版本處理
-{{- end }}
 
 if command -v claude &>/dev/null; then
     exit 0  # 已安裝，跳過
@@ -12,3 +9,4 @@ fi
 
 echo "Installing Claude Code..."
 npm install -g @anthropic-ai/claude-code
+{{ end -}}

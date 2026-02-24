@@ -1,4 +1,4 @@
-# shell_common — 由 ~/.bashrc (WSL) 與 ~/.zshrc (macOS) 共同 source
+# shell_common — 由 ~/.bashrc (WSL/Git Bash) 與 ~/.zshrc (macOS) 共同 source
 # 使用 POSIX sh 相容語法
 
 # ── Starship prompt ──────────────────────────────────────────────────────────

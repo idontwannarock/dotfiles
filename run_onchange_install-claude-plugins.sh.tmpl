@@ -1,11 +1,7 @@
+{{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
 # chezmoi run_onchange_ script — Claude Code plugin 安裝（Unix/macOS/WSL）
 # 腳本內容改變時自動重新執行
-
-{{ if eq .chezmoi.os "windows" -}}
-# Windows 由 .ps1 版本處理
-exit 0
-{{ end -}}
 
 set -euo pipefail
 
@@ -25,3 +21,4 @@ echo "[2/2] Installing superpowers plugin..."
 claude plugin install superpowers 2>&1 || true
 
 echo "=== Plugin setup complete. Restart Claude Code to activate. ==="
+{{ end -}}

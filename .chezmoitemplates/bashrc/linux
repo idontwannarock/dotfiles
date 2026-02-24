@@ -1,0 +1,15 @@
+# ~/.bashrc — WSL bash 設定
+
+# ── 共用設定 ─────────────────────────────────────────────────────────────────
+[ -f "$HOME/.shell_common" ] && . "$HOME/.shell_common"
+
+# ── Starship prompt ──────────────────────────────────────────────────────────
+eval "$(starship init bash)"
+
+{{ if .isWSL -}}
+# ── WSL：Windows Terminal OSC 9;9 CWD 整合 ──────────────────────────────────
+# 讓 Windows Terminal duplicate pane 繼承當前目錄
+if [ -n "$WT_SESSION" ]; then
+    PROMPT_COMMAND=${PROMPT_COMMAND:+"$PROMPT_COMMAND; "}'printf "\e]9;9;%s\e\\" "$(wslpath -w "$PWD")"'
+fi
+{{ end -}}

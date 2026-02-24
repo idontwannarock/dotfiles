@@ -1,0 +1,7 @@
+# ~/.bashrc — Windows Git Bash 設定
+
+# ── 共用設定 ─────────────────────────────────────────────────────────────────
+[ -f "$HOME/.shell_common" ] && . "$HOME/.shell_common"
+
+# ── Starship prompt ──────────────────────────────────────────────────────────
+eval "$(starship init bash)"

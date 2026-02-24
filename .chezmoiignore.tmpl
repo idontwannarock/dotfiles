@@ -1,23 +1,29 @@
+# ── 專案文件（不部署到任何平台）─────────────────────────────────────────────
+README.md
+bash
+claude
+fastfetch
+git
+neovim
+openspec
+powershell
+scoop
+ssh
+starship
+usr
+vim
+
 # ── Windows 專屬（非 Windows 環境排除）─────────────────────────────────────
 {{- if ne .chezmoi.os "windows" }}
 Documents
 {{- end }}
 
-# ── Unix shell 設定（Windows 排除）─────────────────────────────────────────
-{{- if eq .chezmoi.os "windows" }}
-dot_shell_common
-dot_bashrc.tmpl
-dot_bash_aliases
-dot_zshrc
-{{- end }}
-
 # ── zsh 設定（只部署到 macOS）───────────────────────────────────────────────
 {{- if ne .chezmoi.os "darwin" }}
-dot_zshrc
+.zshrc
 {{- end }}
 
-# ── bash 設定（只部署到 Linux/WSL）─────────────────────────────────────────
-{{- if ne .chezmoi.os "linux" }}
-dot_bashrc.tmpl
-dot_bash_aliases
+# ── bash 設定（macOS 使用 zsh，不需要 bash）───────────────────────────────
+{{- if eq .chezmoi.os "darwin" }}
+.bashrc
 {{- end }}

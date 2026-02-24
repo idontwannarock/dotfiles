@@ -1,10 +1,7 @@
+{{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
 # chezmoi run_once_ script — 安裝 starship prompt
 # 只在工具不存在時執行安裝，冪等設計
-
-{{- if eq .chezmoi.os "windows" }}
-exit 0  # Windows: 由 scoop/winget 手動安裝
-{{- end }}
 
 if command -v starship &>/dev/null; then
     exit 0  # 已安裝，跳過
@@ -18,3 +15,4 @@ brew install starship
 # Linux (WSL/Ubuntu)
 curl -sS https://starship.rs/install.sh | sh -s -- --yes
 {{- end }}
+{{ end -}}

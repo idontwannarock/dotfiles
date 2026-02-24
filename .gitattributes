@@ -14,6 +14,9 @@
 *.bat text eol=crlf
 *.cmd text eol=crlf
 
+# Chezmoi template fragments (shell scripts, force LF)
+.chezmoitemplates/** text eol=lf
+
 # Config files
 *.md text eol=lf
 *.json text eol=lf

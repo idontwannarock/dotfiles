@@ -1,9 +1,6 @@
+{{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_once_ script — 安裝 Claude Code CLI（Windows）
 # 只在 claude 指令不存在時執行安裝，冪等設計
-
-{{- if ne .chezmoi.os "windows" }}
-exit 0
-{{- end }}
 
 if (Get-Command "claude" -ErrorAction SilentlyContinue) {
     exit 0  # 已安裝，跳過
@@ -11,3 +8,4 @@ if (Get-Command "claude" -ErrorAction SilentlyContinue) {
 
 Write-Host "Installing Claude Code..." -ForegroundColor Cyan
 npm install -g @anthropic-ai/claude-code
+{{ end -}}

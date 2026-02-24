@@ -1,9 +1,6 @@
+{{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_onchange_ script — Claude Code hook 路徑修復（Windows only）
 # 腳本內容改變時自動重新執行
-
-{{- if ne .chezmoi.os "windows" }}
-exit 0
-{{- end }}
 
 $ErrorActionPreference = "Stop"
 $pluginCache = Join-Path $env:USERPROFILE ".claude\plugins\cache"
@@ -61,3 +58,4 @@ if (Test-Path $pluginCache) {
 }
 
 Write-Host "Claude hook fixes complete." -ForegroundColor Green
+{{ end -}}

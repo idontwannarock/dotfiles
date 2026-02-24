@@ -1,0 +1,7 @@
+{{- if eq .chezmoi.os "windows" -}}
+{{- template "shell-common/windows" . -}}
+{{- else if eq .chezmoi.os "linux" -}}
+{{- template "shell-common/linux" . -}}
+{{- else if eq .chezmoi.os "darwin" -}}
+{{- template "shell-common/darwin" . -}}
+{{- end -}}

@@ -1,10 +1,6 @@
+{{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_onchange_ script — Claude Code plugin 安裝（Windows）
 # 腳本內容改變時自動重新執行
-
-{{- if ne .chezmoi.os "windows" }}
-# Non-Windows: handled by .sh version
-exit 0
-{{- end }}
 
 Write-Host "=== Claude Code Plugin Setup ===" -ForegroundColor Cyan
 
@@ -24,3 +20,4 @@ Write-Host "[2/2] Installing superpowers plugin..." -ForegroundColor Yellow
 claude plugin install superpowers 2>&1 | Out-Null
 
 Write-Host "=== Plugin setup complete. Restart Claude Code to activate. ===" -ForegroundColor Cyan
+{{ end -}}
