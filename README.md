@@ -87,7 +87,7 @@ chezmoi apply
 chezmoi init --apply git@github.com:idontwannarock/dotfiles.git
 ```
 
-> **⚠️ 首次 apply 前**：建議先執行 `chezmoi diff` 確認哪些現有設定會被覆蓋。
+> **首次 apply 前**：建議先執行 `chezmoi diff` 確認哪些現有設定會被覆蓋。
 
 ---
 
@@ -132,10 +132,10 @@ dotfiles: 3 new commit(s). Run 'chezmoi update' to apply.
 
 | 設定 | 部署目標 | 平台 |
 |------|----------|------|
-| Shell prompt（Starship） | `~/.config/starship/starship.toml` | 跨平台 |
-| Fastfetch | `~/.config/fastfetch/` | 跨平台 |
-| Vim / IdeaVim | `~/.vimrc`, `~/.ideavimrc`, `~/.vim/` | 跨平台 |
-| Bash（WSL） | `~/.bashrc`, `~/.shell_common` | Linux/WSL |
+| Shell prompt（[Starship](docs/starship.md)） | `~/.config/starship/starship.toml` | 跨平台 |
+| [Fastfetch](docs/fastfetch.md) | `~/.config/fastfetch/` | 跨平台 |
+| [Vim](docs/vim.md) / IdeaVim | `~/.vimrc`, `~/.ideavimrc`, `~/.vim/` | 跨平台 |
+| Bash | `~/.bashrc`, `~/.shell_common` | Windows (Git Bash)、Linux/WSL |
 | Zsh | `~/.zshrc`, `~/.shell_common` | macOS |
 | PowerShell 7 | `~/Documents/PowerShell/` | Windows |
 | PowerShell 5 | `~/Documents/WindowsPowerShell/` | Windows |
@@ -145,13 +145,23 @@ dotfiles: 3 new commit(s). Run 'chezmoi update' to apply.
 | Claude Code agents | `~/.claude/agents/` | 跨平台 |
 | Statusline binary | `~/.local/bin/statusline` | 跨平台（自動下載） |
 
+### 自動安裝的依賴
+
+`chezmoi apply` 時會自動安裝以下工具（若尚未安裝）：
+
+| 工具 | Windows | macOS | Linux |
+|------|---------|-------|-------|
+| [Starship](https://starship.rs/) | scoop | brew | curl installer |
+| [Fastfetch](https://github.com/fastfetch-cli/fastfetch) | scoop | brew | apt (PPA) |
+| [Claude Code](https://claude.com/claude-code) | npm | npm | npm |
+
 ### 不納入 chezmoi（手動管理）
 
 | 項目 | 原因 |
 |------|------|
-| SSH keys（`ssh/`） | 每台機器獨立，不應同步 |
-| Scoop 套件清單（`scoop/`） | 尚未整理必要 vs 選用套件 |
-| Git 憑證（`git/`） | 包含機器專屬 access token |
+| [SSH keys](docs/ssh.md) | 每台機器獨立，不應同步 |
+| [Scoop 套件清單](scoop/) | 尚未整理必要 vs 選用套件 |
+| [Git 憑證](docs/git-credentials.md) | 包含機器專屬 access token |
 | NeoVim（`neovim/`） | 已棄用 |
 
 ---
@@ -163,11 +173,16 @@ dotfiles/
 ├── .chezmoi.toml.tmpl        # chezmoi 環境偵測設定（WSL detection 等）
 ├── .chezmoiignore.tmpl       # 依 OS 排除不適用的檔案
 ├── .chezmoiexternal.toml     # 外部資源（statusline binary）
+├── .chezmoitemplates/        # 平台專用 template 片段
+│   ├── bashrc/               #   bashrc/{windows,linux}
+│   ├── shell-common/         #   shell-common/{base,windows,linux,darwin}
+│   └── zshrc/                #   zshrc/{darwin}
 ├── .github/workflows/        # GitHub Actions（statusline 自動編譯發佈）
 ├── Documents/                # Windows PowerShell profiles（chezmoi 管理）
 │   ├── _shared-profile.d/    # PS5 + PS7 共用 fragments
 │   ├── PowerShell/           # PS7 專屬 profile
 │   └── WindowsPowerShell/    # PS5 專屬 profile
+├── docs/                     # 工具設定說明文件
 ├── dot_config/               # ~/.config/ 設定
 │   ├── fastfetch/
 │   └── starship/
@@ -175,18 +190,33 @@ dotfiles/
 │   ├── exact_commands/       # Commands（exact_：自動清理移除的檔案）
 │   └── exact_agents/         # Agents（exact_：自動清理移除的檔案）
 ├── dot_local/bin/            # ~/.local/bin/ 腳本
-├── dot_shell_common          # ~/.shell_common（bash/zsh 共用）
-├── dot_bashrc.tmpl           # ~/.bashrc（WSL only）
-├── dot_zshrc                 # ~/.zshrc（macOS only）
+├── dot_shell_common.tmpl     # ~/.shell_common 入口（依 OS 載入 template 片段）
+├── dot_bashrc.tmpl           # ~/.bashrc 入口（Windows Git Bash / Linux/WSL）
+├── dot_zshrc.tmpl            # ~/.zshrc 入口（macOS）
 ├── dot_vimrc                 # ~/.vimrc
 ├── dot_ideavimrc             # ~/.ideavimrc
 ├── dot_vim/                  # ~/.vim/
 ├── run_once_install-*.tmpl   # 工具安裝腳本（只跑一次）
 ├── run_onchange_*.tmpl       # 設定更新腳本（變更時重跑）
-├── bash/                     # Bash 輔助腳本（非 chezmoi 管理）
-├── claude/statusline/        # statusline 原始碼（GitHub Actions 編譯）
-├── git/                      # Git 憑證說明
+├── claude/statusline/        # statusline 原始碼（CI 編譯）
+├── neovim/                   # NeoVim 設定（已棄用）
 ├── scoop/                    # Scoop 套件清單（手動管理）
-├── ssh/                      # SSH key 說明
-└── usr/                      # 其他自訂腳本
+└── scripts/                  # 輔助腳本（worklogs 設定等）
 ```
+
+---
+
+## 文件
+
+| 文件 | 說明 |
+|------|------|
+| [Bash](docs/bash.md) | Bash 設定、worklogs、Windows Terminal 整合 |
+| [Claude Code](docs/claude-code.md) | Claude Code 設定、statusline、plugins |
+| [Fastfetch](docs/fastfetch.md) | Fastfetch 系統資訊工具 |
+| [Git 憑證管理](docs/git-credentials.md) | Git 遠端認證（GCM、SSH、WSL） |
+| [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
+| [Scoop](docs/scoop.md) | Scoop 套件管理器匯出設定 |
+| [SSH](docs/ssh.md) | SSH key 設定教學 |
+| [Starship](docs/starship.md) | Starship prompt 設定 |
+| [User Scripts](docs/user-scripts.md) | 輔助腳本（worklogs、scoop 更新） |
+| [Vim](docs/vim.md) | Vim / IdeaVim 設定與快捷鍵 |

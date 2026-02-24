@@ -5,62 +5,17 @@ Claude Code 相關的個人設定檔案。
 ## 目錄結構
 
 ```
-claude/
-├── agents/              # 自訂 Agent 提示詞
-├── commands/            # 全域 Skill（user-invocable commands）
-│   └── ensure-openspec.md
-├── statusline/          # 自訂狀態列程式
-│   └── statusline.go
-├── CLAUDE.md            # 全域指令 (~/.claude/CLAUDE.md)
-├── ensure-openspec.sh   # OpenSpec 檢查/安裝/初始化腳本
-├── setup-plugins.ps1    # Plugin 安裝腳本 (Windows)
-├── setup-plugins.sh     # Plugin 安裝腳本 (Linux/macOS)
-└── README.md
+claude/statusline/          # 自訂狀態列程式
+    statusline.go
 
-.claude/commands/opsx/   # OPSX 工作流程指令（安裝到 ~/.claude/commands/opsx/）
-├── apply.md
-├── archive.md
-├── bulk-archive.md
-├── cheatsheet.md
-├── continue.md
-├── explore.md
-├── ff.md
-├── new.md
-├── onboard.md
-├── sync.md
-└── verify.md
-
-.claude/commands/sp/    # Superpowers 簡寫指令（安裝到 ~/.claude/commands/sp/）
-├── brainstorm.md       # → superpowers:brainstorming
-├── tdd.md              # → superpowers:test-driven-development
-├── debug.md            # → superpowers:systematic-debugging
-├── plan.md             # → superpowers:writing-plans
-├── exec.md             # → superpowers:executing-plans
-├── worktree.md         # → superpowers:using-git-worktrees
-├── subagent.md         # → superpowers:subagent-driven-development
-├── parallel.md         # → superpowers:dispatching-parallel-agents
-├── review.md           # → superpowers:requesting-code-review
-├── recv-review.md      # → superpowers:receiving-code-review
-├── finish.md           # → superpowers:finishing-a-development-branch
-├── verify.md           # → superpowers:verification-before-completion
-├── write-skill.md      # → superpowers:writing-skills（不可命名為 skill.md）
-└── init.md             # → superpowers:using-superpowers
-
-.claude/commands/git/   # Git 操作簡寫指令（安裝到 ~/.claude/commands/git/）
-├── commit.md           # 智慧 commit（逐一 stage、過濾垃圾/敏感檔）
-├── push.md             # push 當前分支
-├── sync.md             # fetch + rebase main
-├── amend.md            # 修改上一個 commit
-├── clean-gone.md       # 清理已刪除的遠端分支
-└── undo.md             # soft reset 上一個 commit
-
-.claude/commands/code/  # Code Review 指令（安裝到 ~/.claude/commands/code/）
-├── review-full.md      # 完整 review（4 agent 平行：code-reviewer + silent-failure-hunter + test-analyzer + linus-torvalds）
-├── review-quick.md     # 快速 review（單一 code-reviewer agent）
-├── review-linus.md     # Linus Torvalds 風格 review（架構簡潔性、good taste）
-├── review-security.md  # 安全性 review（silent-failure-hunter + code-reviewer 安全焦點）
-├── review-types.md     # 型別設計 review（type-design-analyzer）
-└── review-spec.md      # 需求導向 review（帶 OpenSpec artifacts 上下文，檢查 spec 對齊）
+dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
+├── CLAUDE.md               # 全域指令
+├── exact_commands/         # Commands（exact_：自動清理移除的檔案）
+│   ├── opsx/               # OPSX 工作流程指令
+│   ├── sp/                 # Superpowers 簡寫指令
+│   ├── git/                # Git 操作簡寫指令
+│   └── code/               # Code Review 指令
+└── exact_agents/           # Agents
 ```
 
 ## Global Instructions (CLAUDE.md)
@@ -76,22 +31,12 @@ claude/
 
 瑣碎任務（改 typo、一行修改）會自動跳過詢問。
 
-### 安裝
-
-透過安裝腳本自動完成（見下方安裝段落），或手動複製：
-
-```bash
-cp claude/CLAUDE.md ~/.claude/CLAUDE.md
-```
-
 ### 前置需求
 
 - **superpowers** plugin — 提供 brainstorming 等技能
 - **OpenSpec CLI** (`@fission-ai/openspec`) — 透過 `/ensure-openspec` skill 按需安裝
 
 ## Plugins
-
-已安裝的 Claude Code Plugin。
 
 ### Plugin 清單
 
@@ -104,10 +49,10 @@ cp claude/CLAUDE.md ~/.claude/CLAUDE.md
 | 名稱 | 觸發方式 | 說明 |
 |------|----------|------|
 | OpenSpec | `/ensure-openspec` skill | 結構化變更管理，按需安裝 CLI 並初始化專案 |
-| OPSX Commands | `/opsx:*` commands | OpenSpec 工作流程指令（cheatsheet、explore、new、ff、apply 等） |
-| SP Commands | `/sp:*` commands | Superpowers 技能簡寫（brainstorm、tdd、debug、plan 等） |
-| Git Commands | `/git:*` commands | Git 操作簡寫（commit、push、sync、amend、undo、clean-gone） |
-| Code Commands | `/code:*` commands | Code Review 指令（review-full、review-quick、review-linus、review-security、review-types、review-spec） |
+| OPSX Commands | `/opsx:*` commands | OpenSpec 工作流程指令 |
+| SP Commands | `/sp:*` commands | Superpowers 技能簡寫 |
+| Git Commands | `/git:*` commands | Git 操作簡寫 |
+| Code Commands | `/code:*` commands | Code Review 指令 |
 
 ### Marketplace
 
@@ -136,7 +81,7 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 
 **BOM 問題細節：** PowerShell 5.x 的 `-Encoding UTF8` 會寫入帶 BOM 的 UTF-8。安裝腳本 step 11 修補 hooks.json 後，檔案會被加上 BOM，導致所有 plugin hooks 載入失敗（`JSON Parse error: Unrecognized token '﻿'`）。安裝腳本 step 13 會自動移除 BOM。Plugin 更新後需重新執行安裝腳本。
 
-安裝腳本 `setup-plugins.ps1` 已包含自動修復步驟。如果 plugin 更新後問題復發，重新執行安裝腳本即可。
+安裝腳本 `run_onchange_install-claude-plugins` 已包含自動修復步驟。如果 plugin 更新後問題復發，重新執行安裝腳本即可。
 
 **前置需求：**
 - `jq` — hook 腳本用來解析 JSON（`scoop install jq`）
@@ -147,61 +92,6 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 - [#22906](https://github.com/anthropics/claude-code/issues/22906) / [#22934](https://github.com/anthropics/claude-code/issues/22934) — SessionStart hook errors cause CLI freeze
 
 待官方修復後可移除 workaround。
-
-### 安裝
-
-**使用腳本（推薦）：**
-
-```powershell
-# Windows
-.\claude\setup-plugins.ps1
-```
-
-```bash
-# Linux/macOS
-chmod +x claude/setup-plugins.sh
-./claude/setup-plugins.sh
-```
-
-**手動安裝：**
-
-```bash
-# 新增 marketplace
-claude plugin marketplace add obra/superpowers-marketplace
-
-# 安裝 superpowers plugin
-claude plugin install superpowers
-
-# 複製全域 CLAUDE.md
-cp claude/CLAUDE.md ~/.claude/CLAUDE.md
-
-# 安裝 ensure-openspec skill 及腳本
-cp claude/ensure-openspec.sh ~/.local/bin/ensure-openspec.sh
-chmod +x ~/.local/bin/ensure-openspec.sh
-mkdir -p ~/.claude/commands
-cp claude/commands/ensure-openspec.md ~/.claude/commands/ensure-openspec.md
-
-# 安裝 OPSX commands
-mkdir -p ~/.claude/commands/opsx
-cp .claude/commands/opsx/*.md ~/.claude/commands/opsx/
-
-# 安裝 SP commands (superpowers 簡寫)
-mkdir -p ~/.claude/commands/sp
-cp .claude/commands/sp/*.md ~/.claude/commands/sp/
-
-# 安裝 Git commands
-mkdir -p ~/.claude/commands/git
-cp .claude/commands/git/*.md ~/.claude/commands/git/
-
-# 安裝 Code commands (code review)
-mkdir -p ~/.claude/commands/code
-cp .claude/commands/code/*.md ~/.claude/commands/code/
-
-# 清除舊版 openspec-* skills（如有）
-rm -rf ~/.claude/skills/openspec-*
-```
-
-安裝完成後重啟 Claude Code 即可使用。
 
 ## /ensure-openspec Skill
 
@@ -222,8 +112,6 @@ rm -rf ~/.claude/skills/openspec-*
 ### 使用方式
 
 在 Claude Code 中輸入 `/ensure-openspec`，Claude 會自動執行腳本並回報結果。
-
-適合在需要使用 OpenSpec 工作流程時按需執行，不需要全域預裝。
 
 ## Status Line
 

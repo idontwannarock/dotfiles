@@ -6,8 +6,6 @@
 
 設定檔由 chezmoi 管理，部署到 `~/.config/starship/starship.toml`。Starship 本身也會在 `chezmoi apply` 時自動安裝。
 
-詳見根目錄 [README](../README.md) 的操作說明。
-
 ## 設定說明
 
 | 設定 | 值 | 說明 |

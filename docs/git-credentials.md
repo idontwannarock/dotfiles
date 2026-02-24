@@ -1,4 +1,4 @@
-# Git 設定
+# Git 憑證管理
 
 Git 遠端認證設定。
 
@@ -11,7 +11,7 @@ Git 遠端認證設定。
 
 ## 認證方式選擇
 
-一般情況下建議使用 SSH key 認證（參考 [ssh/](../ssh/)），以下 access token 方式適用於無法使用 SSH 的情境，例如：
+一般情況下建議使用 SSH key 認證（參考 [SSH 設定](ssh.md)），以下 access token 方式適用於無法使用 SSH 的情境，例如：
 
 - 企業環境只開放 HTTPS
 - GitLab 的 CI/CD 或 API 操作需要 personal access token

@@ -12,8 +12,6 @@ Windows PowerShell 設定檔（PS5 與 PS7 分開管理）。
 | `~/Documents/WindowsPowerShell/` | Windows PowerShell 5 profile |
 | `~/Documents/_shared-profile.d/` | PS5 + PS7 共用 fragments |
 
-詳見根目錄 [README](../README.md) 的操作說明。
-
 ## 依賴
 
 | 依賴 | 用途 | 備註 |
@@ -24,3 +22,11 @@ Windows PowerShell 設定檔（PS5 與 PS7 分開管理）。
 | [onefetch](https://github.com/o2sh/onefetch) | 進入 Git 專案時顯示 repo 資訊 | 選用，`30-git-greeter.ps1` |
 | [PowerToys](https://github.com/microsoft/PowerToys) | PS7 CommandNotFound 模組 | 選用 |
 | [winget](https://github.com/microsoft/winget-cli) | PS5 CommandNotFound 搜尋 | Windows 10/11 內建 |
+
+## Worklogs 設定
+
+```powershell
+.\scripts\set-worklogs-path.ps1
+```
+
+功能與 Bash 版相同，詳見 [Bash 設定](bash.md#worklogs-設定)。

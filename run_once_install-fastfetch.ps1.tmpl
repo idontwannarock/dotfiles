@@ -1,0 +1,16 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_ script — 安裝 fastfetch（Windows）
+# 只在工具不存在時執行安裝，冪等設計
+
+if (Get-Command "fastfetch" -ErrorAction SilentlyContinue) {
+    exit 0  # 已安裝，跳過
+}
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found, cannot install fastfetch." -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "Installing fastfetch..." -ForegroundColor Cyan
+scoop install fastfetch
+{{ end -}}

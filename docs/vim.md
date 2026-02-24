@@ -29,7 +29,7 @@ brew install vim
 
 ## 管理方式
 
-設定檔由 chezmoi 管理，部署到 `~/.vimrc`、`~/.ideavimrc`、`~/.vim/`。詳見根目錄 [README](../README.md) 的操作說明。
+設定檔由 chezmoi 管理，部署到 `~/.vimrc`、`~/.ideavimrc`、`~/.vim/`。
 
 首次啟動 Vim 時，會自動下載 [vim-plug](https://github.com/junegunn/vim-plug) 並安裝插件。
 
@@ -69,10 +69,10 @@ Leader 鍵設為 `空白鍵`。
 
 | 平台 | 工具 | 自動安裝 |
 |------|------|----------|
-| Windows | im-select.exe | ✅ 首次啟動自動下載 |
-| macOS | im-select | ✅ 首次啟動自動下載 |
-| Linux (fcitx5) | fcitx5-remote | ❌ 需先安裝 fcitx5 |
-| Linux (fcitx) | fcitx-remote | ❌ 需先安裝 fcitx |
-| Linux (ibus) | ibus | ❌ 需先安裝 ibus |
+| Windows | im-select.exe | 首次啟動自動下載 |
+| macOS | im-select | 首次啟動自動下載 |
+| Linux (fcitx5) | fcitx5-remote | 需先安裝 fcitx5 |
+| Linux (fcitx) | fcitx-remote | 需先安裝 fcitx |
+| Linux (ibus) | ibus | 需先安裝 ibus |
 
 Windows/macOS 會自動下載 im-select 到 `~/.vim/bin/`，無需額外安裝。
