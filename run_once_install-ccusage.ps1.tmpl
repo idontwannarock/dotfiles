@@ -1,0 +1,11 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_ script — 安裝 ccusage CLI（Windows）
+# 只在 ccusage 指令不存在時執行安裝，冪等設計
+
+if (Get-Command "ccusage" -ErrorAction SilentlyContinue) {
+    exit 0  # 已安裝，跳過
+}
+
+Write-Host "Installing ccusage..." -ForegroundColor Cyan
+bun install -g ccusage
+{{ end -}}

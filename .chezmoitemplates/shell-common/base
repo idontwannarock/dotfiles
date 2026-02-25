@@ -1,6 +1,13 @@
 # shell_common — 由 ~/.bashrc (WSL/Git Bash) 與 ~/.zshrc (macOS) 共同 source
 # 使用 POSIX sh 相容語法
 
+# ── PATH ───────────────────────────────────────────────────────────────────
+# bun global bin（ccusage 等全域套件）
+case ":$PATH:" in
+    *":$HOME/.bun/bin:"*) ;;
+    *) export PATH="$HOME/.bun/bin:$PATH" ;;
+esac
+
 # ── Starship prompt ──────────────────────────────────────────────────────────
 # 由各 rc 檔依 shell 類型初始化（eval "$(starship init bash/zsh)"）
 

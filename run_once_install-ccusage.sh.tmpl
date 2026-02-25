@@ -1,0 +1,12 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_once_ script — 安裝 ccusage CLI（Unix/macOS/WSL）
+# 只在 ccusage 指令不存在時執行安裝，冪等設計
+
+if command -v ccusage &>/dev/null; then
+    exit 0  # 已安裝，跳過
+fi
+
+echo "Installing ccusage..."
+bun install -g ccusage
+{{ end -}}

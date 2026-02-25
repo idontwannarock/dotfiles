@@ -1,0 +1,19 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_onchange_ script — 設定 Claude Code statusline 路徑（Unix/macOS）
+# 只更新 settings.json 的 statusLine 區塊，不影響其他設定
+# hash: {{ .chezmoi.homeDir }}
+
+SETTINGS_FILE="{{ .chezmoi.homeDir }}/.claude/settings.json"
+STATUSLINE_CMD="{{ .chezmoi.homeDir }}/.local/bin/statusline"
+
+if [ -f "$SETTINGS_FILE" ]; then
+    current=$(cat "$SETTINGS_FILE")
+else
+    current='{}'
+    mkdir -p "$(dirname "$SETTINGS_FILE")"
+fi
+
+echo "$current" | jq --arg cmd "$STATUSLINE_CMD" '.statusLine = {"type": "command", "command": $cmd, "padding": 0}' > "$SETTINGS_FILE"
+echo "Updated statusLine in $SETTINGS_FILE"
+{{ end -}}

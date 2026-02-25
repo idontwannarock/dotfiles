@@ -1,0 +1,28 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_onchange_ script — 設定 Claude Code statusline 路徑（Windows）
+# 只更新 settings.json 的 statusLine 區塊，不影響其他設定
+# hash: {{ .chezmoi.homeDir }}
+
+$settingsPath = Join-Path $env:USERPROFILE ".claude\settings.json"
+
+if (Test-Path $settingsPath) {
+    $settings = Get-Content -Raw $settingsPath | ConvertFrom-Json
+} else {
+    $settings = [PSCustomObject]@{}
+}
+
+$statusLine = [PSCustomObject]@{
+    type    = "command"
+    command = "{{ .chezmoi.homeDir }}/.local/bin/statusline.exe"
+    padding = 0
+}
+
+# 移除舊的 statusLine（如果存在），再加入新的
+if ($settings.PSObject.Properties["statusLine"]) {
+    $settings.PSObject.Properties.Remove("statusLine")
+}
+$settings | Add-Member -NotePropertyName "statusLine" -NotePropertyValue $statusLine
+
+$settings | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8NoBOM $settingsPath
+Write-Host "Updated statusLine in $settingsPath" -ForegroundColor Green
+{{ end -}}

@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -48,16 +49,6 @@ type BlockCache struct {
 	Time             time.Time `json:"time"`
 }
 
-type MCPCache struct {
-	Servers []MCPServer `json:"servers"`
-	Time    time.Time   `json:"time"`
-}
-
-type MCPServer struct {
-	Name      string `json:"name"`
-	Connected bool   `json:"connected"`
-}
-
 // Session 追蹤
 type SessionData struct {
 	Date          string `json:"date"`           // YYYY-MM-DD
@@ -68,6 +59,11 @@ type SessionData struct {
 var cacheDir string
 var sessionsDir string
 
+const (
+	asyncTimeout   = 2 * time.Second // 等待 goroutines 的時間上限（決定輸出內容）
+	totalTimeBudget = 5 * time.Second // 整個 process 的時間上限（含 cache 儲存）
+)
+
 func init() {
 	home, _ := os.UserHomeDir()
 	cacheDir = filepath.Join(home, ".claude", "statusline-cache")
@@ -76,7 +72,7 @@ func init() {
 	os.MkdirAll(sessionsDir, 0755)
 }
 
-func loadCache[T any](name string, maxAge time.Duration) (*T, bool) {
+func loadCache[T any](name string) (*T, bool) {
 	path := filepath.Join(cacheDir, name+".json")
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -109,12 +105,11 @@ func runCommand(name string, args ...string) string {
 // 計算運行中的 Claude Code 進程數量（跨平台）
 func countClaudeProcesses() int {
 	if runtime.GOOS == "windows" {
-		// Windows: 使用 PowerShell 計算 claude 進程數（-NoProfile 避免載入 profile）
 		cmd := exec.Command("powershell", "-NoProfile", "-Command",
 			"(Get-Process -Name 'claude' -ErrorAction SilentlyContinue | Measure-Object).Count")
 		out, err := cmd.Output()
 		if err != nil {
-			return 1 // fallback: 假設至少有當前這個
+			return 1
 		}
 		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
 		if err != nil {
@@ -123,11 +118,9 @@ func countClaudeProcesses() int {
 		return count
 	}
 
-	// Unix/macOS: 使用 pgrep 計算
 	cmd := exec.Command("pgrep", "-c", "claude")
 	out, err := cmd.Output()
 	if err != nil {
-		// pgrep 找不到時會返回錯誤，嘗試用 ps
 		cmd = exec.Command("sh", "-c", "ps aux | grep -c '[c]laude'")
 		out, err = cmd.Output()
 		if err != nil {
@@ -163,16 +156,12 @@ func getGitInfo(dir string) (branch string, dirty bool) {
 	return branch, dirty
 }
 
-func getCcusageCosts() *CostCache {
-	cache, ok := loadCache[CostCache]("ccusage-costs", 60*time.Second)
-	if ok && time.Since(cache.Time) < 60*time.Second {
-		return cache
-	}
-
+// fetchCcusageCosts 從 ccusage CLI 取得今日花費（慢，3-5 秒）
+func fetchCcusageCosts() *CostCache {
 	result := &CostCache{Time: time.Now()}
 	today := time.Now().Format("20060102")
 
-	if out := runCommand("bunx", "ccusage", "daily", "--since", today, "--json"); out != "" {
+	if out := runCommand("ccusage", "daily", "--since", today, "--json"); out != "" {
 		var data struct {
 			Daily []struct {
 				TotalCost float64 `json:"totalCost"`
@@ -189,13 +178,9 @@ func getCcusageCosts() *CostCache {
 	return result
 }
 
-func getBlockInfo() *BlockCache {
-	cache, ok := loadCache[BlockCache]("ccusage-block", 30*time.Second)
-	if ok && time.Since(cache.Time) < 30*time.Second {
-		return cache
-	}
-
-	if out := runCommand("bunx", "ccusage", "blocks", "--active", "--json"); out != "" {
+// fetchBlockInfo 從 ccusage CLI 取得 block 資訊（慢，3-5 秒）
+func fetchBlockInfo() *BlockCache {
+	if out := runCommand("ccusage", "blocks", "--active", "--json"); out != "" {
 		var data struct {
 			Blocks []struct {
 				Projection struct {
@@ -220,61 +205,24 @@ func getBlockInfo() *BlockCache {
 	return nil
 }
 
-func getMCPInfo() *MCPCache {
-	cache, ok := loadCache[MCPCache]("mcp-status", 120*time.Second)
-	if ok && time.Since(cache.Time) < 120*time.Second {
-		return cache
-	}
-
-	result := &MCPCache{Time: time.Now(), Servers: []MCPServer{}}
-
-	if out := runCommand("claude", "mcp", "list"); out != "" {
-		lines := strings.Split(out, "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			// 格式: "name: cmd ... - ✓ Connected" 或 "name: cmd ... - ✗ Failed"
-			if strings.Contains(line, ": ") && (strings.Contains(line, "Connected") || strings.Contains(line, "Failed") || strings.Contains(line, "Error")) {
-				// 取得名稱（": " 前的部分，支援 plugin:source:name 格式）
-				colonIdx := strings.Index(line, ": ")
-				if colonIdx > 0 {
-					name := strings.TrimSpace(line[:colonIdx])
-					// plugin MCP server 格式為 "plugin:source:name"，取最後一段作為顯示名稱
-					if strings.HasPrefix(name, "plugin:") {
-						parts := strings.Split(name, ":")
-						name = parts[len(parts)-1]
-					}
-					connected := strings.Contains(line, "✓ Connected")
-					result.Servers = append(result.Servers, MCPServer{Name: name, Connected: connected})
-				}
-			}
-		}
-	}
-
-	saveCache("mcp-status", result)
-	return result
-}
-
 // 取得 session ID（使用 Claude Code 傳入的 session_id）
 func getSessionID(sessionID string) string {
 	if sessionID != "" {
-		// 使用 Claude Code 提供的 session_id 的 hash
 		hash := md5.Sum([]byte(sessionID))
 		return fmt.Sprintf("%x", hash[:8])
 	}
-	// fallback: 使用 PPID
 	ppid := os.Getppid()
 	hash := md5.Sum([]byte(fmt.Sprintf("%d", ppid)))
 	return fmt.Sprintf("%x", hash[:8])
 }
 
-// 更新 session 並計算今日總時數
-func updateSessionAndGetStats(claudeSessionID string) (totalHours int, totalMins int, activeSessions int) {
+// updateSessionTime 更新 session 心跳並計算今日總時數（純檔案 I/O，快速）
+func updateSessionTime(claudeSessionID string) (totalHours int, totalMins int) {
 	now := time.Now()
 	today := now.Format("2006-01-02")
 	currentTime := now.Unix()
 	sessionID := getSessionID(claudeSessionID)
 
-	// 更新當前 session
 	sessionFile := filepath.Join(sessionsDir, sessionID+".json")
 	var session SessionData
 
@@ -283,12 +231,10 @@ func updateSessionAndGetStats(claudeSessionID string) (totalHours int, totalMins
 		json.Unmarshal(data, &session)
 	}
 
-	// 如果是新的一天或新 session，重置
 	if session.Date != today {
 		session = SessionData{Date: today, TotalSeconds: 0}
 	}
 
-	// 計算自上次心跳以來的時間（最多 60 秒，避免長時間閒置被計入）
 	if session.LastHeartbeat > 0 {
 		elapsed := currentTime - session.LastHeartbeat
 		if elapsed > 0 && elapsed <= 60 {
@@ -297,11 +243,9 @@ func updateSessionAndGetStats(claudeSessionID string) (totalHours int, totalMins
 	}
 	session.LastHeartbeat = currentTime
 
-	// 儲存 session
 	data, _ = json.Marshal(session)
 	os.WriteFile(sessionFile, data, 0644)
 
-	// 統計今日所有 session 的累計時間
 	var totalSeconds int64 = 0
 	files, _ := filepath.Glob(filepath.Join(sessionsDir, "*.json"))
 	for _, f := range files {
@@ -312,9 +256,6 @@ func updateSessionAndGetStats(claudeSessionID string) (totalHours int, totalMins
 			}
 		}
 	}
-
-	// 活躍 session：直接計算系統中運行的 claude 進程數
-	activeSessions = countClaudeProcesses()
 
 	totalHours = int(totalSeconds / 3600)
 	totalMins = int((totalSeconds % 3600) / 60)
@@ -362,6 +303,8 @@ func modelEmoji(model string) string {
 }
 
 func main() {
+	processStart := time.Now()
+
 	input, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		fmt.Println("Error reading input")
@@ -374,12 +317,11 @@ func main() {
 		return
 	}
 
-	// 基本資訊
+	// === 快速本地操作（無外部命令）===
 	model := data.Model.DisplayName
 	emoji := modelEmoji(model)
 	dir := filepath.Base(data.Workspace.CurrentDir)
 
-	// Git 資訊
 	branch, dirty := getGitInfo(data.Workspace.CurrentDir)
 	gitPart := ""
 	if branch != "" {
@@ -390,7 +332,6 @@ func main() {
 		gitPart = fmt.Sprintf(" ⚡ %s%s", branch, dirtyMark)
 	}
 
-	// Context 計算
 	ctxPercent := 0.0
 	totalTokens := 0
 	if data.ContextWindow.ContextWindowSize > 0 {
@@ -399,67 +340,112 @@ func main() {
 		ctxPercent = float64(totalTokens) / float64(data.ContextWindow.ContextWindowSize) * 100
 	}
 
-	// Session 時間統計
-	totalHours, totalMins, activeSessions := updateSessionAndGetStats(data.SessionID)
+	// Session 時間（純檔案 I/O，快速）
+	totalHours, totalMins := updateSessionTime(data.SessionID)
 
-	// 取得外部資料
-	ccusageCost := getCcusageCosts()
-	blockInfo := getBlockInfo()
-	mcpInfo := getMCPInfo()
+	// === 載入所有 cache（檔案讀取，快速）===
+	cachedCost, _ := loadCache[CostCache]("ccusage-costs")
+	cachedBlock, _ := loadCache[BlockCache]("ccusage-block")
+
+	// === 平行非同步更新過期 cache ===
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+	activeSessions := 1 // 預設值
+
+	// ccusage costs（60 秒過期）
+	if cachedCost == nil || time.Since(cachedCost.Time) > 60*time.Second {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if r := fetchCcusageCosts(); r != nil {
+				mu.Lock()
+				cachedCost = r
+				mu.Unlock()
+			}
+		}()
+	}
+
+	// ccusage block info（30 秒過期）
+	if cachedBlock == nil || time.Since(cachedBlock.Time) > 30*time.Second {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if r := fetchBlockInfo(); r != nil {
+				mu.Lock()
+				cachedBlock = r
+				mu.Unlock()
+			}
+		}()
+	}
+
+	// 進程數（PowerShell，慢）
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		count := countClaudeProcesses()
+		mu.Lock()
+		activeSessions = count
+		mu.Unlock()
+	}()
+
+	// 等待全部完成或超時
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// 全部完成
+	case <-time.After(asyncTimeout):
+		// 超時，用已有的 cache + 已完成的結果
+	}
+
+	// === 讀取最終結果（加鎖）===
+	mu.Lock()
+	finalCost := cachedCost
+	finalBlock := cachedBlock
+	finalActiveSessions := activeSessions
+	mu.Unlock()
 
 	// === 第一行：模型 | 專案 | Git | Context 進度條 | 時數 ===
 	bar := progressBar(ctxPercent, 10)
 	sessionInfo := fmt.Sprintf("%dh%dm", totalHours, totalMins)
-	if activeSessions > 1 {
-		sessionInfo += fmt.Sprintf(" [%d sessions]", activeSessions)
+	if finalActiveSessions > 1 {
+		sessionInfo += fmt.Sprintf(" [%d sessions]", finalActiveSessions)
 	}
 	line1 := fmt.Sprintf("[%s %s] 📂 %s%s | %s %.1f%% %s | %s",
 		emoji, model, dir, gitPart, bar, ctxPercent, formatTokens(totalTokens), sessionInfo)
 
 	// === 第二行：Burn Rate | Today Cost | Reset Time ===
 	var line2Parts []string
-	if blockInfo != nil && blockInfo.CostPerHour > 0 {
-		line2Parts = append(line2Parts, fmt.Sprintf("🔥 $%.2f/hr", blockInfo.CostPerHour))
+	if finalBlock != nil && finalBlock.CostPerHour > 0 {
+		line2Parts = append(line2Parts, fmt.Sprintf("🔥 $%.2f/hr", finalBlock.CostPerHour))
 	}
-	if ccusageCost != nil {
-		line2Parts = append(line2Parts, fmt.Sprintf("💰 Today: $%.2f", ccusageCost.Today))
+	if finalCost != nil {
+		line2Parts = append(line2Parts, fmt.Sprintf("💰 Today: $%.2f", finalCost.Today))
 	}
-	if blockInfo != nil && blockInfo.RemainingMinutes > 0 {
-		mins := int(blockInfo.RemainingMinutes)
+	if finalBlock != nil && finalBlock.RemainingMinutes > 0 {
+		mins := int(finalBlock.RemainingMinutes)
 		hrs := mins / 60
 		m := mins % 60
 		line2Parts = append(line2Parts, fmt.Sprintf("⏱ Reset: %dh %dm", hrs, m))
 	}
 	line2 := strings.Join(line2Parts, " │ ")
 
-	// === 第三行：MCP 狀態 ===
-	line3 := "MCP: "
-	if mcpInfo != nil && len(mcpInfo.Servers) > 0 {
-		var connected []string
-		var failed []string
-		for _, s := range mcpInfo.Servers {
-			if s.Connected {
-				connected = append(connected, s.Name)
-			} else {
-				failed = append(failed, s.Name)
-			}
-		}
-		var parts []string
-		if len(connected) > 0 {
-			parts = append(parts, fmt.Sprintf("✓ %s", strings.Join(connected, ", ")))
-		}
-		if len(failed) > 0 {
-			parts = append(parts, fmt.Sprintf("✗ %s", strings.Join(failed, ", ")))
-		}
-		line3 += strings.Join(parts, " │ ")
-	} else {
-		line3 += "─ No servers"
-	}
-
-	// 輸出（分行）
+	// 輸出
 	fmt.Println(line1)
 	if line2 != "" {
 		fmt.Println(line2)
 	}
-	fmt.Println(line3)
+
+	// 等待 goroutines 完成以儲存 cache（避免 process exit 時 goroutine 被 kill）
+	remaining := totalTimeBudget - time.Since(processStart)
+	if remaining > 0 {
+		select {
+		case <-done:
+		case <-time.After(remaining):
+		}
+	}
 }
