@@ -56,6 +56,9 @@ type SessionData struct {
 	LastHeartbeat int64  `json:"last_heartbeat"` // Unix timestamp
 }
 
+// Version 由 CI 透過 ldflags 注入，格式為 YYYYMMDD
+var Version = "dev"
+
 var cacheDir string
 var sessionsDir string
 
@@ -303,6 +306,11 @@ func modelEmoji(model string) string {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Println(Version)
+		return
+	}
+
 	processStart := time.Now()
 
 	input, err := io.ReadAll(os.Stdin)

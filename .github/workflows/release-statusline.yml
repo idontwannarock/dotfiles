@@ -46,7 +46,9 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
-        run: go build -trimpath -ldflags="-s -w" -o ${{ matrix.artifact }} .
+        run: |
+          VERSION=$(date -u +%Y%m%d)
+          go build -trimpath -ldflags="-s -w -X main.Version=${VERSION}" -o ${{ matrix.artifact }} .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -62,6 +64,10 @@ jobs:
       contents: write
 
     steps:
+      - name: Set version
+        id: version
+        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -69,12 +75,27 @@ jobs:
           path: dist/
 
       - name: Update statusline-latest release
+        env:
+          VERSION_DATE: ${{ steps.version.outputs.date }}
+          COMMIT_SHA: ${{ github.sha }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: statusline-latest
-          name: statusline-latest
-          body: "Auto-built statusline binaries. Updated on every push that modifies `claude/statusline/`."
+          name: statusline-latest (${{ steps.version.outputs.date }})
+          body: Auto-built statusline binaries (v${{ steps.version.outputs.date }}).
           prerelease: false
           files: dist/*
-          # Force-update the existing release assets
+          fail_on_unmatched_files: true
+
+      - name: Create versioned release
+        env:
+          VERSION_DATE: ${{ steps.version.outputs.date }}
+          COMMIT_SHA: ${{ github.sha }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: statusline-v${{ steps.version.outputs.date }}
+          name: statusline v${{ steps.version.outputs.date }}
+          body: Built from commit ${{ github.sha }}
+          prerelease: false
+          files: dist/*
           fail_on_unmatched_files: true
