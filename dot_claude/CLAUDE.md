@@ -30,17 +30,17 @@
 
 **小型：**
 ```
-[git:sync] → ensure-openspec → sp:brainstorm → opsx:ff → opsx:apply → [code:review-spec] → opsx:verify → opsx:archive → [git:commit → git:push]
+[git:sync] → ensure-openspec → superpowers:brainstorming → opsx:ff → opsx:apply → [code:review-spec] → opsx:verify → opsx:archive → [git:commit → git:push]
 ```
 
 **大型：**
 ```
-[git:sync] → ensure-openspec → sp:brainstorm → opsx:new → opsx:continue（重複）→ sp:plan → opsx:apply → [code:review-spec] → sp:verify → opsx:verify → opsx:archive → [git:commit → git:push]
+[git:sync] → ensure-openspec → superpowers:brainstorming → opsx:new → opsx:continue（重複）→ superpowers:writing-plans → opsx:apply → [code:review-spec] → superpowers:verification-before-completion → opsx:verify → opsx:archive → [git:commit → git:push]
 ```
 
 **使用 worktree 時：**
 ```
-[git:sync] → sp:worktree → ensure-openspec → ... → opsx:archive → git:commit → sp:finish → [git:clean-gone]
+[git:sync] → superpowers:using-git-worktrees → ensure-openspec → ... → opsx:archive → git:commit → superpowers:finishing-a-development-branch → [git:clean-gone]
 ```
 
 #### Git 整合行為
@@ -50,22 +50,22 @@
 | 流程開始前 | `git:sync` | 自動執行，確保在最新 main 上工作（feature branch 上除外） |
 | `opsx:archive` 之後 | `git:commit` | 提議 commit，使用者確認後執行 |
 | commit 之後 | `git:push` | 詢問是否 push（使用者可能想批次 commit） |
-| `sp:finish` 之後 | `git:clean-gone` | 使用 worktree 時，自動建議清理已合併的本地分支 |
+| `superpowers:finishing-a-development-branch` 之後 | `git:clean-gone` | 使用 worktree 時，自動建議清理已合併的本地分支 |
 
 ### 可選擴充
 
 以下技能視情況自動引入，不需要使用者手動觸發：
 
-| 技能 | 簡寫 | 觸發時機 |
-|------|------|----------|
-| `using-git-worktrees` | `sp:worktree` | 需要隔離工作區時（大型任務、避免影響主分支） |
-| `subagent-driven-development` | `sp:subagent` | 任務間互相獨立、可平行處理時 |
-| `dispatching-parallel-agents` | `sp:parallel` | 多個不相關任務需同時進行時 |
-| `test-driven-development` | `sp:tdd` | 實作功能或修 bug 時，強制 RED→GREEN→REFACTOR |
-| `systematic-debugging` | `sp:debug` | 遇到 bug、測試失敗、非預期行為時 |
-| `requesting-code-review` | `sp:review` | 完成實作後、merge 前 |
-| `receiving-code-review` | `sp:recv-review` | 收到 code review 回饋時 |
-| `finishing-a-development-branch` | `sp:finish` | 實作完成、測試通過，決定 merge/PR/保留/丟棄 |
+| 技能 | 觸發時機 |
+|------|----------|
+| `superpowers:using-git-worktrees` | 需要隔離工作區時（大型任務、避免影響主分支） |
+| `superpowers:subagent-driven-development` | 任務間互相獨立、可平行處理時 |
+| `superpowers:dispatching-parallel-agents` | 多個不相關任務需同時進行時 |
+| `superpowers:test-driven-development` | 實作功能或修 bug 時，強制 RED→GREEN→REFACTOR |
+| `superpowers:systematic-debugging` | 遇到 bug、測試失敗、非預期行為時 |
+| `superpowers:requesting-code-review` | 完成實作後、merge 前 |
+| `superpowers:receiving-code-review` | 收到 code review 回饋時 |
+| `superpowers:finishing-a-development-branch` | 實作完成、測試通過，決定 merge/PR/保留/丟棄 |
 
 #### Code Review 指令
 

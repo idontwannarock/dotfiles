@@ -11,8 +11,6 @@ claude/statusline/          # 自訂狀態列程式
 dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 ├── CLAUDE.md               # 全域指令
 ├── exact_commands/         # Commands（exact_：自動清理移除的檔案）
-│   ├── opsx/               # OPSX 工作流程指令
-│   ├── sp/                 # Superpowers 簡寫指令
 │   ├── git/                # Git 操作簡寫指令
 │   └── code/               # Code Review 指令
 └── exact_agents/           # Agents
@@ -49,8 +47,7 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 | 名稱 | 觸發方式 | 說明 |
 |------|----------|------|
 | OpenSpec | `/ensure-openspec` skill | 結構化變更管理，按需安裝 CLI 並初始化專案 |
-| OPSX Commands | `/opsx:*` commands | OpenSpec 工作流程指令 |
-| SP Commands | `/sp:*` commands | Superpowers 技能簡寫 |
+| OPSX Commands | `/opsx:*` commands | OpenSpec 工作流程指令（openspec CLI 產生） |
 | Git Commands | `/git:*` commands | Git 操作簡寫 |
 | Code Commands | `/code:*` commands | Code Review 指令 |
 
