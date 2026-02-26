@@ -54,30 +54,8 @@
 
 ### 可選擴充
 
-以下技能視情況自動引入，不需要使用者手動觸發：
+以下 skills 視情況自動引入：`superpowers:test-driven-development`、`superpowers:systematic-debugging`、`superpowers:using-git-worktrees`、`superpowers:requesting-code-review` 等。
 
-| 技能 | 觸發時機 |
-|------|----------|
-| `superpowers:using-git-worktrees` | 需要隔離工作區時（大型任務、避免影響主分支） |
-| `superpowers:subagent-driven-development` | 任務間互相獨立、可平行處理時 |
-| `superpowers:dispatching-parallel-agents` | 多個不相關任務需同時進行時 |
-| `superpowers:test-driven-development` | 實作功能或修 bug 時，強制 RED→GREEN→REFACTOR |
-| `superpowers:systematic-debugging` | 遇到 bug、測試失敗、非預期行為時 |
-| `superpowers:requesting-code-review` | 完成實作後、merge 前 |
-| `superpowers:receiving-code-review` | 收到 code review 回饋時 |
-| `superpowers:finishing-a-development-branch` | 實作完成、測試通過，決定 merge/PR/保留/丟棄 |
+Code review 指令：`code:review-quick`（快速）、`code:review-full`（完整 4 agent）、`code:review-spec`（需求對齊）、`code:review-linus`（架構）、`code:review-security`（安全）、`code:review-types`（型別）。
 
-#### Code Review 指令
-
-獨立的 agent-based code review 工具，可在流程內外使用：
-
-| 指令 | 說明 |
-|------|------|
-| `code:review-full` | 完整 review（4 agent 平行：code-reviewer + silent-failure-hunter + test-analyzer + linus-torvalds） |
-| `code:review-quick` | 快速 review（單一 code-reviewer） |
-| `code:review-linus` | Linus Torvalds 風格 review（架構簡潔性、good taste） |
-| `code:review-security` | 安全性 review（silent-failure-hunter + code-reviewer 安全焦點） |
-| `code:review-types` | 型別設計 review（type-design-analyzer） |
-| `code:review-spec` | 需求導向 review（帶 OpenSpec artifacts 上下文，檢查 spec 對齊） |
-
-所有指令支援：`/code:review-* [PR number｜branch｜commit range]`，無引數時自動偵測 staged → unstaged → HEAD。
+> 完整清單與使用情境：讀取 `~/.claude/reference.md`
