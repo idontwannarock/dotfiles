@@ -4,6 +4,21 @@
 # 只更新 settings.json 的 statusLine 區塊，不影響其他設定
 # hash: {{ .chezmoi.homeDir }}
 
+# 確保 jq 存在
+if ! command -v jq &>/dev/null; then
+    echo "jq not found. Installing..."
+    {{- if eq .chezmoi.os "darwin" }}
+    brew install jq
+    {{- else }}
+    sudo apt-get update -q && sudo apt-get install -y jq
+    {{- end }}
+fi
+
+if ! command -v jq &>/dev/null; then
+    echo "ERROR: Failed to install jq. Cannot update statusLine settings." >&2
+    exit 1
+fi
+
 SETTINGS_FILE="{{ .chezmoi.homeDir }}/.claude/settings.json"
 STATUSLINE_CMD="{{ .chezmoi.homeDir }}/.local/bin/statusline"
 
