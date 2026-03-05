@@ -219,6 +219,67 @@ func getSessionID(sessionID string) string {
 	return fmt.Sprintf("%x", hash[:8])
 }
 
+// getSessionDisplayName 從 JSONL 讀取 session 的 customTitle（使用者命名）
+// 若無 customTitle，回傳空字串
+func getSessionDisplayName(sessionID string) string {
+	if sessionID == "" {
+		return ""
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	// workspace.current_dir 可能是子目錄，無法直接推導 projects 目錄名稱
+	// 改為在所有 projects 目錄中搜尋 sessionID.jsonl
+	projectsDir := filepath.Join(home, ".claude", "projects")
+	jsonlName := sessionID + ".jsonl"
+
+	var jsonlPath string
+	entries, err := os.ReadDir(projectsDir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		candidate := filepath.Join(projectsDir, e.Name(), jsonlName)
+		if _, err := os.Stat(candidate); err == nil {
+			jsonlPath = candidate
+			break
+		}
+	}
+	if jsonlPath == "" {
+		return ""
+	}
+
+	data, err := os.ReadFile(jsonlPath)
+	if err != nil {
+		return ""
+	}
+
+	// 從尾部往回找最後一個 custom-title 行
+	// 逐行字串匹配，只對命中行解析 JSON，即使數 MB 也很快
+	lines := strings.Split(string(data), "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := lines[i]
+		if !strings.Contains(line, `"custom-title"`) {
+			continue
+		}
+		var entry struct {
+			Type        string `json:"type"`
+			CustomTitle string `json:"customTitle"`
+		}
+		if json.Unmarshal([]byte(line), &entry) == nil && entry.Type == "custom-title" && entry.CustomTitle != "" {
+			return entry.CustomTitle
+		}
+	}
+
+	return ""
+}
+
 // updateSessionTime 更新 session 心跳並計算今日總時數（純檔案 I/O，快速）
 func updateSessionTime(claudeSessionID string) (totalHours int, totalMins int) {
 	now := time.Now()
@@ -348,7 +409,8 @@ func main() {
 		ctxPercent = float64(totalTokens) / float64(data.ContextWindow.ContextWindowSize) * 100
 	}
 
-	// Session 時間（純檔案 I/O，快速）
+	// Session 名稱與時間（純檔案 I/O，快速）
+	sessionName := getSessionDisplayName(data.SessionID)
 	totalHours, totalMins := updateSessionTime(data.SessionID)
 
 	// === 載入所有 cache（檔案讀取，快速）===
@@ -419,12 +481,22 @@ func main() {
 
 	// === 第一行：模型 | 專案 | Git | Context 進度條 | 時數 ===
 	bar := progressBar(ctxPercent, 10)
+	sessionLabel := ""
+	if sessionName != "" {
+		sessionLabel = fmt.Sprintf("📛 %s │ ", sessionName)
+	} else if data.SessionID != "" {
+		shortID := data.SessionID
+		if len(shortID) > 8 {
+			shortID = shortID[:8]
+		}
+		sessionLabel = fmt.Sprintf("#%s │ ", shortID)
+	}
 	sessionInfo := fmt.Sprintf("%dh%dm", totalHours, totalMins)
 	if finalActiveSessions > 1 {
 		sessionInfo += fmt.Sprintf(" [%d sessions]", finalActiveSessions)
 	}
-	line1 := fmt.Sprintf("[%s %s] 📂 %s%s | %s %.1f%% %s | %s",
-		emoji, model, dir, gitPart, bar, ctxPercent, formatTokens(totalTokens), sessionInfo)
+	line1 := fmt.Sprintf("[%s %s] 📂 %s%s | %s %.1f%% %s | %s%s",
+		emoji, model, dir, gitPart, bar, ctxPercent, formatTokens(totalTokens), sessionLabel, sessionInfo)
 
 	// === 第二行：Burn Rate | Today Cost | Reset Time ===
 	var line2Parts []string
