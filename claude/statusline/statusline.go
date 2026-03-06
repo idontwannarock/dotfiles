@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -43,10 +45,15 @@ type CostCache struct {
 	Time  time.Time `json:"time"`
 }
 
-type BlockCache struct {
+type BlockTimerCache struct {
+	ElapsedMinutes   float64   `json:"elapsedMinutes"`
 	RemainingMinutes float64   `json:"remainingMinutes"`
-	CostPerHour      float64   `json:"costPerHour"`
 	Time             time.Time `json:"time"`
+}
+
+type TokenSpeedCache struct {
+	TokensPerSec float64   `json:"tokensPerSec"`
+	Time         time.Time `json:"time"`
 }
 
 // Session 追蹤
@@ -62,16 +69,23 @@ var Version = "dev"
 var cacheDir string
 var sessionsDir string
 var ccusagePath string // resolved at init, empty = not found
+var projectsDir string
 
+// Cache TTL 常數
 const (
-	asyncTimeout   = 2 * time.Second // 等待 goroutines 的時間上限（決定輸出內容）
-	totalTimeBudget = 5 * time.Second // 整個 process 的時間上限（含 cache 儲存）
+	costCacheTTL       = 60 * time.Second
+	blockTimerCacheTTL = 30 * time.Second
+	tokenSpeedCacheTTL = 15 * time.Second
+	asyncTimeout       = 2 * time.Second  // 等待 goroutines 的時間上限（決定輸出內容）
+	totalTimeBudget    = 5 * time.Second   // 整個 process 的時間上限（含 cache 儲存）
+	blockDuration      = 5 * time.Hour     // Anthropic 5-hour block
 )
 
 func init() {
 	home, _ := os.UserHomeDir()
 	cacheDir = filepath.Join(home, ".claude", "statusline-cache")
 	sessionsDir = filepath.Join(home, ".claude", "statusline-sessions")
+	projectsDir = filepath.Join(home, ".claude", "projects")
 	os.MkdirAll(cacheDir, 0755)
 	os.MkdirAll(sessionsDir, 0755)
 	ccusagePath = resolveCcusagePath(home)
@@ -92,18 +106,18 @@ func resolveCcusagePath(home string) string {
 	return ""
 }
 
+// === Cache 系統 ===
+
 func loadCache[T any](name string) (*T, bool) {
 	path := filepath.Join(cacheDir, name+".json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, false
 	}
-
 	var cache T
 	if err := json.Unmarshal(data, &cache); err != nil {
 		return nil, false
 	}
-
 	return &cache, true
 }
 
@@ -122,7 +136,357 @@ func runCommand(name string, args ...string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// 計算運行中的 Claude Code 進程數量（跨平台）
+// === JSONL 讀取基礎設施 ===
+
+// findSessionJSONL 在 projects 目錄中搜尋 sessionID.jsonl
+func findSessionJSONL(sessionID string) string {
+	if sessionID == "" {
+		return ""
+	}
+	jsonlName := sessionID + ".jsonl"
+	entries, err := os.ReadDir(projectsDir)
+	if err != nil {
+		return ""
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		candidate := filepath.Join(projectsDir, e.Name(), jsonlName)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+	}
+	return ""
+}
+
+// readJSONLTail 從檔案尾部讀取最後 maxLines 行
+func readJSONLTail(path string, maxLines int) []string {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	// 從尾部往回讀取
+	stat, err := f.Stat()
+	if err != nil || stat.Size() == 0 {
+		return nil
+	}
+
+	// 讀取最後 256KB（大部分情況下足夠取得 N 行）
+	readSize := int64(256 * 1024)
+	if stat.Size() < readSize {
+		readSize = stat.Size()
+	}
+	offset := stat.Size() - readSize
+	if offset < 0 {
+		offset = 0
+	}
+
+	f.Seek(offset, 0)
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024) // 1MB buffer for long lines
+
+	var lines []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line != "" {
+			lines = append(lines, line)
+		}
+	}
+
+	// 如果是從中間開始讀，第一行可能不完整，丟棄
+	if offset > 0 && len(lines) > 0 {
+		lines = lines[1:]
+	}
+
+	// 只保留最後 maxLines 行
+	if len(lines) > maxLines {
+		lines = lines[len(lines)-maxLines:]
+	}
+	return lines
+}
+
+// JSONL 行解析結構
+type jsonlEntry struct {
+	Type        string    `json:"type"`
+	Timestamp   string    `json:"timestamp"`
+	IsSidechain bool      `json:"isSidechain"`
+	Message     *struct {
+		Role  string `json:"role"`
+		Usage *struct {
+			OutputTokens int `json:"output_tokens"`
+			InputTokens  int `json:"input_tokens"`
+		} `json:"usage"`
+	} `json:"message"`
+}
+
+func parseJSONLEntry(line string) *jsonlEntry {
+	var entry jsonlEntry
+	if json.Unmarshal([]byte(line), &entry) != nil {
+		return nil
+	}
+	return &entry
+}
+
+// === Token Speed ===
+
+func calculateTokenSpeed(sessionID string) float64 {
+	path := findSessionJSONL(sessionID)
+	if path == "" {
+		return 0
+	}
+
+	lines := readJSONLTail(path, 100)
+	if len(lines) == 0 {
+		return 0
+	}
+
+	// 收集最近的 user→assistant 配對來計算速度
+	type requestPair struct {
+		userTime      time.Time
+		assistantTime time.Time
+		outputTokens  int
+	}
+
+	var pairs []requestPair
+	var lastUserTime time.Time
+
+	for _, line := range lines {
+		entry := parseJSONLEntry(line)
+		if entry == nil || entry.IsSidechain {
+			continue
+		}
+
+		ts, err := time.Parse(time.RFC3339Nano, entry.Timestamp)
+		if err != nil {
+			ts, err = time.Parse("2006-01-02T15:04:05.000Z", entry.Timestamp)
+			if err != nil {
+				continue
+			}
+		}
+
+		if entry.Type == "user" {
+			lastUserTime = ts
+		} else if entry.Type == "assistant" && entry.Message != nil && entry.Message.Usage != nil {
+			if !lastUserTime.IsZero() && entry.Message.Usage.OutputTokens > 0 {
+				pairs = append(pairs, requestPair{
+					userTime:      lastUserTime,
+					assistantTime: ts,
+					outputTokens:  entry.Message.Usage.OutputTokens,
+				})
+			}
+		}
+	}
+
+	if len(pairs) == 0 {
+		return 0
+	}
+
+	// 取最近 5 對計算平均速度
+	start := 0
+	if len(pairs) > 5 {
+		start = len(pairs) - 5
+	}
+	recent := pairs[start:]
+
+	var totalTokens int
+	var totalDuration time.Duration
+	for _, p := range recent {
+		dur := p.assistantTime.Sub(p.userTime)
+		if dur > 0 && dur < 5*time.Minute { // 排除異常值
+			totalTokens += p.outputTokens
+			totalDuration += dur
+		}
+	}
+
+	if totalDuration == 0 {
+		return 0
+	}
+	return float64(totalTokens) / totalDuration.Seconds()
+}
+
+// === Block Timer（從 JSONL 計算）===
+
+func calculateBlockTimer() *BlockTimerCache {
+	now := time.Now()
+	entries, err := os.ReadDir(projectsDir)
+	if err != nil {
+		return nil
+	}
+
+	// 收集近 10 小時內有修改的 JSONL 的 timestamps
+	cutoff := now.Add(-10 * time.Hour)
+	var timestamps []time.Time
+
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		projPath := filepath.Join(projectsDir, e.Name())
+		files, err := os.ReadDir(projPath)
+		if err != nil {
+			continue
+		}
+		for _, f := range files {
+			if !strings.HasSuffix(f.Name(), ".jsonl") {
+				continue
+			}
+			info, err := f.Info()
+			if err != nil || info.ModTime().Before(cutoff) {
+				continue
+			}
+			filePath := filepath.Join(projPath, f.Name())
+			ts := extractTimestamps(filePath, cutoff)
+			timestamps = append(timestamps, ts...)
+		}
+	}
+
+	if len(timestamps) == 0 {
+		return nil
+	}
+
+	// 排序（最新在前）
+	sortTimestamps(timestamps)
+
+	// 檢查最近活動是否在 5hr block 內
+	if now.Sub(timestamps[0]) > blockDuration {
+		return nil
+	}
+
+	// 從最新往回找 5hr gap
+	blockStart := timestamps[0]
+	for i := 1; i < len(timestamps); i++ {
+		gap := timestamps[i-1].Sub(timestamps[i])
+		if gap >= blockDuration {
+			break
+		}
+		blockStart = timestamps[i]
+	}
+
+	// Floor to hour
+	blockStart = blockStart.Truncate(time.Hour)
+
+	elapsed := now.Sub(blockStart)
+	remaining := blockDuration - elapsed
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	result := &BlockTimerCache{
+		ElapsedMinutes:   elapsed.Minutes(),
+		RemainingMinutes: remaining.Minutes(),
+		Time:             now,
+	}
+	saveCache("block-timer", result)
+	return result
+}
+
+// extractTimestamps 從 JSONL 檔案中提取有 token usage 的 timestamps
+func extractTimestamps(path string, cutoff time.Time) []time.Time {
+	lines := readJSONLTail(path, 500)
+	var timestamps []time.Time
+
+	for _, line := range lines {
+		// 快速篩選：只處理有 output_tokens 的行
+		if !strings.Contains(line, `"output_tokens"`) {
+			continue
+		}
+
+		entry := parseJSONLEntry(line)
+		if entry == nil || entry.IsSidechain {
+			continue
+		}
+		if entry.Message == nil || entry.Message.Usage == nil {
+			continue
+		}
+		if entry.Message.Usage.OutputTokens == 0 && entry.Message.Usage.InputTokens == 0 {
+			continue
+		}
+
+		ts, err := time.Parse(time.RFC3339Nano, entry.Timestamp)
+		if err != nil {
+			ts, err = time.Parse("2006-01-02T15:04:05.000Z", entry.Timestamp)
+			if err != nil {
+				continue
+			}
+		}
+
+		if ts.Before(cutoff) {
+			continue
+		}
+		timestamps = append(timestamps, ts)
+	}
+	return timestamps
+}
+
+// sortTimestamps 降序排序（最新在前）
+func sortTimestamps(ts []time.Time) {
+	for i := 1; i < len(ts); i++ {
+		for j := i; j > 0 && ts[j].After(ts[j-1]); j-- {
+			ts[j], ts[j-1] = ts[j-1], ts[j]
+		}
+	}
+}
+
+// === Git 資訊 ===
+
+type GitInfo struct {
+	Branch     string
+	Dirty      bool
+	Insertions int
+	Deletions  int
+}
+
+func getGitInfo(dir string) GitInfo {
+	gitDir := filepath.Join(dir, ".git")
+	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
+		return GitInfo{}
+	}
+
+	var info GitInfo
+
+	cmd := exec.Command("git", "branch", "--show-current")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		return GitInfo{}
+	}
+	info.Branch = strings.TrimSpace(string(out))
+
+	cmd = exec.Command("git", "status", "--porcelain")
+	cmd.Dir = dir
+	out, _ = cmd.Output()
+	info.Dirty = len(strings.TrimSpace(string(out))) > 0
+
+	// git diff --shortstat for insertions/deletions
+	cmd = exec.Command("git", "diff", "--shortstat")
+	cmd.Dir = dir
+	out, _ = cmd.Output()
+	diffStat := strings.TrimSpace(string(out))
+	if diffStat != "" {
+		info.Insertions, info.Deletions = parseDiffStat(diffStat)
+	}
+
+	return info
+}
+
+var diffStatInsertRe = regexp.MustCompile(`(\d+) insertion`)
+var diffStatDeleteRe = regexp.MustCompile(`(\d+) deletion`)
+
+func parseDiffStat(stat string) (insertions, deletions int) {
+	if m := diffStatInsertRe.FindStringSubmatch(stat); len(m) > 1 {
+		insertions, _ = strconv.Atoi(m[1])
+	}
+	if m := diffStatDeleteRe.FindStringSubmatch(stat); len(m) > 1 {
+		deletions, _ = strconv.Atoi(m[1])
+	}
+	return
+}
+
+// === 計算運行中的 Claude Code 進程數量 ===
+
 func countClaudeProcesses() int {
 	if runtime.GOOS == "windows" {
 		cmd := exec.Command("powershell", "-NoProfile", "-Command",
@@ -154,27 +518,7 @@ func countClaudeProcesses() int {
 	return count
 }
 
-func getGitInfo(dir string) (branch string, dirty bool) {
-	gitDir := filepath.Join(dir, ".git")
-	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
-		return "", false
-	}
-
-	cmd := exec.Command("git", "branch", "--show-current")
-	cmd.Dir = dir
-	out, err := cmd.Output()
-	if err != nil {
-		return "", false
-	}
-	branch = strings.TrimSpace(string(out))
-
-	cmd = exec.Command("git", "status", "--porcelain")
-	cmd.Dir = dir
-	out, _ = cmd.Output()
-	dirty = len(strings.TrimSpace(string(out))) > 0
-
-	return branch, dirty
-}
+// === ccusage（today cost only）===
 
 // fetchCcusageCosts 從 ccusage CLI 取得今日花費（慢，3-5 秒）
 // 失敗時回傳 nil，不覆蓋既有 cache
@@ -203,38 +547,8 @@ func fetchCcusageCosts() *CostCache {
 	return result
 }
 
-// fetchBlockInfo 從 ccusage CLI 取得 block 資訊（慢，3-5 秒）
-// 失敗時回傳 nil，不覆蓋既有 cache
-func fetchBlockInfo() *BlockCache {
-	if ccusagePath == "" {
-		return nil
-	}
-	if out := runCommand(ccusagePath, "blocks", "--active", "--json"); out != "" {
-		var data struct {
-			Blocks []struct {
-				Projection struct {
-					RemainingMinutes float64 `json:"remainingMinutes"`
-				} `json:"projection"`
-				BurnRate struct {
-					CostPerHour float64 `json:"costPerHour"`
-				} `json:"burnRate"`
-			} `json:"blocks"`
-		}
-		if json.Unmarshal([]byte(out), &data) == nil && len(data.Blocks) > 0 {
-			result := &BlockCache{
-				RemainingMinutes: data.Blocks[0].Projection.RemainingMinutes,
-				CostPerHour:      data.Blocks[0].BurnRate.CostPerHour,
-				Time:             time.Now(),
-			}
-			saveCache("ccusage-block", result)
-			return result
-		}
-	}
+// === Session 管理 ===
 
-	return nil
-}
-
-// 取得 session ID（使用 Claude Code 傳入的 session_id）
 func getSessionID(sessionID string) string {
 	if sessionID != "" {
 		hash := md5.Sum([]byte(sessionID))
@@ -245,49 +559,17 @@ func getSessionID(sessionID string) string {
 	return fmt.Sprintf("%x", hash[:8])
 }
 
-// getSessionDisplayName 從 JSONL 讀取 session 的 customTitle（使用者命名）
-// 若無 customTitle，回傳空字串
 func getSessionDisplayName(sessionID string) string {
-	if sessionID == "" {
+	path := findSessionJSONL(sessionID)
+	if path == "" {
 		return ""
 	}
 
-	home, err := os.UserHomeDir()
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}
 
-	// workspace.current_dir 可能是子目錄，無法直接推導 projects 目錄名稱
-	// 改為在所有 projects 目錄中搜尋 sessionID.jsonl
-	projectsDir := filepath.Join(home, ".claude", "projects")
-	jsonlName := sessionID + ".jsonl"
-
-	var jsonlPath string
-	entries, err := os.ReadDir(projectsDir)
-	if err != nil {
-		return ""
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		candidate := filepath.Join(projectsDir, e.Name(), jsonlName)
-		if _, err := os.Stat(candidate); err == nil {
-			jsonlPath = candidate
-			break
-		}
-	}
-	if jsonlPath == "" {
-		return ""
-	}
-
-	data, err := os.ReadFile(jsonlPath)
-	if err != nil {
-		return ""
-	}
-
-	// 從尾部往回找最後一個 custom-title 行
-	// 逐行字串匹配，只對命中行解析 JSON，即使數 MB 也很快
 	lines := strings.Split(string(data), "\n")
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := lines[i]
@@ -302,11 +584,9 @@ func getSessionDisplayName(sessionID string) string {
 			return entry.CustomTitle
 		}
 	}
-
 	return ""
 }
 
-// updateSessionTime 更新 session 心跳並計算今日總時數（純檔案 I/O，快速）
 func updateSessionTime(claudeSessionID string) (totalHours int, totalMins int) {
 	now := time.Now()
 	today := now.Format("2006-01-02")
@@ -352,7 +632,8 @@ func updateSessionTime(claudeSessionID string) (totalHours int, totalMins int) {
 	return
 }
 
-// 生成進度條
+// === 顯示用工具函式 ===
+
 func progressBar(percent float64, width int) string {
 	filled := int(percent / 100 * float64(width))
 	if filled > width {
@@ -361,12 +642,9 @@ func progressBar(percent float64, width int) string {
 	if filled < 0 {
 		filled = 0
 	}
-
-	bar := strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
-	return bar
+	return strings.Repeat("█", filled) + strings.Repeat("░", width-filled)
 }
 
-// 格式化 token 數量
 func formatTokens(tokens int) string {
 	if tokens >= 1000000 {
 		return fmt.Sprintf("%.1fM", float64(tokens)/1000000)
@@ -377,7 +655,6 @@ func formatTokens(tokens int) string {
 	return fmt.Sprintf("%d", tokens)
 }
 
-// 模型 emoji
 func modelEmoji(model string) string {
 	lower := strings.ToLower(model)
 	if strings.Contains(lower, "opus") {
@@ -391,6 +668,8 @@ func modelEmoji(model string) string {
 	}
 	return "🤖"
 }
+
+// === Main ===
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "--version" {
@@ -417,15 +696,7 @@ func main() {
 	emoji := modelEmoji(model)
 	dir := filepath.Base(data.Workspace.CurrentDir)
 
-	branch, dirty := getGitInfo(data.Workspace.CurrentDir)
-	gitPart := ""
-	if branch != "" {
-		dirtyMark := ""
-		if dirty {
-			dirtyMark = "*"
-		}
-		gitPart = fmt.Sprintf(" ⚡ %s%s", branch, dirtyMark)
-	}
+	gitInfo := getGitInfo(data.Workspace.CurrentDir)
 
 	ctxPercent := 0.0
 	totalTokens := 0
@@ -439,18 +710,19 @@ func main() {
 	sessionName := getSessionDisplayName(data.SessionID)
 	totalHours, totalMins := updateSessionTime(data.SessionID)
 
-	// === 載入所有 cache（檔案讀取，快速）===
+	// === 載入所有 file cache ===
 	cachedCost, _ := loadCache[CostCache]("ccusage-costs")
-	cachedBlock, _ := loadCache[BlockCache]("ccusage-block")
+	cachedBlock, _ := loadCache[BlockTimerCache]("block-timer")
+	cachedSpeed, _ := loadCache[TokenSpeedCache]("token-speed")
 
 	// === 平行非同步更新過期 cache ===
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	done := make(chan struct{})
-	activeSessions := 1 // 預設值
+	activeSessions := 1
 
-	// ccusage costs（60 秒過期）
-	if cachedCost == nil || time.Since(cachedCost.Time) > 60*time.Second {
+	// ccusage costs（60s TTL）
+	if cachedCost == nil || time.Since(cachedCost.Time) > costCacheTTL {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -462,14 +734,30 @@ func main() {
 		}()
 	}
 
-	// ccusage block info（30 秒過期）
-	if cachedBlock == nil || time.Since(cachedBlock.Time) > 30*time.Second {
+	// Block timer from JSONL（30s TTL）
+	if cachedBlock == nil || time.Since(cachedBlock.Time) > blockTimerCacheTTL {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			if r := fetchBlockInfo(); r != nil {
+			if r := calculateBlockTimer(); r != nil {
 				mu.Lock()
 				cachedBlock = r
+				mu.Unlock()
+			}
+		}()
+	}
+
+	// Token speed from JSONL（15s TTL）
+	if cachedSpeed == nil || time.Since(cachedSpeed.Time) > tokenSpeedCacheTTL {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			speed := calculateTokenSpeed(data.SessionID)
+			if speed > 0 {
+				r := &TokenSpeedCache{TokensPerSec: speed, Time: time.Now()}
+				saveCache("token-speed", r)
+				mu.Lock()
+				cachedSpeed = r
 				mu.Unlock()
 			}
 		}()
@@ -493,20 +781,44 @@ func main() {
 
 	select {
 	case <-done:
-		// 全部完成
 	case <-time.After(asyncTimeout):
-		// 超時，用已有的 cache + 已完成的結果
 	}
 
 	// === 讀取最終結果（加鎖）===
 	mu.Lock()
 	finalCost := cachedCost
 	finalBlock := cachedBlock
+	finalSpeed := cachedSpeed
 	finalActiveSessions := activeSessions
 	mu.Unlock()
 
-	// === 第一行：模型 | 專案 | Git | Context 進度條 | 時數 ===
+	// === 第一行：模型 | 專案 | Git | Context 進度條 | Token Speed | Session ===
+	gitPart := ""
+	if gitInfo.Branch != "" {
+		dirtyMark := ""
+		if gitInfo.Dirty {
+			dirtyMark = "*"
+		}
+		diffPart := ""
+		if gitInfo.Insertions > 0 || gitInfo.Deletions > 0 {
+			var parts []string
+			if gitInfo.Insertions > 0 {
+				parts = append(parts, fmt.Sprintf("+%d", gitInfo.Insertions))
+			}
+			if gitInfo.Deletions > 0 {
+				parts = append(parts, fmt.Sprintf("-%d", gitInfo.Deletions))
+			}
+			diffPart = " " + strings.Join(parts, " ")
+		}
+		gitPart = fmt.Sprintf(" ⚡ %s%s%s", gitInfo.Branch, dirtyMark, diffPart)
+	}
+
 	bar := progressBar(ctxPercent, 10)
+	speedPart := ""
+	if finalSpeed != nil && finalSpeed.TokensPerSec > 0 {
+		speedPart = fmt.Sprintf(" | ⚡ %.1f t/s", finalSpeed.TokensPerSec)
+	}
+
 	sessionLabel := ""
 	if sessionName != "" {
 		sessionLabel = fmt.Sprintf("📛 %s │ ", sessionName)
@@ -521,26 +833,34 @@ func main() {
 	if finalActiveSessions > 1 {
 		sessionInfo += fmt.Sprintf(" [%d sessions]", finalActiveSessions)
 	}
-	line1 := fmt.Sprintf("[%s %s] 📂 %s%s | %s %.1f%% %s | %s%s",
-		emoji, model, dir, gitPart, bar, ctxPercent, formatTokens(totalTokens), sessionLabel, sessionInfo)
 
-	// === 第二行：Burn Rate | Today Cost | Reset Time ===
+	line1 := fmt.Sprintf("[%s %s] 📂 %s%s | %s %.1f%% %s%s | %s%s",
+		emoji, model, dir, gitPart, bar, ctxPercent, formatTokens(totalTokens), speedPart, sessionLabel, sessionInfo)
+
+	// === 第二行：Today Cost | Burn Rate | Block Timer ===
 	var line2Parts []string
-	if finalBlock != nil && finalBlock.CostPerHour > 0 {
-		line2Parts = append(line2Parts, fmt.Sprintf("🔥 $%.2f/hr", finalBlock.CostPerHour))
-	}
+
 	sessionCost := data.Cost.TotalCostUSD
 	if finalCost != nil {
 		line2Parts = append(line2Parts, fmt.Sprintf("💰 Today: $%.2f (session: $%.2f)", finalCost.Today, sessionCost))
 	} else {
 		line2Parts = append(line2Parts, fmt.Sprintf("💰 Session: $%.2f", sessionCost))
 	}
+
+	// Burn rate: session_cost / block_elapsed（近似，因為 today_cost 跨多個 block）
+	if finalBlock != nil && finalBlock.ElapsedMinutes > 5 && sessionCost > 0 {
+		elapsedHours := finalBlock.ElapsedMinutes / 60
+		burnRate := sessionCost / elapsedHours
+		line2Parts = append(line2Parts, fmt.Sprintf("🔥 $%.2f/hr", burnRate))
+	}
+
 	if finalBlock != nil && finalBlock.RemainingMinutes > 0 {
 		mins := int(finalBlock.RemainingMinutes)
 		hrs := mins / 60
 		m := mins % 60
-		line2Parts = append(line2Parts, fmt.Sprintf("⏱ Reset: %dh %dm", hrs, m))
+		line2Parts = append(line2Parts, fmt.Sprintf("⏱ Block: %dh%dm left", hrs, m))
 	}
+
 	line2 := strings.Join(line2Parts, " │ ")
 
 	// 輸出
@@ -549,7 +869,7 @@ func main() {
 		fmt.Println(line2)
 	}
 
-	// 等待 goroutines 完成以儲存 cache（避免 process exit 時 goroutine 被 kill）
+	// 等待 goroutines 完成以儲存 cache
 	remaining := totalTimeBudget - time.Since(processStart)
 	if remaining > 0 {
 		select {
