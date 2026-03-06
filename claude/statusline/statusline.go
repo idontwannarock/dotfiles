@@ -61,6 +61,7 @@ var Version = "dev"
 
 var cacheDir string
 var sessionsDir string
+var ccusagePath string // resolved at init, empty = not found
 
 const (
 	asyncTimeout   = 2 * time.Second // 等待 goroutines 的時間上限（決定輸出內容）
@@ -73,6 +74,22 @@ func init() {
 	sessionsDir = filepath.Join(home, ".claude", "statusline-sessions")
 	os.MkdirAll(cacheDir, 0755)
 	os.MkdirAll(sessionsDir, 0755)
+	ccusagePath = resolveCcusagePath(home)
+}
+
+func resolveCcusagePath(home string) string {
+	if p, err := exec.LookPath("ccusage"); err == nil {
+		return p
+	}
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+	fallback := filepath.Join(home, ".bun", "bin", "ccusage"+ext)
+	if _, err := os.Stat(fallback); err == nil {
+		return fallback
+	}
+	return ""
 }
 
 func loadCache[T any](name string) (*T, bool) {
@@ -160,30 +177,39 @@ func getGitInfo(dir string) (branch string, dirty bool) {
 }
 
 // fetchCcusageCosts 從 ccusage CLI 取得今日花費（慢，3-5 秒）
+// 失敗時回傳 nil，不覆蓋既有 cache
 func fetchCcusageCosts() *CostCache {
-	result := &CostCache{Time: time.Now()}
-	today := time.Now().Format("20060102")
-
-	if out := runCommand("ccusage", "daily", "--since", today, "--json"); out != "" {
-		var data struct {
-			Daily []struct {
-				TotalCost float64 `json:"totalCost"`
-			} `json:"daily"`
-		}
-		if json.Unmarshal([]byte(out), &data) == nil {
-			for _, d := range data.Daily {
-				result.Today += d.TotalCost
-			}
-		}
+	if ccusagePath == "" {
+		return nil
 	}
-
+	today := time.Now().Format("20060102")
+	out := runCommand(ccusagePath, "daily", "--since", today, "--json")
+	if out == "" {
+		return nil
+	}
+	var data struct {
+		Daily []struct {
+			TotalCost float64 `json:"totalCost"`
+		} `json:"daily"`
+	}
+	if json.Unmarshal([]byte(out), &data) != nil {
+		return nil
+	}
+	result := &CostCache{Time: time.Now()}
+	for _, d := range data.Daily {
+		result.Today += d.TotalCost
+	}
 	saveCache("ccusage-costs", result)
 	return result
 }
 
 // fetchBlockInfo 從 ccusage CLI 取得 block 資訊（慢，3-5 秒）
+// 失敗時回傳 nil，不覆蓋既有 cache
 func fetchBlockInfo() *BlockCache {
-	if out := runCommand("ccusage", "blocks", "--active", "--json"); out != "" {
+	if ccusagePath == "" {
+		return nil
+	}
+	if out := runCommand(ccusagePath, "blocks", "--active", "--json"); out != "" {
 		var data struct {
 			Blocks []struct {
 				Projection struct {
@@ -503,8 +529,11 @@ func main() {
 	if finalBlock != nil && finalBlock.CostPerHour > 0 {
 		line2Parts = append(line2Parts, fmt.Sprintf("🔥 $%.2f/hr", finalBlock.CostPerHour))
 	}
+	sessionCost := data.Cost.TotalCostUSD
 	if finalCost != nil {
-		line2Parts = append(line2Parts, fmt.Sprintf("💰 Today: $%.2f", finalCost.Today))
+		line2Parts = append(line2Parts, fmt.Sprintf("💰 Today: $%.2f (session: $%.2f)", finalCost.Today, sessionCost))
+	} else {
+		line2Parts = append(line2Parts, fmt.Sprintf("💰 Session: $%.2f", sessionCost))
 	}
 	if finalBlock != nil && finalBlock.RemainingMinutes > 0 {
 		mins := int(finalBlock.RemainingMinutes)
