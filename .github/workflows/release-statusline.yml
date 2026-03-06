@@ -66,7 +66,9 @@ jobs:
     steps:
       - name: Set version
         id: version
-        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -81,8 +83,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: statusline-latest
-          name: statusline-latest (${{ steps.version.outputs.date }})
-          body: Auto-built statusline binaries (v${{ steps.version.outputs.date }}).
+          name: statusline-latest (${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }})
+          body: Auto-built statusline binaries from commit ${{ github.sha }}.
           prerelease: false
           files: dist/*
           fail_on_unmatched_files: true
@@ -93,8 +95,8 @@ jobs:
           COMMIT_SHA: ${{ github.sha }}
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: statusline-v${{ steps.version.outputs.date }}
-          name: statusline v${{ steps.version.outputs.date }}
+          tag_name: statusline-v${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }}
+          name: statusline v${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }}
           body: Built from commit ${{ github.sha }}
           prerelease: false
           files: dist/*

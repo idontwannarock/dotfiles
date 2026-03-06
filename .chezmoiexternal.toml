@@ -8,3 +8,4 @@
     type = "file"
     executable = true
     url = "https://github.com/idontwannarock/dotfiles/releases/download/statusline-latest/statusline-{{ .chezmoi.os }}-{{ .chezmoi.arch }}{{ $ext }}"
+    refreshPeriod = "12h"
