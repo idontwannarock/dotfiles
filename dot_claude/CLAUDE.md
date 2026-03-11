@@ -59,3 +59,9 @@
 Code review 指令：`code:review-quick`（快速）、`code:review-full`（完整 4 agent）、`code:review-spec`（需求對齊）、`code:review-linus`（架構）、`code:review-security`（安全）、`code:review-types`（型別）。
 
 > 完整清單與使用情境：讀取 `~/.claude/reference.md`
+
+## Episodic Memory 使用規則
+
+- 探索性搜尋（「有沒有討論過 X」）→ 用 `search-conversations` agent（subagent 處理，保護主 context）
+- 精確提取（已知要找什麼）→ 可直接呼叫 `search`，但 `show`/`read` 必須用 pagination（`startLine`/`endLine`），單次不超過 50 行
+- 禁止無 pagination 的 `show`/`read` 呼叫
