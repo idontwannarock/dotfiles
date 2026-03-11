@@ -14,6 +14,9 @@
 *.bat text eol=crlf
 *.cmd text eol=crlf
 
+# Shell scripts without extension (wrappers in ~/.local/bin/)
+dot_local/bin/* text eol=lf
+
 # Chezmoi template fragments (shell scripts, force LF)
 .chezmoitemplates/** text eol=lf
 

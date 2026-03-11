@@ -10,14 +10,22 @@ if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
 }
 
 # 1. 新增 superpowers marketplace
-Write-Host "[1/2] Adding superpowers marketplace..." -ForegroundColor Yellow
+Write-Host "[1/3] Adding superpowers marketplace..." -ForegroundColor Yellow
 $ErrorActionPreference = "Continue"
 claude plugin marketplace add obra/superpowers-marketplace 2>&1 | Out-Null
 $ErrorActionPreference = "Stop"
 
 # 2. 安裝 superpowers plugin
-Write-Host "[2/2] Installing superpowers plugin..." -ForegroundColor Yellow
+Write-Host "[2/3] Installing superpowers plugin..." -ForegroundColor Yellow
 claude plugin install superpowers 2>&1 | Out-Null
+
+# 3. 安裝 jdtls（Java LSP 依賴）
+Write-Host "[3/3] Installing jdtls via scoop..." -ForegroundColor Yellow
+if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
+    scoop install jdtls 2>&1 | Out-Null
+} else {
+    Write-Host "WARNING: scoop not found. Install jdtls manually." -ForegroundColor Yellow
+}
 
 Write-Host "=== Plugin setup complete. Restart Claude Code to activate. ===" -ForegroundColor Cyan
 {{ end -}}

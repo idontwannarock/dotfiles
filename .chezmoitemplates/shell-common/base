@@ -2,6 +2,12 @@
 # 使用 POSIX sh 相容語法
 
 # ── PATH ───────────────────────────────────────────────────────────────────
+# ~/.local/bin（自訂 wrapper scripts，需優先於 scoop shims 等）
+case ":$PATH:" in
+    *":$HOME/.local/bin:"*) ;;
+    *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
 # bun global bin（ccusage 等全域套件）
 case ":$PATH:" in
     *":$HOME/.bun/bin:"*) ;;

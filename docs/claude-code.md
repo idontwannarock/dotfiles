@@ -40,7 +40,20 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 
 | 名稱 | 來源 | 說明 |
 |------|------|------|
-| superpowers | `claude-plugins-official` marketplace | 提供多種進階技能（brainstorming、TDD、debugging 等） |
+| superpowers | `claude-plugins-official` | 核心技能引擎（brainstorming、TDD、debugging 等） |
+| claude-md-management | `claude-plugins-official` | 審計與改善 CLAUDE.md |
+| context7 | `claude-plugins-official` | MCP server — 即時查詢 library 文件 |
+| code-simplifier | `claude-plugins-official` | 程式碼簡化 agent |
+| playwright | `claude-plugins-official` | MCP server — headless 瀏覽器自動化 |
+| commit-commands | `claude-plugins-official` | Git commit/push/clean_gone skills |
+| security-guidance | `claude-plugins-official` | 安全性指引（背景生效） |
+| pr-review-toolkit | `claude-plugins-official` | PR review agents（code-reviewer、silent-failure-hunter 等） |
+| pyright-lsp | `claude-plugins-official` | Python type checking LSP |
+| jdtls-lsp | `claude-plugins-official` | Java LSP（Eclipse JDT.LS），需 JDK 21+，透過 wrapper 自動選擇 JDK |
+| learning-output-style | `claude-plugins-official` | 互動式學習 + 教育性解說輸出模式 |
+| claude-code-setup | `claude-plugins-official` | 分析 codebase 推薦 automations |
+| episodic-memory | `superpowers-marketplace` | 跨 session 對話記憶 |
+| elements-of-style | `superpowers-marketplace` | Strunk 寫作風格改善 |
 
 ### On-demand 工具
 
@@ -65,6 +78,8 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 | [Claude Code](https://claude.com/claude-code) | `claude plugin` 指令 | 必須先安裝 |
 | [jq](https://jqlang.github.io/jq/) | plugin hook 腳本 | Windows: `scoop install jq` |
 | [dos2unix](https://dos2unix.sourceforge.io/) | 修復 hook CRLF (Windows) | Windows: `scoop install dos2unix` |
+| [jdtls](https://github.com/eclipse-jdtls/eclipse.jdt.ls) | Java LSP server | Windows: `scoop install jdtls`；Linux: 同步腳本自動下載 |
+| JDK 21+ | jdtls 執行環境 | wrapper (`~/.local/bin/jdtls`) 自動從 scoop/系統 JDK 中選擇 |
 
 ### Windows 已知問題：Plugin Hook Error
 

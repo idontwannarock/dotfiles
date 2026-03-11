@@ -13,12 +13,31 @@ if ! command -v claude &>/dev/null; then
 fi
 
 # 1. 新增 superpowers marketplace
-echo "[1/2] Adding superpowers marketplace..."
+echo "[1/3] Adding superpowers marketplace..."
 claude plugin marketplace add obra/superpowers-marketplace 2>&1 || true
 
 # 2. 安裝 superpowers plugin
-echo "[2/2] Installing superpowers plugin..."
+echo "[2/3] Installing superpowers plugin..."
 claude plugin install superpowers 2>&1 || true
+
+# 3. 安裝 jdtls（Java LSP 依賴）
+echo "[3/3] Installing jdtls..."
+JDTLS_DIR="$HOME/.local/share/jdtls"
+if ! command -v jdtls &>/dev/null && [ ! -f "$JDTLS_DIR/bin/jdtls" ]; then
+    JDTLS_VERSION="1.58.0-202602271700"
+    JDTLS_URL="https://download.eclipse.org/jdtls/snapshots/jdt-language-server-${JDTLS_VERSION}.tar.gz"
+    echo "  Downloading jdtls ${JDTLS_VERSION}..."
+    mkdir -p "$JDTLS_DIR"
+    if command -v curl &>/dev/null; then
+        curl -fsSL "$JDTLS_URL" | tar xz -C "$JDTLS_DIR"
+    elif command -v wget &>/dev/null; then
+        wget -qO- "$JDTLS_URL" | tar xz -C "$JDTLS_DIR"
+    else
+        echo "  WARNING: curl/wget not found. Install jdtls manually to $JDTLS_DIR" >&2
+    fi
+else
+    echo "  jdtls already installed, skipping."
+fi
 
 echo "=== Plugin setup complete. Restart Claude Code to activate. ==="
 {{ end -}}

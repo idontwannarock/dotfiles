@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# jdtls-wrapper — finds JDK >= 21 and delegates to the real jdtls
+# 解決 scoop reset 切換 JDK 版本時 jdtls 無法啟動的問題
+#
+# 使用方式：symlink 或 PATH 優先讓此 wrapper 取代真正的 jdtls
+
+set -euo pipefail
+
+REQUIRED_JAVA_VERSION=21
+
+# ── Find JDK >= $REQUIRED_JAVA_VERSION ────────────────────────────────────────
+find_suitable_jdk() {
+    local java_bin ver
+    local candidates=()
+
+    case "$(uname -s)" in
+        MINGW*|MSYS*)
+            # Windows (Git Bash): scan scoop JDK installations
+            for d in "$HOME/scoop/apps"/temurin{21,22,23,24,25}-jdk/current \
+                     "$HOME/scoop/apps"/graalvm-oracle-jdk/current \
+                     "$HOME/scoop/apps"/graalvm{21,22,23,24,25}*/current \
+                     "$HOME/scoop/apps"/openjdk{21,22,23,24,25}/current; do
+                [[ -d "$d" ]] && candidates+=("$d")
+            done
+            ;;
+        *)
+            # Linux/WSL: /usr/lib/jvm, SDKMAN, Homebrew
+            for d in /usr/lib/jvm/java-{21,22,23,24,25}-* \
+                     /usr/lib/jvm/temurin-{21,22,23,24,25}-* \
+                     /usr/lib/jvm/graalvm-jdk-{21,22,23,24,25}*; do
+                [[ -d "$d" ]] && candidates+=("$d")
+            done
+            if [[ -d "$HOME/.sdkman/candidates/java" ]]; then
+                for d in "$HOME/.sdkman/candidates/java"/*/; do
+                    [[ -d "$d" ]] && candidates+=("${d%/}")
+                done
+            fi
+            # Homebrew (macOS/Linuxbrew)
+            for d in /opt/homebrew/Cellar/openjdk/{21,22,23,24,25}*/libexec/openjdk.jdk/Contents/Home \
+                     /usr/local/Cellar/openjdk/{21,22,23,24,25}*/libexec/openjdk.jdk/Contents/Home; do
+                [[ -d "$d" ]] && candidates+=("$d")
+            done
+            ;;
+    esac
+
+    for d in "${candidates[@]}"; do
+        java_bin="$d/bin/java"
+        [[ -x "$java_bin" ]] || java_bin="$d/bin/java.exe"
+        [[ -x "$java_bin" ]] || continue
+
+        ver=$("$java_bin" -version 2>&1 | sed -n 's/.*version "\([0-9]*\).*/\1/p' | head -1)
+        if [[ "${ver:-0}" -ge "$REQUIRED_JAVA_VERSION" ]]; then
+            echo "$d"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# ── Find the real jdtls (not this wrapper) ────────────────────────────────────
+find_real_jdtls() {
+    local self
+    self="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || echo "$0")"
+
+    case "$(uname -s)" in
+        MINGW*|MSYS*)
+            local scoop_jdtls="$HOME/scoop/apps/jdtls/current/bin/jdtls"
+            [[ -f "$scoop_jdtls" ]] && echo "$scoop_jdtls" && return 0
+            ;;
+        *)
+            for p in /usr/bin/jdtls /usr/local/bin/jdtls \
+                     "$HOME/.local/share/jdtls/bin/jdtls"; do
+                if [[ -f "$p" ]]; then
+                    local real
+                    real="$(readlink -f "$p" 2>/dev/null || echo "$p")"
+                    [[ "$real" != "$self" ]] && echo "$p" && return 0
+                fi
+            done
+            ;;
+    esac
+
+    return 1
+}
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+JAVA_HOME=$(find_suitable_jdk) || {
+    echo "ERROR: No JDK >= $REQUIRED_JAVA_VERSION found for jdtls" >&2
+    echo "  Windows: scoop install temurin21-jdk" >&2
+    echo "  Linux:   apt install temurin-21-jdk / sdkman install java 21-tem" >&2
+    exit 1
+}
+export JAVA_HOME
+
+REAL_JDTLS=$(find_real_jdtls) || {
+    echo "ERROR: jdtls not found" >&2
+    echo "  Windows: scoop install jdtls" >&2
+    echo "  Linux:   see ~/.local/bin/install-jdtls" >&2
+    exit 1
+}
+
+exec "$REAL_JDTLS" "$@"
