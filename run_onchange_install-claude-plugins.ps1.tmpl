@@ -16,11 +16,15 @@ claude plugin marketplace add obra/superpowers-marketplace 2>&1 | Out-Null
 $ErrorActionPreference = "Stop"
 
 # 2. 安裝 superpowers plugin
-Write-Host "[2/3] Installing superpowers plugin..." -ForegroundColor Yellow
+Write-Host "[2/4] Installing superpowers plugin..." -ForegroundColor Yellow
 claude plugin install superpowers 2>&1 | Out-Null
 
-# 3. 安裝 jdtls（Java LSP 依賴）
-Write-Host "[3/3] Installing jdtls via scoop..." -ForegroundColor Yellow
+# 3. 安裝 code-review plugin（官方）
+Write-Host "[3/4] Installing code-review plugin..." -ForegroundColor Yellow
+claude plugin install code-review 2>&1 | Out-Null
+
+# 4. 安裝 jdtls（Java LSP 依賴）
+Write-Host "[4/4] Installing jdtls via scoop..." -ForegroundColor Yellow
 if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
     scoop install jdtls 2>&1 | Out-Null
 } else {
