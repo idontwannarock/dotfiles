@@ -1,9 +1,9 @@
 ---
-name: record-worklog
+name: worklog:record
 description: 從任何專案記錄工作項目到 daily worklog — 支援手動呼叫或 Claude 主動提議
 ---
 
-# Record Worklog
+# Worklog Record — 記錄工作項目
 
 從任何專案將工作紀錄寫入 daily worklog 檔案。
 
@@ -18,8 +18,8 @@ description: 從任何專案記錄工作項目到 daily worklog — 支援手動
 ### 手動呼叫
 
 ```
-/record-worklog KWS: 完成 replay 測試，原速通過
-/record-worklog CSEC: 修正 batch job soft delete 邏輯
+/worklog:record KWS: 完成 replay 測試，原速通過
+/worklog:record CSEC: 修正 batch job soft delete 邏輯
 ```
 
 ### Claude 主動提議
@@ -37,7 +37,7 @@ description: 從任何專案記錄工作項目到 daily worklog — 支援手動
 
 路徑格式：`{repo}/{company}/{YYYY}/{YYYYMM}/{YYYYMMDD}.md`
 - 檔案存在 → 直接使用
-- 檔案不存在 → 提示使用者先執行 `/daily-worklog` 建檔
+- 檔案不存在 → 提示使用者先執行 `/worklog:start` 建檔
 
 ### 3. 判斷寫入位置
 

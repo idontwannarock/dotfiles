@@ -72,7 +72,7 @@ Code review 指令：`code:review-quick`（快速）、`code:review-full`（完�
 - 瑣碎修改（typo、格式調整）
 - 使用者已經在 worklog repo 裡工作（避免重複）
 
-記錄方式：呼叫 `/record-worklog` skill。設定檔：`~/.claude/worklog-config.md`。
+記錄方式：呼叫 `/worklog:record` skill。設定檔：`~/.claude/worklog-config.md`。
 
 ## Episodic Memory 使用規則
 
