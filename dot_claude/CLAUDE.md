@@ -60,6 +60,20 @@ Code review 指令：`code:review-quick`（快速）、`code:review-full`（完�
 
 > 完整清單與使用情境：讀取 `~/.claude/reference.md`
 
+## Worklog 記錄
+
+當以下情況發生時，主動問使用者是否要記到 worklog：
+- 完成一個有意義的任務（不是瑣碎修改）
+- 進行了 git commit
+- 對話即將結束且本次有實質工作成果
+- 進行了技術架構探索、設計討論或方案評估
+
+不要在以下情況觸發：
+- 瑣碎修改（typo、格式調整）
+- 使用者已經在 worklog repo 裡工作（避免重複）
+
+記錄方式：呼叫 `/record-worklog` skill。設定檔：`~/.claude/worklog-config.md`。
+
 ## Episodic Memory 使用規則
 
 - 探索性搜尋（「有沒有討論過 X」）→ 用 `search-conversations` agent（subagent 處理，保護主 context）
