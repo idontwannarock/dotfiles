@@ -260,10 +260,10 @@ go build -o statusline statusline.go       # macOS/Linux
 - 只計算連續活動時間（心跳間隔 ≤ 60 秒）
 - Session 檔案位於 `~/.claude/statusline-sessions/`
 
-**活躍 Session 數量**（直接計算進程）：
-- Windows: 使用 PowerShell 計算 `claude` 進程數
-- macOS/Linux: 使用 `pgrep` 計算 `claude` 進程數
-- 精準反映當前開啟的 Claude Code 數量
+**活躍 Session 數量**（透過 WMI/ps 計算進程，排除非 conversation 進程）：
+- Windows: 使用 `Get-CimInstance Win32_Process` 查詢 `claude.exe`，排除 `--chrome-native-host` 等輔助進程
+- macOS/Linux: 使用 `ps aux | grep claude`，排除 `--chrome-native-host` 等輔助進程
+- 只計算實際的 CLI conversation 進程
 
 ### 參考
 

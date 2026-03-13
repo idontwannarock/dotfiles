@@ -398,8 +398,9 @@ func parseDiffStat(stat string) (insertions, deletions int) {
 
 func countClaudeProcesses() int {
 	if runtime.GOOS == "windows" {
+		// Filter out non-conversation processes like --chrome-native-host
 		cmd := exec.Command("powershell", "-NoProfile", "-Command",
-			"(Get-Process -Name 'claude' -ErrorAction SilentlyContinue | Measure-Object).Count")
+			"@(Get-CimInstance Win32_Process -Filter \"Name='claude.exe'\" | Where-Object { $_.CommandLine -notmatch '--chrome-native-host' }).Count")
 		out, err := cmd.Output()
 		if err != nil {
 			return 1
@@ -411,14 +412,11 @@ func countClaudeProcesses() int {
 		return count
 	}
 
-	cmd := exec.Command("pgrep", "-c", "claude")
+	// Filter out non-conversation processes like --chrome-native-host
+	cmd := exec.Command("sh", "-c", "ps aux | grep '[c]laude' | grep -v -- '--chrome-native-host' | wc -l")
 	out, err := cmd.Output()
 	if err != nil {
-		cmd = exec.Command("sh", "-c", "ps aux | grep -c '[c]laude'")
-		out, err = cmd.Output()
-		if err != nil {
-			return 1
-		}
+		return 1
 	}
 	count, err := strconv.Atoi(strings.TrimSpace(string(out)))
 	if err != nil {
