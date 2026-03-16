@@ -1,0 +1,78 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_onchange_ script — Windows Terminal 設定同步
+# 用 jq 將 patch 合併到現有 settings.json，保留機器上的 profiles 等設定
+
+$ErrorActionPreference = "Stop"
+
+$settingsDir = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState"
+$settingsPath = Join-Path $settingsDir "settings.json"
+
+if (-not (Test-Path $settingsDir)) {
+    Write-Host "Windows Terminal not installed, skipping." -ForegroundColor Yellow
+    exit 0
+}
+
+if (-not (Get-Command "jq" -ErrorAction SilentlyContinue)) {
+    Write-Host "jq not found, skipping Windows Terminal config." -ForegroundColor Yellow
+    exit 0
+}
+
+$patch = @'
+{
+  "copyFormatting": "none",
+  "copyOnSelect": false,
+  "defaultInputScope": "alphanumericHalfWidth",
+  "launchMode": "maximized",
+  "tabWidthMode": "titleLength",
+  "windowingBehavior": "useExisting",
+  "actions": [
+    {
+      "command": {
+        "action": "splitPane",
+        "split": "auto",
+        "splitMode": "duplicate"
+      },
+      "id": "User.splitPane.auto.duplicate"
+    }
+  ],
+  "keybindings": [
+    { "id": "User.splitPane.auto.duplicate", "keys": "alt+shift+d" },
+    { "id": "Terminal.DuplicatePaneRight", "keys": "alt+shift+plus" },
+    { "id": "Terminal.DuplicatePaneDown", "keys": "alt+shift+minus" },
+    { "id": "Terminal.ResizePaneLeft", "keys": "alt+shift+left" },
+    { "id": "Terminal.ResizePaneRight", "keys": "alt+shift+right" },
+    { "id": "Terminal.ResizePaneUp", "keys": "alt+shift+up" },
+    { "id": "Terminal.ResizePaneDown", "keys": "alt+shift+down" },
+    { "id": "Terminal.FindText", "keys": "ctrl+shift+f" },
+    { "id": "Terminal.PasteFromClipboard", "keys": "ctrl+v" },
+    { "id": "Terminal.CopyToClipboard", "keys": "ctrl+c" }
+  ],
+  "profiles": {
+    "defaults": {
+      "cursorShape": "filledBox",
+      "font": {
+        "face": "CaskaydiaCove Nerd Font Mono",
+        "size": 13
+      },
+      "intenseTextStyle": "all"
+    }
+  }
+}
+'@
+
+if (Test-Path $settingsPath) {
+    $existing = Get-Content -Raw $settingsPath
+} else {
+    $existing = "{}"
+}
+
+$merged = ($existing, $patch) | jq -s '.[0] * .[1]'
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "jq merge failed." -ForegroundColor Red
+    exit 1
+}
+
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($settingsPath, ($merged -join "`n"), $utf8NoBom)
+Write-Host "Windows Terminal settings merged." -ForegroundColor Green
+{{ end -}}
