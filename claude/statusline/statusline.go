@@ -398,9 +398,10 @@ func parseDiffStat(stat string) (insertions, deletions int) {
 
 func countClaudeProcesses() int {
 	if runtime.GOOS == "windows" {
-		// Filter out non-conversation processes like --chrome-native-host
+		// Only count Claude Code CLI processes (.local\bin\claude.exe),
+		// excluding Claude Desktop (Electron) and helper processes like --chrome-native-host
 		cmd := exec.Command("powershell", "-NoProfile", "-Command",
-			"@(Get-CimInstance Win32_Process -Filter \"Name='claude.exe'\" | Where-Object { $_.CommandLine -notmatch '--chrome-native-host' }).Count")
+			"@(Get-CimInstance Win32_Process -Filter \"Name='claude.exe'\" | Where-Object { $_.ExecutablePath -like '*\\.local\\bin\\claude.exe' -and $_.CommandLine -notmatch '--chrome-native-host' }).Count")
 		out, err := cmd.Output()
 		if err != nil {
 			return 1
@@ -412,8 +413,8 @@ func countClaudeProcesses() int {
 		return count
 	}
 
-	// Filter out non-conversation processes like --chrome-native-host
-	cmd := exec.Command("sh", "-c", "ps aux | grep '[c]laude' | grep -v -- '--chrome-native-host' | wc -l")
+	// Only count Claude Code CLI processes, excluding helpers
+	cmd := exec.Command("sh", "-c", "ps aux | grep '[.]local/bin/claude' | grep -v -- '--chrome-native-host' | wc -l")
 	out, err := cmd.Output()
 	if err != nil {
 		return 1
