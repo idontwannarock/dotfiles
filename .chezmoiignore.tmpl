@@ -12,6 +12,11 @@ scripts
 Documents
 {{- end }}
 
+# ── codex config（Windows 用 run_after_ 處理，排除 modify_ script）────────
+{{- if eq .chezmoi.os "windows" }}
+.codex/config.toml
+{{- end }}
+
 # ── zsh 設定（只部署到 macOS）───────────────────────────────────────────────
 {{- if ne .chezmoi.os "darwin" }}
 .zshrc

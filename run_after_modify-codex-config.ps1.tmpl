@@ -1,0 +1,75 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_after_ script — 合併 codex config（Windows）
+# 同步全域設定與通用 MCP servers，但保留本機的 per-project 設定
+
+$configDir = Join-Path $env:USERPROFILE ".codex"
+$configPath = Join-Path $configDir "config.toml"
+
+# 確保目錄存在
+if (-not (Test-Path $configDir)) {
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+}
+
+# 從現有檔案中提取 [projects.*] 區塊
+$projectSections = ""
+if (Test-Path $configPath) {
+    $lines = Get-Content $configPath -Encoding UTF8
+    $inProject = $false
+    $sections = @()
+    foreach ($line in $lines) {
+        if ($line -match '^\[projects\.') {
+            $inProject = $true
+            $sections += $line
+        } elseif ($line -match '^\[' -and $inProject) {
+            $inProject = $false
+        } elseif ($inProject) {
+            $sections += $line
+        }
+    }
+    if ($sections.Count -gt 0) {
+        $projectSections = "`n" + ($sections -join "`n")
+    }
+}
+
+# 寫入合併後的設定
+$globalConfig = @'
+#:schema https://developers.openai.com/codex/config-schema.json
+
+model = "gpt-5.4"
+model_reasoning_effort = "medium"
+model_verbosity = "medium"
+hide_agent_reasoning = true
+project_doc_fallback_filenames = ["CLAUDE.md"]
+project_doc_max_bytes = 65536
+
+instructions = """
+Prefer native Codex features over Claude-specific abstractions.
+If a repository contains .claude/CLAUDE.md, read it when project workflow matters.
+For non-trivial coding tasks, suggest using the $codex-claude-parity skill before implementation.
+When a task ends with meaningful progress, ask whether it should be recorded in worklog.
+"""
+
+[profiles.quick]
+model_reasoning_effort = "low"
+model_verbosity = "low"
+
+[profiles.deep]
+model_reasoning_effort = "high"
+model_verbosity = "medium"
+
+[profiles.research]
+model_reasoning_effort = "high"
+model_verbosity = "medium"
+web_search = "live"
+'@
+
+$mcpConfig = @'
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+'@
+
+$result = $globalConfig + $projectSections + $mcpConfig
+# 使用 .NET 方法寫入，避免 PowerShell 5.x 的 BOM 問題
+[System.IO.File]::WriteAllText($configPath, $result + "`n", [System.Text.UTF8Encoding]::new($false))
+{{ end -}}
