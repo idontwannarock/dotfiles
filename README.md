@@ -143,6 +143,8 @@ dotfiles: 3 new commit(s). Run 'chezmoi update' to apply.
 | Claude Code 全域設定 | `~/.claude/CLAUDE.md` | 跨平台 |
 | Claude Code commands | `~/.claude/commands/` | 跨平台 |
 | Claude Code agents | `~/.claude/agents/` | 跨平台 |
+| Codex CLI 全域設定 | `~/.codex/config.toml` | 跨平台 |
+| Codex CLI skills | `~/.codex/skills/` | 跨平台 |
 | Statusline binary | `~/.local/bin/statusline` | 跨平台（自動下載） |
 
 ### 自動安裝的依賴
@@ -154,6 +156,7 @@ dotfiles: 3 new commit(s). Run 'chezmoi update' to apply.
 | [Starship](https://starship.rs/) | scoop | brew | curl installer |
 | [Fastfetch](https://github.com/fastfetch-cli/fastfetch) | scoop | brew | apt (PPA) |
 | [Claude Code](https://claude.com/claude-code) | npm | npm | npm |
+| [Codex CLI](https://developers.openai.com/codex) | npm | npm / brew | npm |
 
 ### 不納入 chezmoi（手動管理）
 
@@ -189,6 +192,8 @@ dotfiles/
 ├── dot_claude/               # ~/.claude/ 設定
 │   ├── exact_commands/       # Commands（exact_：自動清理移除的檔案）
 │   └── exact_agents/         # Agents（exact_：自動清理移除的檔案）
+├── dot_codex/                # ~/.codex/ 設定
+│   └── skills/               # Codex skills
 ├── dot_local/bin/            # ~/.local/bin/ 腳本
 ├── dot_shell_common.tmpl     # ~/.shell_common 入口（依 OS 載入 template 片段）
 ├── dot_bashrc.tmpl           # ~/.bashrc 入口（Windows Git Bash / Linux/WSL）
@@ -212,6 +217,7 @@ dotfiles/
 |------|------|
 | [Bash](docs/bash.md) | Bash 設定、worklogs、Windows Terminal 整合 |
 | [Claude Code](docs/claude-code.md) | Claude Code 設定、statusline、plugins |
+| [Codex CLI](docs/codex-cli.md) | Codex CLI 設定、skills、Claude workflow 對齊 |
 | [Fastfetch](docs/fastfetch.md) | Fastfetch 系統資訊工具 |
 | [Git 憑證管理](docs/git-credentials.md) | Git 遠端認證（GCM、SSH、WSL） |
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |

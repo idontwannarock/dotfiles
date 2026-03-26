@@ -54,3 +54,6 @@ _dotfiles_check_update() {
     fi
 }
 _dotfiles_check_update
+
+# ── Fastfetch ─────────────────────────────────────────────────────────────────
+command -v fastfetch >/dev/null 2>&1 && fastfetch -c "$HOME/.config/fastfetch/config.jsonc"

@@ -1,0 +1,12 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_once_ script — 安裝 NVM（Unix/macOS/WSL）
+# 只在 nvm 尚未安裝時執行，冪等設計
+
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+    exit 0
+fi
+
+echo "Installing NVM..."
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+{{ end -}}
