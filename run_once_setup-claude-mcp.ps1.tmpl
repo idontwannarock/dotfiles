@@ -1,0 +1,25 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_ script — 註冊 Claude Code MCP servers（Windows）
+# claude mcp add 是冪等操作，已存在的 server 會被覆寫
+
+if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
+    Write-Host "[mcp] claude CLI not found, skipping MCP setup." -ForegroundColor Yellow
+    exit 0
+}
+
+Write-Host "[mcp] Setting up Claude Code MCP servers..." -ForegroundColor Cyan
+
+# agent-browser — AI agent 瀏覽器自動化
+if (Get-Command "npx" -ErrorAction SilentlyContinue) {
+    claude mcp add --scope user agent-browser -- npx agent-browser-mcp
+    Write-Host "[mcp] agent-browser registered." -ForegroundColor Green
+
+    # chrome-devtools — 效能分析/除錯
+    claude mcp add --scope user chrome-devtools -- cmd /c npx -y chrome-devtools-mcp@latest
+    Write-Host "[mcp] chrome-devtools registered." -ForegroundColor Green
+} else {
+    Write-Host "[mcp] npx not found, skipping MCP setup." -ForegroundColor Yellow
+}
+
+Write-Host "[mcp] Done." -ForegroundColor Cyan
+{{ end -}}

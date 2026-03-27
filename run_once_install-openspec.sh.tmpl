@@ -1,0 +1,27 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_once_ script — 安裝 OpenSpec CLI + 設定 delivery mode（Unix/macOS/WSL）
+# 只在 openspec 指令不存在時執行安裝，冪等設計
+
+# 載入 nvm（如有）
+if ! command -v npm &>/dev/null; then
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+fi
+
+if command -v openspec &>/dev/null; then
+    exit 0  # 已安裝，跳過
+fi
+
+if ! command -v npm &>/dev/null; then
+    echo "[openspec] npm not found, skipping install."
+    exit 0
+fi
+
+echo "[openspec] Installing OpenSpec CLI..."
+npm install -g @fission-ai/openspec
+
+# 只產生 slash commands，不產生 SKILL.md（避免與全域 opsx/* commands 重複）
+openspec config set delivery commands
+echo "[openspec] Installed and configured (delivery=commands)."
+{{ end -}}

@@ -1,0 +1,28 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_once_ script — 註冊 Claude Code MCP servers（Unix/macOS/WSL）
+# claude mcp add 是冪等操作，已存在的 server 會被覆寫
+
+if ! command -v claude &>/dev/null; then
+    echo "[mcp] claude CLI not found, skipping MCP setup."
+    exit 0
+fi
+
+echo "[mcp] Setting up Claude Code MCP servers..."
+
+# agent-browser — AI agent 瀏覽器自動化
+if command -v npx &>/dev/null; then
+    claude mcp add --scope user agent-browser -- npx agent-browser-mcp
+    echo "[mcp] agent-browser registered."
+else
+    echo "[mcp] npx not found, skipping agent-browser."
+fi
+
+# chrome-devtools — 效能分析/除錯
+if command -v npx &>/dev/null; then
+    claude mcp add --scope user chrome-devtools -- npx -y chrome-devtools-mcp@latest
+    echo "[mcp] chrome-devtools registered."
+fi
+
+echo "[mcp] Done."
+{{ end -}}
