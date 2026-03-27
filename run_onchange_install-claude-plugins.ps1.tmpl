@@ -20,15 +20,33 @@ Write-Host "[2/4] Installing superpowers plugin..." -ForegroundColor Yellow
 claude plugin install superpowers 2>&1 | Out-Null
 
 # 3. 安裝 code-review plugin（官方）
-Write-Host "[3/4] Installing code-review plugin..." -ForegroundColor Yellow
+Write-Host "[3/5] Installing code-review plugin..." -ForegroundColor Yellow
 claude plugin install code-review 2>&1 | Out-Null
 
-# 4. 安裝 jdtls（Java LSP 依賴）
-Write-Host "[4/4] Installing jdtls via scoop..." -ForegroundColor Yellow
+# 4. 安裝 slack plugin（官方）
+Write-Host "[4/5] Installing slack plugin..." -ForegroundColor Yellow
+claude plugin install slack 2>&1 | Out-Null
+
+# 5. 安裝 jdtls（Java LSP 依賴）
+Write-Host "[5/6] Installing jdtls via scoop..." -ForegroundColor Yellow
 if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
     scoop install jdtls 2>&1 | Out-Null
 } else {
     Write-Host "WARNING: scoop not found. Install jdtls manually." -ForegroundColor Yellow
+}
+
+# 6. 清理不需要的 plugin cache
+Write-Host "[6/6] Cleaning up stale plugin caches..." -ForegroundColor Yellow
+$pluginCache = "$env:USERPROFILE\.claude\plugins\cache"
+# explanatory-output-style: 已被 learning-output-style 完全取代
+if (Test-Path "$pluginCache\claude-plugins-official\explanatory-output-style") {
+    Remove-Item -Recurse -Force "$pluginCache\claude-plugins-official\explanatory-output-style"
+    Write-Host "  Removed explanatory-output-style" -ForegroundColor Green
+}
+# superpowers marketplace 版: 已改用 official 版
+if (Test-Path "$pluginCache\superpowers-marketplace\superpowers") {
+    Remove-Item -Recurse -Force "$pluginCache\superpowers-marketplace\superpowers"
+    Write-Host "  Removed marketplace superpowers" -ForegroundColor Green
 }
 
 Write-Host "=== Plugin setup complete. Restart Claude Code to activate. ===" -ForegroundColor Cyan

@@ -21,11 +21,15 @@ echo "[2/4] Installing superpowers plugin..."
 claude plugin install superpowers 2>&1 || true
 
 # 3. 安裝 code-review plugin（官方）
-echo "[3/4] Installing code-review plugin..."
+echo "[3/5] Installing code-review plugin..."
 claude plugin install code-review 2>&1 || true
 
-# 4. 安裝 jdtls（Java LSP 依賴）
-echo "[4/4] Installing jdtls..."
+# 4. 安裝 slack plugin（官方）
+echo "[4/5] Installing slack plugin..."
+claude plugin install slack 2>&1 || true
+
+# 5. 安裝 jdtls（Java LSP 依賴）
+echo "[5/6] Installing jdtls..."
 JDTLS_DIR="$HOME/.local/share/jdtls"
 if ! command -v jdtls &>/dev/null && [ ! -f "$JDTLS_DIR/bin/jdtls" ]; then
     JDTLS_VERSION="1.58.0-202602271700"
@@ -42,6 +46,14 @@ if ! command -v jdtls &>/dev/null && [ ! -f "$JDTLS_DIR/bin/jdtls" ]; then
 else
     echo "  jdtls already installed, skipping."
 fi
+
+# 6. 清理不需要的 plugin cache
+echo "[6/6] Cleaning up stale plugin caches..."
+PLUGIN_CACHE="$HOME/.claude/plugins/cache"
+# explanatory-output-style: 已被 learning-output-style 完全取代
+rm -rf "$PLUGIN_CACHE/claude-plugins-official/explanatory-output-style" 2>/dev/null && echo "  Removed explanatory-output-style" || true
+# superpowers marketplace 版: 已改用 official 版
+rm -rf "$PLUGIN_CACHE/superpowers-marketplace/superpowers" 2>/dev/null && echo "  Removed marketplace superpowers" || true
 
 echo "=== Plugin setup complete. Restart Claude Code to activate. ==="
 {{ end -}}

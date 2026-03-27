@@ -10,3 +10,6 @@
 
 # chezmoi
 .chezmoi*.toml.bak
+.spectra/
+.spectra.yaml
+openspec/.vector-search.db*
