@@ -14,6 +14,7 @@
 param()
 
 $Company = "shoalter"
+$GitHubRepo = "idontwannarock/worklogs"
 $ConfigPath = Join-Path $HOME ".claude" "worklog-config.md"
 
 if (-not $env:WORKLOGS_PATH) {
@@ -37,8 +38,10 @@ if (-not (Test-Path $configDir)) {
 
 - repo: $env:WORKLOGS_PATH
 - company: $Company
+- github-repo: $GitHubRepo
 "@ | Set-Content -Path $ConfigPath -Encoding UTF8 -NoNewline
 
 Write-Host "Created $ConfigPath" -ForegroundColor Green
 Write-Host "  repo: $env:WORKLOGS_PATH" -ForegroundColor Gray
 Write-Host "  company: $Company" -ForegroundColor Gray
+Write-Host "  github-repo: $GitHubRepo" -ForegroundColor Gray

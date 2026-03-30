@@ -9,6 +9,7 @@
 #   ./set-worklog-config.sh
 
 COMPANY="shoalter"
+GITHUB_REPO="idontwannarock/worklogs"
 CONFIG_PATH="$HOME/.claude/worklog-config.md"
 
 if [ -z "$WORKLOGS_PATH" ]; then
@@ -29,8 +30,10 @@ cat > "$CONFIG_PATH" << EOF
 
 - repo: $WORKLOGS_PATH
 - company: $COMPANY
+- github-repo: $GITHUB_REPO
 EOF
 
 echo -e "\033[32mCreated $CONFIG_PATH\033[0m"
 echo -e "\033[90m  repo: $WORKLOGS_PATH\033[0m"
 echo -e "\033[90m  company: $COMPANY\033[0m"
+echo -e "\033[90m  github-repo: $GITHUB_REPO\033[0m"

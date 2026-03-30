@@ -1,17 +1,16 @@
 ---
 name: worklog:record
-description: 從任何專案記錄工作項目到 daily worklog — 支援手動呼叫或 Claude 主動提議
+description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫或 Claude 主動提議。當使用者提到記錄工作、筆記、行政事項、OKR，或用 /worklog:record 時觸發。
 ---
 
 # Worklog Record — 記錄工作項目
 
-從任何專案將工作紀錄寫入 daily worklog 檔案。
+將工作紀錄寫為 GitHub Issue Comment，由 generate-worklog workflow 自動彙整到 daily worklog。
 
 ## 設定
 
 讀取 `~/.claude/worklog-config.md` 取得：
-- `repo`: worklog repo 的絕對路徑
-- `company`: 公司名稱（用於定位檔案路徑）
+- `github-repo`: GitHub repo（如 `idontwannarock/worklogs`）
 
 ## 使用方式
 
@@ -20,6 +19,7 @@ description: 從任何專案記錄工作項目到 daily worklog — 支援手動
 ```
 /worklog:record KWS: 完成 replay 測試，原速通過
 /worklog:record CSEC: 修正 batch job soft delete 邏輯
+/worklog:record [okr] 解決 cache invalidation 的 edge case
 ```
 
 ### Claude 主動提議
@@ -30,33 +30,34 @@ description: 從任何專案記錄工作項目到 daily worklog — 支援手動
 
 ### 1. 讀取設定
 
-讀取 `~/.claude/worklog-config.md` 取得 repo 路徑和 company。
-若檔案不存在，提示使用者建立。
+讀取 `~/.claude/worklog-config.md` 取得 `github-repo`。
+若檔案不存在或缺少 `github-repo`，提示使用者建立。
 
-### 2. 定位今日 worklog
+### 2. 列出 Issues 讓使用者選擇
 
-路徑格式：`{repo}/{company}/{YYYY}/{YYYYMM}/{YYYYMMDD}.md`
-- 檔案存在 → 直接使用
-- 檔案不存在 → 提示使用者先執行 `/worklog:start` 建檔
+用 `gh api repos/{github-repo}/issues` 列出所有 open Issues（排除 `daily` label）。
 
-### 3. 判斷寫入位置
+呈現選單：
+```
+請選擇要記錄到哪個 Issue：
+1. #1 KWS 重構 [shoalter]
+2. #2 團隊管理 [shoalter]
+3. (寫到今天的 Daily Issue)
+```
 
-根據內容判斷寫入哪個區塊：
+使用者選一個。如果選 Daily Issue，找今天的 daily Issue（title 為 `YYYY-MM-DD Worklog`）。
 
-| 關鍵字或 context | 目標區塊 |
-|---|---|
-| 有明確的專案/技術主題 | `## 筆記` 下的對應 `### {主題}` 子區塊 |
-| 是待辦事項 | `## Daily To Do`（加為 `- [ ]` 項目） |
-| 是行政/管理事項 | `## Administration` |
-| 無法判斷 | 詢問使用者 |
+### 3. 檢查 Daily Issue 存在
 
-### 4. 寫入
+若使用者選了 Daily Issue 但不存在，提示：
+> 今天的 Daily Issue 還沒建立，請先執行 `gh workflow run create-daily.yml`
 
-- 追加到對應區塊末尾
-- 保持現有格式（不改動其他內容）
-- 若參數中已包含完整描述，直接寫入
-- 若從對話 context 產生，先摘要再確認後寫入
+### 4. 寫入 Comment
+
+用 `gh api repos/{github-repo}/issues/{number}/comments` 寫入 Comment。
+
+Comment body 就是使用者提供的內容。如果內容帶 `[okr]` 前綴，保留前綴。
 
 ### 5. 確認
 
-輸出寫入的內容和位置，讓使用者確認。
+輸出寫入的內容、目標 Issue、Comment URL。
