@@ -5,4 +5,7 @@ try {
     chcp 65001 > $null
 } catch {}
 
-Clear-Host
+# Only clear screen in interactive terminal sessions (skip during chezmoi runs, scripts, etc.)
+if ([Environment]::UserInteractive -and $Host.Name -eq 'ConsoleHost' -and -not $env:CHEZMOI) {
+    Clear-Host
+}
