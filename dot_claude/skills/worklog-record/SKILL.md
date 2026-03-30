@@ -43,9 +43,22 @@ description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫�
 1. #1 KWS 重構 [shoalter]
 2. #2 團隊管理 [shoalter]
 3. (寫到今天的 Daily Issue)
+4. (開新 Issue)
 ```
 
 使用者選一個。如果選 Daily Issue，找今天的 daily Issue（title 為 `YYYY-MM-DD Worklog`）。
+
+### 2a. 開新 Issue（僅在使用者選「開新 Issue」時執行）
+
+從當前對話上下文推斷以下資訊，組成草稿一次呈現給使用者確認：
+
+- **Title**（必填）— 從本次工作內容總結
+- **Label** — 用 `gh api repos/{github-repo}/labels` 列出現有 labels，從工作內容判斷最可能的 label
+- **描述**（選填）— 從工作內容摘要
+
+若無法從上下文推斷某項，才詢問使用者。
+
+呈現草稿讓使用者確認或修改後，用 `gh api repos/{github-repo}/issues` POST 建立 Issue。建立後以新 Issue 作為本次記錄目標，繼續步驟 4。
 
 ### 3. 檢查 Daily Issue 存在
 
