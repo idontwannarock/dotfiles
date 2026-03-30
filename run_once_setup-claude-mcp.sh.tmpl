@@ -10,18 +10,17 @@ fi
 
 echo "[mcp] Setting up Claude Code MCP servers..."
 
-# agent-browser — AI agent 瀏覽器自動化
-if command -v npx &>/dev/null; then
-    claude mcp add --scope user agent-browser -- npx agent-browser-mcp
-    echo "[mcp] agent-browser registered."
-else
-    echo "[mcp] npx not found, skipping agent-browser."
-fi
+add_npx_mcp() {
+    local name="$1"; shift
+    claude mcp add --scope user "$name" -- npx "$@"
+    echo "[mcp] $name registered."
+}
 
-# chrome-devtools — 效能分析/除錯
 if command -v npx &>/dev/null; then
-    claude mcp add --scope user chrome-devtools -- npx -y chrome-devtools-mcp@latest
-    echo "[mcp] chrome-devtools registered."
+    add_npx_mcp "agent-browser" "agent-browser-mcp"
+    add_npx_mcp "chrome-devtools" "-y" "chrome-devtools-mcp@latest"
+else
+    echo "[mcp] npx not found, skipping MCP setup."
 fi
 
 echo "[mcp] Done."
