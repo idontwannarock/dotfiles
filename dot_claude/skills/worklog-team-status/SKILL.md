@@ -1,6 +1,6 @@
 ---
 name: worklog:team-status
-description: 查詢 Jira + Confluence 彙整團隊現況，結果寫到 GitHub Issue Comment。當使用者提到 team status、團隊狀態、查 Jira，或用 /worklog:team-status 時觸發。
+description: 查詢 Jira + Confluence 彙整團隊現況，結果寫到 GitHub Issue Comment。當使用者提到 team status、團隊狀態、查 Jira、團隊進度、成員工作狀況、sprint 狀態，或用 /worklog:team-status 時觸發。也適用於站會前準備、週報整理、或需要了解團隊成員目前在做什麼的場景。
 ---
 
 # Team Status 彙整
@@ -30,7 +30,7 @@ description: 查詢 Jira + Confluence 彙整團隊現況，結果寫到 GitHub I
 
 ### 2.5 比對 worklog 缺失票（Stale Ticket Reconciliation）
 
-若有存取今日 worklog（從 worklog:start/end 呼叫，或獨立執行時 worklog 存在）：
+若有存取今日 worklog（從今天的 Daily Issue Comments 取得，或獨立執行時 worklog 存在）：
 
 1. 提取 worklog Team 區塊中所有 ticket key（如 `CBK-155`、`MC-864`）
 2. 與步驟 2 的 Jira 結果比對，找出「worklog 有但 Jira 結果沒有」的 ticket keys

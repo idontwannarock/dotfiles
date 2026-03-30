@@ -1,6 +1,6 @@
 ---
 name: worklog:record
-description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫或 Claude 主動提議。當使用者提到記錄工作、筆記、行政事項、OKR，或用 /worklog:record 時觸發。
+description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫或 Claude 主動提議。當使用者完成有意義的工作、進行 git commit、對話即將結束且有實質成果、進行技術探索或設計討論時觸發。也適用於使用者提到記錄工作、筆記、行政事項、OKR，或直接用 /worklog:record。
 ---
 
 # Worklog Record — 記錄工作項目
@@ -35,7 +35,8 @@ description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫�
 
 ### 2. 列出 Issues 讓使用者選擇
 
-用 `gh api repos/{github-repo}/issues` 列出所有 open Issues（排除 `daily` label）。
+用 `gh api repos/{github-repo}/issues?state=open&per_page=100` 列出所有 open Issues。
+Client-side 過濾掉帶有 `daily` label 的 Issues（gh api 不支援 exclude label）。
 
 呈現選單：
 ```
