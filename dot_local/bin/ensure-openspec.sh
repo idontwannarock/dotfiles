@@ -10,7 +10,7 @@ if ! command -v openspec &>/dev/null; then
     exit 1
 fi
 
-if [ -d ".openspec" ]; then
+if [ -d ".claude/commands/opsx" ]; then
     echo "[openspec] Project already initialized, running update..."
     openspec update
     echo "[openspec] Update complete."
