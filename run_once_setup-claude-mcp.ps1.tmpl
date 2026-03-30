@@ -11,7 +11,7 @@ Write-Host "[mcp] Setting up Claude Code MCP servers..." -ForegroundColor Cyan
 
 # agent-browser — AI agent 瀏覽器自動化
 if (Get-Command "npx" -ErrorAction SilentlyContinue) {
-    claude mcp add --scope user agent-browser -- npx agent-browser-mcp
+    claude mcp add --scope user agent-browser -- cmd /c npx agent-browser-mcp
     Write-Host "[mcp] agent-browser registered." -ForegroundColor Green
 
     # chrome-devtools — 效能分析/除錯
