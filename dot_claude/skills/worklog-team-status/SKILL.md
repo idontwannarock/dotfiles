@@ -1,84 +1,84 @@
 ---
 name: worklog:team-status
-description: 查詢 Jira + Confluence 彙整團隊現況，結果寫到 GitHub Issue Comment。當使用者提到 team status、團隊狀態、查 Jira、團隊進度、成員工作狀況、sprint 狀態，或用 /worklog:team-status 時觸發。也適用於站會前準備、週報整理、或需要了解團隊成員目前在做什麼的場景。
+description: 觸發 GitHub Actions 更新團隊 Jira 狀態到 per-member issues，然後讀取並呈現。當使用者提到 team status、團隊狀態、查 Jira、團隊進度、成員工作狀況、sprint 狀態，或用 /worklog:team-status 時觸發。也適用於站會前準備、週報整理、想了解團隊成員目前手上有什麼票、誰在忙什麼的場景。即使使用者只說「查一下大家的狀況」或「今天站會要報什麼」也應觸發。
 ---
 
-# Team Status 彙整
+# Team Status 查詢
 
-查詢團隊 Jira tickets 與 Confluence 進度頁，按人彙整現況。
+觸發 `update-team-status` workflow 更新 per-member issues，然後讀取呈現。
 
 ## 設定
 
 - 公司名稱預設 `shoalter`，可用 `/worklog:team-status [company]` 覆寫
-- 組員清單：`{company}/team.md`
-- Slack channel 搜尋：可選，用 `/worklog:team-status --slack #channel-name` 觸發
+- 組員清單：worklogs repo 的 `{company}/team.md`
 
 ## 執行流程
 
 ### 1. 初始化
 
-讀取 `{company}/team.md` 取得成員清單與 Jira account IDs。
-讀取 `{company}/atlassian-config.md` 取得 Jira/Confluence 環境配置。
-
-### 2. 查詢 Jira
-
-讀取 `references/jql-templates.md` 取得 JQL 模板。
-用 team.md 的 account IDs 和 atlassian-config.md 的 projects 填入 placeholder。
-讀取 `references/jira-query.md` 取得查詢執行方式。
-執行查詢，依 Dev PIC 優先、assignee 備援分組。
-讀取 `references/status-mapping.md` 將 Jira 狀態轉為 worklog tag。
-
-### 2.5 比對 worklog 缺失票（Stale Ticket Reconciliation）
-
-若有存取今日 worklog（從今天的 Daily Issue Comments 取得，或獨立執行時 worklog 存在）：
-
-1. 提取 worklog Team 區塊中所有 ticket key（如 `CBK-155`、`MC-864`）
-2. 與步驟 2 的 Jira 結果比對，找出「worklog 有但 Jira 結果沒有」的 ticket keys
-3. 對缺失票執行 `references/jql-templates.md` 的 **Stale Ticket Lookup** JQL 查詢
-4. 依 `references/stale-ticket-handling.md` 判斷原因並記錄到異動紀錄
-
-### 3. 讀取 Confluence
-
-讀取 `references/confluence-parse.md` 取得解析邏輯。
-用 atlassian-config.md 的 page ID 取得 latest 頁內容。
-依成員 heading 拆分，提取各類項目。
-
-### 4. 跟隨 Slack 連結
-
-若 Confluence 內容含 Slack 連結：
-讀取 `{company}/slack-config.md` 取得 workspace 設定。
-讀取 `references/slack-thread.md` 取得讀取與摘要流程。
-逐一讀取 thread 並產生摘要。
-
-### 5. [可選] 搜尋 Slack Channel
-
-僅在指定 `--slack` 參數時執行。
-依 `references/slack-thread.md` 的 Channel 搜尋段落執行。
-
-### 6. 合併輸出
-
-讀取 `references/output-format.md` 取得格式規範。
-合併所有來源資料，按人輸出。
-標記差異。
-
-### 7. 寫入 Issue Comment
-
 讀取 `~/.claude/worklog-config.md` 取得 `github-repo`。
+讀取 worklogs repo 的 `{company}/team.md` 取得成員名稱清單。
 
-尋找目標 Issue（優先順序）：
-1. Open Issue 標題包含「團隊管理」→ 寫到該 Issue
-2. 找不到 → 寫到今天的 Daily Issue（title 為 `YYYY-MM-DD Worklog`）
-3. 都找不到 → 輸出到終端，提示使用者先建 Issue
+### 2. 觸發 workflow 並取得時間戳
 
-Comment body 格式：
+記錄觸發前的 UTC 時間戳（`date -u +%Y-%m-%dT%H:%M:%SZ`），然後觸發：
 ```
-[team-status]
+gh workflow run update-team-status.yml --repo {github-repo}
+```
 
-## Team（Jira 自動查詢 YYYY-MM-DD）
+### 3. 等待完成
+
+先等 5 秒讓 GitHub 排程 run，然後用以下指令輪詢：
+```
+gh run list --workflow=update-team-status.yml --repo {github-repo} --limit 5 --json databaseId,status,conclusion,createdAt
+```
+
+從結果中找 `createdAt` 晚於步驟 2 時間戳的 run（避免誤讀舊 run）。
+每 10 秒查一次，最多等 3 分鐘。
+
+- **completed + success**：進入步驟 4
+- **completed + failure**：顯示錯誤，提示使用者用 `gh run view {id} --log` 檢查
+- **超時**：告知使用者 workflow 未在 3 分鐘內完成，可手動查看
+
+### 4. 讀取 per-member issues
+
+對每位成員，查詢標題為 `Team: {name}` 且有 `team-member` label 的 open issue：
+```
+gh api repos/{github-repo}/issues --method GET -f state=open -f labels=team-member -f per_page=100
+```
+
+**首次執行**：如果查不到 `team-member` issues，這是正常的 — workflow 會在首次執行時自動建立。此時直接告知使用者「per-member issues 已建立，資料已寫入」即可。
+
+讀取每個 issue 的 comments，用陣列索引取前兩個（GitHub API 按建立時間排序）：
+```
+gh api repos/{github-repo}/issues/{number}/comments --jq '.[0:2]'
+```
+
+- `.[0]`（Comment #1）：Active Tasks
+- `.[1]`（Comment #2）：Completed
+
+### 5. 呈現
+
+解析 comment 內容：
+- `<!-- jira-start -->` 到 `<!-- jira-end -->` 之間的項目是 **Jira 自動產生**的，直接使用
+- `### Manual Tasks` 下的項目是**手動新增**的，輸出時加 `(手動)` 前綴以區分
+
+按成員分組輸出到終端：
+
+```
+## Team Status（YYYY-MM-DD）
 
 ### 成員名稱
-- [status] 專案: 項目描述
-...
+**Active:**
+- [wip] CBK-155: Checkout refactoring — In Code Review
+- [todo] MC-864: Mobile payment flow — Sprint 12
+- [wip] (手動) Internal tool: Build deploy dashboard
+
+**Recently Completed:**
+- [done] CBK-140: Cart API migration — 2026-03-28
 ```
 
-用 `gh api repos/{github-repo}/issues/{number}/comments` 寫入。
+### 6. [可選] 寫入 Issue Comment
+
+若使用者要求記錄（或搭配 `/worklog:record` 使用），將結果寫到 daily issue。
+不再自動寫入 `[team-status]` comment — per-member issues 本身就是 single source of truth。

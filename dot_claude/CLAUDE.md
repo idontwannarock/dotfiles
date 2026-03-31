@@ -77,7 +77,7 @@ Code review 指令：`code:review-quick`（快速）、`code:review-full`（完�
 可用的 worklog skills：
 - `/worklog:record` — 記錄工作項目到 Issue Comment（涵蓋筆記、行政、OKR 等）
 - `/worklog:daily` — 管理今日待辦（寫 `[daily-todo]`/`[daily-done]` 到 daily Issue）
-- `/worklog:team-status` — 查 Jira/Confluence 寫到 Issue Comment
+- `/worklog:team-status` — 觸發 workflow 更新 per-member issues 並呈現團隊狀態
 
 已移除的 skills（功能由 GitHub Actions workflow 或 record 取代）：
 `worklog:start`、`worklog:end`、`worklog:plan`、`worklog:notes`、`worklog:team`、`worklog:okr`、`worklog:admin`、`worklog:tidy`、`worklog:move`
