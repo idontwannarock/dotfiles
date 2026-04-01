@@ -13,3 +13,6 @@
 .spectra/
 .spectra.yaml
 openspec/.vector-search.db*
+
+# Git worktrees
+.worktrees/
