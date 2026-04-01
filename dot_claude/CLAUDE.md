@@ -5,7 +5,7 @@
 收到實作任務（新功能、bug 修復、重構、程式碼修改）時，**開始工作前一次確認**：
 
 > 1. 流程：**OpenSpec 小型** / **OpenSpec 大型** / **不使用**（瑣碎任務自動跳過）
-> 2. 推進模式：**逐步確認** / **自動推進**（所有非瑣碎任務都適用）
+> 2. 推進模式：**逐步確認** / **自動推進**（僅 OpenSpec 流程適用）
 
 - **OpenSpec 小型**：範圍明確、改動不大的任務
 - **OpenSpec 大型**：複雜、需要多輪討論的任務
@@ -24,7 +24,7 @@ git:sync → superpowers:using-git-worktrees → ensure-openspec
 → opsx:propose 或 opsx:new+continue
 → opsx:apply → openspec validate → opsx:archive
 → git:commit → code:review-quick
-→ 如需修正 → 新一輪 change（同 worktree，從 opsx 開始）
+→ 如需修正 → 根據問題複雜度確認規模，新一輪 change（同 worktree，從 opsx 開始）
 → 如不需修正 → superpowers:finishing-a-development-branch → [git:clean-gone]
 ```
 
@@ -36,7 +36,7 @@ git:sync → superpowers:using-git-worktrees → ensure-openspec
 → superpowers:writing-plans → opsx:apply
 → superpowers:verification-before-completion → openspec validate → opsx:archive
 → git:commit → code:review-full
-→ 如需修正 → 新一輪 change（同 worktree，從 opsx 開始）
+→ 如需修正 → 根據問題複雜度確認規模，新一輪 change（同 worktree，從 opsx 開始）
 → 如不需修正 → superpowers:finishing-a-development-branch → [git:clean-gone]
 ```
 
@@ -59,6 +59,9 @@ git:sync → superpowers:using-git-worktrees → ensure-openspec
 
 `~/.claude/workflow-registry.md` 記錄各 repo 的主 repo 路徑與對應的 project memory 路徑。各機器獨立維護，不同步。
 
+| Repo Name | Main Repo Path | Project Memory Path |
+|-----------|---------------|---------------------|
+
 流程開始時，Claude 讀取 registry 找到對應的 project memory 路徑。如果沒有紀錄，用 `git rev-parse --git-common-dir` 推導主 repo 路徑，算出 project memory 路徑，自動新增到 registry。
 
 #### Active Workflows Index
@@ -80,9 +83,9 @@ git:sync → superpowers:using-git-worktrees → ensure-openspec
 **Session 開始行為：**
 
 每個 session 收到任務時，先讀 `active_workflows.md`：
-- 有進行中的流程 → 告知使用者目前有哪些流程，詢問要接手既有的還是開新的
-- 沒有 → 正常進入確認流程
-- Index 中的 worktree 路徑已不存在 → 自動清理過期紀錄
+1. 先清理過期紀錄（worktree 路徑已不存在的）
+2. 有剩餘進行中的流程 → 告知使用者，詢問要接手既有的還是開新的
+3. 沒有 → 正常進入確認流程
 
 ### Spec 文件位置
 

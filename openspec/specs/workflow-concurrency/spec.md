@@ -1,5 +1,8 @@
 ### Requirement: Workflow Registry
-Claude SHALL 維護 `~/.claude/workflow-registry.md`，記錄各 repo 的主 repo 路徑與對應的 project memory 路徑。此檔案各機器獨立，不透過 dotfiles 同步。
+Claude SHALL 維護 `~/.claude/workflow-registry.md`，記錄各 repo 的主 repo 路徑與對應的 project memory 路徑。此檔案各機器獨立，不透過 dotfiles 同步。格式為：
+
+| Repo Name | Main Repo Path | Project Memory Path |
+|-----------|---------------|---------------------|
 
 #### Scenario: 首次在 repo 開啟 OpenSpec 流程
 - **WHEN** Claude 在某 repo 開始 OpenSpec 流程，且 registry 中無該 repo 紀錄
@@ -31,14 +34,10 @@ Claude SHALL 維護 `~/.claude/workflow-registry.md`，記錄各 repo 的主 rep
 ### Requirement: Session 開始時讀取 Active Workflows
 每個 session 收到任務時，Claude SHALL 先讀取 `active_workflows.md`。
 
-#### Scenario: 有進行中的流程
-- **WHEN** `active_workflows.md` 中有紀錄
-- **THEN** Claude SHALL 告知使用者目前有哪些進行中的流程，詢問要接手既有的還是開新的
+#### Scenario: Session 開始處理順序
+- **WHEN** `active_workflows.md` 存在且有紀錄
+- **THEN** Claude SHALL 先清理過期紀錄（worktree 路徑已不存在的），再將剩餘的進行中流程告知使用者，詢問要接手既有的還是開新的
 
 #### Scenario: 沒有進行中的流程
-- **WHEN** `active_workflows.md` 為空或不存在
+- **WHEN** `active_workflows.md` 為空、不存在、或清理過期紀錄後無剩餘
 - **THEN** Claude SHALL 正常進入確認流程
-
-#### Scenario: Index 與實際狀態不一致
-- **WHEN** index 中記錄的 worktree 路徑已不存在
-- **THEN** Claude SHALL 自動清理該過期紀錄

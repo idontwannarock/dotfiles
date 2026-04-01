@@ -1,5 +1,5 @@
 ### Requirement: 確認流程
-收到實作任務時，Claude SHALL 一次詢問兩個項目：流程選擇（OpenSpec 小型 / OpenSpec 大型 / 不使用）與推進模式（逐步確認 / 自動推進）。推進模式適用於所有非瑣碎任務，不限於 OpenSpec 流程。
+收到實作任務時，Claude SHALL 一次詢問兩個項目：流程選擇（OpenSpec 小型 / OpenSpec 大型 / 不使用）與推進模式（逐步確認 / 自動推進）。推進模式僅適用於 OpenSpec 流程。
 
 #### Scenario: 一次確認
 - **WHEN** 收到非瑣碎的實作任務
@@ -32,14 +32,14 @@
 
 #### Scenario: 小型流程步驟
 - **WHEN** 選擇小型流程
-- **THEN** 執行順序 SHALL 為：git:sync → superpowers:using-git-worktrees → ensure-openspec → opsx:propose 或 opsx:new+continue → opsx:apply → openspec validate → opsx:archive → git:commit → code:review-quick → 如需修正走新一輪 → 如不需修正 → superpowers:finishing-a-development-branch → git:clean-gone
+- **THEN** 執行順序 SHALL 為：git:sync → superpowers:using-git-worktrees → ensure-openspec → 使用推進模式決定的 opsx 指令 → opsx:apply → openspec validate → opsx:archive → git:commit → code:review-quick → 如需修正走新一輪 → 如不需修正 → superpowers:finishing-a-development-branch → git:clean-gone
 
 ### Requirement: 大型核心流程
 大型流程 SHALL 包含完整的 superpowers skills。
 
 #### Scenario: 大型流程步驟
 - **WHEN** 選擇大型流程
-- **THEN** 執行順序 SHALL 為：git:sync → superpowers:using-git-worktrees → ensure-openspec → superpowers:brainstorming → opsx:propose 或 opsx:new+continue → superpowers:writing-plans → opsx:apply → superpowers:verification-before-completion → openspec validate → opsx:archive → git:commit → code:review-full → 如需修正走新一輪 → 如不需修正 → superpowers:finishing-a-development-branch → git:clean-gone
+- **THEN** 執行順序 SHALL 為：git:sync → superpowers:using-git-worktrees → ensure-openspec → superpowers:brainstorming → 使用推進模式決定的 opsx 指令 → superpowers:writing-plans → opsx:apply → superpowers:verification-before-completion → openspec validate → opsx:archive → git:commit → code:review-full → 如需修正走新一輪 → 如不需修正 → superpowers:finishing-a-development-branch → git:clean-gone
 
 ### Requirement: Code review 必做
 所有 OpenSpec 流程 SHALL 在 archive 後執行 code review。
@@ -54,7 +54,7 @@
 
 #### Scenario: Review 發現需要修正
 - **WHEN** code review 結果需要修正
-- **THEN** Claude SHALL 在同一 worktree 上從 opsx:propose 或 opsx:new 開始新一輪 change，產生完整的 proposal/design/specs/tasks
+- **THEN** Claude SHALL 根據問題複雜度建議流程規模（小型或大型），使用者確認後在同一 worktree 上從 opsx 開始新一輪 change，產生完整的 proposal/design/specs/tasks
 
 #### Scenario: Review 通過
 - **WHEN** code review 通過不需修正
