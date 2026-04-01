@@ -16,7 +16,7 @@
 
 根據任務複雜度建議並等使用者確認：
 
-- **小型流程**（`opsx:ff`）：一次產生所有 artifact 後直接實作。適合範圍明確、改動不大的任務
+- **小型流程**（`opsx:propose`）：一次產生所有 artifact 後直接實作。適合範圍明確、改動不大的任務
 - **大型流程**（`opsx:new` → `opsx:continue`）：逐步產生 artifact，每步可調整。適合複雜、需要多輪討論的任務
 
 ### 第三步：確認推進模式
@@ -30,12 +30,12 @@
 
 **小型：**
 ```
-[git:sync] → ensure-openspec → superpowers:brainstorming → opsx:ff → opsx:apply → [code:review-spec] → opsx:verify → opsx:archive → [git:commit → git:push]
+[git:sync] → ensure-openspec → superpowers:brainstorming → opsx:propose → opsx:apply → [code:review-spec] → openspec validate → opsx:archive → [git:commit → git:push]
 ```
 
 **大型：**
 ```
-[git:sync] → ensure-openspec → superpowers:brainstorming → opsx:new → opsx:continue（重複）→ superpowers:writing-plans → opsx:apply → [code:review-spec] → superpowers:verification-before-completion → opsx:verify → opsx:archive → [git:commit → git:push]
+[git:sync] → ensure-openspec → superpowers:brainstorming → opsx:new → opsx:continue（重複）→ superpowers:writing-plans → opsx:apply → [code:review-spec] → superpowers:verification-before-completion → openspec validate → opsx:archive → [git:commit → git:push]
 ```
 
 **使用 worktree 時：**
@@ -51,6 +51,10 @@
 | `opsx:archive` 之後 | `git:commit` | 提議 commit，使用者確認後執行 |
 | commit 之後 | `git:push` | 詢問是否 push（使用者可能想批次 commit） |
 | `superpowers:finishing-a-development-branch` 之後 | `git:clean-gone` | 使用 worktree 時，自動建議清理已合併的本地分支 |
+
+### Spec 文件位置
+
+Superpowers brainstorming 產生的 design spec **不要**寫到 `docs/superpowers/specs/`。Design 在對話中確認即可，正式 spec 交由 opsx（`opsx:propose` 或 `opsx:new`）產生到 `openspec/` 目錄下。
 
 ### 可選擴充
 

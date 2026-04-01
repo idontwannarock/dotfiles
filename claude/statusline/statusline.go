@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -32,7 +31,7 @@ const (
 
 var sep = " " + cDim + "│" + cReset + " "
 
-// Claude Code JSON 結構
+// Claude Code JSON stdin 結構
 type ClaudeData struct {
 	SessionID string `json:"session_id"`
 	Model     struct {
@@ -40,305 +39,43 @@ type ClaudeData struct {
 	} `json:"model"`
 	Workspace struct {
 		CurrentDir string `json:"current_dir"`
+		ProjectDir string `json:"project_dir"`
 	} `json:"workspace"`
 	ContextWindow struct {
-		ContextWindowSize int `json:"context_window_size"`
-		CurrentUsage      struct {
+		ContextWindowSize int      `json:"context_window_size"`
+		UsedPercentage    *float64 `json:"used_percentage"`
+		CurrentUsage      *struct {
 			InputTokens              int `json:"input_tokens"`
 			CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
 			CacheReadInputTokens     int `json:"cache_read_input_tokens"`
 		} `json:"current_usage"`
 	} `json:"context_window"`
-	Session struct {
-		StartTime string `json:"start_time"`
-	} `json:"session"`
 	Cost struct {
-		TotalCostUSD float64 `json:"total_cost_usd"`
+		TotalCostUSD    float64 `json:"total_cost_usd"`
+		TotalDurationMs int64   `json:"total_duration_ms"`
 	} `json:"cost"`
-}
-
-// 緩存結構
-type CostCache struct {
-	Today float64   `json:"today"`
-	Time  time.Time `json:"time"`
-}
-
-type BlockTimerCache struct {
-	ElapsedMinutes   float64   `json:"elapsedMinutes"`
-	RemainingMinutes float64   `json:"remainingMinutes"`
-	Time             time.Time `json:"time"`
+	RateLimits *struct {
+		FiveHour *struct {
+			UsedPercentage float64 `json:"used_percentage"`
+			ResetsAt       int64   `json:"resets_at"`
+		} `json:"five_hour"`
+		SevenDay *struct {
+			UsedPercentage float64 `json:"used_percentage"`
+			ResetsAt       int64   `json:"resets_at"`
+		} `json:"seven_day"`
+	} `json:"rate_limits"`
+	Worktree *struct {
+		Name   string `json:"name"`
+		Branch string `json:"branch"`
+	} `json:"worktree"`
 }
 
 // Version 由 CI 透過 ldflags 注入，格式為 YYYYMMDD
 var Version = "dev"
 
-var cacheDir string
-var ccusagePath string // resolved at init, empty = not found
-var projectsDir string
-
-// Cache TTL 常數
 const (
-	costCacheTTL       = 60 * time.Second
-	blockTimerCacheTTL = 30 * time.Second
-	asyncTimeout       = 2 * time.Second  // 等待 goroutines 的時間上限（決定輸出內容）
-	totalTimeBudget    = 5 * time.Second   // 整個 process 的時間上限（含 cache 儲存）
-	blockDuration      = 5 * time.Hour     // Anthropic 5-hour block
+	asyncTimeout = 1 * time.Second // 等待 goroutines 的時間上限
 )
-
-func init() {
-	home, _ := os.UserHomeDir()
-	cacheDir = filepath.Join(home, ".claude", "statusline-cache")
-	projectsDir = filepath.Join(home, ".claude", "projects")
-	os.MkdirAll(cacheDir, 0755)
-	ccusagePath = resolveCcusagePath(home)
-}
-
-func resolveCcusagePath(home string) string {
-	if p, err := exec.LookPath("ccusage"); err == nil {
-		return p
-	}
-	ext := ""
-	if runtime.GOOS == "windows" {
-		ext = ".exe"
-	}
-	fallback := filepath.Join(home, ".bun", "bin", "ccusage"+ext)
-	if _, err := os.Stat(fallback); err == nil {
-		return fallback
-	}
-	return ""
-}
-
-// === Cache 系統 ===
-
-func loadCache[T any](name string) (*T, bool) {
-	path := filepath.Join(cacheDir, name+".json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, false
-	}
-	var cache T
-	if err := json.Unmarshal(data, &cache); err != nil {
-		return nil, false
-	}
-	return &cache, true
-}
-
-func saveCache[T any](name string, cache *T) {
-	path := filepath.Join(cacheDir, name+".json")
-	data, _ := json.Marshal(cache)
-	os.WriteFile(path, data, 0644)
-}
-
-func runCommand(name string, args ...string) string {
-	cmd := exec.Command(name, args...)
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-	return strings.TrimSpace(string(out))
-}
-
-// === JSONL 讀取基礎設施 ===
-
-func findSessionJSONL(sessionID string) string {
-	if sessionID == "" {
-		return ""
-	}
-	jsonlName := sessionID + ".jsonl"
-	entries, err := os.ReadDir(projectsDir)
-	if err != nil {
-		return ""
-	}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		candidate := filepath.Join(projectsDir, e.Name(), jsonlName)
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate
-		}
-	}
-	return ""
-}
-
-func readJSONLTail(path string, maxLines int) []string {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil
-	}
-	defer f.Close()
-
-	stat, err := f.Stat()
-	if err != nil || stat.Size() == 0 {
-		return nil
-	}
-
-	readSize := int64(256 * 1024)
-	if stat.Size() < readSize {
-		readSize = stat.Size()
-	}
-	offset := stat.Size() - readSize
-	if offset < 0 {
-		offset = 0
-	}
-
-	f.Seek(offset, 0)
-	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
-
-	var lines []string
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line != "" {
-			lines = append(lines, line)
-		}
-	}
-
-	if offset > 0 && len(lines) > 0 {
-		lines = lines[1:]
-	}
-
-	if len(lines) > maxLines {
-		lines = lines[len(lines)-maxLines:]
-	}
-	return lines
-}
-
-type jsonlEntry struct {
-	Type        string `json:"type"`
-	Timestamp   string `json:"timestamp"`
-	IsSidechain bool   `json:"isSidechain"`
-	Message     *struct {
-		Role  string `json:"role"`
-		Usage *struct {
-			OutputTokens int `json:"output_tokens"`
-			InputTokens  int `json:"input_tokens"`
-		} `json:"usage"`
-	} `json:"message"`
-}
-
-func parseJSONLEntry(line string) *jsonlEntry {
-	var entry jsonlEntry
-	if json.Unmarshal([]byte(line), &entry) != nil {
-		return nil
-	}
-	return &entry
-}
-
-// === Block Timer（從 JSONL 計算）===
-
-func calculateBlockTimer() *BlockTimerCache {
-	now := time.Now()
-	entries, err := os.ReadDir(projectsDir)
-	if err != nil {
-		return nil
-	}
-
-	cutoff := now.Add(-10 * time.Hour)
-	var timestamps []time.Time
-
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		projPath := filepath.Join(projectsDir, e.Name())
-		files, err := os.ReadDir(projPath)
-		if err != nil {
-			continue
-		}
-		for _, f := range files {
-			if !strings.HasSuffix(f.Name(), ".jsonl") {
-				continue
-			}
-			info, err := f.Info()
-			if err != nil || info.ModTime().Before(cutoff) {
-				continue
-			}
-			filePath := filepath.Join(projPath, f.Name())
-			ts := extractTimestamps(filePath, cutoff)
-			timestamps = append(timestamps, ts...)
-		}
-	}
-
-	if len(timestamps) == 0 {
-		return nil
-	}
-
-	sortTimestamps(timestamps)
-
-	if now.Sub(timestamps[0]) > blockDuration {
-		return nil
-	}
-
-	blockStart := timestamps[0]
-	for i := 1; i < len(timestamps); i++ {
-		gap := timestamps[i-1].Sub(timestamps[i])
-		if gap >= blockDuration {
-			break
-		}
-		blockStart = timestamps[i]
-	}
-
-	blockStart = blockStart.Truncate(time.Hour)
-
-	elapsed := now.Sub(blockStart)
-	remaining := blockDuration - elapsed
-	if remaining < 0 {
-		remaining = 0
-	}
-
-	result := &BlockTimerCache{
-		ElapsedMinutes:   elapsed.Minutes(),
-		RemainingMinutes: remaining.Minutes(),
-		Time:             now,
-	}
-	saveCache("block-timer", result)
-	return result
-}
-
-func extractTimestamps(path string, cutoff time.Time) []time.Time {
-	lines := readJSONLTail(path, 500)
-	var timestamps []time.Time
-
-	for _, line := range lines {
-		if !strings.Contains(line, `"output_tokens"`) {
-			continue
-		}
-
-		entry := parseJSONLEntry(line)
-		if entry == nil || entry.IsSidechain {
-			continue
-		}
-		if entry.Message == nil || entry.Message.Usage == nil {
-			continue
-		}
-		if entry.Message.Usage.OutputTokens == 0 && entry.Message.Usage.InputTokens == 0 {
-			continue
-		}
-
-		ts, err := time.Parse(time.RFC3339Nano, entry.Timestamp)
-		if err != nil {
-			ts, err = time.Parse("2006-01-02T15:04:05.000Z", entry.Timestamp)
-			if err != nil {
-				continue
-			}
-		}
-
-		if ts.Before(cutoff) {
-			continue
-		}
-		timestamps = append(timestamps, ts)
-	}
-	return timestamps
-}
-
-func sortTimestamps(ts []time.Time) {
-	for i := 1; i < len(ts); i++ {
-		for j := i; j > 0 && ts[j].After(ts[j-1]); j-- {
-			ts[j], ts[j-1] = ts[j-1], ts[j]
-		}
-	}
-}
 
 // === Git 資訊 ===
 
@@ -398,8 +135,6 @@ func parseDiffStat(stat string) (insertions, deletions int) {
 
 func countClaudeProcesses() int {
 	if runtime.GOOS == "windows" {
-		// Only count Claude Code CLI processes (.local\bin\claude.exe),
-		// excluding Claude Desktop (Electron) and helper processes like --chrome-native-host
 		cmd := exec.Command("powershell", "-NoProfile", "-Command",
 			"@(Get-CimInstance Win32_Process -Filter \"Name='claude.exe'\" | Where-Object { $_.ExecutablePath -like '*\\.local\\bin\\claude.exe' -and $_.CommandLine -notmatch '--chrome-native-host' }).Count")
 		out, err := cmd.Output()
@@ -413,7 +148,6 @@ func countClaudeProcesses() int {
 		return count
 	}
 
-	// Only count Claude Code CLI processes, excluding helpers
 	cmd := exec.Command("sh", "-c", "ps aux | grep '[.]local/bin/claude' | grep -v -- '--chrome-native-host' | wc -l")
 	out, err := cmd.Output()
 	if err != nil {
@@ -424,33 +158,6 @@ func countClaudeProcesses() int {
 		return 1
 	}
 	return count
-}
-
-// === ccusage（today cost only）===
-
-func fetchCcusageCosts() *CostCache {
-	if ccusagePath == "" {
-		return nil
-	}
-	today := time.Now().Format("20060102")
-	out := runCommand(ccusagePath, "daily", "--since", today, "--json")
-	if out == "" {
-		return nil
-	}
-	var data struct {
-		Daily []struct {
-			TotalCost float64 `json:"totalCost"`
-		} `json:"daily"`
-	}
-	if json.Unmarshal([]byte(out), &data) != nil {
-		return nil
-	}
-	result := &CostCache{Time: time.Now()}
-	for _, d := range data.Daily {
-		result.Today += d.TotalCost
-	}
-	saveCache("ccusage-costs", result)
-	return result
 }
 
 // === 顯示用工具函式 ===
@@ -531,56 +238,33 @@ func formatEffort(effort string) string {
 	}
 }
 
-func formatSessionDuration(startTime string) string {
-	if startTime == "" {
-		return ""
+func formatDuration(ms int64) string {
+	if ms <= 0 {
+		return "0m"
 	}
-	t, err := time.Parse(time.RFC3339Nano, startTime)
-	if err != nil {
-		t, err = time.Parse("2006-01-02T15:04:05.000Z", startTime)
-		if err != nil {
-			return ""
-		}
+	totalMin := ms / 60000
+	if totalMin < 60 {
+		return fmt.Sprintf("%dm", totalMin)
 	}
-	elapsed := time.Since(t)
-	if elapsed < 0 {
-		return ""
-	}
-	if elapsed < time.Minute {
-		return fmt.Sprintf("%ds", int(elapsed.Seconds()))
-	}
-	if elapsed < time.Hour {
-		return fmt.Sprintf("%dm", int(elapsed.Minutes()))
-	}
-	return fmt.Sprintf("%dh%dm", int(elapsed.Hours()), int(elapsed.Minutes())%60)
+	return fmt.Sprintf("%dh%dm", totalMin/60, totalMin%60)
 }
 
-func getSessionDisplayName(sessionID string) string {
-	path := findSessionJSONL(sessionID)
-	if path == "" {
-		return ""
+func formatResetTime(epochSec int64) string {
+	t := time.Unix(epochSec, 0)
+	now := time.Now()
+	if t.YearDay() == now.YearDay() && t.Year() == now.Year() {
+		return t.Format("15:04")
 	}
+	return t.Format("Mon")
+}
 
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return ""
+func formatRateLimit(label string, pct float64, resetsAt int64) string {
+	pctInt := int(pct + 0.5)
+	result := fmt.Sprintf("%s: %d%%", label, pctInt)
+	if pct >= 80 && resetsAt > 0 {
+		result += " ⟳" + formatResetTime(resetsAt)
 	}
-
-	lines := strings.Split(string(data), "\n")
-	for i := len(lines) - 1; i >= 0; i-- {
-		line := lines[i]
-		if !strings.Contains(line, `"custom-title"`) {
-			continue
-		}
-		var entry struct {
-			Type        string `json:"type"`
-			CustomTitle string `json:"customTitle"`
-		}
-		if json.Unmarshal([]byte(line), &entry) == nil && entry.Type == "custom-title" && entry.CustomTitle != "" {
-			return entry.CustomTitle
-		}
-	}
-	return ""
+	return result
 }
 
 // === Main ===
@@ -590,8 +274,6 @@ func main() {
 		fmt.Println(Version)
 		return
 	}
-
-	processStart := time.Now()
 
 	input, err := io.ReadAll(os.Stdin)
 	if err != nil {
@@ -609,60 +291,34 @@ func main() {
 	model := data.Model.DisplayName
 	emoji := modelEmoji(model)
 	dir := filepath.Base(data.Workspace.CurrentDir)
-	gitInfo := getGitInfo(data.Workspace.CurrentDir)
 	effort := getEffortLevel()
-	sessionName := getSessionDisplayName(data.SessionID)
-	sessionDuration := formatSessionDuration(data.Session.StartTime)
 
 	ctxPercent := 0.0
+	if data.ContextWindow.UsedPercentage != nil {
+		ctxPercent = *data.ContextWindow.UsedPercentage
+	}
+
 	totalTokens := 0
-	if data.ContextWindow.ContextWindowSize > 0 {
+	if data.ContextWindow.CurrentUsage != nil {
 		usage := data.ContextWindow.CurrentUsage
 		totalTokens = usage.InputTokens + usage.CacheCreationInputTokens + usage.CacheReadInputTokens
-		ctxPercent = float64(totalTokens) / float64(data.ContextWindow.ContextWindowSize) * 100
 	}
 
-	// === 載入 cache ===
-	cachedCost, _ := loadCache[CostCache]("ccusage-costs")
-	cachedBlock, _ := loadCache[BlockTimerCache]("block-timer")
-
-	// === 平行非同步更新過期 cache ===
-	var mu sync.Mutex
+	// === 平行取得外部資訊 ===
 	var wg sync.WaitGroup
 	done := make(chan struct{})
-	activeSessions := 1
 
-	if cachedCost == nil || time.Since(cachedCost.Time) > costCacheTTL {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if r := fetchCcusageCosts(); r != nil {
-				mu.Lock()
-				cachedCost = r
-				mu.Unlock()
-			}
-		}()
-	}
+	var gitInfo GitInfo
+	var activeSessions int
 
-	if cachedBlock == nil || time.Since(cachedBlock.Time) > blockTimerCacheTTL {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			if r := calculateBlockTimer(); r != nil {
-				mu.Lock()
-				cachedBlock = r
-				mu.Unlock()
-			}
-		}()
-	}
-
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		count := countClaudeProcesses()
-		mu.Lock()
-		activeSessions = count
-		mu.Unlock()
+		gitInfo = getGitInfo(data.Workspace.CurrentDir)
+	}()
+	go func() {
+		defer wg.Done()
+		activeSessions = countClaudeProcesses()
 	}()
 
 	go func() {
@@ -675,13 +331,7 @@ func main() {
 	case <-time.After(asyncTimeout):
 	}
 
-	mu.Lock()
-	finalCost := cachedCost
-	finalBlock := cachedBlock
-	finalSessions := activeSessions
-	mu.Unlock()
-
-	// === 第一行：Model │ Context bar % tokens │ Dir ⚡branch* +N -N │ Effort ===
+	// === 第一行：Model │ Context bar % tokens │ Dir [worktree] ⚡branch* +N -N │ Effort ===
 	line1 := fmt.Sprintf("%s %s%s%s", emoji, cBlue, model, cReset)
 
 	pctColor := colorForPct(ctxPercent)
@@ -689,6 +339,9 @@ func main() {
 	line1 += fmt.Sprintf("%s%s %s%.0f%%%s %s", sep, bar, pctColor, ctxPercent, cReset, formatTokens(totalTokens))
 
 	line1 += fmt.Sprintf("%s%s%s%s", sep, cCyan, dir, cReset)
+	if data.Worktree != nil && data.Worktree.Name != "" {
+		line1 += fmt.Sprintf(" %s🌿%s%s", cGreen, data.Worktree.Name, cReset)
+	}
 	if gitInfo.Branch != "" {
 		line1 += fmt.Sprintf(" %s%s%s", cGreen, gitInfo.Branch, cReset)
 		if gitInfo.Dirty {
@@ -708,52 +361,46 @@ func main() {
 		line1 += sep + formatEffort(effort)
 	}
 
-	// === 第二行：Session │ Cost │ Block Timer ===
+	// === 第二行：Session │ Cost │ Rate Limits ===
 	var line2Parts []string
 
+	// Session info: #id ⏱ Xm [N]
 	sessionPart := ""
-	if sessionName != "" {
-		sessionPart = fmt.Sprintf("📛 %s%s%s", cWhite, sessionName, cReset)
-	} else if data.SessionID != "" {
+	if data.SessionID != "" {
 		shortID := data.SessionID
 		if len(shortID) > 8 {
 			shortID = shortID[:8]
 		}
 		sessionPart = fmt.Sprintf("%s#%s%s", cDim, shortID, cReset)
 	}
-	if sessionDuration != "" {
-		sessionPart += fmt.Sprintf(" ⏱ %s%s%s", cWhite, sessionDuration, cReset)
+	sessionPart += fmt.Sprintf(" ⏱ %s%s%s", cWhite, formatDuration(data.Cost.TotalDurationMs), cReset)
+	if activeSessions > 1 {
+		sessionPart += fmt.Sprintf(" %s[%d]%s", cDim, activeSessions, cReset)
 	}
-	if finalSessions > 1 {
-		sessionPart += fmt.Sprintf(" %s[%d]%s", cDim, finalSessions, cReset)
-	}
-	if sessionPart != "" {
-		line2Parts = append(line2Parts, sessionPart)
+	line2Parts = append(line2Parts, strings.TrimSpace(sessionPart))
+
+	// Session cost
+	if data.Cost.TotalCostUSD > 0 {
+		line2Parts = append(line2Parts, fmt.Sprintf("💰 %s$%.2f%s", cWhite, data.Cost.TotalCostUSD, cReset))
 	}
 
-	if finalCost != nil {
-		line2Parts = append(line2Parts, fmt.Sprintf("💰 %s$%.2f%s", cWhite, finalCost.Today, cReset))
-	}
-
-	if finalBlock != nil && finalBlock.RemainingMinutes > 0 {
-		mins := int(finalBlock.RemainingMinutes)
-		hrs := mins / 60
-		m := mins % 60
-		line2Parts = append(line2Parts, fmt.Sprintf("⏳ %s%dh%dm left%s", cWhite, hrs, m, cReset))
+	// Rate limits
+	if data.RateLimits != nil {
+		var rlParts []string
+		if data.RateLimits.FiveHour != nil {
+			rlParts = append(rlParts, formatRateLimit("5h", data.RateLimits.FiveHour.UsedPercentage, data.RateLimits.FiveHour.ResetsAt))
+		}
+		if data.RateLimits.SevenDay != nil {
+			rlParts = append(rlParts, formatRateLimit("7d", data.RateLimits.SevenDay.UsedPercentage, data.RateLimits.SevenDay.ResetsAt))
+		}
+		if len(rlParts) > 0 {
+			line2Parts = append(line2Parts, "⏳ "+strings.Join(rlParts, sep))
+		}
 	}
 
 	// 輸出
 	fmt.Println(line1)
 	if len(line2Parts) > 0 {
 		fmt.Println(strings.Join(line2Parts, sep))
-	}
-
-	// 等待 goroutines 完成以儲存 cache
-	remaining := totalTimeBudget - time.Since(processStart)
-	if remaining > 0 {
-		select {
-		case <-done:
-		case <-time.After(remaining):
-		}
 	}
 }
