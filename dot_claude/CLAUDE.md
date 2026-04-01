@@ -2,55 +2,87 @@
 
 ## 預設工作流程：OpenSpec + Superpowers
 
-收到實作任務（新功能、bug 修復、重構、程式碼修改）時，**開始工作前**依序確認三件事：
+收到實作任務（新功能、bug 修復、重構、程式碼修改）時，**開始工作前一次確認**：
 
-### 第一步：確認流程
+> 1. 流程：**OpenSpec 小型** / **OpenSpec 大型** / **不使用**（瑣碎任務自動跳過）
+> 2. 推進模式：**逐步確認** / **自動推進**（所有非瑣碎任務都適用）
 
-> 要使用 **OpenSpec + Superpowers** 流程嗎？
-
-- **是**：進入第二步
-- **否**：直接以標準方式進行
+- **OpenSpec 小型**：範圍明確、改動不大的任務
+- **OpenSpec 大型**：複雜、需要多輪討論的任務
+- **不使用**：直接以標準方式進行
 - **瑣碎任務**（改 typo、一行修改、簡單問答）：跳過詢問，直接進行
-
-### 第二步：確認規模
-
-根據任務複雜度建議並等使用者確認：
-
-- **小型流程**（`opsx:propose`）：一次產生所有 artifact 後直接實作。適合範圍明確、改動不大的任務
-- **大型流程**（`opsx:new` → `opsx:continue`）：逐步產生 artifact，每步可調整。適合複雜、需要多輪討論的任務
-
-### 第三步：確認推進模式
-
 - **逐步確認**：每個 skill 結束後等使用者說「繼續」再推進
 - **自動推進**：做完一步直接下一步，只在關鍵點暫停
 
 ### 核心流程
 
-三步確認完成後執行（`[ ]` 為可選步驟）：
+所有 OpenSpec 流程一律在獨立 worktree 上進行。推進模式決定 opsx 指令：**自動推進**用 `opsx:propose`，**逐步確認**用 `opsx:new` + `opsx:continue`。
 
-**小型：**
+**小型流程：**
 ```
-[git:sync] → ensure-openspec → superpowers:brainstorming → opsx:propose → opsx:apply → [code:review-spec] → openspec validate → opsx:archive → [git:commit → git:push]
+git:sync → superpowers:using-git-worktrees → ensure-openspec
+→ opsx:propose 或 opsx:new+continue
+→ opsx:apply → openspec validate → opsx:archive
+→ git:commit → code:review-quick
+→ 如需修正 → 新一輪 change（同 worktree，從 opsx 開始）
+→ 如不需修正 → superpowers:finishing-a-development-branch → [git:clean-gone]
 ```
 
-**大型：**
+**大型流程：**
 ```
-[git:sync] → ensure-openspec → superpowers:brainstorming → opsx:new → opsx:continue（重複）→ superpowers:writing-plans → opsx:apply → [code:review-spec] → superpowers:verification-before-completion → openspec validate → opsx:archive → [git:commit → git:push]
-```
-
-**使用 worktree 時：**
-```
-[git:sync] → superpowers:using-git-worktrees → ensure-openspec → ... → opsx:archive → git:commit → superpowers:finishing-a-development-branch → [git:clean-gone]
+git:sync → superpowers:using-git-worktrees → ensure-openspec
+→ superpowers:brainstorming
+→ opsx:propose 或 opsx:new+continue
+→ superpowers:writing-plans → opsx:apply
+→ superpowers:verification-before-completion → openspec validate → opsx:archive
+→ git:commit → code:review-full
+→ 如需修正 → 新一輪 change（同 worktree，從 opsx 開始）
+→ 如不需修正 → superpowers:finishing-a-development-branch → [git:clean-gone]
 ```
 
 #### Git 整合行為
 
 | 時機 | 操作 | 行為 |
 |------|------|------|
-| 流程開始前 | `git:sync` | 自動執行，確保在最新 main 上工作（feature branch 上除外） |
+| 流程開始前 | `git:sync` | 自動執行，確保 main 是最新的（已在 worktree 上的 session 除外） |
+| worktree 建立後 | 更新 registry + active workflows | 自動執行（見多流程並行管理） |
 | `opsx:archive` 之後 | `git:commit` | 提議 commit，使用者確認後執行 |
-| commit 之後 | `git:push` | 詢問是否 push（使用者可能想批次 commit） |
-| `superpowers:finishing-a-development-branch` 之後 | `git:clean-gone` | 使用 worktree 時，自動建議清理已合併的本地分支 |
+| code review 通過後 | `superpowers:finishing-a-development-branch` | merge 前先 rebase main，有 conflict 暫停問使用者 |
+| merge 完成後 | `git:clean-gone` | 自動建議清理已合併的本地分支與 worktree |
+| 流程完成後 | 更新 active workflows | 移除該流程紀錄 |
+
+### 多流程並行管理
+
+所有 OpenSpec 流程在獨立 worktree 上進行，支援同一 repo 同時推進多個流程。
+
+#### Workflow Registry
+
+`~/.claude/workflow-registry.md` 記錄各 repo 的主 repo 路徑與對應的 project memory 路徑。各機器獨立維護，不同步。
+
+流程開始時，Claude 讀取 registry 找到對應的 project memory 路徑。如果沒有紀錄，用 `git rev-parse --git-common-dir` 推導主 repo 路徑，算出 project memory 路徑，自動新增到 registry。
+
+#### Active Workflows Index
+
+每個 repo 的 project memory 下維護 `active_workflows.md`（`type: project`），記錄所有進行中的流程：
+
+| Change | Branch | Worktree Path | Current Step | Status | Last Updated |
+|--------|--------|---------------|--------------|--------|--------------|
+
+**更新時機：**
+
+| 事件 | 動作 |
+|------|------|
+| worktree 建立後 | 新增一行 |
+| 每個 skill 完成時 | 更新 Current Step + Last Updated |
+| 暫停切換到另一個流程時 | Status 標註 paused |
+| 流程完成（finishing-a-development-branch 後） | 移除該行 |
+
+**Session 開始行為：**
+
+每個 session 收到任務時，先讀 `active_workflows.md`：
+- 有進行中的流程 → 告知使用者目前有哪些流程，詢問要接手既有的還是開新的
+- 沒有 → 正常進入確認流程
+- Index 中的 worktree 路徑已不存在 → 自動清理過期紀錄
 
 ### Spec 文件位置
 

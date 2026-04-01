@@ -1,3 +1,5 @@
+## MODIFIED Requirements
+
 ### Requirement: 確認流程
 收到實作任務時，Claude SHALL 一次詢問兩個項目：流程選擇（OpenSpec 小型 / OpenSpec 大型 / 不使用）與推進模式（逐步確認 / 自動推進）。推進模式適用於所有非瑣碎任務，不限於 OpenSpec 流程。
 
@@ -74,10 +76,3 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 #### Scenario: 清理分支
 - **WHEN** merge 完成後
 - **THEN** Claude SHALL 自動建議執行 `git:clean-gone` 清理已合併的本地分支與 worktree
-
-### Requirement: 文件語言為中文
-全域 CLAUDE.md 的內容 SHALL 以中文撰寫。
-
-#### Scenario: 語言一致性
-- **WHEN** 安裝腳本將 CLAUDE.md 部署到 ~/.claude/
-- **THEN** 使用者看到的全域指令 SHALL 為中文
