@@ -62,17 +62,21 @@ Code review 指令：`code:review-quick`（快速）、`code:review-full`（完�
 
 ## Worklog 記錄
 
+Worklog repo: `idontwannarock/worklogs`（所有 worklog skill 共用此值，不需額外設定檔）
+
 當以下情況發生時，主動問使用者是否要記到 worklog：
-- 完成一個有意義的任務（不是瑣碎修改）
-- 進行了 git commit
-- 對話即將結束且本次有實質工作成果
-- 進行了技術架構探索、設計討論或方案評估
+- 完成有意義的任務且已 commit
+- 對話中累積多個 commit 後（批次提議一次，不在連續 commit 過程中打斷）
+- 技術探索、設計討論得出明確結論或決策
+- 使用者發出結束信號（「差不多了」「先這樣」等）且本次有實質成果
 
 不要在以下情況觸發：
 - 瑣碎修改（typo、格式調整）
 - 使用者已經在 worklog repo 裡工作（避免重複）
+- 連續 commit 過程中（等收尾再問）
+- 純粹問答、查資料，沒有實質產出
 
-記錄方式：呼叫 `/worklog:record` skill（寫到 GitHub Issue Comment）。設定檔：`~/.claude/worklog-config.md`。
+記錄方式：呼叫 `/worklog:record` skill（寫到 GitHub Issue Comment）。
 
 可用的 worklog skills：
 - `/worklog:record` — 記錄工作項目到 Issue Comment（涵蓋筆記、行政、OKR 等）

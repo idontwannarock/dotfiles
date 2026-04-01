@@ -1,12 +1,20 @@
 ---
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*)
-description: 完整 code review — 平行派發 code-reviewer、silent-failure-hunter、test-analyzer、linus-torvalds
+description: 完整 code review — 平行派發 code-reviewer、silent-failure-hunter、test-analyzer、linus-torvalds（自動偵測 Codex 可用性）
 ---
 
 ## Context
 
 - Status: !`git status --short`
 - Branch: !`git branch --show-current`
+
+## Codex Auto-Detection
+
+檢查 session 的 settings context 中 `enabledPlugins` 是否包含 `"codex@openai-codex": true`：
+- 有 → 設定 `USE_CODEX=true`
+- 無 → 設定 `USE_CODEX=false`
+
+不需要執行任何 CLI 命令或讀取檔案，此資訊已在 session 初始化時載入。
 
 ## Review Scope
 
@@ -31,9 +39,19 @@ description: 完整 code review — 平行派發 code-reviewer、silent-failure-
 | Test Analyzer | `pr-review-toolkit:pr-test-analyzer` | 測試覆蓋率、缺少的邊界案例、測試品質與可維護性 |
 | Linus Torvalds | `linus-torvalds` | 架構簡潔性、不必要的複雜度、good taste、特殊案例是否能消除、向後相容性 |
 
+## Codex Cross-Review（自動）
+
+如果 `USE_CODEX=true`（由 Auto-Detection 決定）：
+
+在啟動 4 個 Claude agent 的**同時**，使用 **Skill tool** 呼叫 `codex:review`（加上 `--wait`）。
+- 無引數時 → `skill: "codex:review", args: "--wait"`
+- PR/branch review 時 → `skill: "codex:review", args: "--wait --base main"`
+
+如果 `USE_CODEX=false`：跳過此段，不顯示任何訊息。
+
 ## Output
 
-等待所有 agent 完成後，彙整回饋產出以下格式報告：
+等待所有 agent（及 Codex，如啟用）完成後，彙整回饋產出以下格式報告：
 
 ---
 
@@ -65,6 +83,9 @@ _Test Coverage_ (test-analyzer)
 ...
 
 _Architecture & Simplicity_ (linus-torvalds)
+...
+
+_Cross-Model Perspective_ (codex) — 僅在 Codex 啟用時顯示
 ...
 
 ---

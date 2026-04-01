@@ -9,8 +9,7 @@ description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫�
 
 ## 設定
 
-讀取 `~/.claude/worklog-config.md` 取得：
-- `github-repo`: GitHub repo（如 `idontwannarock/worklogs`）
+`github-repo` 從全域 CLAUDE.md 的 Worklog 段落取得（已在 context 中，不需讀取檔案）。
 
 ## 使用方式
 
@@ -28,10 +27,9 @@ description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫�
 
 ## 執行流程
 
-### 1. 讀取設定
+### 1. 取得 github-repo
 
-讀取 `~/.claude/worklog-config.md` 取得 `github-repo`。
-若檔案不存在或缺少 `github-repo`，提示使用者建立。
+從 CLAUDE.md 的 Worklog 段落取得 `github-repo`（已在 context 中）。
 
 ### 2. 列出 Issues 讓使用者選擇
 

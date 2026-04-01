@@ -9,8 +9,7 @@ description: 管理 Daily To Do — 寫 [daily-todo]/[daily-done] Comment 到 da
 
 ## 設定
 
-讀取 `~/.claude/worklog-config.md` 取得：
-- `github-repo`: GitHub repo（如 `idontwannarock/worklogs`）
+`github-repo` 從全域 CLAUDE.md 的 Worklog 段落取得（已在 context 中，不需讀取檔案）。
 
 ## 操作
 
@@ -24,9 +23,9 @@ description: 管理 Daily To Do — 寫 [daily-todo]/[daily-done] Comment 到 da
 
 ## 執行流程
 
-### 1. 讀取設定
+### 1. 取得 github-repo
 
-讀取 `~/.claude/worklog-config.md` 取得 `github-repo`。
+從 CLAUDE.md 的 Worklog 段落取得 `github-repo`（已在 context 中）。
 
 ### 2. 找到今天的 Daily Issue
 

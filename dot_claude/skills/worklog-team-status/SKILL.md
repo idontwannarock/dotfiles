@@ -9,15 +9,14 @@ description: 觸發 GitHub Actions 更新團隊 Jira 狀態到 per-member issues
 
 ## 設定
 
-- 公司名稱預設 `shoalter`，可用 `/worklog:team-status [company]` 覆寫
-- 組員清單：worklogs repo 的 `{company}/team.md`
+`github-repo` 從全域 CLAUDE.md 的 Worklog 段落取得（已在 context 中，不需讀取檔案）。
+成員清單從 `team-member` label 的 GitHub Issues 動態取得（不需讀取本地檔案）。
 
 ## 執行流程
 
-### 1. 初始化
+### 1. 取得 github-repo
 
-讀取 `~/.claude/worklog-config.md` 取得 `github-repo`。
-讀取 worklogs repo 的 `{company}/team.md` 取得成員名稱清單。
+從 CLAUDE.md 的 Worklog 段落取得 `github-repo`（已在 context 中）。
 
 ### 2. 觸發 workflow 並取得時間戳
 
@@ -42,10 +41,12 @@ gh run list --workflow=update-team-status.yml --repo {github-repo} --limit 5 --j
 
 ### 4. 讀取 per-member issues
 
-對每位成員，查詢標題為 `Team: {name}` 且有 `team-member` label 的 open issue：
+查詢所有帶 `team-member` label 的 open issues（不需事先知道成員名稱）：
 ```
 gh api repos/{github-repo}/issues --method GET -f state=open -f labels=team-member -f per_page=100
 ```
+
+從每個 issue 的 title 提取成員名稱（格式：`Team: {name}`）。
 
 **首次執行**：如果查不到 `team-member` issues，這是正常的 — workflow 會在首次執行時自動建立。此時直接告知使用者「per-member issues 已建立，資料已寫入」即可。
 
@@ -82,3 +83,8 @@ gh api repos/{github-repo}/issues/{number}/comments --jq '.[0:2]'
 
 若使用者要求記錄（或搭配 `/worklog:record` 使用），將結果寫到 daily issue。
 不再自動寫入 `[team-status]` comment — per-member issues 本身就是 single source of truth。
+
+## 注意事項
+
+- 此 skill 不讀取任何本地檔案（無 worklog-config.md、無 team.md、無 references/）
+- 所有資料來源：CLAUDE.md context（github-repo）+ GitHub API（issues）+ workflow（Jira 查詢）
