@@ -61,22 +61,37 @@ gh api repos/{github-repo}/issues/{number}/comments --jq '.[0:2]'
 ### 5. 呈現
 
 解析 comment 內容：
-- `<!-- jira-start -->` 到 `<!-- jira-end -->` 之間的項目是 **Jira 自動產生**的，直接使用
+- `<!-- jira-start -->` 到 `<!-- jira-end -->` 之間的項目是 **Jira 自動產生**的（已按狀態分組），直接使用
 - `### Manual Tasks` 下的項目是**手動新增**的，輸出時加 `(手動)` 前綴以區分
 
-按成員分組輸出到終端：
+按成員分組輸出到終端，保留 comment 中的分組格式：
 
 ```
 ## Team Status（YYYY-MM-DD）
 
-### 成員名稱
-**Active:**
-- [wip] CBK-155: Checkout refactoring — In Code Review
-- [todo] MC-864: Mobile payment flow — Sprint 12
-- [wip] (手動) Internal tool: Build deploy dashboard
+### Charlie
+🔨 **In Progress** (1)
+- MC-958: [BE] replace salesforce case number to zendesk ticket id
+
+📋 **To Do** (3)
+- MC-964: [BE] set configuration param value to zendesk
+- MC-962: [BE] 1st patch zendesk_ticket_id (before Apr 10)
+- MC-963: [BE] 2st patch zendesk_ticket_id
+
+⏳ **Waiting for Development** (3)
+- GCS-252: [HKTVmall] Support Private Chatroom
+- GCS-247: [HKTVmall] Live CMS ChicChat
+- GCS-253: [HKTVmall] Online User System - SHIP
+
+📬 **Open** (2)
+- MP-38: Crawl HKTVmore Blog
+- MC-947: [BE][Support chat] Remove API controller logic
+
+**(手動)**
+- Internal tool: Build deploy dashboard
 
 **Recently Completed:**
-- [done] CBK-140: Cart API migration — 2026-03-28
+- CBK-140: Cart API migration — Done — 2026-03-28
 ```
 
 ### 6. [可選] 寫入 Issue Comment
