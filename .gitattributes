@@ -5,6 +5,7 @@
 
 # Scripts (Unix)
 *.sh text eol=lf
+*.sh.tmpl text eol=lf
 *.bash text eol=lf
 *.zsh text eol=lf
 *.py text eol=lf
