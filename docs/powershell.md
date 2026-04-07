@@ -22,10 +22,10 @@ Windows PowerShell 設定檔（PS5 與 PS7 分開管理）。
 | [PowerToys](https://github.com/microsoft/PowerToys) | PS7 CommandNotFound 模組 | 選用 |
 | [winget](https://github.com/microsoft/winget-cli) | PS5 CommandNotFound 搜尋 | Windows 10/11 內建 |
 
-## Worklogs 設定
+## Worklog workflow trigger
 
-```powershell
-.\scripts\set-worklogs-path.ps1
-```
+`Documents/_shared-profile.d/10-aliases.ps1` 內建 `createnewlog` 函式，行為與 Bash 版完全一致：觸發遠端 `create-daily.yml` GitHub Actions workflow 並等待完成，不讀任何環境變數、不依賴 CWD、不做本地 git 操作。
 
-功能與 Bash 版相同，詳見 [Bash 設定](bash.md#worklogs-設定)。
+詳見 [Bash 設定](bash.md#worklog-workflow-trigger)。
+
+前置條件：本機已安裝並登入 [`gh` CLI](https://cli.github.com/)。

@@ -40,7 +40,7 @@
 
 #### Scenario: 各平台 shell-common 輸出包含 base
 - **WHEN** 渲染任一平台的 `shell-common/{platform}`
-- **THEN** 輸出 MUST 包含 worklogs aliases 和 `_dotfiles_check_update` 函式
+- **THEN** 輸出 MUST 包含 `createnewlog` 函式定義與 `_dotfiles_check_update` 函式
 
 ### Requirement: 部署結果與重構前一致
 重構後各平台最終部署的 `~/.bashrc`、`~/.shell_common`、`~/.zshrc` 內容 SHALL 與重構前完全相同。

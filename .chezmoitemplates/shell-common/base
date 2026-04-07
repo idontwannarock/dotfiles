@@ -17,12 +17,69 @@ esac
 # ── Starship prompt ──────────────────────────────────────────────────────────
 # 由各 rc 檔依 shell 類型初始化（eval "$(starship init bash/zsh)"）
 
-# ── Worklogs aliases ─────────────────────────────────────────────────────────
-# 由 set-worklogs-path.sh 或手動設定 WORKLOGS_PATH 後生效
-if [ -n "$WORKLOGS_PATH" ] && [ -d "$WORKLOGS_PATH" ]; then
-    alias createnewlog="$WORKLOGS_PATH/create-new-log.sh"
-    alias gitpushlog="$WORKLOGS_PATH/git-push.sh"
-fi
+# ── Worklog workflow trigger ─────────────────────────────────────────────────
+# createnewlog 觸發遠端 create-daily.yml GitHub Actions workflow 並等待 run 完成。
+# 不讀 WORKLOGS_PATH、不依賴 CWD、不做本地 git 操作。
+# repo hardcoded: idontwannarock/worklogs（與 CLAUDE.md 的 skills 設定一致）
+createnewlog() {
+    local repo='idontwannarock/worklogs'
+    local workflow='create-daily.yml'
+
+    # Capture the previously most-recent run ID before triggering, so the
+    # poll can distinguish the new run from existing history.
+    # NOTE: declare and capture on separate lines — `local var="$(cmd)"`
+    # makes $? always 0 (the local builtin's exit code), silently swallowing
+    # the command substitution's failure.
+    local prev_run_id=""
+    prev_run_id="$(gh -R "$repo" run list --workflow="$workflow" --limit=1 --json databaseId --jq '.[0].databaseId')"
+    if [ $? -ne 0 ]; then
+        printf >&2 'error: 查詢既有 run 列表失敗 (gh run list)\n'
+        return 1
+    fi
+
+    printf '==> 觸發 Create Daily Worklog workflow...\n'
+    gh -R "$repo" workflow run "$workflow"
+    if [ $? -ne 0 ]; then
+        printf >&2 'error: 觸發 workflow 失敗 (gh workflow run)\n'
+        return 1
+    fi
+
+    # Poll until a NEW run ID appears（最多 10 秒，每秒一次）。
+    # 比較 candidate != prev_run_id 避免撞到舊 run（重要：若只檢查
+    # 「非空」，prev_id 存在時第一次 poll 會立刻撈到舊 run，把它的歷史
+    # 結果當成新 run 的結果回報，造成假成功/假失敗）。
+    local run_id=""
+    local candidate=""
+    local i=0
+    while [ "$i" -lt 10 ]; do
+        sleep 1
+        candidate="$(gh -R "$repo" run list --workflow="$workflow" --limit=1 --json databaseId --jq '.[0].databaseId')"
+        if [ $? -ne 0 ]; then
+            printf >&2 'error: 查詢 run ID 失敗 (gh run list)\n'
+            return 1
+        fi
+        if [ -n "$candidate" ] && [ "$candidate" != "$prev_run_id" ]; then
+            run_id="$candidate"
+            break
+        fi
+        i=$((i + 1))
+    done
+
+    if [ -z "$run_id" ]; then
+        printf >&2 'error: 找不到 workflow run（輪詢 10 秒仍未出現新 run），請到 GitHub Actions 頁面確認\n'
+        return 1
+    fi
+
+    printf '==> 等待 workflow run #%s 完成...\n' "$run_id"
+    gh -R "$repo" run watch "$run_id" --exit-status
+    local watch_status=$?
+    if [ "$watch_status" -ne 0 ]; then
+        printf >&2 'error: workflow run #%s 失敗或被取消 (exit=%d)\n' "$run_id" "$watch_status"
+        return "$watch_status"
+    fi
+
+    printf '==> Workflow 完成。\n'
+}
 
 # ── 自動 fetch dotfiles 並提示更新 ───────────────────────────────────────────
 _dotfiles_check_update() {

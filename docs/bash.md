@@ -10,33 +10,24 @@
 | Linux/WSL | `bashrc/linux` | `shell-common/linux` → `shell-common/base` |
 | macOS | 不部署（使用 zsh） | `shell-common/darwin` → `shell-common/base` |
 
-## Worklogs 設定
+## Worklog workflow trigger
 
-### 依賴
+`shell-common/base` 內建 `createnewlog` 函式，觸發遠端 GitHub Actions workflow `create-daily.yml` 並等待 run 完成。
 
-| 依賴 | 用途 | 備註 |
-|------|------|------|
-| [worklogs](https://github.com/idontwannarock/worklogs) repo | `createnewlog` / `gitpushlog` alias | 選用，需先執行 worklogs 設定腳本 |
+| 命令 | 行為 |
+|------|------|
+| `createnewlog` | `gh -R idontwannarock/worklogs workflow run create-daily.yml` → 輪詢取得 run ID → `gh run watch <id> --exit-status` |
 
-### 設定方式
+特性：
 
-```bash
-./scripts/set-worklogs-path.sh
-source ~/.bashrc
-```
+- **不依賴 CWD**：可從任意目錄呼叫，包含非 git repo 的位置
+- **不依賴環境變數**：完全不讀 `WORKLOGS_PATH` 或其他自訂變數
+- **不做本地 git 操作**：純粹觸發遠端 workflow，本地分支若需同步請自行 `cd` 到 worklogs repo 處理
+- **repo hardcoded**：`idontwannarock/worklogs` 直接寫死在函式內，與 worklog skills 在 CLAUDE.md 的設定一致
 
-此腳本會依序搜尋以下位置尋找 `worklogs` git repo：
-1. `$HOME`（深度 4）
-2. `/home`（深度 5）
-3. `/opt`、`/usr/local`、`/var`（深度 4）
-4. `/`（深度 6，排除系統目錄）
+前置條件：本機已安裝並登入 [`gh` CLI](https://cli.github.com/)（`gh auth login`）。
 
-設定 `WORKLOGS_PATH` 後，可使用以下 alias（定義在 `~/.shell_common`）：
-
-| Alias | 說明 |
-|-------|------|
-| `createnewlog` | 建立新的 worklog |
-| `gitpushlog` | Push worklog 到遠端 |
+> 註：本地 commit/push 備援由 `worklogs` repo 自身的腳本提供，需手動 `cd` 進該 repo 執行，dotfiles 不再代為包裝。
 
 ## Windows Terminal 整合（WSL）
 
