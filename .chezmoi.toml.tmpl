@@ -10,3 +10,9 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
 
 [data]
     isWSL = {{ $isWSL }}
+
+# Windows 需要明確指定 .sh 的 interpreter，否則 modify_ script
+# 無法執行（"not a valid Win32 application"）。Unix 上會忽略此設定，
+# 直接依 shebang 執行。
+[interpreters.sh]
+    command = "bash"

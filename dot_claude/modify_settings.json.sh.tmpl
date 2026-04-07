@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# chezmoi modify_ script — patch Claude Code settings.json
+#
+# 策略：
+# 只 patch 穩定的「個人偏好」欄位，保留 enabledPlugins / extraKnownMarketplaces
+# 等會被 Claude Code runtime 寫入的部分。
+#
+# 同步的欄位：
+# - model、effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
+# - statusLine（跨平台處理執行檔路徑）
+
+set -euo pipefail
+
+input="$(cat)"
+# 新機器 bootstrap：檔案不存在時以空物件為起點
+if [ -z "$input" ]; then
+    input='{}'
+fi
+
+# 強制 LF 結尾：Windows 版 jq.exe 輸出 CRLF，但 Claude Code 寫入時用 LF，
+# 若不統一 chezmoi 每次 apply 都會看到全檔 diff。
+echo "$input" | jq \
+  --arg statusline_cmd '{{ .chezmoi.homeDir }}/.local/bin/statusline{{ if eq .chezmoi.os "windows" }}.exe{{ end }}' \
+  '
+    .model = "claude-opus-4-6"
+    | .effortLevel = "medium"
+    | .autoUpdatesChannel = "latest"
+    | .skipDangerousModePermissionPrompt = true
+    | .statusLine = {
+        type: "command",
+        command: $statusline_cmd,
+        padding: 0
+      }
+  ' | tr -d '\r'
