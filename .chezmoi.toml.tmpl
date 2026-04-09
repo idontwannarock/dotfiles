@@ -14,5 +14,18 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
 # Windows 需要明確指定 .sh 的 interpreter，否則 modify_ script
 # 無法執行（"not a valid Win32 application"）。Unix 上會忽略此設定，
 # 直接依 shebang 執行。
+#
+# Windows 上必須用「絕對路徑」指向 Git Bash 的 wrapper（bin/bash.exe）：
+# 1. 從 PowerShell 7 執行 chezmoi 時，PATH 上 `bash` 會解析到
+#    C:\Windows\System32\bash.exe（WSL bash），無法處理 chezmoi
+#    傳入的 Windows 暫存檔路徑。
+# 2. 必須用 bin/bash.exe 而非 usr/bin/bash.exe — 後者是 real bash，
+#    從非 MSYS parent 直接呼叫時 MSYSTEM 環境沒設好，coreutils
+#    （cat 等）會 DLL 載入失敗。bin/bash.exe 是設環境再 exec real bash 的 wrapper。
+# 前提：Windows 上 git 一律用 scoop 安裝。
 [interpreters.sh]
+{{- if eq .chezmoi.os "windows" }}
+    command = {{ joinPath .chezmoi.homeDir "scoop/apps/git/current/bin/bash.exe" | quote }}
+{{- else }}
     command = "bash"
+{{- end }}
