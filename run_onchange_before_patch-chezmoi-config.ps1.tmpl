@@ -1,0 +1,74 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_onchange_before_ script — self-heal ~/.config/chezmoi/chezmoi.toml
+# on Windows so that modify_*.sh scripts can find the correct sh interpreter.
+#
+# Background: `.chezmoi.toml.tmpl` is rendered into the local chezmoi config
+# only on `chezmoi init`. `chezmoi update` / `chezmoi apply` do not re-render
+# it. Environments initialized before the `[interpreters.sh]` block was added
+# to the template will keep failing with:
+#
+#     fork/exec ...\*.settings.json.sh: %1 is not a valid Win32 application.
+#
+# until someone manually runs `chezmoi init` again. This script patches the
+# local config in place so a plain `chezmoi update` can self-heal.
+#
+# Must be .ps1 (not .sh) to avoid the chicken-and-egg of needing the sh
+# interpreter before we've configured it. Uses run_onchange_before_ so it
+# runs once (per template change) before any modify_*.sh entries.
+#
+# Caveat: chezmoi likely caches the config at startup, so on the very first
+# apply that patches a stale config, the subsequent modify_*.sh in the SAME
+# run may still fail. A second `chezmoi apply` will then pick up the patched
+# interpreter and succeed. We print a clear hint when this happens.
+
+$ErrorActionPreference = "Stop"
+
+$configPath      = Join-Path $env:USERPROFILE ".config\chezmoi\chezmoi.toml"
+$expectedCommand = {{ joinPath .chezmoi.homeDir "scoop/apps/git/current/bin/bash.exe" | quote }}
+
+if (-not (Test-Path $configPath)) {
+    # No local config means chezmoi has never been init'd here. The script
+    # that normally creates it (chezmoi init) renders the template with the
+    # correct interpreter block already, so there's nothing for us to patch.
+    return
+}
+
+if (-not (Test-Path $expectedCommand)) {
+    Write-Warning "Expected Git Bash wrapper not found at: $expectedCommand"
+    Write-Warning "Install git via scoop (scoop install git) so chezmoi can exec .sh scripts."
+    return
+}
+
+$content = Get-Content $configPath -Raw
+
+# Detect an existing [interpreters.sh] block and its current command value.
+$blockRegex = '(?ms)^\[interpreters\.sh\][^\[]*?command\s*=\s*"([^"]*)"'
+$match      = [regex]::Match($content, $blockRegex)
+
+if ($match.Success -and $match.Groups[1].Value -eq $expectedCommand) {
+    # Already correct; nothing to do.
+    return
+}
+
+# Remove any existing [interpreters.sh] block (matches until next section or EOF),
+# then append a fresh block. This handles both "block missing" and "block present
+# but wrong" in one code path.
+$stripRegex = '(?ms)\r?\n?^\[interpreters\.sh\].*?(?=^\[|\z)'
+$cleaned    = [regex]::Replace($content, $stripRegex, '').TrimEnd()
+
+$freshBlock = @"
+[interpreters.sh]
+    command = "$expectedCommand"
+"@
+
+$newContent = $cleaned + "`n`n" + $freshBlock + "`n"
+
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText($configPath, $newContent, $utf8NoBom)
+
+Write-Host "Patched [interpreters.sh] in $configPath" -ForegroundColor Yellow
+Write-Host "  command = `"$expectedCommand`"" -ForegroundColor Gray
+Write-Host "If this apply run now fails on a modify_*.sh with 'not a valid Win32" -ForegroundColor Yellow
+Write-Host "application', re-run 'chezmoi apply' (or 'chezmoi update --force') once" -ForegroundColor Yellow
+Write-Host "more — the patched interpreter will be picked up on the next invocation." -ForegroundColor Yellow
+{{ end -}}

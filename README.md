@@ -126,6 +126,31 @@ dotfiles: 3 new commit(s). Run 'chezmoi update' to apply.
 
 ---
 
+## Troubleshooting
+
+### Windows：`chezmoi update` 報 `%1 is not a valid Win32 application`
+
+症狀：
+
+```
+chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a valid Win32 application.
+```
+
+原因：chezmoi 本機 config（`~/.config/chezmoi/chezmoi.toml`）缺少 `[interpreters.sh]`
+區塊，Windows 無法直接執行 `.sh` script。這個區塊定義在 `.chezmoi.toml.tmpl`，
+但該 template 只有 `chezmoi init` 時才會 render 進本機 config；`chezmoi update`
+刻意不碰本機 config。所以在這個區塊加入 repo 之前就 init 過的環境會踩到。
+
+自動修復：`run_onchange_before_patch-chezmoi-config.ps1.tmpl` 會在 `chezmoi apply`
+早期偵測並補上 `[interpreters.sh]`，使用者只需要**再跑一次** `chezmoi update
+--force` 即可（第一次 apply 會修好 config 但同一 run 的 `.sh` script 可能還在用
+舊快取，第二次就會乾淨跑完）。
+
+手動修復：如果上面的自動修復沒生效，可以直接 `chezmoi init`，這會重新 render
+`.chezmoi.toml.tmpl` 成本機 config（不會動 source、也不會問問題）。
+
+---
+
 ## 管理範圍
 
 ### 由 chezmoi 管理（chezmoi apply 時自動部署）
