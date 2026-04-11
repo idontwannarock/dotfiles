@@ -28,6 +28,8 @@ Write-Host "[4/5] Installing slack plugin..." -ForegroundColor Yellow
 claude plugin install slack 2>&1 | Out-Null
 
 # 5. 安裝 jdtls（Java LSP 依賴）
+# ⚠ 版本同步：Unix 版（install-claude-plugins.sh.tmpl）用 pinned tarball，
+# 這裡用 scoop rolling release，兩邊版本可能不同步。
 Write-Host "[5/6] Installing jdtls via scoop..." -ForegroundColor Yellow
 if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
     scoop install jdtls 2>&1 | Out-Null
@@ -89,6 +91,9 @@ if (Get-Command "dos2unix" -ErrorAction SilentlyContinue) {
     $ErrorActionPreference = "Continue"
     foreach ($file in $shFiles) { dos2unix $file.FullName 2>$null }
     $ErrorActionPreference = "Stop"
+} else {
+    Write-Host "  WARNING: dos2unix not found. Plugin .sh scripts may have CRLF issues." -ForegroundColor Yellow
+    Write-Host "  Install with: scoop install dos2unix" -ForegroundColor Yellow
 }
 
 # ── 移除 hooks.json 的 UTF-8 BOM ─────────────────────────────────────────

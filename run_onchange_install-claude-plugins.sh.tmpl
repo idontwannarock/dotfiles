@@ -31,6 +31,8 @@ echo "[4/5] Installing slack plugin..."
 claude plugin install slack 2>&1 || true
 
 # 5. 安裝 jdtls（Java LSP 依賴）
+# ⚠ 版本同步：Windows 版（install-claude-plugins.ps1.tmpl）用 scoop rolling release，
+# 這裡用 pinned tarball，兩邊版本可能不同步。
 echo "[5/6] Installing jdtls..."
 JDTLS_DIR="$HOME/.local/share/jdtls"
 if ! command -v jdtls &>/dev/null && [ ! -f "$JDTLS_DIR/bin/jdtls" ]; then

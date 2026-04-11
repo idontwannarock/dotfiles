@@ -24,15 +24,18 @@ sh -c "$(curl -fsLS get.chezmoi.io)"
 
 ### Windows（PowerShell）
 
+> **前提**：Windows 上 git 一律透過 scoop 安裝。chezmoi 的 `.sh` script interpreter
+> 硬指向 `~/scoop/apps/git/current/bin/bash.exe`，其他安裝方式會導致 script 執行失敗。
+
 ```powershell
-# 安裝 git（若尚未安裝）
-winget install git.git
-# 或（若已有 scoop）
+# 1. 安裝 scoop（若尚未安裝）
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+
+# 2. 安裝 git（scoop 本身首次安裝不需要 git，但後續 scoop update 需要）
 scoop install git
 
-# 安裝 chezmoi
-winget install twpayne.chezmoi
-# 或
+# 3. 安裝 chezmoi
 scoop install chezmoi
 ```
 
