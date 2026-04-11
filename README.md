@@ -178,10 +178,12 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 
 | 工具 | Windows | macOS | Linux |
 |------|---------|-------|-------|
+| [jq](https://jqlang.github.io/jq/) | scoop | brew | apt |
+| [NVM](https://github.com/nvm-sh/nvm) | — | curl installer | curl installer |
 | [Starship](https://starship.rs/) | scoop | brew | curl installer |
 | [Fastfetch](https://github.com/fastfetch-cli/fastfetch) | scoop | brew | apt (PPA) |
 | [Claude Code](https://claude.com/claude-code) | npm | npm | npm |
-| [Codex CLI](https://developers.openai.com/codex) | npm | npm / brew | npm |
+| [Codex CLI](https://developers.openai.com/codex) | npm | npm | npm |
 
 ### 不納入 chezmoi（手動管理）
 
@@ -203,6 +205,7 @@ dotfiles/
 ├── .chezmoiexternal.toml     # 外部資源（statusline binary）
 ├── .chezmoitemplates/        # 平台專用 template 片段
 │   ├── bashrc/               #   bashrc/{windows,linux}
+│   ├── scripts/              #   scripts/{load-nvm}（安裝腳本共用片段）
 │   ├── shell-common/         #   shell-common/{base,windows,linux,darwin}
 │   └── zshrc/                #   zshrc/{darwin}
 ├── .github/workflows/        # GitHub Actions（statusline 自動編譯發佈）
@@ -226,8 +229,10 @@ dotfiles/
 ├── dot_vimrc                 # ~/.vimrc
 ├── dot_ideavimrc             # ~/.ideavimrc
 ├── dot_vim/                  # ~/.vim/
+├── run_onchange_before_*.tmpl # 前置腳本（jq 安裝、chezmoi config 修復）
 ├── run_once_install-*.tmpl   # 工具安裝腳本（只跑一次）
 ├── run_onchange_*.tmpl       # 設定更新腳本（變更時重跑）
+├── run_after_*.tmpl          # 後置腳本（Windows codex config 合併）
 ├── claude/statusline/        # statusline 原始碼（CI 編譯）
 ├── neovim/                   # NeoVim 設定（已棄用）
 ├── scoop/                    # Scoop 套件清單（手動管理）

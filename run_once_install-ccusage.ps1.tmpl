@@ -6,6 +6,14 @@ if (Get-Command "ccusage" -ErrorAction SilentlyContinue) {
     exit 0  # 已安裝，跳過
 }
 
-Write-Host "Installing ccusage..." -ForegroundColor Cyan
-bun install -g ccusage
+if (Get-Command "bun" -ErrorAction SilentlyContinue) {
+    Write-Host "Installing ccusage (bun)..." -ForegroundColor Cyan
+    bun install -g ccusage
+} elseif (Get-Command "npm" -ErrorAction SilentlyContinue) {
+    Write-Host "Installing ccusage (npm)..." -ForegroundColor Cyan
+    npm install -g ccusage
+} else {
+    Write-Host "[ccusage] Neither bun nor npm found, skipping install." -ForegroundColor Yellow
+    exit 0
+}
 {{ end -}}

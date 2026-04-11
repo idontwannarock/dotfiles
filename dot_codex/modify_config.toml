@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
-# chezmoi modify_ script — 合併 codex config
+# chezmoi modify_ script — 合併 codex config（Unix/macOS/WSL）
 # 同步全域設定與通用 MCP servers，但保留本機的 per-project 設定
+#
+# ⚠ Windows 雙源：此腳本因副檔名 .toml 在 Windows 上無法被 chezmoi 透過
+# [interpreters.*] 派發執行，故 .chezmoiignore.tmpl 在 Windows 排除此檔，
+# 改由 run_after_modify-codex-config.ps1.tmpl 實作相同邏輯。
+# 修改全域設定或 MCP servers 時，兩邊必須同步更新。
 #
 # 策略：
 # 1. 輸出同步的全域設定（model、profiles、instructions）

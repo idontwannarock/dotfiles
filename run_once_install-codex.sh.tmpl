@@ -7,6 +7,13 @@ if command -v codex &>/dev/null; then
     exit 0
 fi
 
+{{ template "scripts/load-nvm" }}
+
+if ! command -v npm &>/dev/null; then
+    echo "[codex] npm not found, skipping install."
+    exit 0
+fi
+
 echo "Installing Codex CLI..."
 npm install -g @openai/codex
 {{ end -}}

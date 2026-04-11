@@ -1,0 +1,6 @@
+# Load nvm into the current shell so npm/npx/node are available.
+# Usage: {{ "{{" }} template "scripts/load-nvm" {{ "}}" }}
+if ! command -v npm &>/dev/null; then
+    export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+fi

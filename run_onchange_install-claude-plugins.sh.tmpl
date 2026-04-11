@@ -5,6 +5,8 @@
 
 set -euo pipefail
 
+{{ template "scripts/load-nvm" }}
+
 echo "=== Claude Code Plugin Setup ==="
 
 if ! command -v claude &>/dev/null; then

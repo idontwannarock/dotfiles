@@ -1,0 +1,18 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_onchange_before_ script — 確保 jq 在 modify_ phase 之前可用
+# modify_settings.json.sh.tmpl 需要 jq 來 patch Claude Code settings.json
+
+if command -v jq &>/dev/null; then
+    exit 0
+fi
+
+echo "Installing jq (required for modify_ scripts)..."
+
+{{- if eq .chezmoi.os "darwin" }}
+brew install jq
+{{- else }}
+# Linux (WSL/Ubuntu)
+sudo apt-get update -q && sudo apt-get install -y jq
+{{- end }}
+{{ end -}}

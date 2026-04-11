@@ -1,0 +1,17 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_onchange_before_ script — 確保 jq 在 modify_ phase 之前可用
+# modify_settings.json.sh.tmpl 需要 jq 來 patch Claude Code settings.json
+
+if (Get-Command "jq" -ErrorAction SilentlyContinue) {
+    exit 0
+}
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "jq not found and scoop not available. Install jq manually." -ForegroundColor Red
+    Write-Host "  scoop install jq  (recommended)" -ForegroundColor Yellow
+    exit 1
+}
+
+Write-Host "Installing jq (required for modify_ scripts)..." -ForegroundColor Cyan
+scoop install jq
+{{ end -}}

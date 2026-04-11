@@ -7,6 +7,16 @@ if command -v ccusage &>/dev/null; then
     exit 0  # 已安裝，跳過
 fi
 
-echo "Installing ccusage..."
-bun install -g ccusage
+{{ template "scripts/load-nvm" }}
+
+if command -v bun &>/dev/null; then
+    echo "Installing ccusage (bun)..."
+    bun install -g ccusage
+elif command -v npm &>/dev/null; then
+    echo "Installing ccusage (npm)..."
+    npm install -g ccusage
+else
+    echo "[ccusage] Neither bun nor npm found, skipping install."
+    exit 0
+fi
 {{ end -}}
