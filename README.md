@@ -41,14 +41,18 @@ scoop install chezmoi
 ### Linux / WSL
 
 ```bash
-# 1. 安裝 git 和編譯工具
+# 1. 設定 passwordless sudo（chezmoi apply 的 install scripts 需要 sudo 安裝套件）
+echo "$USER ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/$USER
+sudo chmod 0440 /etc/sudoers.d/$USER
+
+# 2. 安裝 git 和編譯工具
 sudo apt update && sudo apt install -y git build-essential curl
 
-# 2. 安裝 Homebrew（版本管理工具如 JDK、Python、Go 透過 brew 安裝）
+# 3. 安裝 Homebrew（版本管理工具如 JDK、Python、Go 透過 brew 安裝）
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 # 依照 brew 的提示將 brew 加入 PATH
 
-# 3. 安裝 chezmoi
+# 4. 安裝 chezmoi
 brew install chezmoi
 # 或使用官方腳本
 sh -c "$(curl -fsLS get.chezmoi.io)"
