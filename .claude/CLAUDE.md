@@ -33,7 +33,7 @@
 - **有依賴順序**的用數字前綴：`01-runtimes` → `02-npm-tools` → `03-claude-config`
 - **無依賴**的不編號：`containers`、`cli-tools`、`fonts`
 - 每個工具在 script 內做**冪等檢查**（已安裝就跳過）
-- **Windows** 用 `.ps1.tmpl`（scoop 安裝），**Unix** 用 `.sh.tmpl`（brew 安裝）
+- **Windows** 用 `.ps1.tmpl`（scoop 安裝），**macOS** 用 `.sh.tmpl`（brew 安裝），**Linux/WSL** 用 `.sh.tmpl`（一般工具 apt、版本管理工具 brew）
 - Unix 的 npm 相關 script 必須引入 `{{ template "scripts/load-nvm" }}`
 - 新增工具安裝時，確認字母排序不會打亂依賴順序
 

@@ -1,10 +1,13 @@
 {{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
 # chezmoi run_once_ script — CLI 工具安裝（Unix/macOS/WSL）
+# macOS: brew, Linux/WSL: apt
 
 set -euo pipefail
 
 echo "=== CLI Tools Setup ==="
+
+{{- if eq .chezmoi.os "darwin" }}
 
 if ! command -v brew &>/dev/null; then
     echo "[cli-tools] Homebrew not found. Skipping."
@@ -22,24 +25,56 @@ brew_install() {
     fi
 }
 
-# ── Archive ──────────────────────────────────────────────────────────────
 brew_install 7z p7zip
-
-# ── Network ──────────────────────────────────────────────────────────────
 brew_install curl
-
-# ── Media ────────────────────────────────────────────────────────────────
 brew_install ffmpeg
-
-# ── Static site ──────────────────────────────────────────────────────────
 brew_install hugo
-# hugo-extended is the default brew formula on macOS/Linux
-
-# ── Network diagnostics ─────────────────────────────────────────────────
 brew_install nexttrace
-
-# ── Video download ───────────────────────────────────────────────────────
 brew_install yt-dlp
+
+{{- else }}
+# Linux/WSL
+
+apt_install() {
+    local cmd="$1"
+    local pkg="${2:-$1}"
+    if command -v "$cmd" &>/dev/null; then
+        echo "[$cmd] already installed, skipping."
+    else
+        echo "[$pkg] Installing via apt..."
+        sudo apt-get install -y "$pkg"
+    fi
+}
+
+apt_install 7z p7zip-full
+apt_install curl
+apt_install ffmpeg
+
+# Hugo
+if command -v hugo &>/dev/null; then
+    echo "[hugo] already installed, skipping."
+else
+    echo "[hugo] Installing via apt..."
+    sudo apt-get install -y hugo 2>/dev/null || echo "[hugo] Not available in apt. Install from https://gohugo.io/installation/"
+fi
+
+# nexttrace
+if command -v nexttrace &>/dev/null; then
+    echo "[nexttrace] already installed, skipping."
+else
+    echo "[nexttrace] Installing via official script..."
+    curl -fsSL nxtrace.org/nt | bash 2>/dev/null || echo "[nexttrace] Install manually: https://github.com/nxtrace/NTrace-core"
+fi
+
+# yt-dlp
+if command -v yt-dlp &>/dev/null; then
+    echo "[yt-dlp] already installed, skipping."
+else
+    echo "[yt-dlp] Installing via apt..."
+    sudo apt-get install -y yt-dlp 2>/dev/null || echo "[yt-dlp] Not in apt. Install via pip: pip install yt-dlp"
+fi
+
+{{- end }}
 
 echo "=== CLI tools setup complete. ==="
 {{ end -}}

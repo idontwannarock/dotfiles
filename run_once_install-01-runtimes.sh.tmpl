@@ -1,6 +1,8 @@
 {{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
 # chezmoi run_once_ script — 開發語言與 runtime 安裝（Unix/macOS/WSL）
+# macOS: 全部用 brew
+# Linux/WSL: 一般工具用 apt，有版本管理需求的（JDK, Python, Go 等）用 brew
 # 每個工具各自做冪等檢查，已安裝則跳過
 
 set -euo pipefail
@@ -27,10 +29,38 @@ else
     echo "[node] nvm not available, skipping node install."
 fi
 
-# ── Homebrew check ───────────────────────────────────────────────────────
+# ── Vim ──────────────────────────────────────────────────────────────────
+if command -v vim &>/dev/null; then
+    echo "[vim] already installed, skipping."
+else
+{{- if eq .chezmoi.os "darwin" }}
+    echo "[vim] Installing via brew..."
+    brew install vim
+{{- else }}
+    echo "[vim] Installing via apt..."
+    sudo apt-get install -y vim
+{{- end }}
+fi
+
+# ── Starship (shell prompt) ──────────────────────────────────────────────
+if command -v starship &>/dev/null; then
+    echo "[starship] already installed, skipping."
+else
+{{- if eq .chezmoi.os "darwin" }}
+    echo "[starship] Installing via brew..."
+    brew install starship
+{{- else }}
+    echo "[starship] Installing via official installer..."
+    curl -sS https://starship.rs/install.sh | sh -s -- --yes
+{{- end }}
+fi
+
+# ── 以下為版本管理工具，統一用 brew ─────────────────────────────────────
+
 if ! command -v brew &>/dev/null; then
-    echo "[brew] Homebrew not found. Skipping brew-based installs."
+    echo "[brew] Homebrew not found. Skipping version-managed tool installs (Go, Python, JDKs, etc.)."
     echo "  Install: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+    echo "=== Runtime setup partially complete (brew-based tools skipped). ==="
     exit 0
 fi
 
@@ -55,9 +85,6 @@ brew_install_cask() {
         brew install --cask "$cask"
     fi
 }
-
-# ── Vim ──────────────────────────────────────────────────────────────────
-brew_install vim
 
 # ── Go ───────────────────────────────────────────────────────────────────
 brew_install go
@@ -98,9 +125,6 @@ for ver in 8 11 17 21 25; do
     fi
 done
 {{- end }}
-
-# ── Starship (shell prompt) ──────────────────────────────────────────────
-brew_install starship
 
 echo "=== Runtime setup complete. ==="
 {{ end -}}

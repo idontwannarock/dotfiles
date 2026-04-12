@@ -1,10 +1,13 @@
 {{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
 # chezmoi run_once_ script — 容器與雲端工具安裝（Unix/macOS/WSL）
+# macOS: brew, Linux/WSL: apt + 官方 repo
 
 set -euo pipefail
 
 echo "=== Container & Cloud Tools Setup ==="
+
+{{- if eq .chezmoi.os "darwin" }}
 
 if ! command -v brew &>/dev/null; then
     echo "[containers] Homebrew not found. Skipping."
@@ -33,25 +36,66 @@ brew_install_cask() {
     fi
 }
 
-# ── Docker ───────────────────────────────────────────────────────────────
-{{- if eq .chezmoi.os "darwin" }}
-# macOS: Docker Desktop via cask
+# Docker Desktop (includes docker + compose)
 brew_install_cask "docker"
-{{- else }}
-# Linux/WSL: docker CLI + compose plugin
-brew_install docker
-brew_install docker-compose
-{{- end }}
 
-# ── Kubernetes ───────────────────────────────────────────────────────────
+# Kubernetes
 brew_install kubectl
 brew_install kubelogin
 
-# ── Lens (K8s GUI) ──────────────────────────────────────────────────────
-{{- if eq .chezmoi.os "darwin" }}
+# Lens
 brew_install_cask "lens"
+
 {{- else }}
+# Linux/WSL
+
+apt_install() {
+    local cmd="$1"
+    local pkg="${2:-$1}"
+    if command -v "$cmd" &>/dev/null; then
+        echo "[$cmd] already installed, skipping."
+    else
+        echo "[$pkg] Installing via apt..."
+        sudo apt-get install -y "$pkg"
+    fi
+}
+
+# Docker
+if command -v docker &>/dev/null; then
+    echo "[docker] already installed, skipping."
+else
+    echo "[docker] Installing via official script..."
+    curl -fsSL https://get.docker.com | sh
+fi
+
+# Docker Compose plugin
+if docker compose version &>/dev/null 2>&1; then
+    echo "[docker-compose] already installed, skipping."
+else
+    echo "[docker-compose] Installing plugin..."
+    sudo apt-get install -y docker-compose-plugin 2>/dev/null || echo "[docker-compose] Install manually if Docker was not installed via apt."
+fi
+
+# kubectl
+if command -v kubectl &>/dev/null; then
+    echo "[kubectl] already installed, skipping."
+else
+    echo "[kubectl] Installing via apt..."
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg 2>/dev/null || true
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
+    sudo apt-get update -q && sudo apt-get install -y kubectl
+fi
+
+# kubelogin
+if command -v kubelogin &>/dev/null; then
+    echo "[kubelogin] already installed, skipping."
+else
+    echo "[kubelogin] Install manually: https://github.com/Azure/kubelogin"
+fi
+
+# Lens — GUI app, skip on Linux/WSL
 echo "[lens] GUI app — install manually on Linux/WSL if needed."
+
 {{- end }}
 
 echo "=== Container tools setup complete. ==="

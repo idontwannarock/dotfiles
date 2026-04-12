@@ -1,10 +1,13 @@
 {{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
 # chezmoi run_once_ script — 字型安裝（Unix/macOS/WSL）
+# macOS: brew cask, Linux/WSL: 手動下載提示
 
 set -euo pipefail
 
 echo "=== Font Setup ==="
+
+{{- if eq .chezmoi.os "darwin" }}
 
 if ! command -v brew &>/dev/null; then
     echo "[fonts] Homebrew not found. Skipping."
@@ -22,13 +25,12 @@ brew_install_cask() {
     fi
 }
 
-{{- if eq .chezmoi.os "darwin" }}
-# macOS: brew cask fonts
 brew_install_cask "font-caskaydia-cove-nerd-font"
 brew_install_cask "font-jetbrains-mono"
+
 {{- else }}
-# Linux/WSL: fonts are typically managed at the OS level
-echo "[fonts] Linux/WSL — install fonts via system package manager or download manually."
+# Linux/WSL: 字型由 terminal emulator 所在的 host OS 管理
+echo "[fonts] Linux/WSL — fonts are managed by the host OS terminal."
 echo "  CaskaydiaCove Nerd Font: https://www.nerdfonts.com/font-downloads"
 echo "  JetBrains Mono: https://www.jetbrains.com/lp/mono/"
 {{- end }}

@@ -11,13 +11,11 @@
 ### macOS
 
 ```bash
-# 1. 安裝 Homebrew（若尚未安裝）
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# 2. 安裝 git（若尚未安裝）
+# 1. 安裝 Xcode Command Line Tools（提供 git 和編譯工具）
 xcode-select --install
-# 或
-brew install git
+
+# 2. 安裝 Homebrew
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # 3. 安裝 chezmoi
 brew install chezmoi
@@ -43,10 +41,10 @@ scoop install chezmoi
 ### Linux / WSL
 
 ```bash
-# 1. 安裝 git
-sudo apt update && sudo apt install -y git build-essential
+# 1. 安裝 git 和編譯工具
+sudo apt update && sudo apt install -y git build-essential curl
 
-# 2. 安裝 Homebrew（chezmoi apply 安裝的工具大多透過 brew）
+# 2. 安裝 Homebrew（版本管理工具如 JDK、Python、Go 透過 brew 安裝）
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 # 依照 brew 的提示將 brew 加入 PATH
 
@@ -183,7 +181,7 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 
 ### 自動安裝的工具
 
-`chezmoi apply` 時會自動安裝以下工具（若尚未安裝）。Windows 用 scoop，macOS/Linux 用 brew。
+`chezmoi apply` 時會自動安裝以下工具（若尚未安裝）。Windows 用 scoop，macOS 用 brew，Linux/WSL 一般工具用 apt、版本管理工具（JDK、Python、Go 等）用 brew。
 
 **基礎設施（before phase）：**
 
