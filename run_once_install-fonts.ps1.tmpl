@@ -1,0 +1,34 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_ script — 字型安裝（Windows）
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== Font Setup ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found. Cannot install fonts." -ForegroundColor Red
+    exit 1
+}
+
+scoop bucket add nerd-fonts 2>$null
+
+# ── CaskaydiaCove Nerd Font Mono ─────────────────────────────────────────
+$cascadia = Join-Path $env:USERPROFILE "scoop\apps\cascadiacode-nf-mono"
+if (Test-Path $cascadia) {
+    Write-Host "[cascadiacode-nf-mono] already installed, skipping." -ForegroundColor Gray
+} else {
+    Write-Host "[cascadiacode-nf-mono] Installing via scoop..." -ForegroundColor Yellow
+    scoop install cascadiacode-nf-mono
+}
+
+# ── JetBrains Mono ───────────────────────────────────────────────────────
+$jbmono = Join-Path $env:USERPROFILE "scoop\apps\jetbrains-mono"
+if (Test-Path $jbmono) {
+    Write-Host "[jetbrains-mono] already installed, skipping." -ForegroundColor Gray
+} else {
+    Write-Host "[jetbrains-mono] Installing via scoop..." -ForegroundColor Yellow
+    scoop install jetbrains-mono
+}
+
+Write-Host "=== Font setup complete. ===" -ForegroundColor Cyan
+{{ end -}}

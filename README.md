@@ -6,20 +6,21 @@
 
 ## Bootstrap：各平台前置安裝
 
-在使用 chezmoi 前，需先安裝 **git** 與 **chezmoi**。
+在使用 chezmoi 前，需先安裝 **git**、**chezmoi**，以及平台的套件管理器。
 
 ### macOS
 
 ```bash
-# 安裝 git（若尚未安裝）
+# 1. 安裝 Homebrew（若尚未安裝）
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 2. 安裝 git（若尚未安裝）
 xcode-select --install
 # 或
 brew install git
 
-# 安裝 chezmoi
+# 3. 安裝 chezmoi
 brew install chezmoi
-# 或使用官方腳本
-sh -c "$(curl -fsLS get.chezmoi.io)"
 ```
 
 ### Windows（PowerShell）
@@ -39,13 +40,19 @@ scoop install git
 scoop install chezmoi
 ```
 
-### WSL Ubuntu
+### Linux / WSL
 
 ```bash
-# 安裝 git
-sudo apt update && sudo apt install -y git
+# 1. 安裝 git
+sudo apt update && sudo apt install -y git build-essential
 
-# 安裝 chezmoi
+# 2. 安裝 Homebrew（chezmoi apply 安裝的工具大多透過 brew）
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# 依照 brew 的提示將 brew 加入 PATH
+
+# 3. 安裝 chezmoi
+brew install chezmoi
+# 或使用官方腳本
 sh -c "$(curl -fsLS get.chezmoi.io)"
 ```
 
@@ -161,7 +168,6 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 | 設定 | 部署目標 | 平台 |
 |------|----------|------|
 | Shell prompt（[Starship](docs/starship.md)） | `~/.config/starship/starship.toml` | 跨平台 |
-| [Fastfetch](docs/fastfetch.md) | `~/.config/fastfetch/` | 跨平台 |
 | [Vim](docs/vim.md) / IdeaVim | `~/.vimrc`, `~/.ideavimrc`, `~/.vim/` | 跨平台 |
 | Bash | `~/.bashrc`, `~/.shell_common` | Windows (Git Bash)、Linux/WSL |
 | Zsh | `~/.zshrc`, `~/.shell_common` | macOS |
@@ -175,26 +181,78 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 | Codex CLI skills | `~/.codex/skills/` | 跨平台 |
 | Statusline binary | `~/.local/bin/statusline` | 跨平台（自動下載） |
 
-### 自動安裝的依賴
+### 自動安裝的工具
 
-`chezmoi apply` 時會自動安裝以下工具（若尚未安裝）：
+`chezmoi apply` 時會自動安裝以下工具（若尚未安裝）。Windows 用 scoop，macOS/Linux 用 brew。
 
-| 工具 | Windows | macOS | Linux |
-|------|---------|-------|-------|
-| [jq](https://jqlang.github.io/jq/) | scoop | brew | apt |
-| [NVM](https://github.com/nvm-sh/nvm) | — | curl installer | curl installer |
-| [Starship](https://starship.rs/) | scoop | brew | curl installer |
-| [Fastfetch](https://github.com/fastfetch-cli/fastfetch) | scoop | brew | apt (PPA) |
-| [Claude Code](https://claude.com/claude-code) | npm | npm | npm |
-| [Codex CLI](https://developers.openai.com/codex) | npm | npm | npm |
+**基礎設施（before phase）：**
+
+| 工具 | 說明 |
+|------|------|
+| jq | modify_ scripts 的 JSON 處理 |
+
+**開發語言 / Runtime（install-01-runtimes）：**
+
+| 工具 | 說明 |
+|------|------|
+| NVM + Node.js | npm 的來源（Unix: curl installer, Windows: scoop） |
+| Vim | 編輯器 |
+| Go | |
+| Python 3.11, 3.13 | |
+| uv | Python 套件管理 |
+| Rustup | Rust 工具鏈 |
+| Maven 3 | Java 建置 |
+| Temurin JDK 8, 11, 17, 21, 25 | Adoptium OpenJDK |
+| Starship | Shell prompt |
+
+**npm 全域工具（install-02-npm-tools）：**
+
+| 工具 | 說明 |
+|------|------|
+| Claude Code | AI CLI |
+| Codex CLI | AI CLI |
+| OpenSpec | 結構化開發流程 |
+
+**Claude Code 設定（install-03-claude-config）：**
+
+| 工具 | 說明 |
+|------|------|
+| superpowers / code-review / slack plugins | Claude Code plugins |
+| jdtls | Java LSP |
+| agent-browser / chrome-devtools MCP | Claude Code MCP servers |
+
+**容器 / 雲（install-containers）：**
+
+| 工具 | 說明 |
+|------|------|
+| Docker, Docker Compose | 容器 |
+| kubectl, kubelogin | Kubernetes CLI |
+| Lens | K8s GUI（Windows/macOS） |
+
+**CLI 工具（install-cli-tools）：**
+
+| 工具 | 說明 |
+|------|------|
+| 7zip, curl, ffmpeg | 基礎工具 |
+| Hugo | 靜態網站 |
+| nexttrace | 路由追蹤 |
+| yt-dlp | 影片下載 |
+| clink, dark, vimtutor, winget, winget-ps | Windows 專屬 |
+
+**字型（install-fonts）：**
+
+| 工具 | 說明 |
+|------|------|
+| CaskaydiaCove Nerd Font Mono | Terminal 字型 |
+| JetBrains Mono | 程式字型 |
 
 ### 不納入 chezmoi（手動管理）
 
 | 項目 | 原因 |
 |------|------|
 | [SSH keys](docs/ssh.md) | 每台機器獨立，不應同步 |
-| [Scoop 套件清單](scoop/) | 尚未整理必要 vs 選用套件 |
 | [Git 憑證](docs/git-credentials.md) | 包含機器專屬 access token |
+| GUI 應用程式 | 各機器需求不同（參考 [`scoop/scoopfile.json`](scoop/scoopfile.json)） |
 | NeoVim（`neovim/`） | 已棄用 |
 
 ---
@@ -218,7 +276,6 @@ dotfiles/
 │   └── WindowsPowerShell/    # PS5 專屬 profile
 ├── docs/                     # 工具設定說明文件
 ├── dot_config/               # ~/.config/ 設定
-│   ├── fastfetch/
 │   └── starship/
 ├── dot_claude/               # ~/.claude/ 設定
 │   ├── exact_commands/       # Commands（exact_：自動清理移除的檔案）
@@ -233,12 +290,12 @@ dotfiles/
 ├── dot_ideavimrc             # ~/.ideavimrc
 ├── dot_vim/                  # ~/.vim/
 ├── run_onchange_before_*.tmpl # 前置腳本（jq 安裝、chezmoi config 修復）
-├── run_once_install-*.tmpl   # 工具安裝腳本（只跑一次）
+├── run_once_install-*.tmpl   # 工具安裝腳本（依序：01-runtimes → 02-npm-tools → 03-claude-config, containers, cli-tools, fonts）
 ├── run_onchange_*.tmpl       # 設定更新腳本（變更時重跑）
 ├── run_after_*.tmpl          # 後置腳本（Windows codex config 合併）
 ├── claude/statusline/        # statusline 原始碼（CI 編譯）
 ├── neovim/                   # NeoVim 設定（已棄用）
-├── scoop/                    # Scoop 套件清單（手動管理）
+├── scoop/                    # Scoop 套件參考清單（手動管理的 GUI 應用等）
 └── scripts/                  # 輔助腳本（worklogs 設定等）
 ```
 
@@ -251,10 +308,8 @@ dotfiles/
 | [Bash](docs/bash.md) | Bash 設定、worklogs、Windows Terminal 整合 |
 | [Claude Code](docs/claude-code.md) | Claude Code 設定、statusline、plugins |
 | [Codex CLI](docs/codex-cli.md) | Codex CLI 設定、skills、Claude workflow 對齊 |
-| [Fastfetch](docs/fastfetch.md) | Fastfetch 系統資訊工具 |
 | [Git 憑證管理](docs/git-credentials.md) | Git 遠端認證（GCM、SSH、WSL） |
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
-| [Scoop](docs/scoop.md) | Scoop 套件管理器匯出設定 |
 | [SSH](docs/ssh.md) | SSH key 設定教學 |
 | [Starship](docs/starship.md) | Starship prompt 設定 |
 | [User Scripts](docs/user-scripts.md) | 輔助腳本（worklogs、scoop 更新） |

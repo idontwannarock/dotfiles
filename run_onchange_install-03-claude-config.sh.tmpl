@@ -1,0 +1,71 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_onchange_ script — Claude Code plugins + MCP 設定（Unix/macOS/WSL）
+# 需要 claude CLI，由 install-02-npm-tools 安裝
+# 腳本內容改變時自動重新執行
+
+set -euo pipefail
+
+{{ template "scripts/load-nvm" }}
+
+echo "=== Claude Code Config Setup ==="
+
+if ! command -v claude &>/dev/null; then
+    echo "WARNING: claude command not found. Skipping Claude config setup." >&2
+    exit 0
+fi
+
+# ── Plugins ──────────────────────────────────────────────────────────────
+
+echo "[plugins] Adding superpowers marketplace..."
+claude plugin marketplace add obra/superpowers-marketplace 2>&1 || true
+
+echo "[plugins] Installing superpowers..."
+claude plugin install superpowers 2>&1 || true
+
+echo "[plugins] Installing code-review..."
+claude plugin install code-review 2>&1 || true
+
+echo "[plugins] Installing slack..."
+claude plugin install slack 2>&1 || true
+
+# ── jdtls（Java LSP 依賴）───────────────────────────────────────────────
+# ⚠ 版本同步：Windows 版用 scoop rolling release，這裡用 pinned tarball
+echo "[jdtls] Checking..."
+JDTLS_DIR="$HOME/.local/share/jdtls"
+if ! command -v jdtls &>/dev/null && [ ! -f "$JDTLS_DIR/bin/jdtls" ]; then
+    JDTLS_VERSION="1.58.0-202602271700"
+    JDTLS_URL="https://download.eclipse.org/jdtls/snapshots/jdt-language-server-${JDTLS_VERSION}.tar.gz"
+    echo "[jdtls] Downloading ${JDTLS_VERSION}..."
+    mkdir -p "$JDTLS_DIR"
+    if command -v curl &>/dev/null; then
+        curl -fsSL "$JDTLS_URL" | tar xz -C "$JDTLS_DIR"
+    elif command -v wget &>/dev/null; then
+        wget -qO- "$JDTLS_URL" | tar xz -C "$JDTLS_DIR"
+    else
+        echo "[jdtls] WARNING: curl/wget not found." >&2
+    fi
+else
+    echo "[jdtls] already installed, skipping."
+fi
+
+# ── Plugin cache cleanup ─────────────────────────────────────────────────
+echo "[cleanup] Removing stale plugin caches..."
+PLUGIN_CACHE="$HOME/.claude/plugins/cache"
+rm -rf "$PLUGIN_CACHE/claude-plugins-official/explanatory-output-style" 2>/dev/null && echo "  Removed explanatory-output-style" || true
+rm -rf "$PLUGIN_CACHE/superpowers-marketplace/superpowers" 2>/dev/null && echo "  Removed marketplace superpowers" || true
+
+# ── MCP Servers ──────────────────────────────────────────────────────────
+echo "[mcp] Setting up MCP servers..."
+
+if command -v npx &>/dev/null; then
+    claude mcp add --scope user "agent-browser" -- npx "agent-browser-mcp"
+    echo "[mcp] agent-browser registered."
+    claude mcp add --scope user "chrome-devtools" -- npx "-y" "chrome-devtools-mcp@latest"
+    echo "[mcp] chrome-devtools registered."
+else
+    echo "[mcp] npx not found, skipping MCP setup."
+fi
+
+echo "=== Claude config setup complete. Restart Claude Code to activate. ==="
+{{ end -}}

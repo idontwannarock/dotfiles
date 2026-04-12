@@ -1,0 +1,70 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_ script — CLI 工具安裝（Windows）
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== CLI Tools Setup ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found. Cannot install tools." -ForegroundColor Red
+    exit 1
+}
+
+function Install-ScoopPackage {
+    param([string]$Name, [string]$Package = $Name)
+    if (Get-Command $Name -ErrorAction SilentlyContinue) {
+        Write-Host "[$Name] already installed, skipping." -ForegroundColor Gray
+    } else {
+        Write-Host "[$Package] Installing via scoop..." -ForegroundColor Yellow
+        scoop install $Package
+    }
+}
+
+scoop bucket add extras 2>$null
+
+# ── Archive ──────────────────────────────────────────────────────────────
+Install-ScoopPackage "7z" "7zip"
+
+# ── Network ──────────────────────────────────────────────────────────────
+Install-ScoopPackage "curl"
+
+# ── Media ────────────────────────────────────────────────────────────────
+Install-ScoopPackage "ffmpeg"
+
+# ── Shell enhancement ────────────────────────────────────────────────────
+Install-ScoopPackage "clink"
+
+# ── WiX toolset ──────────────────────────────────────────────────────────
+Install-ScoopPackage "dark"
+
+# ── Static site ──────────────────────────────────────────────────────────
+Install-ScoopPackage "hugo"
+Install-ScoopPackage "hugo-extended"
+
+# ── Network diagnostics ─────────────────────────────────────────────────
+Install-ScoopPackage "nexttrace"
+
+# ── Video download ───────────────────────────────────────────────────────
+Install-ScoopPackage "yt-dlp"
+
+# ── Vim tutor ────────────────────────────────────────────────────────────
+$vimtutorPath = Join-Path $env:USERPROFILE "scoop\apps\vimtutor"
+if (-not (Test-Path $vimtutorPath)) {
+    Write-Host "[vimtutor] Installing via scoop..." -ForegroundColor Yellow
+    scoop install vimtutor
+} else {
+    Write-Host "[vimtutor] already installed, skipping." -ForegroundColor Gray
+}
+
+# ── Windows package managers ─────────────────────────────────────────────
+Install-ScoopPackage "winget"
+$wingetPs = Join-Path $env:USERPROFILE "scoop\apps\winget-ps"
+if (-not (Test-Path $wingetPs)) {
+    Write-Host "[winget-ps] Installing via scoop..." -ForegroundColor Yellow
+    scoop install winget-ps
+} else {
+    Write-Host "[winget-ps] already installed, skipping." -ForegroundColor Gray
+}
+
+Write-Host "=== CLI tools setup complete. ===" -ForegroundColor Cyan
+{{ end -}}

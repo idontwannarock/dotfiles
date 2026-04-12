@@ -1,0 +1,36 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_ script — 容器與雲端工具安裝（Windows）
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== Container & Cloud Tools Setup ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found. Cannot install tools." -ForegroundColor Red
+    exit 1
+}
+
+function Install-ScoopPackage {
+    param([string]$Name, [string]$Package = $Name)
+    if (Get-Command $Name -ErrorAction SilentlyContinue) {
+        Write-Host "[$Name] already installed, skipping." -ForegroundColor Gray
+    } else {
+        Write-Host "[$Package] Installing via scoop..." -ForegroundColor Yellow
+        scoop install $Package
+    }
+}
+
+# ── Docker ───────────────────────────────────────────────────────────────
+Install-ScoopPackage "docker"
+Install-ScoopPackage "docker-compose"
+
+# ── Kubernetes ───────────────────────────────────────────────────────────
+Install-ScoopPackage "kubectl"
+scoop bucket add extras 2>$null
+Install-ScoopPackage "kubelogin"
+
+# ── Lens (K8s GUI) ──────────────────────────────────────────────────────
+Install-ScoopPackage "lens"
+
+Write-Host "=== Container tools setup complete. ===" -ForegroundColor Cyan
+{{ end -}}

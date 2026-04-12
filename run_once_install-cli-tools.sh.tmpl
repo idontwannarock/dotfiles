@@ -1,0 +1,45 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_once_ script — CLI 工具安裝（Unix/macOS/WSL）
+
+set -euo pipefail
+
+echo "=== CLI Tools Setup ==="
+
+if ! command -v brew &>/dev/null; then
+    echo "[cli-tools] Homebrew not found. Skipping."
+    exit 0
+fi
+
+brew_install() {
+    local cmd="$1"
+    local pkg="${2:-$1}"
+    if command -v "$cmd" &>/dev/null; then
+        echo "[$cmd] already installed, skipping."
+    else
+        echo "[$pkg] Installing via brew..."
+        brew install "$pkg"
+    fi
+}
+
+# ── Archive ──────────────────────────────────────────────────────────────
+brew_install 7z p7zip
+
+# ── Network ──────────────────────────────────────────────────────────────
+brew_install curl
+
+# ── Media ────────────────────────────────────────────────────────────────
+brew_install ffmpeg
+
+# ── Static site ──────────────────────────────────────────────────────────
+brew_install hugo
+# hugo-extended is the default brew formula on macOS/Linux
+
+# ── Network diagnostics ─────────────────────────────────────────────────
+brew_install nexttrace
+
+# ── Video download ───────────────────────────────────────────────────────
+brew_install yt-dlp
+
+echo "=== CLI tools setup complete. ==="
+{{ end -}}

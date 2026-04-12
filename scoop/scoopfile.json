@@ -1,475 +1,193 @@
 {
-    "buckets": [
-        {
-            "Name": "main",
-            "Source": "https://github.com/ScoopInstaller/Main",
-            "Updated": {
-                "value": "\/Date(1769748750000)\/",
-                "DisplayHint": 2,
-                "DateTime": "2026¦~1¤ë30¤é ¤U¤È 12:52:30"
-            },
-            "Manifests": 1425
-        },
-        {
-            "Name": "extras",
-            "Source": "https://github.com/ScoopInstaller/Extras",
-            "Updated": {
-                "value": "\/Date(1769754706000)\/",
-                "DisplayHint": 2,
-                "DateTime": "2026¦~1¤ë30¤é ¤U¤È 02:31:46"
-            },
-            "Manifests": 2257
-        },
-        {
-            "Name": "versions",
-            "Source": "https://github.com/ScoopInstaller/Versions",
-            "Updated": {
-                "value": "\/Date(1769755743000)\/",
-                "DisplayHint": 2,
-                "DateTime": "2026¦~1¤ë30¤é ¤U¤È 02:49:03"
-            },
-            "Manifests": 550
-        },
-        {
-            "Name": "sysinternals",
-            "Source": "https://github.com/niheaven/scoop-sysinternals",
-            "Updated": {
-                "value": "\/Date(1765938077000)\/",
-                "DisplayHint": 2,
-                "DateTime": "2025¦~12¤ë17¤é ¤W¤È 10:21:17"
-            },
-            "Manifests": 75
-        },
-        {
-            "Name": "nerd-fonts",
-            "Source": "https://github.com/matthewjberger/scoop-nerd-fonts",
-            "Updated": {
-                "value": "\/Date(1769239519000)\/",
-                "DisplayHint": 2,
-                "DateTime": "2026¦~1¤ë24¤é ¤U¤È 03:25:19"
-            },
-            "Manifests": 367
-        },
-        {
-            "Name": "java",
-            "Source": "https://github.com/ScoopInstaller/Java",
-            "Updated": {
-                "value": "\/Date(1769749751000)\/",
-                "DisplayHint": 2,
-                "DateTime": "2026¦~1¤ë30¤é ¤U¤È 01:09:11"
-            },
-            "Manifests": 324
-        },
-        {
-            "Name": "okibcn_Bucket",
-            "Source": "https://github.com/okibcn/Bucket",
-            "Updated": {
-                "value": "\/Date(1769250953000)\/",
-                "DisplayHint": 2,
-                "DateTime": "2026¦~1¤ë24¤é ¤U¤È 06:35:53"
-            },
-            "Manifests": 11
-        }
-    ],
-    "apps": [
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "7zip",
-            "Version": "25.01",
-            "Updated": "\/Date(1767752150975)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "another-redis-desktop-manager",
-            "Version": "1.7.1",
-            "Updated": "\/Date(1767755315983)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "bun",
-            "Version": "1.3.8",
-            "Updated": "\/Date(1769733178457)\/"
-        },
-        {
-            "Info": "",
-            "Source": "nerd-fonts",
-            "Name": "cascadiacode-nf-mono",
-            "Version": "3.4.0",
-            "Updated": "\/Date(1767755094398)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "clink",
-            "Version": "1.9.10",
-            "Updated": "\/Date(1769391685792)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "crystaldiskinfo",
-            "Version": "9.7.2",
-            "Updated": "\/Date(1767755431892)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "curl",
-            "Version": "8.18.0_2",
-            "Updated": "\/Date(1768958808979)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "dark",
-            "Version": "3.14.1",
-            "Updated": "\/Date(1767760168334)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "docker",
-            "Version": "29.2.0",
-            "Updated": "\/Date(1769494613637)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "docker-compose",
-            "Version": "5.0.2",
-            "Updated": "\/Date(1769045473916)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "fastfetch",
-            "Version": "2.58.0",
-            "Updated": "\/Date(1769045479716)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "ffmpeg",
-            "Version": "8.0.1",
-            "Updated": "\/Date(1767765467650)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "fork",
-            "Version": "2.15.3",
-            "Updated": "\/Date(1767755549696)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "git",
-            "Version": "2.52.0",
-            "Updated": "\/Date(1767752174445)\/"
-        },
-        {
-            "Info": "",
-            "Source": "versions",
-            "Name": "go124",
-            "Version": "1.24.12",
-            "Updated": "\/Date(1769655639704)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "hugo",
-            "Version": "0.155.0",
-            "Updated": "\/Date(1769649966392)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "hugo-extended",
-            "Version": "0.155.0",
-            "Updated": "\/Date(1769649969908)\/"
-        },
-        {
-            "Info": "",
-            "Source": "nerd-fonts",
-            "Name": "jetbrains-mono",
-            "Version": "2.304",
-            "Updated": "\/Date(1767755627051)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "jetbrains-toolbox",
-            "Version": "3.2.0.65851",
-            "Updated": "\/Date(1767755642037)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "jmeter",
-            "Version": "5.6.3",
-            "Updated": "\/Date(1767755672651)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "joplin",
-            "Version": "3.5.12",
-            "Updated": "\/Date(1768786827811)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "jq",
-            "Version": "1.8.1",
-            "Updated": "\/Date(1769650015586)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "kafkio",
-            "Version": "2.1.11",
-            "Updated": "\/Date(1769757013993)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "kubectl",
-            "Version": "1.35.0",
-            "Updated": "\/Date(1767759921750)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "kubelogin",
-            "Version": "1.35.2",
-            "Updated": "\/Date(1768181371500)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "lens",
-            "Version": "2026.1.161237-latest",
-            "Updated": "\/Date(1768791786469)\/"
-        },
-        {
-            "Info": "",
-            "Source": "nerd-fonts",
-            "Name": "maple-mono-autohint",
-            "Version": "7.9",
-            "Updated": "\/Date(1767760014499)\/"
-        },
-        {
-            "Info": "",
-            "Source": "versions",
-            "Name": "maven3",
-            "Version": "3.9.12",
-            "Updated": "\/Date(1767945988793)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "mqttx",
-            "Version": "1.13.0",
-            "Updated": "\/Date(1769391698383)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "nexttrace",
-            "Version": "1.5.0",
-            "Updated": "\/Date(1767760067603)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "notepadplusplus",
-            "Version": "8.9.1",
-            "Updated": "\/Date(1769506300041)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "nvm",
-            "Version": "1.2.2",
-            "Updated": "\/Date(1767760107382)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "onefetch",
-            "Version": "2.26.1",
-            "Updated": "\/Date(1767760120255)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "postman",
-            "Version": "11.68.0",
-            "Updated": "\/Date(1767760155408)\/"
-        },
-        {
-            "Info": "",
-            "Source": "versions",
-            "Name": "python311",
-            "Version": "3.11.9",
-            "Updated": "\/Date(1767760230878)\/"
-        },
-        {
-            "Info": "",
-            "Source": "versions",
-            "Name": "python313",
-            "Version": "3.13.11",
-            "Updated": "\/Date(1767760300649)\/"
-        },
-        {
-            "Info": "",
-            "Source": "sysinternals",
-            "Name": "rammap",
-            "Version": "1.61",
-            "Updated": "\/Date(1767764044415)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "rustup",
-            "Version": "1.28.2",
-            "Updated": "\/Date(1767764112109)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "slack",
-            "Version": "4.47.69",
-            "Updated": "\/Date(1767764781884)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "starship",
-            "Version": "1.24.2",
-            "Updated": "\/Date(1767752747204)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "sublime-text",
-            "Version": "4-4200",
-            "Updated": "\/Date(1767764799754)\/"
-        },
-        {
-            "Info": "",
-            "Source": "java",
-            "Name": "temurin11-jdk",
-            "Version": "11.0.29-7",
-            "Updated": "\/Date(1767764871296)\/"
-        },
-        {
-            "Info": "",
-            "Source": "java",
-            "Name": "temurin17-jdk",
-            "Version": "17.0.17-10",
-            "Updated": "\/Date(1767764890599)\/"
-        },
-        {
-            "Info": "",
-            "Source": "java",
-            "Name": "temurin21-jdk",
-            "Version": "21.0.9-10.0",
-            "Updated": "\/Date(1767764907337)\/"
-        },
-        {
-            "Info": "",
-            "Source": "java",
-            "Name": "temurin25-jdk",
-            "Version": "25.0.1-8.0",
-            "Updated": "\/Date(1767764920351)\/"
-        },
-        {
-            "Info": "",
-            "Source": "java",
-            "Name": "temurin8-jdk",
-            "Version": "8.0.472-8",
-            "Updated": "\/Date(1767764848009)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "thunderbird-esr",
-            "Version": "140.7.1esr",
-            "Updated": "\/Date(1769563143206)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "unicodia",
-            "Version": "3.0.8",
-            "Updated": "\/Date(1768883332771)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "unigetui",
-            "Version": "3.3.6",
-            "Updated": "\/Date(1767765131316)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "uv",
-            "Version": "0.9.28",
-            "Updated": "\/Date(1769733183919)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "vim",
-            "Version": "9.1.1825",
-            "Updated": "\/Date(1767765155664)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "vimtutor",
-            "Version": "0.2018.07.25",
-            "Updated": "\/Date(1767765174639)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "vscode",
-            "Version": "1.108.2",
-            "Updated": "\/Date(1769134486139)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "winget",
-            "Version": "1.12.460",
-            "Updated": "\/Date(1769135723376)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "winget-ps",
-            "Version": "1.12.440",
-            "Updated": "\/Date(1767765309747)\/"
-        },
-        {
-            "Info": "",
-            "Source": "extras",
-            "Name": "wsl2-distro-manager",
-            "Version": "1.10.0",
-            "Updated": "\/Date(1767765321389)\/"
-        },
-        {
-            "Info": "",
-            "Source": "main",
-            "Name": "yt-dlp",
-            "Version": "2026.01.29",
-            "Updated": "\/Date(1769733193187)\/"
-        }
-    ]
+  "buckets": [
+    {
+      "Name": "main",
+      "Source": "https://github.com/ScoopInstaller/Main",
+      "Updated": {
+        "value": "/Date(1769748750000)/",
+        "DisplayHint": 2,
+        "DateTime": "2026ï¿½~1ï¿½ï¿½30ï¿½ï¿½ ï¿½Uï¿½ï¿½ 12:52:30"
+      },
+      "Manifests": 1425
+    },
+    {
+      "Name": "extras",
+      "Source": "https://github.com/ScoopInstaller/Extras",
+      "Updated": {
+        "value": "/Date(1769754706000)/",
+        "DisplayHint": 2,
+        "DateTime": "2026ï¿½~1ï¿½ï¿½30ï¿½ï¿½ ï¿½Uï¿½ï¿½ 02:31:46"
+      },
+      "Manifests": 2257
+    },
+    {
+      "Name": "sysinternals",
+      "Source": "https://github.com/niheaven/scoop-sysinternals",
+      "Updated": {
+        "value": "/Date(1765938077000)/",
+        "DisplayHint": 2,
+        "DateTime": "2025ï¿½~12ï¿½ï¿½17ï¿½ï¿½ ï¿½Wï¿½ï¿½ 10:21:17"
+      },
+      "Manifests": 75
+    },
+    {
+      "Name": "nerd-fonts",
+      "Source": "https://github.com/matthewjberger/scoop-nerd-fonts",
+      "Updated": {
+        "value": "/Date(1769239519000)/",
+        "DisplayHint": 2,
+        "DateTime": "2026ï¿½~1ï¿½ï¿½24ï¿½ï¿½ ï¿½Uï¿½ï¿½ 03:25:19"
+      },
+      "Manifests": 367
+    }
+  ],
+  "apps": [
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "another-redis-desktop-manager",
+      "Version": "1.7.1",
+      "Updated": "/Date(1767755315983)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "crystaldiskinfo",
+      "Version": "9.7.2",
+      "Updated": "/Date(1767755431892)/"
+    },
+    {
+      "Info": "",
+      "Source": "main",
+      "Name": "fastfetch",
+      "Version": "2.58.0",
+      "Updated": "/Date(1769045479716)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "fork",
+      "Version": "2.15.3",
+      "Updated": "/Date(1767755549696)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "jetbrains-toolbox",
+      "Version": "3.2.0.65851",
+      "Updated": "/Date(1767755642037)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "jmeter",
+      "Version": "5.6.3",
+      "Updated": "/Date(1767755672651)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "joplin",
+      "Version": "3.5.12",
+      "Updated": "/Date(1768786827811)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "kafkio",
+      "Version": "2.1.11",
+      "Updated": "/Date(1769757013993)/"
+    },
+    {
+      "Info": "",
+      "Source": "nerd-fonts",
+      "Name": "maple-mono-autohint",
+      "Version": "7.9",
+      "Updated": "/Date(1767760014499)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "mqttx",
+      "Version": "1.13.0",
+      "Updated": "/Date(1769391698383)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "notepadplusplus",
+      "Version": "8.9.1",
+      "Updated": "/Date(1769506300041)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "onefetch",
+      "Version": "2.26.1",
+      "Updated": "/Date(1767760120255)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "postman",
+      "Version": "11.68.0",
+      "Updated": "/Date(1767760155408)/"
+    },
+    {
+      "Info": "",
+      "Source": "sysinternals",
+      "Name": "rammap",
+      "Version": "1.61",
+      "Updated": "/Date(1767764044415)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "slack",
+      "Version": "4.47.69",
+      "Updated": "/Date(1767764781884)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "sublime-text",
+      "Version": "4-4200",
+      "Updated": "/Date(1767764799754)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "thunderbird-esr",
+      "Version": "140.7.1esr",
+      "Updated": "/Date(1769563143206)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "unicodia",
+      "Version": "3.0.8",
+      "Updated": "/Date(1768883332771)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "unigetui",
+      "Version": "3.3.6",
+      "Updated": "/Date(1767765131316)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "vscode",
+      "Version": "1.108.2",
+      "Updated": "/Date(1769134486139)/"
+    },
+    {
+      "Info": "",
+      "Source": "extras",
+      "Name": "wsl2-distro-manager",
+      "Version": "1.10.0",
+      "Updated": "/Date(1767765321389)/"
+    }
+  ]
 }

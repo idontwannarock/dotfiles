@@ -1,0 +1,46 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_once_ script — npm 全域工具安裝（Unix/macOS/WSL）
+# 需要 nvm/npm，由 install-01-runtimes 安裝
+
+set -euo pipefail
+
+{{ template "scripts/load-nvm" }}
+
+echo "=== npm Global Tools Setup ==="
+
+if ! command -v npm &>/dev/null; then
+    echo "[npm-tools] npm not found, skipping all npm installs."
+    exit 0
+fi
+
+npm_install() {
+    local cmd="$1"
+    local pkg="$2"
+    if command -v "$cmd" &>/dev/null; then
+        echo "[$cmd] already installed, skipping."
+    else
+        echo "[$cmd] Installing $pkg..."
+        npm install -g "$pkg"
+    fi
+}
+
+# ── Claude Code ──────────────────────────────────────────────────────────
+npm_install claude @anthropic-ai/claude-code
+
+# ── Codex CLI ────────────────────────────────────────────────────────────
+npm_install codex @openai/codex
+
+# ── OpenSpec CLI ─────────────────────────────────────────────────────────
+if command -v openspec &>/dev/null; then
+    echo "[openspec] already installed, skipping."
+else
+    echo "[openspec] Installing..."
+    npm install -g @fission-ai/openspec
+    # 只產生 slash commands，不產生 SKILL.md（避免與全域 opsx/* commands 重複）
+    openspec config set delivery commands
+    echo "[openspec] Configured (delivery=commands)."
+fi
+
+echo "=== npm tools setup complete. ==="
+{{ end -}}

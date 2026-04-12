@@ -1,0 +1,89 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_ script — 開發語言與 runtime 安裝（Windows）
+# 每個工具各自做冪等檢查，已安裝則跳過
+
+$ErrorActionPreference = "Stop"
+
+Write-Host "=== Runtime & Language Setup ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found. Cannot install tools." -ForegroundColor Red
+    exit 1
+}
+
+function Install-ScoopPackage {
+    param([string]$Name, [string]$Package = $Name)
+    if (Get-Command $Name -ErrorAction SilentlyContinue) {
+        Write-Host "[$Name] already installed, skipping." -ForegroundColor Gray
+    } else {
+        Write-Host "[$Package] Installing via scoop..." -ForegroundColor Yellow
+        scoop install $Package
+    }
+}
+
+function Install-ScoopPackageByPath {
+    param([string]$Label, [string]$Package, [string]$CheckPath)
+    if (Test-Path $CheckPath) {
+        Write-Host "[$Label] already installed, skipping." -ForegroundColor Gray
+    } else {
+        Write-Host "[$Package] Installing via scoop..." -ForegroundColor Yellow
+        scoop install $Package
+    }
+}
+
+# ── NVM + Node.js ────────────────────────────────────────────────────────
+Install-ScoopPackage "nvm"
+if (Get-Command "nvm" -ErrorAction SilentlyContinue) {
+    $nodeInstalled = $false
+    try { $null = nvm current 2>$null; $nodeInstalled = $true } catch {}
+    if (-not (Get-Command "node" -ErrorAction SilentlyContinue)) {
+        Write-Host "[node] Installing latest LTS via nvm..." -ForegroundColor Yellow
+        nvm install lts
+        nvm use lts
+    } else {
+        Write-Host "[node] already installed, skipping." -ForegroundColor Gray
+    }
+}
+
+# ── Vim ──────────────────────────────────────────────────────────────────
+Install-ScoopPackage "vim"
+
+# ── Go ───────────────────────────────────────────────────────────────────
+# scoop versions bucket for pinned version
+scoop bucket add versions 2>$null
+Install-ScoopPackage "go" "go124"
+
+# ── Python ───────────────────────────────────────────────────────────────
+Install-ScoopPackage "python3" "python313"
+# Additional Python version
+$py311 = Join-Path $env:USERPROFILE "scoop\apps\python311"
+Install-ScoopPackageByPath "python311" "python311" $py311
+
+# ── uv (Python package manager) ─────────────────────────────────────────
+Install-ScoopPackage "uv"
+
+# ── Rust ─────────────────────────────────────────────────────────────────
+Install-ScoopPackage "rustup"
+if ((Get-Command "rustup" -ErrorAction SilentlyContinue) -and
+    -not (Get-Command "rustc" -ErrorAction SilentlyContinue)) {
+    Write-Host "[rust] Initializing default toolchain..." -ForegroundColor Yellow
+    rustup default stable
+}
+
+# ── Maven ────────────────────────────────────────────────────────────────
+scoop bucket add versions 2>$null
+Install-ScoopPackage "mvn" "maven3"
+
+# ── JDKs (Adoptium Temurin) ──────────────────────────────────────────────
+scoop bucket add java 2>$null
+foreach ($ver in @("8", "11", "17", "21", "25")) {
+    $pkg = "temurin${ver}-jdk"
+    $jdkPath = Join-Path $env:USERPROFILE "scoop\apps\$pkg"
+    Install-ScoopPackageByPath $pkg $pkg $jdkPath
+}
+
+# ── Starship (shell prompt) ──────────────────────────────────────────────
+Install-ScoopPackage "starship"
+
+Write-Host "=== Runtime setup complete. ===" -ForegroundColor Cyan
+{{ end -}}

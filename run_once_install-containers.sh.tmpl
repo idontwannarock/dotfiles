@@ -1,0 +1,58 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_once_ script — 容器與雲端工具安裝（Unix/macOS/WSL）
+
+set -euo pipefail
+
+echo "=== Container & Cloud Tools Setup ==="
+
+if ! command -v brew &>/dev/null; then
+    echo "[containers] Homebrew not found. Skipping."
+    exit 0
+fi
+
+brew_install() {
+    local cmd="$1"
+    local pkg="${2:-$1}"
+    if command -v "$cmd" &>/dev/null; then
+        echo "[$cmd] already installed, skipping."
+    else
+        echo "[$pkg] Installing via brew..."
+        brew install "$pkg"
+    fi
+}
+
+brew_install_cask() {
+    local name="$1"
+    local cask="${2:-$1}"
+    if brew list --cask "$cask" &>/dev/null 2>&1; then
+        echo "[$cask] already installed, skipping."
+    else
+        echo "[$cask] Installing via brew cask..."
+        brew install --cask "$cask"
+    fi
+}
+
+# ── Docker ───────────────────────────────────────────────────────────────
+{{- if eq .chezmoi.os "darwin" }}
+# macOS: Docker Desktop via cask
+brew_install_cask "docker"
+{{- else }}
+# Linux/WSL: docker CLI + compose plugin
+brew_install docker
+brew_install docker-compose
+{{- end }}
+
+# ── Kubernetes ───────────────────────────────────────────────────────────
+brew_install kubectl
+brew_install kubelogin
+
+# ── Lens (K8s GUI) ──────────────────────────────────────────────────────
+{{- if eq .chezmoi.os "darwin" }}
+brew_install_cask "lens"
+{{- else }}
+echo "[lens] GUI app — install manually on Linux/WSL if needed."
+{{- end }}
+
+echo "=== Container tools setup complete. ==="
+{{ end -}}
