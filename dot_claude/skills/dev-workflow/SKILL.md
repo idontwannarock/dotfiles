@@ -80,4 +80,4 @@ OpenSpec uses skill-based delivery — invoke by skill name, not slash commands.
 ## Code Review Commands
 
 `code:review-quick`, `code:review-full`, `code:review-spec`, `code:review-linus`,
-`code:review-security`, `code:review-types`. Usage details in `~/.claude/reference.md`.
+`code:review-security`, `code:review-types`.

@@ -6,9 +6,7 @@ Move this `agents` folder except this README.md file to `~/.claude`, and then yo
 
 # Agent Catalog
 
-> 完整清單與使用情境見 [`~/.claude/reference.md`](../reference.md)。
->
-> 6 類 24 個 agents：Engineering (8) · Testing (5) · Product (3) · Project Management (3) · Studio Operations (5) · Bonus (1)
+6 類 24 個 agents：Engineering (8) · Testing (5) · Product (3) · Project Management (3) · Studio Operations (5) · Bonus (1)。各 agent 的使用情境見其 frontmatter `description`。
 
 # Agent Collaboration Patterns
 
