@@ -109,11 +109,20 @@ if (Test-Path $pluginCache) {
 # ── MCP Servers ──────────────────────────────────────────────────────────
 Write-Host "[mcp] Setting up MCP servers..." -ForegroundColor Yellow
 
+function Add-McpIfMissing {
+    param([string]$Name, [string[]]$CommandArgs)
+    $existing = claude mcp list 2>$null | Select-String -Pattern "^${Name}:" -Quiet
+    if ($existing) {
+        Write-Host "[mcp] ${Name} already registered, skipping." -ForegroundColor Gray
+    } else {
+        claude mcp add --scope user $Name -- @CommandArgs
+        Write-Host "[mcp] ${Name} registered." -ForegroundColor Green
+    }
+}
+
 if (Get-Command "npx" -ErrorAction SilentlyContinue) {
-    claude mcp add --scope user "agent-browser" -- cmd /c npx "agent-browser-mcp"
-    Write-Host "[mcp] agent-browser registered." -ForegroundColor Green
-    claude mcp add --scope user "chrome-devtools" -- cmd /c npx "-y" "chrome-devtools-mcp@latest"
-    Write-Host "[mcp] chrome-devtools registered." -ForegroundColor Green
+    Add-McpIfMissing -Name "agent-browser" -CommandArgs @("cmd", "/c", "npx", "agent-browser-mcp")
+    Add-McpIfMissing -Name "chrome-devtools" -CommandArgs @("cmd", "/c", "npx", "-y", "chrome-devtools-mcp@latest")
 } else {
     Write-Host "[mcp] npx not found, skipping MCP setup." -ForegroundColor Yellow
 }

@@ -58,11 +58,18 @@ rm -rf "$PLUGIN_CACHE/superpowers-marketplace/superpowers" 2>/dev/null && echo "
 # ── MCP Servers ──────────────────────────────────────────────────────────
 echo "[mcp] Setting up MCP servers..."
 
+mcp_add_if_missing() {
+    local name="$1"; shift
+    if claude mcp list 2>/dev/null | grep -q "^${name}:"; then
+        echo "[mcp] ${name} already registered, skipping."
+    else
+        claude mcp add --scope user "$name" -- "$@" && echo "[mcp] ${name} registered."
+    fi
+}
+
 if command -v npx &>/dev/null; then
-    claude mcp add --scope user "agent-browser" -- npx "agent-browser-mcp"
-    echo "[mcp] agent-browser registered."
-    claude mcp add --scope user "chrome-devtools" -- npx "-y" "chrome-devtools-mcp@latest"
-    echo "[mcp] chrome-devtools registered."
+    mcp_add_if_missing "agent-browser" npx "agent-browser-mcp"
+    mcp_add_if_missing "chrome-devtools" npx "-y" "chrome-devtools-mcp@latest"
 else
     echo "[mcp] npx not found, skipping MCP setup."
 fi
