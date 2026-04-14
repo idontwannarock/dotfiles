@@ -21,6 +21,9 @@ fi
 # 若不統一 chezmoi 每次 apply 都會看到全檔 diff。
 echo "$input" | jq \
   --arg statusline_cmd '{{ .chezmoi.homeDir }}/.local/bin/statusline{{ if eq .chezmoi.os "windows" }}.exe{{ end }}' \
+{{- if eq .chezmoi.os "windows" }}
+  --arg git_bash '{{ printf "%s/scoop/apps/git/current/bin/bash.exe" .chezmoi.homeDir | replace "/" "\\" }}' \
+{{- end }}
   '
     .model = "claude-opus-4-6"
     | .effortLevel = "medium"
@@ -31,4 +34,10 @@ echo "$input" | jq \
         command: $statusline_cmd,
         padding: 0
       }
+{{- if eq .chezmoi.os "windows" }}
+    | .env = (.env // {}) | .env.CLAUDE_CODE_GIT_BASH_PATH = $git_bash
+{{- else }}
+    | if has("env") then .env |= del(.CLAUDE_CODE_GIT_BASH_PATH) else . end
+    | if has("env") and (.env | length == 0) then del(.env) else . end
+{{- end }}
   ' | tr -d '\r'
