@@ -56,7 +56,7 @@ OpenSpec uses skill-based delivery — invoke by skill name, not slash commands.
 ### Small workflow
 
 ```
-ensure-openspec
+~/.claude/skills/dev-workflow/scripts/ensure-openspec.sh
 → openspec-propose
 → openspec-apply-change → openspec validate → openspec-archive-change
 → git:commit → code:review-quick
@@ -67,7 +67,7 @@ ensure-openspec
 ### Large workflow
 
 ```
-ensure-openspec
+~/.claude/skills/dev-workflow/scripts/ensure-openspec.sh
 → superpowers:brainstorming   (design stays in conversation; do NOT write to docs/superpowers/specs/)
 → openspec-propose            (formal spec goes into openspec/)
 → superpowers:writing-plans → openspec-apply-change
