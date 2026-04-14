@@ -1,11 +1,17 @@
 ---
 name: worklog:record
-description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫或 Claude 主動提議。當使用者完成有意義的工作、進行 git commit、對話即將結束且有實質成果、進行技術探索或設計討論時觸發。也適用於使用者提到記錄工作、筆記、行政事項、OKR，或直接用 /worklog:record。
+description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫或 Claude 主動提議。**主動提議觸發時機**：使用者完成有意義的任務且已 commit、技術探索或設計討論得出明確結論或決策、對話尾聲使用者發出結束訊號（「差不多了」「先這樣」「今天到這」）且本次有實質成果。**也適用於**使用者明確提到記錄工作、筆記、行政事項、OKR，或直接呼叫 /worklog:record。**不要觸發於**：瑣碎修改（typo、格式調整、重排 import）、純粹問答或查資料且無實質產出、使用者已經在 worklog repo 裡工作（避免重複記錄）。有疑慮時寧可詢問也不要漏問——使用者可以拒絕，但漏記的成果拿不回來。
 ---
 
 # Worklog Record — 記錄工作項目
 
 將工作紀錄寫為 GitHub Issue Comment，由 generate-worklog workflow 自動彙整到 daily worklog。
+
+## 觸發後的操作守則
+
+- **累積多個 commit 批次提議一次**：對話中連續產生多個 commit 時，不要每次 commit 都打斷提問；等自然段落（功能告一段落、準備收尾）再一次詢問是否記錄全部。
+- **在連續 commit 過程中保持安靜**：使用者正在 commit 的節奏裡，等收尾訊號再提；中途打斷會破壞心流。
+- **詢問語氣要讓使用者容易拒絕**：例如「這次的工作要記到 worklog 嗎？（不用的話直接說 no）」——不要強迫性列選單。
 
 ## 設定
 
