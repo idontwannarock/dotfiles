@@ -37,9 +37,10 @@ if command -v openspec &>/dev/null; then
 else
     echo "[openspec] Installing..."
     npm install -g @fission-ai/openspec
-    # 只產生 slash commands，不產生 SKILL.md（避免與全域 opsx/* commands 重複）
-    openspec config set delivery commands
-    echo "[openspec] Configured (delivery=commands)."
+    # 只產生 SKILL.md，不產生 slash commands（透過 skill description 自動觸發，
+    # 省 session-start context，並與全域 dev-workflow skill 整合）
+    openspec config set delivery skills
+    echo "[openspec] Configured (delivery=skills)."
 fi
 
 echo "=== npm tools setup complete. ==="

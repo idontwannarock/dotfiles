@@ -1,9 +1,5 @@
 # 全域指令
 
-## 預設工作流程
-
-收到實作任務（新功能、bug 修復、重構、程式碼修改）時，調用 `/opsx:workflow` 確認流程與推進模式。瑣碎任務（改 typo、一行修改、簡單問答）跳過，直接進行。
-
 ## Worklog 記錄
 
 Worklog repo: `idontwannarock/worklogs`（所有 worklog skill 共用此值，不需額外設定檔）

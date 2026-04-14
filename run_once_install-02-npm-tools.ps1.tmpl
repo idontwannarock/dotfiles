@@ -33,8 +33,8 @@ if (Get-Command "openspec" -ErrorAction SilentlyContinue) {
 } else {
     Write-Host "[openspec] Installing..." -ForegroundColor Yellow
     npm install -g @fission-ai/openspec
-    openspec config set delivery commands
-    Write-Host "[openspec] Configured (delivery=commands)." -ForegroundColor Green
+    openspec config set delivery skills
+    Write-Host "[openspec] Configured (delivery=skills)." -ForegroundColor Green
 }
 
 Write-Host "=== npm tools setup complete. ===" -ForegroundColor Cyan
