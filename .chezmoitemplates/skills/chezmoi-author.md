@@ -13,7 +13,7 @@ The repo is **source of truth** — changes here do not take effect until `chezm
 `chezmoi apply` runs scripts in phases; alphabetical order decides the sequence within a phase:
 
 ```
-1. run_*_before_*       ← install-jq, patch-chezmoi-config
+1. run_*_before_*       ← install-prereqs, patch-chezmoi-config
 2. File writes + modify_*  ← settings.json (needs jq), codex config
 3. run_* (no before)    ← install-01-runtimes → 02-npm-tools → 03-claude-config,
                            containers, cli-tools, fonts

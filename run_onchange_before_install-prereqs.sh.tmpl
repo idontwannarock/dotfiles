@@ -1,7 +1,8 @@
 {{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
-# chezmoi run_onchange_before_ script — 確保 jq 在 modify_ phase 之前可用
-# modify_settings.json.sh.tmpl 需要 jq 來 patch Claude Code settings.json
+# chezmoi run_onchange_before_ script — 安裝後續 phase 需要的 CLI 依賴
+#
+# jq: modify_settings.json.sh.tmpl 用來 patch Claude Code settings.json
 
 if command -v jq &>/dev/null; then
     exit 0
