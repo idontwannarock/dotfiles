@@ -1,6 +1,6 @@
 ---
-name: worklog:team-status
-description: 觸發 GitHub Actions 更新團隊 Jira 狀態到 per-member issues，然後讀取並呈現。當使用者提到 team status、團隊狀態、查 Jira、團隊進度、成員工作狀況、sprint 狀態，或用 /worklog:team-status 時觸發。也適用於站會前準備、週報整理、想了解團隊成員目前手上有什麼票、誰在忙什麼的場景。即使使用者只說「查一下大家的狀況」或「今天站會要報什麼」也應觸發。
+name: worklog-team-status
+description: 觸發 GitHub Actions 更新團隊 Jira 狀態到 per-member issues，然後讀取並呈現。當使用者提到 team status、團隊狀態、查 Jira、團隊進度、成員工作狀況、sprint 狀態，或呼叫 worklog-team-status skill 時觸發。也適用於站會前準備、週報整理、想了解團隊成員目前手上有什麼票、誰在忙什麼的場景。即使使用者只說「查一下大家的狀況」或「今天站會要報什麼」也應觸發。
 ---
 
 # Team Status 查詢
@@ -9,14 +9,14 @@ description: 觸發 GitHub Actions 更新團隊 Jira 狀態到 per-member issues
 
 ## 設定
 
-`github-repo` 從全域 CLAUDE.md 的 Worklog 段落取得（已在 context 中，不需讀取檔案）。
+`github-repo` 從 user-level system prompt（Claude: `~/.claude/CLAUDE.md`；Codex: `~/.codex/AGENTS.md`）的 Worklog 段落取得（已在 context 中，不需讀取檔案）。
 成員清單從 `team-member` label 的 GitHub Issues 動態取得（不需讀取本地檔案）。
 
 ## 執行流程
 
 ### 1. 取得 github-repo
 
-從 CLAUDE.md 的 Worklog 段落取得 `github-repo`（已在 context 中）。
+從 user-level system prompt 的 Worklog 段落取得 `github-repo`（已在 context 中）。
 
 ### 2. 觸發 workflow 並取得時間戳
 
@@ -96,10 +96,10 @@ gh api repos/{github-repo}/issues/{number}/comments --jq '.[0:2]'
 
 ### 6. [可選] 寫入 Issue Comment
 
-若使用者要求記錄（或搭配 `/worklog:record` 使用），將結果寫到 daily issue。
+若使用者要求記錄（或搭配 `worklog-record` skill 使用），將結果寫到 daily issue。
 不再自動寫入 `[team-status]` comment — per-member issues 本身就是 single source of truth。
 
 ## 注意事項
 
 - 此 skill 不讀取任何本地檔案（無 worklog-config.md、無 team.md、無 references/）
-- 所有資料來源：CLAUDE.md context（github-repo）+ GitHub API（issues）+ workflow（Jira 查詢）
+- 所有資料來源：user-level system prompt context（github-repo）+ GitHub API（issues）+ workflow（Jira 查詢）

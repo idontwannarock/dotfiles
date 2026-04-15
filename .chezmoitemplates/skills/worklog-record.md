@@ -1,6 +1,6 @@
 ---
-name: worklog:record
-description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫或 Claude 主動提議。**主動提議觸發時機**：使用者完成有意義的任務且已 commit、技術探索或設計討論得出明確結論或決策、對話尾聲使用者發出結束訊號（「差不多了」「先這樣」「今天到這」）且本次有實質成果。**也適用於**使用者明確提到記錄工作、筆記、行政事項、OKR，或直接呼叫 /worklog:record。**不要觸發於**：瑣碎修改（typo、格式調整、重排 import）、純粹問答或查資料且無實質產出、使用者已經在 worklog repo 裡工作（避免重複記錄）。有疑慮時寧可詢問也不要漏問——使用者可以拒絕，但漏記的成果拿不回來。
+name: worklog-record
+description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫或 assistant 主動提議。**主動提議觸發時機**：使用者完成有意義的任務且已 commit、技術探索或設計討論得出明確結論或決策、對話尾聲使用者發出結束訊號（「差不多了」「先這樣」「今天到這」）且本次有實質成果。**也適用於**使用者明確提到記錄工作、筆記、行政事項、OKR，或直接呼叫 worklog-record skill。**不要觸發於**：瑣碎修改（typo、格式調整、重排 import）、純粹問答或查資料且無實質產出、使用者已經在 worklog repo 裡工作（避免重複記錄）。有疑慮時寧可詢問也不要漏問——使用者可以拒絕，但漏記的成果拿不回來。
 ---
 
 # Worklog Record — 記錄工作項目
@@ -15,27 +15,27 @@ description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫�
 
 ## 設定
 
-`github-repo` 從全域 CLAUDE.md 的 Worklog 段落取得（已在 context 中，不需讀取檔案）。
+`github-repo` 從 user-level system prompt（Claude: `~/.claude/CLAUDE.md`；Codex: `~/.codex/AGENTS.md`）的 Worklog 段落取得（已在 context 中，不需讀取檔案）。
 
 ## 使用方式
 
 ### 手動呼叫
 
 ```
-/worklog:record KWS: 完成 replay 測試，原速通過
-/worklog:record CSEC: 修正 batch job soft delete 邏輯
-/worklog:record [okr] 解決 cache invalidation 的 edge case
+worklog-record KWS: 完成 replay 測試，原速通過
+worklog-record CSEC: 修正 batch job soft delete 邏輯
+worklog-record [okr] 解決 cache invalidation 的 edge case
 ```
 
-### Claude 主動提議
+### Assistant 主動提議
 
-當對話中完成有意義的工作時，Claude 會詢問是否要記錄到 worklog。
+當對話中完成有意義的工作時，assistant 會詢問是否要記錄到 worklog。
 
 ## 執行流程
 
 ### 1. 取得 github-repo
 
-從 CLAUDE.md 的 Worklog 段落取得 `github-repo`（已在 context 中）。
+從 user-level system prompt 的 Worklog 段落取得 `github-repo`（已在 context 中）。
 
 ### 2. 列出 Issues 讓使用者選擇
 

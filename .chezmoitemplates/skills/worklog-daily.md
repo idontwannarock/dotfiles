@@ -1,6 +1,6 @@
 ---
-name: worklog:daily
-description: 管理 Daily To Do — 寫 [daily-todo]/[daily-done] Comment 到 daily Issue。當使用者提到 daily to do、今日待辦、新增/完成/查看待辦項目、今天要做什麼、待辦清單，或用 /worklog:daily 時觸發。也適用於早上開工規劃或下班前確認進度。
+name: worklog-daily
+description: 管理 Daily To Do — 寫 [daily-todo]/[daily-done] Comment 到 daily Issue。當使用者提到 daily to do、今日待辦、新增/完成/查看待辦項目、今天要做什麼、待辦清單，或呼叫 worklog-daily skill 時觸發。也適用於早上開工規劃或下班前確認進度。
 ---
 
 # Worklog Daily — Daily To Do 管理
@@ -9,23 +9,23 @@ description: 管理 Daily To Do — 寫 [daily-todo]/[daily-done] Comment 到 da
 
 ## 設定
 
-`github-repo` 從全域 CLAUDE.md 的 Worklog 段落取得（已在 context 中，不需讀取檔案）。
+`github-repo` 從 user-level system prompt（Claude: `~/.claude/CLAUDE.md`；Codex: `~/.codex/AGENTS.md`）的 Worklog 段落取得（已在 context 中，不需讀取檔案）。
 
 ## 操作
 
 | 操作 | 用法 | 說明 |
 |------|------|------|
-| `add` | `/worklog:daily add KWS: benchmark script` | 寫入 `[daily-todo]` Comment |
-| `done` | `/worklog:daily done KWS 重構` | 寫入 `[daily-done]` Comment |
-| `list` | `/worklog:daily list` | 列出今天所有 todo/done 狀態 |
+| `add` | `worklog-daily add KWS: benchmark script` | 寫入 `[daily-todo]` Comment |
+| `done` | `worklog-daily done KWS 重構` | 寫入 `[daily-done]` Comment |
+| `list` | `worklog-daily list` | 列出今天所有 todo/done 狀態 |
 
-支援複合操作：`/worklog:daily add 交接 BEV, done KWS 重構`
+支援複合操作：`worklog-daily add 交接 BEV, done KWS 重構`
 
 ## 執行流程
 
 ### 1. 取得 github-repo
 
-從 CLAUDE.md 的 Worklog 段落取得 `github-repo`（已在 context 中）。
+從 user-level system prompt 的 Worklog 段落取得 `github-repo`（已在 context 中）。
 
 ### 2. 找到今天的 Daily Issue
 
