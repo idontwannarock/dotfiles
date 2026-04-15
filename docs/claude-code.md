@@ -81,6 +81,38 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 | [jdtls](https://github.com/eclipse-jdtls/eclipse.jdt.ls) | Java LSP server | Windows: `scoop install jdtls`；Linux: 同步腳本自動下載 |
 | JDK 21+ | jdtls 執行環境 | wrapper (`~/.local/bin/jdtls`) 自動從 scoop/系統 JDK 中選擇 |
 
+### Plugin Scope 管理
+
+`enabledPlugins` 支援三個 scope：
+
+| Scope | 檔案位置 | 用途 |
+|-------|----------|------|
+| User | `~/.claude/settings.json` | 每個 session 都啟用（預設此專案管理的位置） |
+| Project | `<repo>/.claude/settings.json` | 只在該 repo 啟用，可 commit 給 team 共享 |
+| Local | `<repo>/.claude/settings.local.json` | 只在該 repo 啟用，gitignore 不分享 |
+
+**Plugin 本體只下載一次**到 `~/.claude/plugins/cache/`（user-level），scope 只控制可見性。user-level disable 不會刪除 cache，project-level 啟用時零下載成本。
+
+**什麼時候用 project-level？**
+- Plugin 負擔大（例如 playwright 的 27 個 MCP tools），但只在特定專案需要
+- Team 共享：希望隊友進 repo 就自動啟用某些 plugin
+
+**在 project 啟用某 plugin 的步驟**
+
+1. 確認該 plugin 已在 user-level marketplace 註冊過（`~/.claude/settings.json` 的 `extraKnownMarketplaces` 有來源）
+2. 在專案根目錄建立 `.claude/settings.json`（若沒有）
+3. 加入 `enabledPlugins`：
+   ```json
+   {
+     "enabledPlugins": {
+       "playwright@claude-plugins-official": true
+     }
+   }
+   ```
+4. 若要分享給 team：`git add .claude/settings.json`；只自己用：改放 `.claude/settings.local.json`（已在 Claude Code 預設 gitignore）
+
+參考：[Claude Code settings docs](https://code.claude.com/docs/en/settings.md)
+
 ### Windows 已知問題：Plugin Hook Error
 
 Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失敗：
