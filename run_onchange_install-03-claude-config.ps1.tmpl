@@ -127,5 +127,17 @@ if (Get-Command "npx" -ErrorAction SilentlyContinue) {
     Write-Host "[mcp] npx not found, skipping MCP setup." -ForegroundColor Yellow
 }
 
+# ── User-level preferences in ~/.claude.json ────────────────────────────
+$claudeJson = Join-Path $env:USERPROFILE ".claude.json"
+if ((Test-Path $claudeJson) -and (Get-Command "jq" -ErrorAction SilentlyContinue)) {
+    $current = & jq -r '.copyOnSelect // "unset"' $claudeJson
+    if ($current -ne "false") {
+        $patched = & jq '.copyOnSelect = false' $claudeJson
+        $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+        [System.IO.File]::WriteAllText($claudeJson, ($patched -join "`n"), $utf8NoBom)
+        Write-Host "[config] Set copyOnSelect=false in ~/.claude.json" -ForegroundColor Green
+    }
+}
+
 Write-Host "=== Claude config setup complete. Restart Claude Code to activate. ===" -ForegroundColor Cyan
 {{ end -}}

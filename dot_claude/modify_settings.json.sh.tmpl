@@ -34,10 +34,11 @@ echo "$input" | jq \
         command: $statusline_cmd,
         padding: 0
       }
+    | .env = (.env // {})
+    | .env.CLAUDE_CODE_NO_FLICKER = "1"
 {{- if eq .chezmoi.os "windows" }}
-    | .env = (.env // {}) | .env.CLAUDE_CODE_GIT_BASH_PATH = $git_bash
+    | .env.CLAUDE_CODE_GIT_BASH_PATH = $git_bash
 {{- else }}
-    | if has("env") then .env |= del(.CLAUDE_CODE_GIT_BASH_PATH) else . end
-    | if has("env") and (.env | length == 0) then del(.env) else . end
+    | .env |= del(.CLAUDE_CODE_GIT_BASH_PATH)
 {{- end }}
   ' | tr -d '\r'

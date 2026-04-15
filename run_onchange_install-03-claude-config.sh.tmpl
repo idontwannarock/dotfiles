@@ -74,5 +74,15 @@ else
     echo "[mcp] npx not found, skipping MCP setup."
 fi
 
+# ── User-level preferences in ~/.claude.json ────────────────────────────
+CLAUDE_JSON="$HOME/.claude.json"
+if [ -f "$CLAUDE_JSON" ] && command -v jq &>/dev/null; then
+    if [ "$(jq -r '.copyOnSelect // "unset"' "$CLAUDE_JSON")" != "false" ]; then
+        tmp=$(mktemp)
+        jq '.copyOnSelect = false' "$CLAUDE_JSON" > "$tmp" && mv "$tmp" "$CLAUDE_JSON"
+        echo "[config] Set copyOnSelect=false in ~/.claude.json"
+    fi
+fi
+
 echo "=== Claude config setup complete. Restart Claude Code to activate. ==="
 {{ end -}}
