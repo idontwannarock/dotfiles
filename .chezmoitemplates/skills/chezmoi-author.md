@@ -31,7 +31,7 @@ If a script depends on another script's output, ensure it sorts later alphabetic
   - **Windows** → `.ps1.tmpl` (scoop-based install).
   - **macOS** → `.sh.tmpl` (brew-based install).
   - **Linux/WSL** → `.sh.tmpl` (apt for general tools; brew only for version-managed tools like nvm targets).
-- Unix npm-related scripts **must** start with `{{ template "scripts/load-nvm" }}` so `npm`/`npx` are on PATH.
+- Unix npm-related scripts **must** start with `{{`{{ template "scripts/load-nvm" }}`}}` so `npm`/`npx` are on PATH.
 - When adding a tool, double-check alphabetical ordering does not break dependency chains.
 
 ## Cross-Platform Gotchas
@@ -45,7 +45,7 @@ If a script depends on another script's output, ensure it sorts later alphabetic
 
 ## Template Fragment Map
 
-Entry files (`dot_bashrc.tmpl`, etc.) compose platform fragments via `{{ template "name" . }}`. Do **not** use `include` — chezmoi's `include` takes one arg and reads from source root, so it cannot reach `.chezmoitemplates/`.
+Entry files (`dot_bashrc.tmpl`, etc.) compose platform fragments via `{{`{{ template "name" . }}`}}`. Do **not** use `include` — chezmoi's `include` takes one arg and reads from source root, so it cannot reach `.chezmoitemplates/`.
 
 | Template | Purpose |
 |----------|---------|
