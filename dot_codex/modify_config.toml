@@ -72,6 +72,10 @@ url = "https://developers.openai.com/mcp"
 command = "npx"
 args = ["-y", "@upstash/context7-mcp"]
 
+[mcp_servers."codegraph"]
+command = "codegraph"
+args = ["serve", "--mcp"]
+
 [mcp_servers."chrome-devtools"]
 command = "npx"
 args = ["-y", "chrome-devtools-mcp@latest"]

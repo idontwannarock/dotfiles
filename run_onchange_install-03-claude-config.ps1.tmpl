@@ -124,6 +124,12 @@ if (Get-Command "npx" -ErrorAction SilentlyContinue) {
     Write-Host "[mcp] npx not found, skipping MCP setup." -ForegroundColor Yellow
 }
 
+if (Get-Command "codegraph" -ErrorAction SilentlyContinue) {
+    Add-McpIfMissing -Name "codegraph" -CommandArgs @("codegraph", "serve", "--mcp")
+} else {
+    Write-Host "[mcp] codegraph not found, skipping." -ForegroundColor Yellow
+}
+
 # ── User-level preferences in ~/.claude.json ────────────────────────────
 $claudeJson = Join-Path $env:USERPROFILE ".claude.json"
 if ((Test-Path $claudeJson) -and (Get-Command "jq" -ErrorAction SilentlyContinue)) {

@@ -27,6 +27,9 @@ Install-NpmPackage "claude" "@anthropic-ai/claude-code"
 # ── Codex CLI ────────────────────────────────────────────────────────────
 Install-NpmPackage "codex" "@openai/codex"
 
+# ── codegraph (semantic code graph MCP) ──────────────────────────────────
+Install-NpmPackage "codegraph" "@colbymchenry/codegraph"
+
 # ── OpenSpec CLI ─────────────────────────────────────────────────────────
 if (Get-Command "openspec" -ErrorAction SilentlyContinue) {
     Write-Host "[openspec] already installed, skipping." -ForegroundColor Gray

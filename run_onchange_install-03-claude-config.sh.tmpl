@@ -71,6 +71,12 @@ else
     echo "[mcp] npx not found, skipping MCP setup."
 fi
 
+if command -v codegraph &>/dev/null; then
+    mcp_add_if_missing "codegraph" codegraph "serve" "--mcp"
+else
+    echo "[mcp] codegraph not found, skipping."
+fi
+
 # ── User-level preferences in ~/.claude.json ────────────────────────────
 CLAUDE_JSON="$HOME/.claude.json"
 if [ -f "$CLAUDE_JSON" ] && command -v jq &>/dev/null; then
