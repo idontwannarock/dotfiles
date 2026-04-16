@@ -250,18 +250,21 @@ func formatDuration(ms int64) string {
 }
 
 func formatResetTime(epochSec int64) string {
-	t := time.Unix(epochSec, 0)
-	now := time.Now()
-	if t.YearDay() == now.YearDay() && t.Year() == now.Year() {
-		return t.Format("15:04")
+	remaining := time.Until(time.Unix(epochSec, 0))
+	if remaining <= 0 {
+		return "now"
 	}
-	return t.Format("Mon")
+	totalMin := int(remaining.Minutes())
+	if totalMin < 60 {
+		return fmt.Sprintf("%dm", totalMin)
+	}
+	return fmt.Sprintf("%dh%dm", totalMin/60, totalMin%60)
 }
 
 func formatRateLimit(label string, pct float64, resetsAt int64) string {
 	pctInt := int(pct + 0.5)
 	result := fmt.Sprintf("%s: %d%%", label, pctInt)
-	if pct >= 80 && resetsAt > 0 {
+	if resetsAt > 0 {
 		result += " ⟳" + formatResetTime(resetsAt)
 	}
 	return result
