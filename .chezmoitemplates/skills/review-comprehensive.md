@@ -1,0 +1,92 @@
+---
+name: review-comprehensive
+description: Comprehensive code review of commit ranges, branches, or entire codebase — all agents, confidence scoring, optional Codex cross-review
+---
+
+## Context
+
+First, gather context by running these commands:
+
+- `git status --short` — working tree state
+- `git branch --show-current` — current branch
+
+{{ template "skills/code-review-scope.md" . }}
+## Codex Auto-Detection
+
+Check if the Codex plugin is enabled in the current session (e.g. `enabledPlugins` contains `"codex@openai-codex": true`):
+- Yes → `USE_CODEX=true`
+- No → `USE_CODEX=false`
+
+## Task
+
+After obtaining the diff, dispatch **all review tasks in parallel**. Each task receives the full diff.
+
+| Review Task | Agent Type | Focus |
+|-------------|-----------|-------|
+| Code quality + security | `code-reviewer` | Style, best practices, bugs, naming. **Also**: injection attacks (SQL/command/XSS), auth/authz issues, sensitive data exposure, OWASP Top 10 |
+| Silent failures | `silent-failure-hunter` | Error handling, swallowed exceptions, inappropriate fallback, data loss paths |
+| Test coverage | `pr-test-analyzer` | Missing tests, edge cases, test quality and maintainability |
+| Architecture | `linus-torvalds` | Simplicity, unnecessary complexity, good taste, special cases that should disappear, backward compatibility |
+| Type design | `type-design-analyzer` | Encapsulation, invariant expression, type safety, enforcement quality |
+| Comment accuracy | `comment-analyzer` | Comment accuracy vs actual code behavior, stale comments, missing critical comments |
+
+If `USE_CODEX=true`, also invoke the `codex:review` skill simultaneously:
+- No arguments → `codex:review --wait`
+- With branch/range arguments → `codex:review --wait --base main`
+
+{{ template "skills/code-review-confidence.md" . }}
+## Output
+
+---
+
+**Comprehensive Code Review**
+
+**Scope**: [reviewed what — PR #N / branch diff / commit range / staged / HEAD]
+**Diff size**: [N files changed, +X/-Y lines]
+
+**Summary**: [one sentence on overall quality and most important finding]
+
+🔴 **Critical Issues** (confidence ≥ 80, must fix)
+- [issue] — _source: [agent], confidence: [score]_
+
+🟡 **Suggestions** (confidence ≥ 80, should consider)
+- [suggestion] — _source: [agent], confidence: [score]_
+
+📋 **Minor / Nitpicks** (confidence 50-79, titles only)
+- [title]
+
+🟢 **Good Practices**
+- [positive observation]
+
+**Details by Perspective**
+
+_Code Quality & Security_ (code-reviewer)
+...
+
+_Error Handling_ (silent-failure-hunter)
+...
+
+_Test Coverage_ (pr-test-analyzer)
+...
+
+_Architecture & Simplicity_ (linus-torvalds)
+...
+
+_Type Design_ (type-design-analyzer)
+...
+
+_Comment Accuracy_ (comment-analyzer)
+...
+
+_Cross-Model Perspective_ (codex) — only shown when Codex is enabled
+...
+
+---
+
+## Guardrails
+
+- **Do not modify code** — this is a read-only review
+- **Full diff** — every task must receive the full diff, not a summary
+- **Large diffs** — if over 500 lines changed, note at the top that the user may want to split the review
+- **No findings** — if a task finds no issues, state that briefly; do not fabricate issues
+- **Spec alignment** — if the project has an active OpenSpec change, mention that `review-spec` (in the OpenSpec workflow) can check requirement alignment
