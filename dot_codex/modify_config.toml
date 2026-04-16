@@ -68,6 +68,10 @@ cat << 'MCP'
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
 
+[mcp_servers."context7"]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp"]
+
 [mcp_servers."chrome-devtools"]
 command = "npx"
 args = ["-y", "chrome-devtools-mcp@latest"]
