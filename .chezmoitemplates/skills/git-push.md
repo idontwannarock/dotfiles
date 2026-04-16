@@ -1,13 +1,15 @@
 ---
-allowed-tools: Bash(git push:*), Bash(git status:*), Bash(git branch:*), Bash(git log:*)
+name: git-push
 description: Push current branch to remote
 ---
 
 ## Context
 
-- Branch: !`git branch --show-current`
-- Tracking: !`git status -sb`
-- Unpushed commits: !`git log @{u}..HEAD --oneline 2>/dev/null || echo "No upstream set"`
+First, gather context by running these commands:
+
+- `git branch --show-current` — current branch
+- `git status -sb` — tracking info
+- `git log @{u}..HEAD --oneline 2>/dev/null || echo "No upstream set"` — unpushed commits
 
 ## Task
 

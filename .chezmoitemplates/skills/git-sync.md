@@ -1,13 +1,15 @@
 ---
-allowed-tools: Bash(git fetch:*), Bash(git rebase:*), Bash(git stash:*), Bash(git status:*), Bash(git branch:*), Bash(git log:*)
+name: git-sync
 description: Fetch and rebase current branch on main
 ---
 
 ## Context
 
-- Branch: !`git branch --show-current`
-- Status: !`git status --short`
-- Remote: !`git remote -v | head -2`
+First, gather context by running these commands:
+
+- `git branch --show-current` — current branch
+- `git status --short` — uncommitted changes
+- `git remote -v | head -2` — remote URL
 
 ## Task
 
