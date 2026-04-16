@@ -48,9 +48,9 @@ openspec instructions apply --change "<name>" --json
 
 | Agent | subagent_type | Prompt 重點 |
 |-------|--------------|-------------|
-| Spec Alignment Reviewer | `pr-review-toolkit:code-reviewer` | 帶著 spec 上下文審查：(1) 每個 requirement 是否被正確實作 (2) spec 中的 edge case/scenario 是否有對應處理 (3) 實作是否偏離需求意圖 (4) 是否有需求範圍外的多餘實作 |
+| Spec Alignment Reviewer | `code-reviewer` | 帶著 spec 上下文審查：(1) 每個 requirement 是否被正確實作 (2) spec 中的 edge case/scenario 是否有對應處理 (3) 實作是否偏離需求意圖 (4) 是否有需求範圍外的多餘實作 |
 | Architecture Reviewer | `linus-torvalds` | 帶著 design 上下文審查：(1) 實作是否遵循 design 文件的架構決策 (2) 相對需求範圍是否 over-engineering 或 under-engineering (3) 複雜度是否與需求複雜度匹配 (4) 是否有更簡單的方式滿足相同需求 |
-| Scenario Coverage Analyzer | `pr-review-toolkit:pr-test-analyzer` | 帶著 spec scenarios 上下文審查：(1) spec 中定義的每個 scenario 是否有對應測試 (2) spec 中的邊界條件是否被測試覆蓋 (3) 哪些 scenario 缺少測試 (4) 測試是否真正驗證了 spec 的預期行為 |
+| Scenario Coverage Analyzer | `pr-test-analyzer` | 帶著 spec scenarios 上下文審查：(1) spec 中定義的每個 scenario 是否有對應測試 (2) spec 中的邊界條件是否被測試覆蓋 (3) 哪些 scenario 缺少測試 (4) 測試是否真正驗證了 spec 的預期行為 |
 
 ## Output
 

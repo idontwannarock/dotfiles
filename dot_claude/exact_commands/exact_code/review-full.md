@@ -34,9 +34,9 @@ description: 完整 code review — 平行派發 code-reviewer、silent-failure-
 
 | Agent | subagent_type | Prompt 重點 |
 |-------|--------------|-------------|
-| Code Reviewer | `pr-review-toolkit:code-reviewer` | 程式碼品質、風格一致性、最佳實踐、潛在 bug、命名慣例 |
-| Silent Failure Hunter | `pr-review-toolkit:silent-failure-hunter` | 靜默失敗、錯誤處理不當、被吞掉的例外、不適當的 fallback |
-| Test Analyzer | `pr-review-toolkit:pr-test-analyzer` | 測試覆蓋率、缺少的邊界案例、測試品質與可維護性 |
+| Code Reviewer | `code-reviewer` | 程式碼品質、風格一致性、最佳實踐、潛在 bug、命名慣例 |
+| Silent Failure Hunter | `silent-failure-hunter` | 靜默失敗、錯誤處理不當、被吞掉的例外、不適當的 fallback |
+| Test Analyzer | `pr-test-analyzer` | 測試覆蓋率、缺少的邊界案例、測試品質與可維護性 |
 | Linus Torvalds | `linus-torvalds` | 架構簡潔性、不必要的複雜度、good taste、特殊案例是否能消除、向後相容性 |
 
 ## Codex Cross-Review（自動）

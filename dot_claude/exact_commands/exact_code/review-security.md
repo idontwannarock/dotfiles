@@ -26,8 +26,8 @@ description: 安全性 review — 靜默失敗偵測、錯誤處理、安全漏�
 
 | Agent | subagent_type | Prompt 重點 |
 |-------|--------------|-------------|
-| Silent Failure Hunter | `pr-review-toolkit:silent-failure-hunter` | 靜默失敗、錯誤處理不當、被吞掉的例外、不適當的 fallback、可能導致資料遺失的路徑 |
-| Code Reviewer (Security) | `pr-review-toolkit:code-reviewer` | 以安全性為重點：注入攻擊（SQL/command/XSS）、認證/授權漏洞、敏感資料洩露、OWASP Top 10、不安全的加密或隨機數使用 |
+| Silent Failure Hunter | `silent-failure-hunter` | 靜默失敗、錯誤處理不當、被吞掉的例外、不適當的 fallback、可能導致資料遺失的路徑 |
+| Code Reviewer (Security) | `code-reviewer` | 以安全性為重點：注入攻擊（SQL/command/XSS）、認證/授權漏洞、敏感資料洩露、OWASP Top 10、不安全的加密或隨機數使用 |
 
 ## Output
 

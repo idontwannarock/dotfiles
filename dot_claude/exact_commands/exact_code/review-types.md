@@ -24,7 +24,7 @@ description: 型別設計 review — 封裝、不變量表達、型別安全
 
 取得 diff 後，使用 **Task tool** 啟動 1 個 agent：
 
-- **subagent_type**: `pr-review-toolkit:type-design-analyzer`
+- **subagent_type**: `type-design-analyzer`
 - **Prompt**: 包含完整 diff，分析新增或修改的型別定義，重點關注：
   - **封裝** — 型別是否正確隱藏內部實作？是否暴露了不該暴露的細節？
   - **不變量表達** — 型別系統是否能在編譯期阻止無效狀態？

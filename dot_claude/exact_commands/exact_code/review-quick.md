@@ -24,7 +24,7 @@ description: 快速 code review — 單一 code-reviewer agent
 
 取得 diff 後，使用 **Task tool** 啟動 1 個 agent：
 
-- **subagent_type**: `pr-review-toolkit:code-reviewer`
+- **subagent_type**: `code-reviewer`
 - **Prompt**: 包含完整 diff，請 review 程式碼品質、風格一致性、最佳實踐、潛在 bug、命名慣例
 
 ## Output
