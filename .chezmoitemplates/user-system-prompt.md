@@ -1,4 +1,4 @@
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+Behavioral guidelines for LLM-assisted development. Merge with project-specific instructions as needed.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
@@ -60,6 +60,15 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
+## 5. Use Your Tools
+
+**Prefer authoritative tools over memory or guessing.**
+
+- **Language diagnostics**: After editing typed languages (Python, Java, TypeScript, Go, Rust), query the language server for diagnostics before claiming edits are complete. Your memory of the type system lags; the compiler does not.
+- **Code graph**: For cross-file questions (callers, callees, impact radius, symbol search), use `codegraph` instead of stitching answers from Read/Grep. If unavailable or index error, fall back to Read/Grep — but mention that codegraph was not initialized.
+- **Library docs**: Before writing code that calls an external library, framework, SDK, or CLI tool, query `context7` for current syntax. Training data drifts; APIs rename parameters and deprecate surfaces between releases.
+- **English prose**: When writing English commit messages, PR descriptions, error messages, or user-facing docs, apply Strunk's *Elements of Style* — cut excess words, prefer active voice, concrete over abstract. Use available writing style tools (e.g. `elements-of-style`) if present.
+
 ---
 
-Worklog repo: `idontwannarock/worklogs`
+**Worklog repo:** `idontwannarock/worklogs`
