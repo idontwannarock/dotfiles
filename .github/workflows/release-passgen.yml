@@ -1,0 +1,105 @@
+name: Release passgen
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'passgen/**'
+      - '.github/workflows/release-passgen.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: passgen-linux-amd64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: passgen-darwin-amd64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: passgen-darwin-arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: passgen-windows-amd64.exe
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: passgen
+
+      - name: Build
+        working-directory: passgen
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Stage artifact
+        shell: bash
+        working-directory: passgen
+        run: |
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+            cp "target/${{ matrix.target }}/release/passgen.exe" "${{ matrix.artifact }}"
+          else
+            cp "target/${{ matrix.target }}/release/passgen" "${{ matrix.artifact }}"
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: passgen/${{ matrix.artifact }}
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Set version
+        id: version
+        run: |
+          echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist/
+
+      - name: Update passgen-latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: passgen-latest
+          name: passgen-latest (${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }})
+          body: Auto-built passgen binaries from commit ${{ github.sha }}.
+          prerelease: false
+          files: dist/*
+          fail_on_unmatched_files: true
+
+      - name: Create versioned release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: passgen-v${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }}
+          name: passgen v${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }}
+          body: Built from commit ${{ github.sha }}
+          prerelease: false
+          files: dist/*
+          fail_on_unmatched_files: true

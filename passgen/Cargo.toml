@@ -1,0 +1,18 @@
+[package]
+name = "passgen"
+version = "0.1.0"
+edition = "2021"
+description = "個人用密碼產生器：crypto-random 模式 + Bopomofo → Dachen keystroke 編碼"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+rand = "0.9"
+
+# 讓 release binary 盡量小：LTO + 單一 codegen unit + strip symbols + 最佳化體積
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+opt-level = "z"
+panic = "abort"
