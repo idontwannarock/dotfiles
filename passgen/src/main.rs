@@ -12,17 +12,15 @@
 
 use clap::Parser;
 use rand::Rng;
+use rand::seq::SliceRandom;
 
-// ── 字元集 ─────────────────────────────────────────────────────────────────
-// 這兩個字串是「你這把工具的個性」。常見的權衡：
-//   * 是否排除易混淆字元（0/O/o、1/l/I）→ 下面已排除，你若不介意可加回來
-//   * 符號選哪些 → 過於極端的符號（空白、反斜線、引號）在某些登入框會壞事
-//
-// TODO（低優先）：如果你想改口味，動這兩個常數即可。
-const CHARSET_ALPHANUM: &str =
-    "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const CHARSET_WITH_SYMBOLS: &str =
-    "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*-_=+?";
+// ── 字元類別 ────────────────────────────────────────────────────────────────
+// 切成四類的目的：產出密碼時「保證每類至少出現一次」，通過網站的
+// 字元類別要求（大寫/小寫/數字/符號）。排除易混淆字元（0/O/o、1/l/I）。
+const CLASS_LOWER: &str = "abcdefghijkmnpqrstuvwxyz";
+const CLASS_UPPER: &str = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const CLASS_DIGIT: &str = "23456789";
+const CLASS_SYMBOL: &str = "!@#$%^&*-_=+?";
 
 #[derive(Parser, Debug)]
 #[command(name = "passgen", version, about = "個人用密碼產生器")]
@@ -53,39 +51,68 @@ fn main() {
         return;
     }
 
-    let charset = if cli.symbols {
-        CHARSET_WITH_SYMBOLS
-    } else {
-        CHARSET_ALPHANUM
-    };
-    let charset_bytes = charset.as_bytes();
+    let required = if cli.symbols { 4 } else { 3 };
+    if cli.length < required {
+        eprintln!(
+            "error: --length must be at least {} to include all character classes",
+            required
+        );
+        std::process::exit(1);
+    }
 
     for _ in 0..cli.count {
-        println!("{}", generate_random_password(charset_bytes, cli.length));
+        println!("{}", generate_random_password(cli.length, cli.symbols));
     }
 }
 
 // ── 核心函式 1：隨機密碼產生 ───────────────────────────────────────────────
 //
-// 這幾行是工具的安全核心。設計選擇：
+// 演算法（保證每類至少出現 1 個）：
+//   1. 從每個類別各抽 1 字放進 buffer → 用掉 classes.len() 個位置
+//   2. 剩下位置從所有類別聯集中均勻抽取
+//   3. 洗牌整個 buffer，讓「保證字元」位置不可預測
 //
+// 設計選擇：
 //   * RNG 來源：`rand::rng()` 回傳 thread-local ThreadRng。
 //     - 種子來自 OS entropy（Windows BCryptGenRandom / Linux getrandom / macOS
 //       SecRandomCopyBytes），之後用 ChaCha12 CSPRNG 擴展。
-//     - 週期性 reseed，不會被同一進程長期使用耗盡。
 //     - 跟「直接用 OsRng」的安全性差別，在密碼產生這規模下可忽略。
 //
 //   * 均勻抽取：`random_range(0..n)` 會做 rejection sampling（rand 原始碼裡的
-//     `UniformInt::sample_single`），所以不會有 modulo bias——即使 charset
+//     `UniformInt::sample_single`），所以不會有 modulo bias——即使字元集
 //     長度不是 2 的冪次也安全。
 //
-//   * 為何不自己拿 bytes 做 rejection：可以，但只會增加 code 量跟 bug 表面；
-//     除非不信任 rand crate 本身，不然沒有實質安全增益。
-fn generate_random_password(charset: &[u8], length: usize) -> String {
+//   * Entropy 代價：保證每類出現會讓總 entropy 比純均勻抽取略低（~0.1 bits
+//     對 20 字密碼），實務上可忽略，換來能通過網站的字元類別要求。
+fn generate_random_password(length: usize, with_symbols: bool) -> String {
     let mut rng = rand::rng();
-    (0..length)
-        .map(|_| charset[rng.random_range(0..charset.len())] as char)
-        .collect()
+
+    let classes: &[&str] = if with_symbols {
+        &[CLASS_LOWER, CLASS_UPPER, CLASS_DIGIT, CLASS_SYMBOL]
+    } else {
+        &[CLASS_LOWER, CLASS_UPPER, CLASS_DIGIT]
+    };
+
+    // 每類先抽 1 字（保證覆蓋）
+    let mut password: Vec<u8> = classes
+        .iter()
+        .map(|class| {
+            let bytes = class.as_bytes();
+            bytes[rng.random_range(0..bytes.len())]
+        })
+        .collect();
+
+    // 剩下位置從聯集均勻抽取
+    let combined: String = classes.concat();
+    let combined_bytes = combined.as_bytes();
+    for _ in 0..(length - classes.len()) {
+        password.push(combined_bytes[rng.random_range(0..combined_bytes.len())]);
+    }
+
+    // 洗牌避免「前面幾個位置固定是每類各一字」的可預測結構
+    password.shuffle(&mut rng);
+
+    String::from_utf8(password).expect("all ASCII by construction")
 }
 
 // ── 核心函式 2：Bopomofo → Dachen QWERTY keystroke ─────────────────────────
@@ -161,16 +188,41 @@ mod tests {
 
     #[test]
     fn random_password_has_correct_length() {
-        let pw = generate_random_password(CHARSET_ALPHANUM.as_bytes(), 25);
-        assert_eq!(pw.chars().count(), 25);
+        assert_eq!(generate_random_password(25, false).chars().count(), 25);
+        assert_eq!(generate_random_password(30, true).chars().count(), 30);
     }
 
     #[test]
-    fn random_password_only_uses_charset() {
-        let charset = CHARSET_ALPHANUM;
-        let pw = generate_random_password(charset.as_bytes(), 100);
+    fn random_password_only_uses_valid_chars() {
+        let full = format!(
+            "{}{}{}{}",
+            CLASS_LOWER, CLASS_UPPER, CLASS_DIGIT, CLASS_SYMBOL
+        );
+        let pw = generate_random_password(200, true);
         for c in pw.chars() {
-            assert!(charset.contains(c), "char {} not in charset", c);
+            assert!(full.contains(c), "char {} not in any class", c);
+        }
+    }
+
+    #[test]
+    fn random_password_contains_all_classes_alphanum() {
+        // 跑 50 次降低 flaky 機率（單次就該保證，但多跑讓 regression 更明顯）
+        for _ in 0..50 {
+            let pw = generate_random_password(20, false);
+            assert!(pw.chars().any(|c| CLASS_LOWER.contains(c)), "no lower: {}", pw);
+            assert!(pw.chars().any(|c| CLASS_UPPER.contains(c)), "no upper: {}", pw);
+            assert!(pw.chars().any(|c| CLASS_DIGIT.contains(c)), "no digit: {}", pw);
+        }
+    }
+
+    #[test]
+    fn random_password_contains_all_classes_with_symbols() {
+        for _ in 0..50 {
+            let pw = generate_random_password(20, true);
+            assert!(pw.chars().any(|c| CLASS_LOWER.contains(c)), "no lower: {}", pw);
+            assert!(pw.chars().any(|c| CLASS_UPPER.contains(c)), "no upper: {}", pw);
+            assert!(pw.chars().any(|c| CLASS_DIGIT.contains(c)), "no digit: {}", pw);
+            assert!(pw.chars().any(|c| CLASS_SYMBOL.contains(c)), "no symbol: {}", pw);
         }
     }
 
