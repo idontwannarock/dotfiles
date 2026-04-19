@@ -18,6 +18,12 @@ Documents
 .codex/config.toml
 {{- end }}
 
+# ── rtk config（Windows 讀 AppData/Roaming，由 install-05 處理）───────────
+{{- if eq .chezmoi.os "windows" }}
+.config/rtk
+.config/rtk/config.toml
+{{- end }}
+
 # ── zsh 設定（只部署到 macOS）───────────────────────────────────────────────
 {{- if ne .chezmoi.os "darwin" }}
 .zshrc

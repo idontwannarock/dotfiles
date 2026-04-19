@@ -1,0 +1,40 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_onchange_ script — 把 rtk config.toml 寫到 Windows 讀取的路徑
+#
+# 為什麼要這個 script？
+# chezmoi 把 dot_config/rtk/config.toml 部署到 ~/.config/rtk/config.toml，
+# 但 rtk on Windows 讀 ~/AppData/Roaming/rtk/config.toml。
+# 這支腳本負責把同一份內容放到 AppData 路徑。Blacklist 內容由
+# .chezmoitemplates/rtk-config.toml 統一管理。
+#
+# Binary 由 .chezmoiexternal.toml 下載到 ~/.local/bin/rtk.exe，不在這裡處理。
+
+$ErrorActionPreference = "Stop"
+
+$configDir = Join-Path $env:APPDATA "rtk"
+$configFile = Join-Path $configDir "config.toml"
+
+New-Item -ItemType Directory -Force -Path $configDir | Out-Null
+
+$configContent = @'
+{{ template "rtk-config.toml" . }}
+'@
+
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+
+# 只在內容變動時寫入，避免無意義的 mtime 更新
+$needsWrite = $true
+if (Test-Path $configFile) {
+    $existing = [System.IO.File]::ReadAllText($configFile)
+    if ($existing -eq $configContent) {
+        $needsWrite = $false
+    }
+}
+
+if ($needsWrite) {
+    [System.IO.File]::WriteAllText($configFile, $configContent, $utf8NoBom)
+    Write-Host "[rtk] Config written: $configFile" -ForegroundColor Green
+} else {
+    Write-Host "[rtk] Config up to date: $configFile" -ForegroundColor Gray
+}
+{{ end -}}

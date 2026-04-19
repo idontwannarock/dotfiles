@@ -8,6 +8,7 @@
 # 同步的欄位：
 # - model、effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
 # - statusLine（跨平台處理執行檔路徑）
+# - hooks.PreToolUse（註冊 rtk-rewrite.sh，Bash matcher）
 
 set -euo pipefail
 
@@ -41,4 +42,16 @@ echo "$input" | jq \
 {{- else }}
     | .env |= del(.CLAUDE_CODE_GIT_BASH_PATH)
 {{- end }}
+    | .hooks = (.hooks // {})
+    | .hooks.PreToolUse = [
+        {
+          matcher: "Bash",
+          hooks: [
+            {
+              type: "command",
+              command: "bash ~/.claude/hooks/rtk-rewrite.sh"
+            }
+          ]
+        }
+      ]
   ' | tr -d '\r'

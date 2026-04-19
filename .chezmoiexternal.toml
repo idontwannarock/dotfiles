@@ -16,3 +16,24 @@
     executable = true
     url = "https://github.com/idontwannarock/dotfiles/releases/download/passgen-latest/passgen-{{ .chezmoi.os }}-{{ .chezmoi.arch }}{{ $ext }}"
     refreshPeriod = "1h"
+
+# rtk binary — token-reducing CLI proxy (https://github.com/rtk-ai/rtk)
+# Pinned to 0.36.0. Update by bumping version + rerunning `chezmoi apply`.
+{{- $rtkVersion := "0.36.0" }}
+{{- $rtkAsset := "" }}
+{{- if eq .chezmoi.os "linux" }}
+  {{- if eq .chezmoi.arch "amd64" }}{{ $rtkAsset = "rtk-x86_64-unknown-linux-musl.tar.gz" }}{{ end }}
+  {{- if eq .chezmoi.arch "arm64" }}{{ $rtkAsset = "rtk-aarch64-unknown-linux-gnu.tar.gz" }}{{ end }}
+{{- else if eq .chezmoi.os "darwin" }}
+  {{- if eq .chezmoi.arch "amd64" }}{{ $rtkAsset = "rtk-x86_64-apple-darwin.tar.gz" }}{{ end }}
+  {{- if eq .chezmoi.arch "arm64" }}{{ $rtkAsset = "rtk-aarch64-apple-darwin.tar.gz" }}{{ end }}
+{{- else if eq .chezmoi.os "windows" }}
+  {{- if eq .chezmoi.arch "amd64" }}{{ $rtkAsset = "rtk-x86_64-pc-windows-msvc.zip" }}{{ end }}
+{{- end }}
+{{- if $rtkAsset }}
+[".local/bin/rtk{{ $ext }}"]
+    type = "archive-file"
+    url = "https://github.com/rtk-ai/rtk/releases/download/v{{ $rtkVersion }}/{{ $rtkAsset }}"
+    path = "rtk{{ $ext }}"
+    executable = true
+{{- end }}
