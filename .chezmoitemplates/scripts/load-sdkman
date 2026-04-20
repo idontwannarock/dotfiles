@@ -2,5 +2,9 @@
 # Usage: {{ "{{" }} template "scripts/load-sdkman" {{ "}}" }}
 if ! command -v sdk &>/dev/null; then
     export SDKMAN_DIR="${SDKMAN_DIR:-$HOME/.sdkman}"
-    [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ] && . "$SDKMAN_DIR/bin/sdkman-init.sh"
+    if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
+        set +u
+        . "$SDKMAN_DIR/bin/sdkman-init.sh"
+        set -u
+    fi
 fi
