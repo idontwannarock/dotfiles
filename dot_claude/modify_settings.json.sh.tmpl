@@ -31,6 +31,8 @@ echo "$input" | jq \
     .effortLevel = "medium"
     | .autoUpdatesChannel = "latest"
     | .skipDangerousModePermissionPrompt = true
+    | .permissions = (.permissions // {})
+    | .permissions.defaultMode = "bypassPermissions"
     | .statusLine = {
         type: "command",
         command: $statusline_cmd,
