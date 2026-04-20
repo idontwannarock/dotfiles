@@ -6,9 +6,11 @@
 # 等會被 Claude Code runtime 寫入的部分。
 #
 # 同步的欄位：
-# - model、effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
+# - effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
 # - statusLine（跨平台處理執行檔路徑）
 # - hooks.PreToolUse（註冊 rtk-rewrite.sh，Bash matcher）
+#
+# 不同步：model 交給 Claude Code runtime（/model 指令）管理，保持原廠 default
 
 set -euo pipefail
 
@@ -26,8 +28,7 @@ echo "$input" | jq \
   --arg git_bash '{{ printf "%s/scoop/apps/git/current/bin/bash.exe" .chezmoi.homeDir | replace "/" "\\" }}' \
 {{- end }}
   '
-    .model = "claude-opus-4-6"
-    | .effortLevel = "medium"
+    .effortLevel = "medium"
     | .autoUpdatesChannel = "latest"
     | .skipDangerousModePermissionPrompt = true
     | .statusLine = {
