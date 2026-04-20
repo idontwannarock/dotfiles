@@ -41,9 +41,11 @@ eslint, prettier, next, rubocop, rspec, rake,
 aws, dotnet, psql, wget, gt, golangci-lint, tree
 ```
 
-**為何列黑名單**：RTK 0.36.0 有一個已知的 display layer bug — 當底層工具（例如 tsc）不存在時，RTK 的 summarizer 會把 npx fallback 的警告誤解析成「成功」訊息（例：`TypeScript compilation completed`），exit code 雖然正確但文字會誤導 Claude。黑名單讓這些指令 passthrough raw error，避免整合後的誤判。
+**為何列黑名單**：RTK 有一個已知的 display layer bug — 當底層工具（例如 tsc）不存在時，RTK 的 summarizer 會把 npx fallback 的警告誤解析成「成功」訊息（例：`TypeScript compilation completed`），exit code 雖然正確但文字會誤導 Claude。黑名單讓這些指令 passthrough raw error，避免整合後的誤判。
 
-裝了任何被黑名單的工具後，只要從 `.chezmoitemplates/rtk-config.toml` 移除該項、`chezmoi apply` 即可重新啟用 rewrite。
+**實測提醒（2026-04）**：RTK 0.36.0 的 `rtk rewrite` 目前只對約 10 個指令產生改寫（git、docker、kubectl、gh、pnpm、pip、go、cargo、ls、grep、`npm run`）。黑名單中多數項目（tsc、eslint、prettier、pytest、mypy、ruff、wget、tree、psql、golangci-lint、aws、dotnet …）在 0.36.0 上本來就不會被 rewrite，黑名單等同 no-op。保留黑名單純為**未來版本**新增 rewrite 規則時的防禦性保險 — 若 0.37+ 開始改寫這些指令又觸發 display bug，不用再額外改設定。
+
+裝了任何被黑名單的工具後（且該工具確實被 `rtk rewrite` 改寫），才需要從 `.chezmoitemplates/rtk-config.toml` 移除該項、`chezmoi apply` 重新啟用 rewrite。用 `RTK_CONFIG=/dev/null rtk rewrite "<cmd>"` 能快速驗證某指令是否真的被 rewrite（exit 0 或 3 = 有改寫）。
 
 ## Windows 相容性備忘
 

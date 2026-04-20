@@ -27,10 +27,22 @@ brew_install() {
 
 brew_install 7z p7zip
 brew_install curl
+brew_install wget
+brew_install tree
 brew_install ffmpeg
 brew_install hugo
 brew_install nexttrace
 brew_install yt-dlp
+brew_install golangci-lint
+
+# PostgreSQL client only (libpq is keg-only — force link to expose psql)
+if command -v psql &>/dev/null; then
+    echo "[psql] already installed, skipping."
+else
+    echo "[libpq] Installing PostgreSQL client via brew..."
+    brew install libpq
+    brew link --force libpq
+fi
 
 {{- else }}
 # Linux/WSL
@@ -48,7 +60,11 @@ apt_install() {
 
 apt_install 7z p7zip-full
 apt_install curl
+apt_install wget
+apt_install tree
 apt_install ffmpeg
+apt_install psql postgresql-client
+apt_install golangci-lint
 
 # Hugo
 if command -v hugo &>/dev/null; then
