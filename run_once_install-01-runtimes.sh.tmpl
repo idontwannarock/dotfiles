@@ -1,11 +1,31 @@
 {{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
 # chezmoi run_once_ script — 開發語言與 runtime 安裝（Unix/macOS/WSL）
-# macOS: 全部用 brew
-# Linux/WSL: 一般工具用 apt，有版本管理需求的（JDK, Python, Go 等）用 brew
-# 每個工具各自做冪等檢查，已安裝則跳過
+#
+# 安裝策略：
+#   系統工具（vim, starship, go）：Linux apt / 官方 installer、macOS brew
+#   Node.js  : nvm（兩平台）
+#   Rust     : rustup 官方 installer（兩平台）
+#   uv       : Linux 官方 installer、macOS brew
+#   Python   : 完全由 uv 管理（`uv python install`）
+#   Java/JDK : sdkman（兩平台，pinned Temurin identifier）
+#   Maven    : sdkman（兩平台）
+#
+# sdkman 的 Temurin identifier 會隨上游更新漂移，下方 JDK_VERSIONS 是 pinned 值。
+# ⚠ 每半年 review 一次最新 Temurin identifier：
+#     sdk list java | grep tem
+# 最後 review 日期：2026-04-20
 
 set -euo pipefail
+
+# ── pinned JDK versions (sdkman) — REVIEW EVERY 6 MONTHS ────────────────
+JDK_VERSIONS=(
+    "8.0.442-tem"
+    "11.0.26-tem"
+    "17.0.14-tem"
+    "21.0.6-tem"
+    "25.0.1-tem"
+)
 
 echo "=== Runtime & Language Setup ==="
 
@@ -55,76 +75,105 @@ else
 {{- end }}
 fi
 
-# ── 以下為版本管理工具，統一用 brew ─────────────────────────────────────
-
-if ! command -v brew &>/dev/null; then
-    echo "[brew] Homebrew not found. Skipping version-managed tool installs (Go, Python, JDKs, etc.)."
-    echo "  Install: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
-    echo "=== Runtime setup partially complete (brew-based tools skipped). ==="
-    exit 0
-fi
-
-brew_install() {
-    local cmd="$1"
-    local pkg="${2:-$1}"
-    if command -v "$cmd" &>/dev/null; then
-        echo "[$cmd] already installed, skipping."
-    else
-        echo "[$pkg] Installing via brew..."
-        brew install "$pkg"
-    fi
-}
-
-brew_install_cask() {
-    local name="$1"
-    local cask="${2:-$1}"
-    if brew list --cask "$cask" &>/dev/null 2>&1; then
-        echo "[$cask] already installed, skipping."
-    else
-        echo "[$cask] Installing via brew cask..."
-        brew install --cask "$cask"
-    fi
-}
-
 # ── Go ───────────────────────────────────────────────────────────────────
-brew_install go
-
-# ── Python ───────────────────────────────────────────────────────────────
-brew_install python3 python@3.11
-brew install python@3.13 2>/dev/null || echo "[python@3.13] already installed or unavailable."
-
-# ── uv (Python package manager) ─────────────────────────────────────────
-brew_install uv
-
-# ── Rust ─────────────────────────────────────────────────────────────────
-brew_install rustup rustup-init
-if command -v rustup &>/dev/null && ! rustup show active-toolchain &>/dev/null 2>&1; then
-    echo "[rust] Initializing default toolchain..."
-    rustup default stable
+# Go 官方沒提供像 rustup / sdkman 的 version manager；Go 1.21+ 內建
+# GOTOOLCHAIN 可自動下載專案需求版本，所以裝一份基礎版本即可。
+if command -v go &>/dev/null; then
+    echo "[go] already installed ($(go version | awk '{print $3}')), skipping."
+else
+{{- if eq .chezmoi.os "darwin" }}
+    echo "[go] Installing via brew..."
+    brew install go
+{{- else }}
+    echo "[go] Installing via apt..."
+    sudo apt-get install -y golang-go
+{{- end }}
 fi
 
-# ── Maven ────────────────────────────────────────────────────────────────
-brew_install mvn maven
+# ── Rust (rustup 官方 installer，兩平台) ────────────────────────────────
+if command -v rustup &>/dev/null; then
+    echo "[rustup] already installed, skipping."
+else
+    echo "[rustup] Installing via official installer..."
+    # --no-modify-path: 由我們自己在 shell rc 管 PATH（~/.cargo/bin 已在 $HOME/.local/bin 之後）
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+        | sh -s -- -y --default-toolchain stable --no-modify-path
+fi
 
-# ── JDKs (Adoptium Temurin) ──────────────────────────────────────────────
+# Make cargo bin available in this session
+[ -s "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
+# ── uv (Python package + version manager) ───────────────────────────────
+if command -v uv &>/dev/null; then
+    echo "[uv] already installed, skipping."
+else
 {{- if eq .chezmoi.os "darwin" }}
-# macOS: brew cask from adoptium tap
-brew tap adoptium/openjdk 2>/dev/null || true
-for ver in 8 11 17 21 25; do
-    brew_install_cask "temurin${ver}" "temurin@${ver}"
-done
+    echo "[uv] Installing via brew..."
+    brew install uv
 {{- else }}
-# Linux/WSL: brew formulae
-for ver in 8 11 17 21 25; do
-    pkg="temurin${ver}"
-    if brew list "$pkg" &>/dev/null 2>&1; then
-        echo "[$pkg] already installed, skipping."
-    else
-        echo "[$pkg] Installing via brew..."
-        brew install "$pkg" 2>/dev/null || echo "[$pkg] not available in brew, skipping."
-    fi
-done
+    echo "[uv] Installing via official installer..."
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 {{- end }}
+fi
+
+# uv 官方 installer 裝到 ~/.local/bin；確保本次 session 能找到
+export PATH="$HOME/.local/bin:$PATH"
+
+# ── Python (由 uv 管理) ─────────────────────────────────────────────────
+# uv python install 本身是冪等的：已安裝會 reuse。
+if command -v uv &>/dev/null; then
+    echo "[python] Ensuring 3.13 is installed via uv..."
+    uv python install 3.13
+else
+    echo "[python] uv not available, skipping python install."
+fi
+
+# ── SDKMAN (Java / JVM toolchain manager) ───────────────────────────────
+if [ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
+    echo "[sdkman] already installed, skipping."
+else
+    echo "[sdkman] Installing via official installer (rcupdate=false)..."
+    # rcupdate=false: 避免 sdkman 自動改 .bashrc / .zshrc（chezmoi 管理中，改動會被覆蓋）
+    curl -s "https://get.sdkman.io?rcupdate=false" | bash
+fi
+
+{{ template "scripts/load-sdkman" }}
+
+if command -v sdk &>/dev/null; then
+    # 非互動模式：避免 `sdk install` 詢問 "set as default?"
+    SDKMAN_CONFIG="$HOME/.sdkman/etc/config"
+    if [ -f "$SDKMAN_CONFIG" ]; then
+        if grep -q '^sdkman_auto_answer=' "$SDKMAN_CONFIG"; then
+            sed -i.bak 's/^sdkman_auto_answer=.*/sdkman_auto_answer=true/' "$SDKMAN_CONFIG"
+            rm -f "${SDKMAN_CONFIG}.bak"
+        else
+            echo "sdkman_auto_answer=true" >> "$SDKMAN_CONFIG"
+        fi
+    fi
+
+    # ── JDKs via sdkman (Temurin) ────────────────────────────────────────
+    for ver in "${JDK_VERSIONS[@]}"; do
+        if [ -d "$HOME/.sdkman/candidates/java/${ver}" ]; then
+            echo "[jdk ${ver}] already installed, skipping."
+        else
+            echo "[jdk ${ver}] Installing via sdkman..."
+            if ! sdk install java "$ver"; then
+                echo "[jdk ${ver}] install failed — identifier may be stale."
+                echo "  Refresh with: sdk list java | grep tem"
+            fi
+        fi
+    done
+
+    # ── Maven via sdkman ─────────────────────────────────────────────────
+    if [ -d "$HOME/.sdkman/candidates/maven/current" ]; then
+        echo "[maven] already installed, skipping."
+    else
+        echo "[maven] Installing via sdkman..."
+        sdk install maven || echo "[maven] install failed."
+    fi
+else
+    echo "[sdkman] sdk command not available in this session — JDK/Maven skipped."
+fi
 
 echo "=== Runtime setup complete. ==="
 {{ end -}}

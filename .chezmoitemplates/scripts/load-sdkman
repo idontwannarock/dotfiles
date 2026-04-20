@@ -1,0 +1,6 @@
+# Load sdkman into the current shell so the `sdk` command is available.
+# Usage: {{ "{{" }} template "scripts/load-sdkman" {{ "}}" }}
+if ! command -v sdk &>/dev/null; then
+    export SDKMAN_DIR="${SDKMAN_DIR:-$HOME/.sdkman}"
+    [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ] && . "$SDKMAN_DIR/bin/sdkman-init.sh"
+fi
