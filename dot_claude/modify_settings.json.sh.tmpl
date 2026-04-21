@@ -40,6 +40,7 @@ echo "$input" | jq \
       }
     | .env = (.env // {})
     | .env.CLAUDE_CODE_NO_FLICKER = "1"
+    | .env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS = "10000"
 {{- if eq .chezmoi.os "windows" }}
     | .env.CLAUDE_CODE_GIT_BASH_PATH = $git_bash
     | .env.CLAUDE_CODE_USE_POWERSHELL_TOOL = "1"
