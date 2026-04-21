@@ -258,7 +258,11 @@ func formatResetTime(epochSec int64) string {
 	if totalMin < 60 {
 		return fmt.Sprintf("%dm", totalMin)
 	}
-	return fmt.Sprintf("%dh%dm", totalMin/60, totalMin%60)
+	totalHour := totalMin / 60
+	if totalHour >= 24 {
+		return fmt.Sprintf("%dd%dh", totalHour/24, totalHour%24)
+	}
+	return fmt.Sprintf("%dh%dm", totalHour, totalMin%60)
 }
 
 func formatRateLimit(label string, pct float64, resetsAt int64) string {
