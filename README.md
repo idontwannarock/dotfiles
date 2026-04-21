@@ -185,7 +185,7 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 
 ### 自動安裝的工具
 
-`chezmoi apply` 時會自動安裝以下工具（若尚未安裝）。Windows 用 scoop，macOS 用 brew，Linux/WSL 一般工具用 apt、版本管理工具（JDK、Python、Go 等）用 brew。
+`chezmoi apply` 時會自動安裝以下工具（若尚未安裝）。Windows 用 scoop，macOS 用 brew，Linux/WSL 一般工具用 apt、版本管理工具（JDK、Python）用 sdkman / uv，Go 在 Linux 用官方 tarball 裝到 `~/.local/go`（apt 版太舊不支援 GOTOOLCHAIN）。
 
 **基礎設施（before phase）：**
 
@@ -199,7 +199,7 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 |------|------|
 | NVM + Node.js | npm 的來源（Unix: curl installer, Windows: scoop） |
 | Vim | 編輯器 |
-| Go | |
+| Go | Base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本）。Linux 用官方 tarball 裝到 `~/.local/go`；macOS brew；Windows scoop `go124`。 |
 | Python 3.11, 3.13 | |
 | uv | Python 套件管理 |
 | Rustup | Rust 工具鏈 |

@@ -77,16 +77,79 @@ fi
 
 # ── Go ───────────────────────────────────────────────────────────────────
 # Go 官方沒提供像 rustup / sdkman 的 version manager；Go 1.21+ 內建
-# GOTOOLCHAIN 可自動下載專案需求版本，所以裝一份基礎版本即可。
-if command -v go &>/dev/null; then
-    echo "[go] already installed ($(go version | awk '{print $3}')), skipping."
-else
+# GOTOOLCHAIN 可自動下載 go.mod 需求版本，所以 base 裝一份夠新的即可。
+# 守門：base 版本必須 ≥ GO_MIN_VERSION，否則 GOTOOLCHAIN 不可用。
+GO_MIN_VERSION="{{ .goMinVersion }}"
+{{- if ne .chezmoi.os "darwin" }}
+GO_LINUX_TARBALL_VERSION="{{ .goLinuxTarballVersion }}"
+{{- end }}
+
+go_version_below_min() {
+    # $1 = current (e.g. 1.18.1)  $2 = minimum (e.g. 1.24)
+    local cur="$1" min="$2"
+    local cur_major cur_minor min_major min_minor
+    cur_major="$(echo "$cur" | cut -d. -f1)"
+    cur_minor="$(echo "$cur" | cut -d. -f2)"
+    min_major="$(echo "$min" | cut -d. -f1)"
+    min_minor="$(echo "$min" | cut -d. -f2)"
+    [ "$cur_major" -lt "$min_major" ] && return 0
+    [ "$cur_major" -eq "$min_major" ] && [ "$cur_minor" -lt "$min_minor" ] && return 0
+    return 1
+}
+{{ if ne .chezmoi.os "darwin" }}
+install_go_linux_tarball() {
+    local version="$1"
+    local arch
+    case "$(uname -m)" in
+        x86_64)  arch="amd64" ;;
+        aarch64) arch="arm64" ;;
+        *) echo "[go] unsupported arch: $(uname -m)"; return 1 ;;
+    esac
+    local tarball="go${version}.linux-${arch}.tar.gz"
+    local url="https://go.dev/dl/${tarball}"
+    local tmp="/tmp/${tarball}"
+
+    echo "[go] Downloading ${url}..."
+    curl -fsSL "$url" -o "$tmp"
+
+    # apt-managed golang-go would shadow our install at /usr/bin/go; remove first.
+    if dpkg -s golang-go >/dev/null 2>&1; then
+        echo "[go] Removing apt-managed golang-go..."
+        sudo apt-get remove -y golang-go
+    fi
+
+    echo "[go] Installing tarball to \$HOME/.local/go..."
+    rm -rf "$HOME/.local/go"
+    mkdir -p "$HOME/.local"
+    tar -C "$HOME/.local" -xzf "$tmp"
+    rm -f "$tmp"
+
+    export PATH="$HOME/.local/go/bin:$PATH"
+    echo "[go] Installed: $(go version)"
+}
+{{ end }}
+go_needs_install=true
+if command -v go >/dev/null 2>&1; then
+    go_current_version="$(go version | awk '{print $3}' | sed 's/^go//')"
+    if go_version_below_min "$go_current_version" "$GO_MIN_VERSION"; then
+        echo "[go] existing version ${go_current_version} < ${GO_MIN_VERSION} — replacing..."
+    else
+        echo "[go] already installed (${go_current_version} ≥ ${GO_MIN_VERSION}), skipping."
+        go_needs_install=false
+    fi
+fi
+
+if [ "$go_needs_install" = true ]; then
 {{- if eq .chezmoi.os "darwin" }}
-    echo "[go] Installing via brew..."
-    brew install go
+    if command -v go >/dev/null 2>&1; then
+        echo "[go] Upgrading via brew..."
+        brew upgrade go
+    else
+        echo "[go] Installing via brew..."
+        brew install go
+    fi
 {{- else }}
-    echo "[go] Installing via apt..."
-    sudo apt-get install -y golang-go
+    install_go_linux_tarball "$GO_LINUX_TARBALL_VERSION"
 {{- end }}
 fi
 

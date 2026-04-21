@@ -14,6 +14,14 @@ case ":$PATH:" in
     *) export PATH="$HOME/.bun/bin:$PATH" ;;
 esac
 
+# Go tarball install (~/.local/go on Linux) — no-op if dir missing
+if [ -d "$HOME/.local/go/bin" ]; then
+    case ":$PATH:" in
+        *":$HOME/.local/go/bin:"*) ;;
+        *) export PATH="$HOME/.local/go/bin:$PATH" ;;
+    esac
+fi
+
 # ── Starship prompt ──────────────────────────────────────────────────────────
 # 由各 rc 檔依 shell 類型初始化（eval "$(starship init bash/zsh)"）
 

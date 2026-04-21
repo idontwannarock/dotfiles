@@ -10,6 +10,11 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
 
 [data]
     isWSL = {{ $isWSL }}
+    # Go base install — base version must support GOTOOLCHAIN (≥ 1.21).
+    # ⚠ Pinned Linux tarball patch version — REVIEW EVERY 6 MONTHS:
+    #     https://go.dev/dl/
+    goMinVersion = "1.24"
+    goLinuxTarballVersion = "1.24.4"
 
 # Windows 需要明確指定 .sh 的 interpreter，否則 modify_ script
 # 無法執行（"not a valid Win32 application"）。Unix 上會忽略此設定，

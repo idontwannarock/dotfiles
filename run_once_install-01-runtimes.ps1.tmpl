@@ -49,9 +49,39 @@ if (Get-Command "nvm" -ErrorAction SilentlyContinue) {
 Install-ScoopPackage "vim"
 
 # ── Go ───────────────────────────────────────────────────────────────────
-# scoop versions bucket for pinned version
+# Base version must support GOTOOLCHAIN (≥ {{ .goMinVersion }}); scoop versions bucket pins go124.
+$goMinVersion = "{{ .goMinVersion }}"
 scoop bucket add versions 2>$null
-Install-ScoopPackage "go" "go124"
+
+$goVersionOk = $false
+$existingGo = Get-Command "go" -ErrorAction SilentlyContinue
+if ($existingGo) {
+    $verLine = (& go version) 2>$null
+    if ($verLine -match 'go(\d+)\.(\d+)') {
+        $curMajor = [int]$matches[1]
+        $curMinor = [int]$matches[2]
+        $minParts = $goMinVersion -split '\.'
+        $minMajor = [int]$minParts[0]
+        $minMinor = [int]$minParts[1]
+        if ($curMajor -gt $minMajor -or ($curMajor -eq $minMajor -and $curMinor -ge $minMinor)) {
+            Write-Host "[go] already installed ($verLine), version OK." -ForegroundColor Gray
+            $goVersionOk = $true
+        }
+    }
+}
+if (-not $goVersionOk) {
+    if ($existingGo) {
+        Write-Host "[go] existing version below $goMinVersion — replacing with go124..." -ForegroundColor Yellow
+        foreach ($app in @("go", "go123", "go122", "go121", "go120")) {
+            if (Test-Path (Join-Path $env:USERPROFILE "scoop\apps\$app")) {
+                scoop uninstall $app 2>$null
+            }
+        }
+    } else {
+        Write-Host "[go124] Installing via scoop..." -ForegroundColor Yellow
+    }
+    scoop install go124
+}
 
 # ── Python ───────────────────────────────────────────────────────────────
 Install-ScoopPackage "python3" "python313"
