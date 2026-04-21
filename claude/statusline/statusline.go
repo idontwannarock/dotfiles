@@ -269,7 +269,7 @@ func formatRateLimit(label string, pct float64, resetsAt int64) string {
 	pctInt := int(pct + 0.5)
 	result := fmt.Sprintf("%s: %d%%", label, pctInt)
 	if resetsAt > 0 {
-		result += " ⟳" + formatResetTime(resetsAt)
+		result += " ⟳ " + formatResetTime(resetsAt)
 	}
 	return result
 }
