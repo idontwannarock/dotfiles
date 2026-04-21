@@ -151,6 +151,10 @@ if command -v sdk &>/dev/null; then
         fi
     fi
 
+    # sdkman 的內部 script（如 __sdk_install）會直接讀 $3 無 default，
+    # 和 nounset 不相容，所以在呼叫 sdk 前關掉 -u。
+    set +u
+
     # ── JDKs via sdkman (Temurin) ────────────────────────────────────────
     for ver in "${JDK_VERSIONS[@]}"; do
         if [ -d "$HOME/.sdkman/candidates/java/${ver}" ]; then
@@ -171,6 +175,8 @@ if command -v sdk &>/dev/null; then
         echo "[maven] Installing via sdkman..."
         sdk install maven || echo "[maven] install failed."
     fi
+
+    set -u
 else
     echo "[sdkman] sdk command not available in this session — JDK/Maven skipped."
 fi

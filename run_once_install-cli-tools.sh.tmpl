@@ -64,7 +64,17 @@ apt_install wget
 apt_install tree
 apt_install ffmpeg
 apt_install psql postgresql-client
-apt_install golangci-lint
+
+# golangci-lint (not in apt — use official installer → ~/.local/bin)
+if command -v golangci-lint &>/dev/null; then
+    echo "[golangci-lint] already installed, skipping."
+else
+    echo "[golangci-lint] Installing via official installer..."
+    mkdir -p "$HOME/.local/bin"
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+        | sh -s -- -b "$HOME/.local/bin" \
+        || echo "[golangci-lint] install failed. See https://golangci-lint.run/welcome/install/"
+fi
 
 # Hugo
 if command -v hugo &>/dev/null; then
