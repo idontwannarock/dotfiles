@@ -238,10 +238,15 @@ func formatEffort(effort string) string {
 	}
 }
 
-// writeContextWindowCache 將 Claude Code 傳來的 context_window_size 以 per-session
-// 為單位寫入 cache 檔（~/.cache/claude-handoff/session-<session_id>.cache），
-// 供 UserPromptSubmit hook 取用。只在 size > 0 時寫；採 tmp+rename 避免部分寫。
-// 任何錯誤都靜默 — 這是錦上添花的資料，失敗不該影響 statusline 顯示。
+// writeContextWindowCache 將 Claude Code 傳來的 context_window_size 寫成兩份
+// cache 檔供 UserPromptSubmit hook 取用：
+//   - session-<session_id>.cache — 精確匹配，SessionEnd hook 會清掉
+//   - latest.cache — 跨 session 的 fallback，永不清理；處理 session 轉換的
+//     race window（舊 session cleanup → 新 session 首個 prompt 在 statusline
+//     首次重繪前就進來）情境
+//
+// 只在 size > 0 時寫；採 tmp+rename 避免部分寫。任何錯誤都靜默 —
+// 這是錦上添花的資料，失敗不該影響 statusline 顯示。
 func writeContextWindowCache(sessionID string, size int) {
 	if sessionID == "" || size <= 0 {
 		return
@@ -254,12 +259,15 @@ func writeContextWindowCache(sessionID string, size int) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return
 	}
-	target := filepath.Join(dir, "session-"+sessionID+".cache")
-	tmp := target + ".tmp"
-	if err := os.WriteFile(tmp, []byte(strconv.Itoa(size)), 0644); err != nil {
-		return
+	payload := []byte(strconv.Itoa(size))
+	for _, name := range []string{"session-" + sessionID + ".cache", "latest.cache"} {
+		target := filepath.Join(dir, name)
+		tmp := target + ".tmp"
+		if err := os.WriteFile(tmp, payload, 0644); err != nil {
+			continue
+		}
+		_ = os.Rename(tmp, target)
 	}
-	_ = os.Rename(tmp, target)
 }
 
 func formatDuration(ms int64) string {

@@ -12,8 +12,11 @@
 #   2. ~/.cache/claude-handoff/session-<session_id>.cache (statusline-written,
 #      primary source — mirrors the actual context_window_size Claude Code
 #      pushes to the statusline command)
-#   3. Model name mapping fallback (claude-opus-*/sonnet-*/haiku-* → 200000)
-#   4. Fallback default 200000
+#   3. ~/.cache/claude-handoff/latest.cache (statusline-written, cross-session
+#      fallback — covers the race window where SessionEnd just cleaned the
+#      per-session cache and the new session's statusline hasn't rendered yet)
+#   4. Model name mapping fallback (claude-opus-*/sonnet-*/haiku-* → 200000)
+#   5. Fallback default 200000
 #
 # Silent no-op on any error or missing data — this hook must never block prompts.
 
@@ -37,16 +40,24 @@ MODEL=$(jq -r '.model // empty' <<<"$USAGE_JSON" 2>/dev/null || echo "")
 case "$USED" in ''|*[!0-9]*) exit 0 ;; esac
 [ "$USED" -gt 0 ] || exit 0
 
+read_cache_int() {
+    local f="$1"
+    [ -s "$f" ] || return 1
+    local v
+    v=$(cat "$f" 2>/dev/null)
+    case "$v" in
+        ''|*[!0-9]*) return 1 ;;
+    esac
+    [ "$v" -gt 0 ] 2>/dev/null || return 1
+    printf '%s\n' "$v"
+}
+
+CACHE_DIR="${HOME}/.cache/claude-handoff"
 WINDOW="${CLAUDE_HANDOFF_CONTEXT_WINDOW:-}"
 if [ -z "$WINDOW" ]; then
-    CACHE_FILE="${HOME}/.cache/claude-handoff/session-${SESSION_ID}.cache"
-    if [ -s "$CACHE_FILE" ]; then
-        CACHED=$(cat "$CACHE_FILE" 2>/dev/null)
-        case "$CACHED" in
-            ''|*[!0-9]*) : ;;  # invalid content, ignore
-            *) [ "$CACHED" -gt 0 ] 2>/dev/null && WINDOW="$CACHED" ;;
-        esac
-    fi
+    WINDOW=$(read_cache_int "${CACHE_DIR}/session-${SESSION_ID}.cache") \
+        || WINDOW=$(read_cache_int "${CACHE_DIR}/latest.cache") \
+        || WINDOW=""
 fi
 if [ -z "$WINDOW" ]; then
     case "$MODEL" in
