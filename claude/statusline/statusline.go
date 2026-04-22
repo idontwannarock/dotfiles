@@ -168,7 +168,7 @@ func colorForPct(pct float64) string {
 		return cRed
 	case pct >= 70:
 		return cYellow
-	case pct >= 50:
+	case pct >= 40:
 		return cOrange
 	default:
 		return cGreen
@@ -236,6 +236,30 @@ func formatEffort(effort string) string {
 	default:
 		return cDim + "◑ " + effort + cReset
 	}
+}
+
+// writeContextWindowCache 將 Claude Code 傳來的 context_window_size 以 per-session
+// 為單位寫入 cache 檔（~/.cache/claude-handoff/session-<session_id>.cache），
+// 供 UserPromptSubmit hook 取用。只在 size > 0 時寫；採 tmp+rename 避免部分寫。
+// 任何錯誤都靜默 — 這是錦上添花的資料，失敗不該影響 statusline 顯示。
+func writeContextWindowCache(sessionID string, size int) {
+	if sessionID == "" || size <= 0 {
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	dir := filepath.Join(home, ".cache", "claude-handoff")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return
+	}
+	target := filepath.Join(dir, "session-"+sessionID+".cache")
+	tmp := target + ".tmp"
+	if err := os.WriteFile(tmp, []byte(strconv.Itoa(size)), 0644); err != nil {
+		return
+	}
+	_ = os.Rename(tmp, target)
 }
 
 func formatDuration(ms int64) string {
@@ -310,6 +334,8 @@ func main() {
 		usage := data.ContextWindow.CurrentUsage
 		totalTokens = usage.InputTokens + usage.CacheCreationInputTokens + usage.CacheReadInputTokens
 	}
+
+	writeContextWindowCache(data.SessionID, data.ContextWindow.ContextWindowSize)
 
 	// === 平行取得外部資訊 ===
 	var wg sync.WaitGroup
