@@ -8,6 +8,11 @@
 
 sourceDir = {{ .chezmoi.sourceDir | quote }}
 
+[update]
+    init = true
+    force = true
+    refreshExternals = "always"
+
 [data]
     isWSL = {{ $isWSL }}
     # Go base install — base version must support GOTOOLCHAIN (≥ 1.21).

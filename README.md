@@ -106,7 +106,7 @@ chezmoi init --apply git@github.com:idontwannarock/dotfiles.git
 ## 日常操作
 
 ```bash
-# 拉取最新變更並套用（最常用）
+# 拉取最新變更並套用（最常用，已預設 --init --force --refresh-externals）
 chezmoi update
 
 # 只看差異，不套用
@@ -150,16 +150,15 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 
 原因：chezmoi 本機 config（`~/.config/chezmoi/chezmoi.toml`）缺少 `[interpreters.sh]`
 區塊，Windows 無法直接執行 `.sh` script。這個區塊定義在 `.chezmoi.toml.tmpl`，
-但該 template 只有 `chezmoi init` 時才會 render 進本機 config；`chezmoi update`
-刻意不碰本機 config。所以在這個區塊加入 repo 之前就 init 過的環境會踩到。
+在本機 config 不存在或過舊時需要 `chezmoi init` 才會 render 進去。
 
 自動修復：`run_onchange_before_patch-chezmoi-config.ps1.tmpl` 會在 `chezmoi apply`
-早期偵測並補上 `[interpreters.sh]`，使用者只需要**再跑一次** `chezmoi update
---force` 即可（第一次 apply 會修好 config 但同一 run 的 `.sh` script 可能還在用
+早期偵測並補上 `[interpreters.sh]`，使用者只需要**再跑一次** `chezmoi update`
+即可（第一次 apply 會修好 config 但同一 run 的 `.sh` script 可能還在用
 舊快取，第二次就會乾淨跑完）。
 
-手動修復：如果上面的自動修復沒生效，可以直接 `chezmoi init`，這會重新 render
-`.chezmoi.toml.tmpl` 成本機 config（不會動 source、也不會問問題）。
+手動修復：直接執行 `chezmoi init`，這會重新 render `.chezmoi.toml.tmpl`
+成本機 config（不會動 source directory、也不會問問題）。
 
 ---
 
