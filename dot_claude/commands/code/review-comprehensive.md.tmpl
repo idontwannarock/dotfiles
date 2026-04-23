@@ -1,14 +1,13 @@
 ---
-name: review-comprehensive
+allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*)
 description: Comprehensive code review of commit ranges, branches, or entire codebase — all agents, confidence scoring
+disable-model-invocation: true
 ---
 
 ## Context
 
-First, gather context by running these commands:
-
-- `git status --short` — working tree state
-- `git branch --show-current` — current branch
+- Status: !`git status --short`
+- Branch: !`git branch --show-current`
 
 {{ template "skills/code-review-scope.md" . }}
 ## Task
@@ -76,4 +75,4 @@ _Comment Accuracy_ (comment-analyzer)
 - **Full diff** — every task must receive the full diff, not a summary
 - **Large diffs** — if over 500 lines changed, note at the top that the user may want to split the review
 - **No findings** — if a task finds no issues, state that briefly; do not fabricate issues
-- **Spec alignment** — if the project has an active OpenSpec change, mention that `review-spec` (in the OpenSpec workflow) can check requirement alignment
+- **Spec alignment** — if the project has an active OpenSpec change, mention that `/code:review-spec` can check requirement alignment
