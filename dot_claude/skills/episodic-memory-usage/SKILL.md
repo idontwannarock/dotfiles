@@ -1,6 +1,7 @@
 ---
 name: episodic-memory-usage
 description: Use whenever you are about to call any `episodic-memory` tool (`search`, `show`, `read`, or the `search-conversations` subagent) — including replies to "有沒有討論過 X", "之前聊過什麼", "找之前那個 conversation", or any request that benefits from past-conversation retrieval. Enforces the split between exploratory search (delegate to subagent to protect main context) and precise extraction (direct call allowed, but `show`/`read` must paginate).
+user-invocable: false
 ---
 
 # Episodic Memory Usage Rules
