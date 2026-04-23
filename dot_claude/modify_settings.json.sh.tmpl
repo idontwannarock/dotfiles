@@ -7,6 +7,8 @@
 #
 # 同步的欄位：
 # - effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
+# - permissions.defaultMode = bypassPermissions
+# - permissions.allow 併入 "Skill(*)"（union + unique，不覆蓋現有 entries）
 # - statusLine（跨平台處理執行檔路徑）
 # - hooks.PreToolUse（註冊 rtk-rewrite.sh，Bash matcher）
 # - hooks.UserPromptSubmit（註冊 handoff-reminder.sh，context 用量階梯提醒）
@@ -39,6 +41,7 @@ echo "$input" | jq \
     | .skipDangerousModePermissionPrompt = true
     | .permissions = (.permissions // {})
     | .permissions.defaultMode = "bypassPermissions"
+    | .permissions.allow = (((.permissions.allow // []) + ["Skill(*)"]) | unique)
     | .statusLine = {
         type: "command",
         command: $statusline_cmd,
