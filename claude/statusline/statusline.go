@@ -92,28 +92,45 @@ func getGitInfo(dir string) GitInfo {
 	}
 
 	var info GitInfo
+	var branchErr error
+	var wg sync.WaitGroup
+	wg.Add(3)
 
-	cmd := exec.Command("git", "branch", "--show-current")
-	cmd.Dir = dir
-	out, err := cmd.Output()
-	if err != nil {
+	go func() {
+		defer wg.Done()
+		cmd := exec.Command("git", "branch", "--show-current")
+		cmd.Dir = dir
+		out, err := cmd.Output()
+		if err != nil {
+			branchErr = err
+			return
+		}
+		info.Branch = strings.TrimSpace(string(out))
+	}()
+
+	go func() {
+		defer wg.Done()
+		cmd := exec.Command("git", "status", "--porcelain")
+		cmd.Dir = dir
+		out, _ := cmd.Output()
+		info.Dirty = len(strings.TrimSpace(string(out))) > 0
+	}()
+
+	go func() {
+		defer wg.Done()
+		cmd := exec.Command("git", "diff", "--shortstat")
+		cmd.Dir = dir
+		out, _ := cmd.Output()
+		diffStat := strings.TrimSpace(string(out))
+		if diffStat != "" {
+			info.Insertions, info.Deletions = parseDiffStat(diffStat)
+		}
+	}()
+
+	wg.Wait()
+	if branchErr != nil {
 		return GitInfo{}
 	}
-	info.Branch = strings.TrimSpace(string(out))
-
-	cmd = exec.Command("git", "status", "--porcelain")
-	cmd.Dir = dir
-	out, _ = cmd.Output()
-	info.Dirty = len(strings.TrimSpace(string(out))) > 0
-
-	cmd = exec.Command("git", "diff", "--shortstat")
-	cmd.Dir = dir
-	out, _ = cmd.Output()
-	diffStat := strings.TrimSpace(string(out))
-	if diffStat != "" {
-		info.Insertions, info.Deletions = parseDiffStat(diffStat)
-	}
-
 	return info
 }
 
