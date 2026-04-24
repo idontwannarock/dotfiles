@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -129,35 +128,6 @@ func parseDiffStat(stat string) (insertions, deletions int) {
 		deletions, _ = strconv.Atoi(m[1])
 	}
 	return
-}
-
-// === 計算運行中的 Claude Code 進程數量 ===
-
-func countClaudeProcesses() int {
-	if runtime.GOOS == "windows" {
-		cmd := exec.Command("powershell", "-NoProfile", "-Command",
-			"@(Get-CimInstance Win32_Process -Filter \"Name='claude.exe'\" | Where-Object { $_.ExecutablePath -like '*\\.local\\bin\\claude.exe' -and $_.CommandLine -notmatch '--chrome-native-host' }).Count")
-		out, err := cmd.Output()
-		if err != nil {
-			return 1
-		}
-		count, err := strconv.Atoi(strings.TrimSpace(string(out)))
-		if err != nil {
-			return 1
-		}
-		return count
-	}
-
-	cmd := exec.Command("sh", "-c", "ps aux | grep '[.]local/bin/claude' | grep -v -- '--chrome-native-host' | wc -l")
-	out, err := cmd.Output()
-	if err != nil {
-		return 1
-	}
-	count, err := strconv.Atoi(strings.TrimSpace(string(out)))
-	if err != nil {
-		return 1
-	}
-	return count
 }
 
 // === 顯示用工具函式 ===
