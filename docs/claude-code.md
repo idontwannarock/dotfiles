@@ -283,29 +283,26 @@ go build -o statusline statusline.go       # macOS/Linux
 
 #### 4. 重啟 Claude Code
 
-### 緩存機制
+### 資料來源
 
-為避免頻繁執行外部命令，使用以下緩存策略：
+2026-04-01 重構移除 ccusage CLI、JSONL 掃描與 cache 系統，所有資料改從 Claude Code 注入的 stdin JSON 直接取得（context %、token、session cost、duration、rate limits、worktree）。外部 I/O 僅剩 git 命令與進程計數。
 
-| 資料 | 緩存時間 | 說明 |
-|------|----------|------|
-| ccusage 費用 | 60 秒 | 每日花費 |
-| Block 資訊 | 30 秒 | Burn rate 與 reset 時間 |
-| MCP 狀態 | 120 秒 | 伺服器連線狀態 |
+### 平行化與 timeout
 
-緩存檔案位於 `~/.claude/statusline-cache/`
+主流程用 goroutine 平行跑兩個慢源 + 1 秒 `asyncTimeout`：
+
+- `getGitInfo()` — 內部再分 3 個 goroutine：`git branch --show-current` / `git status --porcelain` / `git diff --shortstat`。Wall time = max(spawn) 而非 sum，Windows warm 中位數 428 ms（2026-04-24 平行化前為 1111 ms，常超時導致 branch/diff 段被吞掉）。
+- `countClaudeProcesses()` — 計算活躍 CLI session 數。
+
+兩支 goroutine 都未在 1 秒內完成時，對應段落會以空字串呈現（不阻塞 statusline 渲染）。
 
 ### Session 追蹤
 
-**使用時間計算**（基於心跳機制）：
-- 每次 statusline 執行時更新心跳
-- 只計算連續活動時間（心跳間隔 ≤ 60 秒）
-- Session 檔案位於 `~/.claude/statusline-sessions/`
+**使用時間** 由 Claude Code stdin JSON 的 `cost.total_duration_ms` 直接提供，statusline 不再自行維護心跳。
 
-**活躍 Session 數量**（透過 WMI/ps 計算進程，排除非 conversation 進程）：
-- Windows: 使用 `Get-CimInstance Win32_Process` 查詢 `claude.exe`，排除 `--chrome-native-host` 等輔助進程
-- macOS/Linux: 使用 `ps aux | grep claude`，排除 `--chrome-native-host` 等輔助進程
-- 只計算實際的 CLI conversation 進程
+**活躍 Session 數量**（排除非 conversation 進程）：
+- Windows: `golang.org/x/sys/windows` 的 Toolhelp32 + `QueryFullProcessImageName`，過濾全路徑必須在 `~/.local/bin/claude.exe`（擋 Claude Desktop 與 chrome-native-host）。2026-04-24 從 WMI `Get-CimInstance Win32_Process` 換掉，冷啟動從 ~900 ms 降到 ~10 ms。
+- macOS/Linux: `ps aux | grep claude`，排除 `--chrome-native-host` 等輔助進程。
 
 ### 參考
 
