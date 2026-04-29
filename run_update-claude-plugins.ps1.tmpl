@@ -1,0 +1,61 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_ script — refresh Claude Code marketplaces + update enabled plugins
+# 每次 chezmoi apply / update 都會跑（與 install-03 不同，那支只在內容變更時跑）
+# 依賴 install-03 已加好 marketplace 與安裝好 plugin
+
+$ErrorActionPreference = "Continue"
+
+if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
+    Write-Host "[claude-plugins] claude CLI not found, skipping update." -ForegroundColor Yellow
+    exit 0
+}
+
+# Workaround for anthropics/claude-code#50320 / #42135:
+# Node.js child_process.spawn rejects git.exe as "unsafe location" when cwd
+# is an ancestor of the git installation path. Switching to a drive root
+# avoids the heuristic. Restored in finally block.
+$originalLocation = Get-Location
+Set-Location $env:SystemDrive\
+try {
+
+Write-Host "=== Claude Code Plugins Update ===" -ForegroundColor Cyan
+
+Write-Host "[marketplaces] Refreshing all marketplaces..." -ForegroundColor Yellow
+claude plugin marketplace update 2>&1 | ForEach-Object { "  $_" }
+
+$settings = Join-Path $env:USERPROFILE ".claude\settings.json"
+if (-not (Test-Path $settings)) {
+    Write-Host "[plugins] settings.json missing, skipping per-plugin update." -ForegroundColor Yellow
+    exit 0
+}
+
+try {
+    $config = Get-Content $settings -Raw | ConvertFrom-Json
+} catch {
+    Write-Host "[plugins] Failed to parse settings.json, skipping." -ForegroundColor Yellow
+    exit 0
+}
+
+$enabled = @()
+if ($config.PSObject.Properties.Name -contains 'enabledPlugins') {
+    $enabled = $config.enabledPlugins.PSObject.Properties |
+        Where-Object { $_.Value -eq $true } |
+        ForEach-Object { $_.Name }
+}
+
+if ($enabled.Count -eq 0) {
+    Write-Host "[plugins] No enabled plugins found." -ForegroundColor Yellow
+    exit 0
+}
+
+Write-Host "[plugins] Updating $($enabled.Count) enabled plugin(s)..." -ForegroundColor Yellow
+foreach ($plugin in $enabled) {
+    claude plugin update $plugin 2>&1 | ForEach-Object { "  $_" }
+}
+
+Write-Host "=== Plugin update complete. Restart Claude Code to activate new versions. ===" -ForegroundColor Cyan
+
+} finally {
+    Set-Location $originalLocation
+}
+{{ end -}}

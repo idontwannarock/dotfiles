@@ -1,0 +1,40 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_ script — refresh Claude Code marketplaces + update enabled plugins
+# 每次 chezmoi apply / update 都會跑（與 install-03 不同，那支只在內容變更時跑）
+# 依賴 install-03 已加好 marketplace 與安裝好 plugin
+
+set -euo pipefail
+
+{{ template "scripts/load-nvm" }}
+
+if ! command -v claude &>/dev/null; then
+    echo "[claude-plugins] claude CLI not found, skipping update."
+    exit 0
+fi
+
+echo "=== Claude Code Plugins Update ==="
+
+echo "[marketplaces] Refreshing all marketplaces..."
+claude plugin marketplace update 2>&1 || true
+
+SETTINGS="$HOME/.claude/settings.json"
+if [ ! -f "$SETTINGS" ] || ! command -v jq &>/dev/null; then
+    echo "[plugins] settings.json or jq missing, skipping per-plugin update."
+    exit 0
+fi
+
+ENABLED="$(jq -r '.enabledPlugins // {} | to_entries[] | select(.value==true) | .key' "$SETTINGS")"
+if [ -z "$ENABLED" ]; then
+    echo "[plugins] No enabled plugins found."
+    exit 0
+fi
+
+echo "[plugins] Updating enabled plugins..."
+while IFS= read -r plugin; do
+    [ -z "$plugin" ] && continue
+    claude plugin update "$plugin" 2>&1 | sed 's/^/  /' || true
+done <<< "$ENABLED"
+
+echo "=== Plugin update complete. Restart Claude Code to activate new versions. ==="
+{{ end -}}
