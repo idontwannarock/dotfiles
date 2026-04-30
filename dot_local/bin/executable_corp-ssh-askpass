@@ -4,7 +4,7 @@
 # Invoked by openssh when SSH_ASKPASS_REQUIRE=force is set and openssh would
 # otherwise prompt via the TTY. Reads ~/.corp-ssh/hosts.yaml (local-only, not
 # in the dotfiles repo) to decide which hosts to answer for; credentials come
-# from Bitwarden CLI via the user's unlocked session.
+# from `pass` (passwordstore.org), decrypted via the user's gpg-agent cache.
 #
 # See docs/corp-ssh-setup.md for the full setup guide.
 
@@ -30,28 +30,29 @@ if ! grep -qE "^[[:space:]]*-[[:space:]]*(${short_host}|${target_host})[[:space:
   exit 1   # not a corp host → decline, openssh aborts this auth method
 fi
 
-# 3. Resolve bw_item from yaml.
-bw_item=$(awk -F: '/^bw_item:/ { print $2 }' "$hosts_file" | tr -d ' ')
-[[ -n "$bw_item" ]] || exit 1
+# 3. Resolve pass_path prefix from yaml. Actual entries live at
+#    "$pass_path/password" and "$pass_path/totp".
+pass_path=$(awk -F: '/^pass_path:/ { print $2 }' "$hosts_file" | tr -d ' ')
+[[ -n "$pass_path" ]] || exit 1
 
-# 4. Ensure BW_SESSION — env first, fallback to ~/.bw-session file so that
-#    harness / cron / non-shell callers still get credentials.
-if [[ -z "${BW_SESSION:-}" && -r "$HOME/.bw-session" ]]; then
-  export BW_SESSION="$(cat "$HOME/.bw-session")"
-fi
+# 4. Dispatch by prompt content. pass uses gpg → gpg-agent must already have
+#    the key passphrase cached. We have no TTY here for pinentry to prompt on,
+#    so a cold cache makes pass fail silently; post-hoc check below converts
+#    that into a useful stderr hint (visible in `ssh -v` and journals).
+#
+#    Match order matters: "One-time Password:" must come first because bash
+#    `case` is first-match and "*Password:*" would otherwise swallow it.
+rc=0
+case "$prompt" in
+  *"One-time Password:"*) out=$(pass otp  "$pass_path/totp"     2>/dev/null) || rc=$? ;;
+  *"Password:"*)          out=$(pass show "$pass_path/password" 2>/dev/null) || rc=$? ;;
+  *) exit 1 ;;
+esac
 
-# 5. Verify vault is unlocked before calling bw get. `bw get` has a quirk
-#    where it exits 0 with body "You are not logged in." on stdout when
-#    unauthenticated, which would otherwise be submitted as the password.
-if ! bw status 2>/dev/null | grep -q '"status":"unlocked"'; then
-  echo "corp-ssh-askpass: Bitwarden vault is locked or logged out." >&2
-  echo "corp-ssh-askpass: Run: bw unlock --raw > ~/.bw-session" >&2
+if [[ $rc -ne 0 || -z "$out" ]]; then
+  echo "corp-ssh-askpass: pass failed (rc=$rc) — gpg-agent cache cold or store missing." >&2
+  echo "corp-ssh-askpass: Warm cache: pass show $pass_path/password >/dev/null" >&2
   exit 1
 fi
 
-# 6. Dispatch by prompt content.
-case "$prompt" in
-  *"Password:"*)          bw get password "$bw_item" 2>/dev/null ;;
-  *"One-time Password:"*) bw get totp "$bw_item" 2>/dev/null ;;
-  *) exit 1 ;;
-esac
+printf '%s\n' "$out"

@@ -1,12 +1,10 @@
 {{- template "shell-common/base" . -}}
 
-# ── Bitwarden session (used by corp-ssh-askpass and manual `bw` calls) ─────
-# Create once per master-password lifetime:
-#   bw unlock --raw > ~/.bw-session && chmod 600 ~/.bw-session
-# See docs/corp-ssh-setup.md for details.
-if [ -r "$HOME/.bw-session" ]; then
-    export BW_SESSION="$(cat "$HOME/.bw-session")"
-fi
+# ── GPG agent TTY (required by pinentry-curses for `pass`/`gpg` unlock) ────
+# `pass` (used by corp-ssh-askpass) decrypts via gpg, which prompts for the
+# GPG key passphrase via pinentry. pinentry-curses needs to know which TTY to
+# display on; this export must run for every interactive shell.
+export GPG_TTY="$(tty)"
 
 # ── SSH askpass for hosts requiring password + OTP ─────────────────────────
 # Set SSH_ASKPASS_REQUIRE=force so openssh uses the helper regardless of TTY
