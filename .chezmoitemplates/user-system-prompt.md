@@ -69,6 +69,21 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **Library docs**: Before writing code that calls an external library, framework, SDK, or CLI tool, query `context7` for current syntax. Training data drifts; APIs rename parameters and deprecate surfaces between releases.
 - **English prose**: When writing English commit messages, PR descriptions, error messages, or user-facing docs, apply Strunk's *Elements of Style* — cut excess words, prefer active voice, concrete over abstract. Use available writing style tools (e.g. `elements-of-style`) if present.
 
+## 6. Subagent Dispatch
+
+When using the Agent tool, default to `subagent_type` (fresh agent), not fork.
+
+Use a fresh `subagent_type` agent when:
+- The task can be completed from a self-contained directive
+- Reading/extracting/analyzing external files
+- Independent investigation that doesn't need your recent reasoning
+
+Only omit `subagent_type` (fork) when:
+- The task genuinely needs your in-conversation context for judgment
+- AND your current context is <100K tokens
+
+**Never fork when current context is >100K tokens.** The "forks share cache" hint in the built-in system prompt assumes small parent context. With large context, each fork turn pays cache_read on the full inherited context.
+
 ---
 
 **Worklog repo:** `idontwannarock/worklogs`
