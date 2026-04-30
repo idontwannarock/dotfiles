@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# corp-ssh-askpass — SSH_ASKPASS helper for password+OTP hosts.
+#
+# Invoked by openssh when SSH_ASKPASS_REQUIRE=force is set and openssh would
+# otherwise prompt via the TTY. Reads ~/.corp-ssh/hosts.yaml (local-only, not
+# in the dotfiles repo) to decide which hosts to answer for; credentials come
+# from Bitwarden CLI via the user's unlocked session.
+#
+# See docs/corp-ssh-setup.md for the full setup guide.
+
+set -eu
+
+prompt="${1:-}"
+hosts_file="$HOME/.corp-ssh/hosts.yaml"
+
+# 1. Parse hostname from prompt: "(user@host.fqdn) Password:" → host.fqdn
+#    Greedy "(.+@)?" handles prompts where the user principal contains '@',
+#    e.g. "(ad-user@corp-domain@actual-host.fqdn) Password:".
+#    Regex stored in a variable to avoid bash inline-regex parser quirks.
+prompt_re='\((.+@)?([^)]+)\) '
+if [[ ! "$prompt" =~ $prompt_re ]]; then
+  exit 1   # prompt format unrecognized → decline
+fi
+target_host="${BASH_REMATCH[2]}"
+short_host="${target_host%%.*}"
+
+# 2. Only answer for hosts listed in hosts.yaml (either FQDN or short form).
+[[ -r "$hosts_file" ]] || exit 1
+if ! grep -qE "^[[:space:]]*-[[:space:]]*(${short_host}|${target_host})[[:space:]]*\$" "$hosts_file"; then
+  exit 1   # not a corp host → decline, openssh aborts this auth method
+fi
+
+# 3. Resolve bw_item from yaml.
+bw_item=$(awk -F: '/^bw_item:/ { print $2 }' "$hosts_file" | tr -d ' ')
+[[ -n "$bw_item" ]] || exit 1
+
+# 4. Ensure BW_SESSION — env first, fallback to ~/.bw-session file so that
+#    harness / cron / non-shell callers still get credentials.
+if [[ -z "${BW_SESSION:-}" && -r "$HOME/.bw-session" ]]; then
+  export BW_SESSION="$(cat "$HOME/.bw-session")"
+fi
+
+# 5. Verify vault is unlocked before calling bw get. `bw get` has a quirk
+#    where it exits 0 with body "You are not logged in." on stdout when
+#    unauthenticated, which would otherwise be submitted as the password.
+if ! bw status 2>/dev/null | grep -q '"status":"unlocked"'; then
+  echo "corp-ssh-askpass: Bitwarden vault is locked or logged out." >&2
+  echo "corp-ssh-askpass: Run: bw unlock --raw > ~/.bw-session" >&2
+  exit 1
+fi
+
+# 6. Dispatch by prompt content.
+case "$prompt" in
+  *"Password:"*)          bw get password "$bw_item" 2>/dev/null ;;
+  *"One-time Password:"*) bw get totp "$bw_item" 2>/dev/null ;;
+  *) exit 1 ;;
+esac

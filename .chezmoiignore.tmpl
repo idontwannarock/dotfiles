@@ -33,3 +33,8 @@ Documents
 {{- if eq .chezmoi.os "darwin" }}
 .bashrc
 {{- end }}
+
+# ── corp-ssh-askpass（只部署到 Linux/WSL，Windows/macOS 排除）─────────
+{{- if ne .chezmoi.os "linux" }}
+.local/bin/corp-ssh-askpass
+{{- end }}

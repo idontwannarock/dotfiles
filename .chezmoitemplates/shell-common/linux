@@ -1,1 +1,20 @@
 {{- template "shell-common/base" . -}}
+
+# ── Bitwarden session (used by corp-ssh-askpass and manual `bw` calls) ─────
+# Create once per master-password lifetime:
+#   bw unlock --raw > ~/.bw-session && chmod 600 ~/.bw-session
+# See docs/corp-ssh-setup.md for details.
+if [ -r "$HOME/.bw-session" ]; then
+    export BW_SESSION="$(cat "$HOME/.bw-session")"
+fi
+
+# ── SSH askpass for hosts requiring password + OTP ─────────────────────────
+# Set SSH_ASKPASS_REQUIRE=force so openssh uses the helper regardless of TTY
+# state. Safe globally: helper declines (exit 1) for unknown prompts, so ssh
+# to hosts with key auth or other methods is unaffected. Known constraint:
+# SSH keys must be unencrypted, or the user must unset SSH_ASKPASS_REQUIRE
+# (e.g. `SSH_ASKPASS_REQUIRE=never ssh host`) for those sessions.
+if [ -x "$HOME/.local/bin/corp-ssh-askpass" ]; then
+    export SSH_ASKPASS="$HOME/.local/bin/corp-ssh-askpass"
+    export SSH_ASKPASS_REQUIRE=force
+fi
