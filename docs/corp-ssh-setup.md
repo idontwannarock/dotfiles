@@ -243,11 +243,10 @@ Next `pass show` / `pass otp` (or first corp ssh) will prompt again.
 
 ## Known limitations and future work
 
-- **WSL/Ubuntu only for now.** Windows and macOS support deferred. The
-  Layer 1+2 architecture is portable: Win32-OpenSSH supports `SSH_ASKPASS`,
-  GPG runs via Gpg4win, and `gopass` provides a `pass`-compatible native
-  Windows binary. Helper currently is a bash script and would need a
-  PowerShell rewrite or Git Bash wrapper for native Windows use.
+- **WSL/Ubuntu and Windows supported; macOS deferred.** Phase 2 (Windows
+  native) shipped 2026-04-30 — see [`corp-ssh-setup-windows.md`](corp-ssh-setup-windows.md)
+  for the Windows setup guide. macOS port is Phase 3+ (same architecture
+  expected to apply: `gopass` from Homebrew, `pinentry-mac` for the dialog).
 - **No automated GPG passphrase entry.** If you want to drive the helper
   from a fully unattended context (e.g., a daemon started before any
   interactive login), you'd need to either pre-warm gpg-agent at boot via

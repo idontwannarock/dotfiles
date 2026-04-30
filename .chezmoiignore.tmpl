@@ -7,6 +7,7 @@ openspec
 passgen
 scoop
 scripts
+tests
 
 # ── Windows 專屬（非 Windows 環境排除）─────────────────────────────────────
 {{- if ne .chezmoi.os "windows" }}
@@ -34,7 +35,18 @@ Documents
 .bashrc
 {{- end }}
 
-# ── corp-ssh-askpass（只部署到 Linux/WSL，Windows/macOS 排除）─────────
+# ── corp-ssh-askpass: bash helper deploys on Linux/WSL only ─────────
 {{- if ne .chezmoi.os "linux" }}
 .local/bin/corp-ssh-askpass
+{{- end }}
+
+# ── corp-ssh-askpass: PowerShell helper + .cmd shim deploy on Windows only ──
+{{- if ne .chezmoi.os "windows" }}
+.local/bin/corp-ssh-askpass.ps1
+.local/bin/corp-ssh-askpass.cmd
+{{- end }}
+
+# ── PowerShell profile fragment 30-ssh-askpass: Windows only ───────────
+{{- if ne .chezmoi.os "windows" }}
+Documents/_shared-profile.d/30-ssh-askpass.ps1
 {{- end }}

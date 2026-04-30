@@ -431,6 +431,6 @@ Why not other encrypted-on-disk options:
 
 - **R3 implementation** if user observes session-lock issues in production harness use.
 - **Branch A reactivation** if IT enables IPA-native OTP or provisions user certificates.
-- **Windows OpenSSH port**. Same `ControlMaster` + askpass mechanism should work on Windows OpenSSH (ssh.exe supports `SSH_ASKPASS`). Git Bash is the likely shell context. Deferred — requires testing.
+- **Windows OpenSSH port**. Implemented Phase 2, 2026-04-30. PowerShell helper, `.cmd` shim for `SSH_ASKPASS`, shared GPG key + `~/.password-store/`. See [`2026-04-30-corp-ssh-windows-phase2-design.md`](2026-04-30-corp-ssh-windows-phase2-design.md).
 - **macOS port**. Same mechanism should work. `SSH_ASKPASS_REQUIRE=force` behavior varies by OpenSSH version. Deferred.
 - **Cluster operation ergonomics**. User mentioned wanting to script kws-cluster operations (config edit → restart → verify across all hosts). With R1 in place, this is a straightforward shell loop or ansible playbook; auth is amortized. Not part of this spec but enabled by it.

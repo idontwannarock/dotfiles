@@ -70,5 +70,9 @@ if (-not (Test-Path $wingetPs)) {
     Write-Host "[winget-ps] already installed, skipping." -ForegroundColor Gray
 }
 
+# ── GPG + password store for corp-ssh-askpass (Phase 2) ─────────────────
+Install-ScoopPackage "gpg"
+Install-ScoopPackage "gopass"
+
 Write-Host "=== CLI tools setup complete. ===" -ForegroundColor Cyan
 {{ end -}}
