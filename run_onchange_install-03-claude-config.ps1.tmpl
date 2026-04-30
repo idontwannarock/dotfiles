@@ -125,13 +125,6 @@ function Add-McpIfMissing {
     }
 }
 
-if (Get-Command "npx" -ErrorAction SilentlyContinue) {
-    Add-McpIfMissing -Name "agent-browser" -CommandArgs @("cmd", "/c", "npx", "agent-browser-mcp")
-    Add-McpIfMissing -Name "chrome-devtools" -CommandArgs @("cmd", "/c", "npx", "-y", "chrome-devtools-mcp@latest")
-} else {
-    Write-Host "[mcp] npx not found, skipping MCP setup." -ForegroundColor Yellow
-}
-
 if (Get-Command "codegraph" -ErrorAction SilentlyContinue) {
     Add-McpIfMissing -Name "codegraph" -CommandArgs @("codegraph", "serve", "--mcp")
 } else {

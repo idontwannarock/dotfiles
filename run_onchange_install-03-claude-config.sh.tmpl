@@ -75,13 +75,6 @@ mcp_add_if_missing() {
     fi
 }
 
-if command -v npx &>/dev/null; then
-    mcp_add_if_missing "agent-browser" npx "agent-browser-mcp"
-    mcp_add_if_missing "chrome-devtools" npx "-y" "chrome-devtools-mcp@latest"
-else
-    echo "[mcp] npx not found, skipping MCP setup."
-fi
-
 if command -v codegraph &>/dev/null; then
     mcp_add_if_missing "codegraph" codegraph "serve" "--mcp"
 else
