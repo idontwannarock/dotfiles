@@ -241,6 +241,35 @@ gpg-connect-agent reloadagent /bye   # clears all cached passphrases
 
 Next `pass show` / `pass otp` (or first corp ssh) will prompt again.
 
+### When remote group membership changes
+
+Linux reads supplementary groups at login and freezes them for the
+session's lifetime. ControlMaster keeps that authenticated session alive
+for `ControlPersist 8h`, so after a remote admin runs
+`usermod -aG <group> <you>`, ssh calls that reuse the master still see
+the *old* group list — even from a freshly-spawned terminal.
+
+Force the next ssh to re-authenticate by tearing down the master:
+
+```bash
+ssh -O check <corp-host>     # confirm a master is running (optional)
+ssh -O exit  <corp-host>     # close it; multiplexed sessions also die
+ssh <corp-host> 'id -Gn'     # verify the new group is present
+```
+
+- `-O exit` vs `-O stop`: `exit` tears the master down immediately;
+  `stop` only refuses *new* multiplexed clients while existing ones keep
+  running. Use `exit` to actually re-login.
+- Closing every terminal is not sufficient — `ControlPersist 8h` keeps
+  the master process alive in the background until the timer expires.
+- Remote `newgrp <group>` does not help. It forks a new shell with the
+  added GID but does not touch the sshd process serving your master;
+  only a brand-new ssh connection re-runs PAM and reloads groups.
+
+The same procedure applies any time you need a remote login to pick up
+state set at login (PAM-injected env vars, shell rc changes that depend
+on group membership, etc.).
+
 ## Known limitations and future work
 
 - **WSL/Ubuntu and Windows supported; macOS deferred.** Phase 2 (Windows

@@ -273,6 +273,24 @@ gpg-connect-agent reloadagent /bye
 
 Next `gopass show` (or first corp ssh) will prompt again.
 
+### When remote group membership changes
+
+Same situation as on WSL — sshd loads supplementary groups at login and
+freezes them for the session. ControlMaster (when working on
+Win32-OpenSSH) reuses that authenticated session for `ControlPersist 8h`,
+so a remote `usermod -aG` is invisible until the master is torn down.
+
+```powershell
+ssh -O check <corp-host>     # confirm a master is running (optional)
+ssh -O exit  <corp-host>     # close it; multiplexed sessions also die
+ssh <corp-host> 'id -Gn'     # verify the new group is present
+```
+
+The `-O exit` vs `-O stop` distinction and the "closing PowerShell isn't
+enough" caveat apply the same as on WSL — see
+[`corp-ssh-setup.md` § When remote group membership changes](corp-ssh-setup.md#when-remote-group-membership-changes)
+for the full explanation.
+
 ## Known limitations and future work
 
 - **macOS deferred** (Phase 3+). Same architecture expected to apply.
