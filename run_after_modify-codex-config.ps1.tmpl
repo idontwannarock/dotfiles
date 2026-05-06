@@ -39,7 +39,7 @@ if (Test-Path $configPath) {
 $globalConfig = @'
 #:schema https://developers.openai.com/codex/config-schema.json
 
-model = "gpt-5.4"
+model = "gpt-5.5"
 model_reasoning_effort = "medium"
 model_verbosity = "medium"
 hide_agent_reasoning = true
@@ -52,6 +52,10 @@ If a repository contains .claude/CLAUDE.md, read it when project workflow matter
 For non-trivial coding tasks, suggest using the $codex-claude-parity skill before implementation.
 When a task ends with meaningful progress, ask whether it should be recorded in worklog.
 """
+
+[tui]
+alternate_screen = "always"
+status_line = ["model-with-reasoning", "current-dir", "git-branch", "context-used", "five-hour-limit", "thread-title"]
 
 [profiles.quick]
 model_reasoning_effort = "low"

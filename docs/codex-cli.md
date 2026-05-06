@@ -40,6 +40,16 @@
 - `deep`：較高推理深度，適合實作或重構
 - `research`：研究/查證模式，啟用 live web search
 
+### 5. 固定 TUI 顯示偏好
+
+`config.toml` 設定 `tui.alternate_screen = "always"`，讓 Codex CLI 使用 terminal alternate screen，避免在 Windows Terminal / PowerShell 7 中 inline render 與 scrollback 混在一起造成畫面殘缺。
+
+`tui.status_line` 同步目前選好的 footer 欄位：
+
+```toml
+["model-with-reasoning", "current-dir", "git-branch", "context-used", "five-hour-limit", "thread-title"]
+```
+
 ## 使用方式
 
 ```bash
