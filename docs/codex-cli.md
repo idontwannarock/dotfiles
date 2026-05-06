@@ -42,7 +42,7 @@
 
 ### 5. 固定 TUI 顯示偏好
 
-`config.toml` 設定 `tui.alternate_screen = "always"`，讓 Codex CLI 使用 terminal alternate screen，避免在 Windows Terminal / PowerShell 7 中 inline render 與 scrollback 混在一起造成畫面殘缺。
+`config.toml` 設定 `tui.alternate_screen = "never"`，讓 Codex CLI 避免使用 terminal alternate screen。這比較接近 Windows Terminal / PowerShell 7 的 native scrollback 模式，可降低 full-screen redraw 後舊內容消失或黑屏的機率。
 
 `tui.status_line` 同步目前選好的 footer 欄位：
 

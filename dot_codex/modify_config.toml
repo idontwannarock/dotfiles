@@ -36,7 +36,7 @@ When a task ends with meaningful progress, ask whether it should be recorded in 
 """
 
 [tui]
-alternate_screen = "always"
+alternate_screen = "never"
 status_line = ["model-with-reasoning", "current-dir", "git-branch", "context-used", "five-hour-limit", "thread-title"]
 
 [profiles.quick]
