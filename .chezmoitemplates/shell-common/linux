@@ -1,5 +1,11 @@
 {{- template "shell-common/base" . -}}
 
+# ── Default editor for Linux/WSL terminal tools ────────────────────────────
+# Terminal-first tools like Codex CLI / Claude Code use these vars when
+# opening an external editor for prompt composition.
+export EDITOR="vim"
+export VISUAL="vim"
+
 # ── GPG agent TTY (required by pinentry-curses for `pass`/`gpg` unlock) ────
 # `pass` (used by corp-ssh-askpass) decrypts via gpg, which prompts for the
 # GPG key passphrase via pinentry. pinentry-curses needs to know which TTY to

@@ -10,6 +10,21 @@
 | Linux/WSL | `bashrc/linux` | `shell-common/linux` → `shell-common/base` |
 | macOS | 不部署（使用 zsh） | `shell-common/darwin` → `shell-common/base` |
 
+## Linux/WSL 預設 editor
+
+Linux/WSL 的 `shell-common/linux` 會設定：
+
+```sh
+export EDITOR=vim
+export VISUAL=vim
+```
+
+用途：
+
+- 終端工具在需要開啟外部 editor 編輯內容時，預設走 `vim`
+- 目前主要是讓 WSL/Ubuntu 內的 `codex` / `claude` 這類 CLI 在叫出 prompt editor 時使用 `vim`
+- 作用範圍只限 Linux/WSL，不影響 macOS 與 Windows Git Bash
+
 ## Worklog workflow trigger
 
 `shell-common/base` 內建 `createnewlog` 函式，觸發遠端 GitHub Actions workflow `create-daily.yml` 並等待 run 完成。
