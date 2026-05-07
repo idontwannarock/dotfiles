@@ -113,6 +113,44 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 
 參考：[Claude Code settings docs](https://code.claude.com/docs/en/settings.md)
 
+### Skill Listing Budget（CC 2.x）
+
+Claude Code 2.x 開始強制 `skillListingBudgetFraction`（預設 1%），超過時 skill description 會被截斷，`/doctor` 顯示警告：
+
+> Skill listing will be truncated. N descriptions dropped (full descriptions kept for most-used skills) (X.X%/1% of context)
+
+**Budget 是 token-based**（不是 char-based）。1% of 1M context = 10K tokens。每個啟用的 skill 的 description 都會占 budget；commands 在 default 設定下也會占（因為 model-invocable）。
+
+#### 哪些東西占 budget
+
+| 類型 | 預設行為 | 占 budget? |
+|------|---------|------------|
+| Skill | model-invocable（必須） | ✅ |
+| Command 無 frontmatter flag | model-invocable | ✅ |
+| Command 帶 `disable-model-invocation: true` | 只能 user 手打 `/name` | ❌ |
+| Skill 帶 `user-invocable: false` | 從 `/` menu 隱藏，但仍 model-invocable | ✅（這個 flag 不省 budget） |
+
+#### 三種應對
+
+1. **砍重複/不用的 skill**：對於 wrapper skill（例如 `sp:tdd` 包 `superpowers:test-driven-development`）直接刪。對於 plugin 整包不用就 disable。
+2. **Skill → Command + `disable-model-invocation: true`**：適用「user 通常自己打 `/name`、不依賴 model 自動觸發」的 skill。例如 `/handoff`、`/worklog-daily`。轉換後 description 不再進 system prompt，直接從 budget 移除。
+3. **拉 budget**（兜底）：在 `dot_claude/modify_settings.json.sh.tmpl` 加 `.skillListingBudgetFraction = 0.02`（2%）。每 turn 多 ~5K input tokens，1M context 上完全無感。
+
+#### 跨工具共用（Codex）skill 轉 command 的 chezmoitemplate 拆分
+
+Codex CLI 沒有 command 概念，只有 skill。要讓「Claude 這邊轉 command 但 Codex 那邊維持 skill」，body 仍能共用 chezmoitemplate：
+
+1. `.chezmoitemplates/skills/<name>.md` 拿掉 frontmatter，只留 markdown body
+2. `dot_codex/skills/<name>/SKILL.md.tmpl` 加 skill frontmatter（`name:` + `description:`）後 `{{ template ... -}}`
+3. `dot_claude/commands/<name>.md.tmpl` 加 command frontmatter（`description:` + `disable-model-invocation: true`）後 `{{ template ... -}}`
+4. 刪 `dot_claude/skills/<name>/`（chezmoi 不會自動清 deployed orphan，需手動 `rm -rf ~/.claude/skills/<name>`）
+
+實例：`handoff`、`worklog-daily`、`worklog-team-status` 走這個模式（commit `7a555e8` / 2026-05-06）。
+
+#### 字元語言對 token 的影響（次要）
+
+Claude tokenizer 對英文較友善（~0.25 tokens/char）、對中文較不友善（~0.6-1.0 tokens/char）。同義內容英文約省 30-50% tokens。但對少量 description 來說節省 token 數通常 < 0.05% of context，遠小於拉 budget 的成本。**不建議**為了省 budget 把中文 description 強制改英文，除非寫的是長 paragraph。
+
 ### Windows 已知問題：Plugin Hook Error
 
 Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失敗：
