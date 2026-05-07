@@ -39,6 +39,7 @@ echo "$input" | jq \
     .effortLevel = "medium"
     | .autoUpdatesChannel = "latest"
     | .skipDangerousModePermissionPrompt = true
+    | .skillListingBudgetFraction = 0.02
     | .permissions = (.permissions // {})
     | .permissions.defaultMode = "bypassPermissions"
     | .permissions.allow = (((.permissions.allow // []) + ["Skill(*)"]) | unique)
