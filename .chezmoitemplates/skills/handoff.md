@@ -1,8 +1,3 @@
----
-name: handoff
-description: Use when the user wants to save current session state and generate a resumption prompt for a new session. Triggered by /handoff, "handoff now", "切 session", "存檔之後開新 session", or after a context-usage reminder when the user confirms they want to act. Produces a lean markdown checkpoint plus a ready-to-paste resumption prompt.
----
-
 ## Purpose
 
 Capture the minimum state needed for a new session to continue the current work without re-exploring. Two outputs:

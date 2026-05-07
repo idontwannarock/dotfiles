@@ -1,8 +1,3 @@
----
-name: worklog-daily
-description: 管理 Daily To Do — 寫 [daily-todo]/[daily-done] Comment 到 daily Issue。當使用者提到 daily to do、今日待辦、新增/完成/查看待辦項目、今天要做什麼、待辦清單，或呼叫 worklog-daily skill 時觸發。也適用於早上開工規劃或下班前確認進度。
----
-
 # Worklog Daily — Daily To Do 管理
 
 透過寫 GitHub Issue Comment 管理今日待辦，由 generate-worklog workflow 自動彙整到 worklog。
