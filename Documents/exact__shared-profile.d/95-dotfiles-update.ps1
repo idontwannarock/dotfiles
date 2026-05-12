@@ -1,4 +1,4 @@
-# 自動 fetch dotfiles 並提示更新（每日一次）
+﻿# 自動 fetch dotfiles 並提示更新（每日一次）
 function Invoke-DotfilesUpdateCheck {
     $flagDir  = Join-Path $env:USERPROFILE ".local\share"
     $flagFile = Join-Path $flagDir "chezmoi-last-fetch"

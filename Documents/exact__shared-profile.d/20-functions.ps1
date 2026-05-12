@@ -1,4 +1,4 @@
-function which ($command_name) {
+﻿function which ($command_name) {
     $cmd = Get-Command $command_name -ErrorAction SilentlyContinue
     if ($cmd) {
         $cmd | Select-Object -ExpandProperty Definition

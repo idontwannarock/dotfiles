@@ -1,4 +1,4 @@
-# 30-ssh-askpass.ps1 — Wire ssh.exe to corp-ssh-askpass helper for password+OTP hosts.
+﻿# 30-ssh-askpass.ps1 — Wire ssh.exe to corp-ssh-askpass helper for password+OTP hosts.
 #
 # When the helper exists, point SSH_ASKPASS at the .cmd shim and set
 # SSH_ASKPASS_REQUIRE=force so ssh.exe uses the helper instead of TTY-prompting.

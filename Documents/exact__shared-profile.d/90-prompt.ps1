@@ -1,4 +1,4 @@
-# Windows Terminal OSC 9;9 - 報告當前工作目錄，讓 duplicate pane 繼承目錄
+﻿# Windows Terminal OSC 9;9 - 報告當前工作目錄，讓 duplicate pane 繼承目錄
 # 必須在 Starship 初始化之前定義
 function Invoke-Starship-PreCommand {
     $loc = $executionContext.SessionState.Path.CurrentLocation

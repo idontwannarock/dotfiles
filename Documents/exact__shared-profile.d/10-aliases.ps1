@@ -1,4 +1,4 @@
-Set-Alias scoopupdate "$HOME\.local\bin\scoop-interactive-update.ps1"
+﻿Set-Alias scoopupdate "$HOME\.local\bin\scoop-interactive-update.ps1"
 
 # Worklog workflow trigger — 觸發遠端 create-daily.yml GitHub Actions workflow
 # 與等待 run 完成。不讀 WORKLOGS_PATH、不依賴 CWD、不做本地 git 操作。
