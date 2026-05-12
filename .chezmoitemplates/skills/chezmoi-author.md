@@ -40,6 +40,7 @@ If a script depends on another script's output, ensure it sorts later alphabetic
 - `modify_*` scripts on Windows rely on the extension for interpreter dispatch: `.sh.tmpl` works via `[interpreters.sh]` in chezmoi config; `.toml` and other non-script extensions do **not** — use a `run_after_` PowerShell shim instead (see codex config).
 - **Codex config has two sources** — `dot_codex/modify_config.toml` (Unix) and `run_after_modify-codex-config.ps1.tmpl` (Windows). Keep them in sync when editing either.
 - `.gitattributes` enforces `.sh.tmpl` → LF and `.ps1` → CRLF. Do not override.
+- **`.ps1` files containing non-ASCII MUST start with a UTF-8 BOM (`EF BB BF`)**. PowerShell 5.1's parser falls back to the system ANSI codepage (e.g. cp950 on zh-TW Windows) for files without BOM — UTF-8 multi-byte sequences mojibake, and some decode into PS special tokens (eating quotes/parens) which break parsing of unrelated lines. PowerShell 7 handles BOM transparently, so adding it is safe cross-version. `00-encoding.ps1`-style runtime setup only affects `[Console]` I/O — it cannot change how the parser decodes a dot-sourced script. Defense-in-depth: add BOM to currently-ASCII fragments that might later grow non-ASCII (especially `Documents/_shared-profile.d/*.ps1`, loaded by both PS5 and PS7 profile loaders).
 - `.chezmoiignore.tmpl` patterns are **target paths** (e.g. `.bashrc`), not source filenames (`dot_bashrc.tmpl`). OS-conditional excludes live here (Windows skips `dot_codex/config.toml` for the ps1 shim; macOS skips `.bashrc`; non-macOS skips `.zshrc`).
 - `scoop/scoopfile.json` is a hand-curated GUI app reference list, not a full `scoop export`. Auto-installed CLI tools belong in install scripts.
 
@@ -63,3 +64,4 @@ Before committing:
 3. If the file is platform-specific, is the counterpart (or ignore rule) updated?
 4. For codex config changes: are both Unix and Windows sources in sync?
 5. Does `.gitattributes` cover any new script extension?
+6. For new or edited `.ps1` files that contain (or might grow) non-ASCII: is the source saved with a UTF-8 BOM so PowerShell 5.1 parses it as UTF-8 instead of the system ANSI codepage?
