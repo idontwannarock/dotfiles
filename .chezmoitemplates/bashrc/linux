@@ -22,6 +22,12 @@ export NVM_DIR="$HOME/.nvm"
 # ── Codex CLI completion ─────────────────────────────────────────────────────
 command -v codex >/dev/null 2>&1 && eval "$(codex completion bash)"
 
+# ── 本機個別設定（不同步） ──────────────────────────────────────────────────
+# 各機器的本機客製內容放 ~/.bashrc.local，這個檔不被 chezmoi 管。
+# 不存在或空檔都 OK；如果內容含 `exec`（如 zellij auto-attach）會接管 shell，
+# 後續 SDKMAN 等就不會載入，但這在被 exec 取代的那層 shell 本來也用不到。
+[ -f "$HOME/.bashrc.local" ] && . "$HOME/.bashrc.local"
+
 # ── SDKMAN ───────────────────────────────────────────────────────────────────
 #THIS MUST BE AT THE END OF THE FILE FOR SDKMAN TO WORK!!!
 [[ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]] && source "$HOME/.sdkman/bin/sdkman-init.sh"
