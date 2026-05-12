@@ -1,12 +1,23 @@
 ---
 name: chezmoi-author
-description: Use when authoring or modifying files in the dotfiles chezmoi source — install scripts (`run_*`, `run_once_*`, `run_after_*`), `modify_*` scripts, `.tmpl` templates, `.chezmoiignore.tmpl`, `.chezmoitemplates/` fragments, or any cross-platform (Windows/macOS/Linux) dotfiles plumbing. Loads chezmoi execution order, install script conventions, cross-platform gotchas, and template fragment map. Invoke before adding a new tool installer, renaming a script, touching interpreter-sensitive files, or debugging why `chezmoi apply` behaves differently across OSes.
+description: Use when authoring or modifying files in the dotfiles chezmoi source — install scripts (`run_*`, `run_once_*`, `run_after_*`), `modify_*` scripts, `.tmpl` templates, `.chezmoiignore.tmpl`, `.chezmoitemplates/` fragments, or any cross-platform (Windows/macOS/Linux) dotfiles plumbing. Invoke before adding a new tool installer, renaming a script, touching interpreter-sensitive files, or debugging why `chezmoi apply` behaves differently across OSes.
 ---
 
 # Chezmoi Author Guide
 
 Reference for writing/modifying chezmoi source files in this dotfiles repo.
 The repo is **source of truth** — changes here do not take effect until `chezmoi apply` runs on each machine.
+
+## Routing — Read Only What Applies
+
+Touch a file → read the matching reference. Skip the others.
+
+| Editing... | Then read |
+|------------|-----------|
+| Windows-only files (`.ps1`/`.ps1.tmpl`, `Documents/`, `scoop/`, `bashrc/windows`, `run_after_modify-codex-config.ps1.tmpl`, anything that touches Scoop or Git Bash) | `references/windows.md` |
+| Linux/WSL files (apt installers, `bashrc/linux`, `shell-common/linux`, anything using `load-nvm`) | `references/linux.md` |
+| macOS files (`.zshrc*`, brew installers, `shell-common/darwin`, `zshrc/darwin`) | `references/macos.md` |
+| Cross-platform plumbing only (chezmoi config, template fragments, `.chezmoiignore.tmpl`) | (this file alone is enough) |
 
 ## Chezmoi Execution Order
 
@@ -22,31 +33,15 @@ The repo is **source of truth** — changes here do not take effect until `chezm
 
 If a script depends on another script's output, ensure it sorts later alphabetically **or** lives in a later phase.
 
-## Install Script Conventions
+## Cross-Platform Conventions
 
-- **Ordered dependencies** use numeric prefixes: `01-runtimes` → `02-npm-tools` → `03-claude-config`.
-- **Independent scripts** stay unnumbered: `containers`, `cli-tools`, `fonts`.
-- Every tool installer must do an **idempotent check** (skip if already installed) — `run_once_` runs only once per hash, but `run_` reruns every apply.
-- Platform file extensions:
-  - **Windows** → `.ps1.tmpl` (scoop-based install).
-  - **macOS** → `.sh.tmpl` (brew-based install).
-  - **Linux/WSL** → `.sh.tmpl` (apt for general tools; brew only for version-managed tools like nvm targets).
-- Unix npm-related scripts **must** start with `{{`{{ template "scripts/load-nvm" }}`}}` so `npm`/`npx` are on PATH.
-- When adding a tool, double-check alphabetical ordering does not break dependency chains.
-
-## Cross-Platform Gotchas
-
-- **Windows sh interpreter** is pinned to `~/scoop/apps/git/current/bin/bash.exe` (scoop-installed git). Do not assume system bash.
-- `modify_*` scripts on Windows rely on the extension for interpreter dispatch: `.sh.tmpl` works via `[interpreters.sh]` in chezmoi config; `.toml` and other non-script extensions do **not** — use a `run_after_` PowerShell shim instead (see codex config).
-- **Codex config has two sources** — `dot_codex/modify_config.toml` (Unix) and `run_after_modify-codex-config.ps1.tmpl` (Windows). Keep them in sync when editing either.
-- `.gitattributes` enforces `.sh.tmpl` → LF and `.ps1` → CRLF. Do not override.
-- **`.ps1` files containing non-ASCII MUST start with a UTF-8 BOM (`EF BB BF`)**. PowerShell 5.1's parser falls back to the system ANSI codepage (e.g. cp950 on zh-TW Windows) for files without BOM — UTF-8 multi-byte sequences mojibake, and some decode into PS special tokens (eating quotes/parens) which break parsing of unrelated lines. PowerShell 7 handles BOM transparently, so adding it is safe cross-version. `00-encoding.ps1`-style runtime setup only affects `[Console]` I/O — it cannot change how the parser decodes a dot-sourced script. Defense-in-depth: add BOM to currently-ASCII fragments that might later grow non-ASCII (especially `Documents/_shared-profile.d/*.ps1`, loaded by both PS5 and PS7 profile loaders).
+- **Ordered dependencies** use numeric prefixes: `01-runtimes` → `02-npm-tools` → `03-claude-config`. Independent scripts stay unnumbered: `containers`, `cli-tools`, `fonts`.
+- Every tool installer must do an **idempotent check** (skip if already installed). `run_once_` runs once per hash; `run_` reruns every apply.
 - `.chezmoiignore.tmpl` patterns are **target paths** (e.g. `.bashrc`), not source filenames (`dot_bashrc.tmpl`). OS-conditional excludes live here (Windows skips `dot_codex/config.toml` for the ps1 shim; macOS skips `.bashrc`; non-macOS skips `.zshrc`).
-- `scoop/scoopfile.json` is a hand-curated GUI app reference list, not a full `scoop export`. Auto-installed CLI tools belong in install scripts.
+- Entry files (`dot_bashrc.tmpl`, etc.) compose platform fragments via `{{`{{ template "name" . }}`}}`. Do **not** use `include` — chezmoi's `include` takes one arg and reads from source root, so it cannot reach `.chezmoitemplates/`.
+- `.gitattributes` enforces `.sh.tmpl` → LF and `.ps1` → CRLF. Do not override.
 
 ## Template Fragment Map
-
-Entry files (`dot_bashrc.tmpl`, etc.) compose platform fragments via `{{`{{ template "name" . }}`}}`. Do **not** use `include` — chezmoi's `include` takes one arg and reads from source root, so it cannot reach `.chezmoitemplates/`.
 
 | Template | Purpose |
 |----------|---------|
@@ -62,6 +57,5 @@ Before committing:
 1. Did you add an idempotent guard to the installer?
 2. Does the filename prefix keep dependency order intact?
 3. If the file is platform-specific, is the counterpart (or ignore rule) updated?
-4. For codex config changes: are both Unix and Windows sources in sync?
-5. Does `.gitattributes` cover any new script extension?
-6. For new or edited `.ps1` files that contain (or might grow) non-ASCII: is the source saved with a UTF-8 BOM so PowerShell 5.1 parses it as UTF-8 instead of the system ANSI codepage?
+4. Does `.gitattributes` cover any new script extension?
+5. Platform-specific checks: did you also walk the checklist in the matching `references/*.md`?
