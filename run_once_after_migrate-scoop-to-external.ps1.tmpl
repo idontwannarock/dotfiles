@@ -20,7 +20,8 @@ if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
         $installed = $false
         try {
             $listOutput = scoop list $pkg 2>$null | Out-String
-            if ($listOutput -match "(?im)^\s*$pkg\s") { $installed = $true }
+            $pattern = "(?im)^\s*$([regex]::Escape($pkg))\b"
+            if ($listOutput -match $pattern) { $installed = $true }
         } catch {}
         if ($installed) {
             Write-Host "[$pkg] uninstalling from scoop..." -ForegroundColor Yellow
