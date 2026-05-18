@@ -90,7 +90,7 @@ $py311 = Join-Path $env:USERPROFILE "scoop\apps\python311"
 Install-ScoopPackageByPath "python311" "python311" $py311
 
 # ── uv (Python package manager) ─────────────────────────────────────────
-Install-ScoopPackage "uv"
+# Managed by .chezmoiexternal.toml (Wave 1 migration, 2026-05-18).
 
 # ── Rust ─────────────────────────────────────────────────────────────────
 Install-ScoopPackage "rustup"
@@ -113,7 +113,7 @@ foreach ($ver in @("8", "11", "17", "21", "25")) {
 }
 
 # ── Starship (shell prompt) ──────────────────────────────────────────────
-Install-ScoopPackage "starship"
+# Managed by .chezmoiexternal.toml (Wave 1 migration, 2026-05-18).
 
 Write-Host "=== Runtime setup complete. ===" -ForegroundColor Cyan
 {{ end -}}
