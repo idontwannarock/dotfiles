@@ -21,6 +21,24 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
     goMinVersion = "1.24"
     goLinuxTarballVersion = "1.24.4"
 
+# Prepend ~/.local/bin to PATH for every chezmoi-spawned subprocess (run_*,
+# modify_* via [interpreters.sh] bash, hooks). Without this, on a fresh
+# Windows VM the first `chezmoi apply` fails:
+#   * `.claude/settings.json` (modify_) sorts alphabetically before
+#     `.local/bin/jq.exe` (external) in chezmoi's step-4 update phase, so
+#     jq.exe is not yet on disk when `modify_settings.json.sh.tmpl` runs.
+#   * Even if we land jq.exe in run_before_ (see run_onchange_before_setup-paths.ps1.tmpl),
+#     the bash subprocess chezmoi spawns for the modify_ script inherits
+#     chezmoi's PATH at startup — which on a fresh VM lacks ~/.local/bin.
+# scriptEnv plugs that gap by injecting PATH at subprocess-spawn time.
+# Existing machines: harmless duplicate of ~/.local/bin at the head of PATH.
+[scriptEnv]
+{{- if eq .chezmoi.os "windows" }}
+    PATH = {{ printf "%s;%s" (joinPath .chezmoi.homeDir ".local/bin") (env "PATH") | quote }}
+{{- else }}
+    PATH = {{ printf "%s:%s" (joinPath .chezmoi.homeDir ".local/bin") (env "PATH") | quote }}
+{{- end }}
+
 # Windows 需要明確指定 .sh 的 interpreter，否則 modify_ script
 # 無法執行（"not a valid Win32 application"）。Unix 上會忽略此設定，
 # 直接依 shebang 執行。
