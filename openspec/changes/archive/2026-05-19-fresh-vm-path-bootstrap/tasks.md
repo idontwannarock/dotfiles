@@ -26,6 +26,6 @@
 
 ## 5. Archive 準備
 
-- [ ] 5.1 Commit + `code:review-quick` 通過
-- [ ] 5.2 `openspec archive fresh-vm-path-bootstrap` 後檢查 `openspec/specs/chezmoi-structure/spec.md` 與 `openspec/specs/tool-dependencies/spec.md` 是否正確合併（jq 那一條 Wave 1 scenario「後續 chezmoi 腳本仍能呼叫 jq」應已被新 scenario 取代或共存）
-- [ ] 5.3 在 archive 完成後刪除 project memory `project_chezmoi_fresh_vm_path_bootstrap.md`，更新 `MEMORY.md` 待辦清單
+- [x] 5.1 Commit 0a8c4f0 已建立；code-reviewer subagent review 通過（兩個 🟡 should-fix：jq.exe `--version` 驗證已採納；version pin drift 已在 design.md acknowledge）
+- [x] 5.2 archive 至 `openspec/changes/archive/2026-05-19-fresh-vm-path-bootstrap/`；spec sync 完成：`chezmoi-structure` 新 requirement「`.chezmoi.toml.tmpl` 為所有 chezmoi-spawned scripts 注入 ~/.local/bin 到 PATH」已併入；`tool-dependencies` jq requirement 已 MODIFY（Wave 1 的「後續 chezmoi 腳本仍能呼叫 jq」scenario 被「Fresh VM 上 jq.exe 早於 modify_settings 落地」+「既有機器上 setup-paths 與 external 都不重做下載」兩條取代）+ 新增「Fresh VM bootstrap 確保 modify_ 依賴的 CLI 在執行前可用」requirement
+- [x] 5.3 刪除 `project_chezmoi_fresh_vm_path_bootstrap.md`、MEMORY.md 對應待辦項目移除；新增 `reference_chezmoi_apply_order_gotchas.md` 記錄 modify_ × externals 競爭與 scriptEnv 凍結兩雷
