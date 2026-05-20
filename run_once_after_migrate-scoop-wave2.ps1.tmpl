@@ -1,0 +1,46 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_after_ script -- Wave 2 Scoop -> chezmoi-external migration
+#
+# Runs after .chezmoiexternal.toml has deployed the 6 binaries into ~/.local/bin/:
+#   Uninstall the matching scoop packages (if installed) for kubectl, kubelogin,
+#   yt-dlp, hugo, hugo-extended, nexttrace, golangci-lint.
+#
+# Wave 1 already handled User PATH ordering (`~/.local/bin` before
+# `~/scoop/shims`), so this script does NOT touch PATH.
+#
+# Idempotent: skips uninstall if scoop is unaware of the package.
+
+$ErrorActionPreference = "Continue"
+# hugo and hugo-extended are listed separately because they are two distinct
+# scoop packages, both potentially installed on a given machine; chezmoi-external
+# replaces both with a single hugo.exe (extended variant).
+$pkgs = @("kubectl", "kubelogin", "yt-dlp", "hugo", "hugo-extended", "nexttrace", "golangci-lint")
+
+Write-Host "=== Wave 2: Scoop -> chezmoi-external migration ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
+    Write-Host "=== Migration complete. ===" -ForegroundColor Cyan
+    return
+}
+
+foreach ($pkg in $pkgs) {
+    $installed = $false
+    try {
+        $listOutput = scoop list $pkg 2>$null | Out-String
+        $pattern = "(?im)^\s*$([regex]::Escape($pkg))\b"
+        if ($listOutput -match $pattern) { $installed = $true }
+    } catch {}
+    if ($installed) {
+        Write-Host "[$pkg] uninstalling from scoop..." -ForegroundColor Yellow
+        scoop uninstall $pkg 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "[$pkg] scoop uninstall returned non-zero exit; continuing."
+        }
+    } else {
+        Write-Host "[$pkg] not installed via scoop, skipping." -ForegroundColor Gray
+    }
+}
+
+Write-Host "=== Migration complete. ===" -ForegroundColor Cyan
+{{ end -}}
