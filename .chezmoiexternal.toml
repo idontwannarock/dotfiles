@@ -77,4 +77,55 @@
     url = "https://github.com/BurntSushi/ripgrep/releases/download/{{ $ripgrepVersion }}/ripgrep-{{ $ripgrepVersion }}-x86_64-pc-windows-msvc.zip"
     path = "ripgrep-{{ $ripgrepVersion }}-x86_64-pc-windows-msvc/rg.exe"
     executable = true
+
+# Scoop migration — Wave 2 (2026-05-20)
+# 6 chezmoi-managed CLI tools migrated from Scoop to chezmoi-external.
+# Bump versions below and rerun `chezmoi apply` to upgrade.
+{{- $kubectlVersion      := "1.36.1" }}
+{{- $kubeloginVersion    := "0.2.17" }}
+{{- $ytdlpVersion        := "2026.03.17" }}
+{{- $hugoVersion         := "0.161.1" }}
+{{- $nexttraceVersion    := "1.6.5" }}
+{{- $golangciLintVersion := "2.12.2" }}
+
+# kubectl is hosted at Kubernetes' official static CDN (dl.k8s.io), not GitHub.
+# The kubernetes/kubernetes GitHub Releases page contains no binary assets.
+[".local/bin/kubectl.exe"]
+    type = "file"
+    url = "https://dl.k8s.io/release/v{{ $kubectlVersion }}/bin/windows/amd64/kubectl.exe"
+    executable = true
+
+[".local/bin/kubelogin.exe"]
+    type = "archive-file"
+    url = "https://github.com/Azure/kubelogin/releases/download/v{{ $kubeloginVersion }}/kubelogin-win-amd64.zip"
+    path = "bin/windows_amd64/kubelogin.exe"
+    executable = true
+
+# yt-dlp uses CalVer (YYYY.MM.DD), no `v` prefix on the tag.
+[".local/bin/yt-dlp.exe"]
+    type = "file"
+    url = "https://github.com/yt-dlp/yt-dlp/releases/download/{{ $ytdlpVersion }}/yt-dlp.exe"
+    executable = true
+
+# Use extended variant (strict superset; adds SASS/SCSS support). Archive ships
+# hugo.exe at the root, not under a versioned subdir.
+[".local/bin/hugo.exe"]
+    type = "archive-file"
+    url = "https://github.com/gohugoio/hugo/releases/download/v{{ $hugoVersion }}/hugo_extended_{{ $hugoVersion }}_windows-amd64.zip"
+    path = "hugo.exe"
+    executable = true
+
+# nxtrace/NTrace-V1 is the stable release line. NTrace-core is V2 dev branch.
+[".local/bin/nexttrace.exe"]
+    type = "file"
+    url = "https://github.com/nxtrace/NTrace-V1/releases/download/v{{ $nexttraceVersion }}/nexttrace_windows_amd64.exe"
+    executable = true
+
+# Archive internal path includes the version string — must share the same
+# $golangciLintVersion variable as the URL.
+[".local/bin/golangci-lint.exe"]
+    type = "archive-file"
+    url = "https://github.com/golangci/golangci-lint/releases/download/v{{ $golangciLintVersion }}/golangci-lint-{{ $golangciLintVersion }}-windows-amd64.zip"
+    path = "golangci-lint-{{ $golangciLintVersion }}-windows-amd64/golangci-lint.exe"
+    executable = true
 {{- end }}

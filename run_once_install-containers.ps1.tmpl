@@ -25,11 +25,11 @@ Install-ScoopPackage "docker"
 Install-ScoopPackage "docker-compose"
 
 # ── Kubernetes ───────────────────────────────────────────────────────────
-Install-ScoopPackage "kubectl"
-scoop bucket add extras 2>$null
-Install-ScoopPackage "kubelogin"
+# kubectl and kubelogin moved to .chezmoiexternal.toml in Wave 2 (2026-05-20).
+# Lens stays on scoop — it's a GUI app, not a single binary.
 
 # ── Lens (K8s GUI) ──────────────────────────────────────────────────────
+scoop bucket add extras 2>$null
 Install-ScoopPackage "lens"
 
 Write-Host "=== Container tools setup complete. ===" -ForegroundColor Cyan

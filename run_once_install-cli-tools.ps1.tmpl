@@ -38,15 +38,10 @@ Install-ScoopPackage "clink"
 # ── WiX toolset ──────────────────────────────────────────────────────────
 Install-ScoopPackage "dark"
 
-# ── Static site ──────────────────────────────────────────────────────────
-Install-ScoopPackage "hugo"
-Install-ScoopPackage "hugo-extended"
-
-# ── Network diagnostics ─────────────────────────────────────────────────
-Install-ScoopPackage "nexttrace"
-
-# ── Video download ───────────────────────────────────────────────────────
-Install-ScoopPackage "yt-dlp"
+# ── Static site / Network diagnostics / Video download ─────────────────
+# hugo (extended), nexttrace, yt-dlp moved to .chezmoiexternal.toml in Wave 2
+# (2026-05-20). The migration script run_once_after_migrate-scoop-wave2.ps1.tmpl
+# handles scoop uninstall on existing machines.
 
 # ── Vim tutor ────────────────────────────────────────────────────────────
 $vimtutorPath = Join-Path $env:USERPROFILE "scoop\apps\vimtutor"
@@ -58,7 +53,7 @@ if (-not (Test-Path $vimtutorPath)) {
 }
 
 # ── Go tooling ───────────────────────────────────────────────────────────
-Install-ScoopPackage "golangci-lint"
+# golangci-lint moved to .chezmoiexternal.toml in Wave 2 (2026-05-20).
 
 # ── Windows package managers ─────────────────────────────────────────────
 Install-ScoopPackage "winget"
