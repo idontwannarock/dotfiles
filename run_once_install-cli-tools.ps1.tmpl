@@ -26,8 +26,14 @@ scoop bucket add extras 2>$null
 Install-ScoopPackage "7z" "7zip"
 
 # ── Network ──────────────────────────────────────────────────────────────
-Install-ScoopPackage "curl"
-Install-ScoopPackage "wget"
+# curl moved out of scoop in Wave 3 (2026-05-20). Win10 build 17063+ ships
+# curl.exe in C:\Windows\System32\, and Git for Windows bundles a copy in
+# <git>\mingw64\bin\. The migration script run_once_after_migrate-scoop-wave3.ps1.tmpl
+# handles scoop uninstall on existing machines.
+#
+# wget removed from Windows in Wave 3 (2026-05-20). No PowerShell or Git Bash
+# script in this repo calls wget on Windows; the curl||wget fallback in
+# run_onchange_install-03-claude-config.sh.tmpl is .sh.tmpl (Linux/macOS only).
 
 # ── Media ────────────────────────────────────────────────────────────────
 Install-ScoopPackage "ffmpeg"
@@ -66,8 +72,11 @@ if (-not (Test-Path $wingetPs)) {
 }
 
 # ── GPG + password store for corp-ssh-askpass (Phase 2) ─────────────────
+# gpg suite stays on scoop: multi-binary suite (gpg + gpg-agent + gpgconf +
+# pinentry + DLLs) with installer side-effects (gpgconf.ctl, gpg2.exe alias,
+# $persist_dir/home relocation). Upstream is gnupg.org NSIS .exe, not GitHub.
 Install-ScoopPackage "gpg"
-Install-ScoopPackage "gopass"
+# gopass moved to .chezmoiexternal.toml in Wave 3 (2026-05-20).
 
 Write-Host "=== CLI tools setup complete. ===" -ForegroundColor Cyan
 {{ end -}}
