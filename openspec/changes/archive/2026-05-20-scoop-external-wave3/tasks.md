@@ -27,9 +27,9 @@
 
 ## 5. Archive 與 Commit
 
-- [ ] 5.1 Commit 實作 + openspec proposal（一個 commit）
-- [ ] 5.2 code-reviewer subagent review，採納可採納的建議
+- [x] 5.1 Commit 實作 + openspec proposal（commit `601b683`）
+- [x] 5.2 code-reviewer subagent review，採納 2 個 doc clarity 建議（commit `7d97aae`）
 - [ ] 5.3 `openspec archive scoop-external-wave3` 並 sync spec deltas 進 `openspec/specs/tool-dependencies/spec.md`
-- [ ] 5.4 第二個 commit：archive 移動 + spec sync
+- [ ] 5.4 第三個 commit：archive 移動 + spec sync
 - [ ] 5.5 merge 回 main，刪除 feature branch，清 active_workflows
 - [ ] 5.6 更新 `reference_chezmoi_external_cli_tools.md` 加入 Wave 3 條目；新增 memory note 記錄 Wave 4 候選清單待後續討論
