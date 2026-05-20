@@ -128,4 +128,18 @@
     url = "https://github.com/golangci/golangci-lint/releases/download/v{{ $golangciLintVersion }}/golangci-lint-{{ $golangciLintVersion }}-windows-amd64.zip"
     path = "golangci-lint-{{ $golangciLintVersion }}-windows-amd64/golangci-lint.exe"
     executable = true
+
+# Scoop migration — Wave 3 (2026-05-20)
+# Final wave for single-binary GitHub-release tools. gopass is the corp-ssh-askpass
+# password store CLI. gpg suite stays on scoop (multi-binary suite, gnupg.org NSIS).
+# Bump version below and rerun `chezmoi apply` to upgrade.
+{{- $gopassVersion := "1.16.1" }}
+
+# URL tag uses `v` prefix; archive filename version string omits `v`. Same
+# variable injected to both (cf. golangci-lint pattern in Wave 2).
+[".local/bin/gopass.exe"]
+    type = "archive-file"
+    url = "https://github.com/gopasspw/gopass/releases/download/v{{ $gopassVersion }}/gopass-{{ $gopassVersion }}-windows-amd64.zip"
+    path = "gopass.exe"
+    executable = true
 {{- end }}
