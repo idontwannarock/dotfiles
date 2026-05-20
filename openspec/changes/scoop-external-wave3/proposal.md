@@ -33,7 +33,7 @@
 
 **Breaking changes**：
 - 既有 Windows 機器執行 `chezmoi apply` 後，`gopass` 會從 scoop 卸載並改由 `~/.local/bin/gopass.exe` 提供
-- `curl` 與 `wget` 若曾被 scoop 安裝會被卸載；curl 自動 fallback 到 System32 版（Win10+）或 Git mingw64 版；wget 在 Windows 直接消失（先確認無腳本使用，已驗證）
+- `curl` 與 `wget` 若曾被 scoop 安裝會被卸載——**包含使用者手動 `scoop install` 的情況**。已驗證 dotfiles 內 Windows `.ps1.tmpl` 無 wget/curl 呼叫，但若使用者個人需求曾手動裝 scoop 版，遷移後該版本會消失，需自行重裝。curl 自動 fallback 到 System32 版（Win10+）或 Git mingw64 版；wget 在 Windows PATH 中直接消失
 
 ## Capabilities
 

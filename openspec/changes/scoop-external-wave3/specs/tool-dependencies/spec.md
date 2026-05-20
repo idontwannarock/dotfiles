@@ -34,7 +34,7 @@ Windows 上 dotfiles SHALL NOT 透過 scoop 安裝 wget。Windows PowerShell / G
 - **THEN** 該腳本仍可使用 apt/brew 安裝 wget（本 requirement 限定 Windows scope）
 
 ### Requirement: Wave 3 一次性遷移腳本
-`run_once_after_migrate-scoop-wave3.ps1.tmpl` SHALL 在 Windows 上執行一次性遷移：卸載已存在的 scoop gopass / curl / wget。腳本 SHALL 為冪等：scoop 未安裝對應套件時視為 no-op；scoop 未安裝時整支 skip。
+`run_once_after_migrate-scoop-wave3.ps1.tmpl` SHALL 在 Windows 上執行一次性遷移：卸載 3 個 scoop 套件：`gopass`、`curl`、`wget`（無論是 dotfiles 安裝還是使用者手動安裝皆會卸載）。腳本 SHALL 為冪等：scoop 未安裝對應套件時視為 no-op；scoop 未安裝時整支 skip。
 
 腳本 SHALL NOT 動 User PATH（Wave 1 的 `run_once_after_migrate-scoop-to-external.ps1.tmpl` 已把 `~/.local/bin` 排在 `~/scoop/shims` 之前）。
 
