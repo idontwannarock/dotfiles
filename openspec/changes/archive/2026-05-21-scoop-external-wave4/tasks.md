@@ -28,8 +28,8 @@
 
 ## 5. Archive 與 Commit
 
-- [ ] 5.1 Commit 實作 + openspec proposal/design/specs/tasks
-- [ ] 5.2 code-reviewer subagent review，採納可行建議
+- [x] 5.1 Commit 實作 + openspec proposal/design/specs/tasks (commit `54c9ec8`)
+- [x] 5.2 code-reviewer subagent review，採納 BOM + proposal/design clarifications 建議 (commit `4e19791`)
 - [ ] 5.3 `openspec archive scoop-external-wave4` 並 sync spec deltas 進 `openspec/specs/tool-dependencies/spec.md`
 - [ ] 5.4 第三個 commit：archive 移動 + spec sync
 - [ ] 5.5 merge 回 main，刪除 feature branch，清 active_workflows
