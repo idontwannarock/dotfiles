@@ -1,4 +1,4 @@
-# Windows PowerShell 5.x CommandNotFoundAction fallback.
+﻿# Windows PowerShell 5.x CommandNotFoundAction fallback.
 #
 # Prerequisite: `winget.exe` reachable on PATH. Win10 1809+ and Win11 ship it
 # OS-bundled at %LOCALAPPDATA%\Microsoft\WindowsApps\winget.exe via the

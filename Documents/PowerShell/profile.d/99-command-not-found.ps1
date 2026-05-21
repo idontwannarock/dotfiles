@@ -1,4 +1,4 @@
-# PowerShell 7+ CommandNotFound integration.
+﻿# PowerShell 7+ CommandNotFound integration.
 #
 # Prerequisites (silent no-op if missing — `-ErrorAction SilentlyContinue`):
 #   1. PowerToys installed with the CommandNotFound module enabled.

@@ -29,7 +29,8 @@
 - **不**做 `scoop uninstall vimtutor`：軟脫管（同上）
 
 **程式碼註解補強**：
-- `Documents/PowerShell/profile.d/99-command-not-found.ps1`：新增 header comment 說明前置條件（PowerToys CommandNotFound 模組 + OS-bundled winget），不動程式邏輯
+- `Documents/PowerShell/profile.d/99-command-not-found.ps1`（PS7）：新增 header comment 說明前置條件（PowerToys CommandNotFound 模組 + OS-bundled winget），不動程式邏輯
+- `Documents/WindowsPowerShell/profile.d/99-command-not-found.ps1`（PS5）：新增 header comment 說明前置條件（OS-bundled winget），不動程式邏輯
 
 **不動**：
 - `.chezmoiexternal.toml`：不新增任何條目（Category B 本質就是「不需要外部 binary」）
@@ -55,7 +56,8 @@
 **Code changes**：
 - `run_once_install-cli-tools.ps1.tmpl`：移除 5 個工具安裝區塊（3 行 `Install-ScoopPackage` + 2 個 bespoke path-check），補上說明註解
 - `run_once_after_migrate-scoop-wave4.ps1.tmpl`（新檔）：scoop uninstall 3 個套件（clink/winget/winget-ps）
-- `Documents/PowerShell/profile.d/99-command-not-found.ps1`：補 header comment
+- `Documents/PowerShell/profile.d/99-command-not-found.ps1`（PS7）：補 header comment + UTF-8 BOM
+- `Documents/WindowsPowerShell/profile.d/99-command-not-found.ps1`（PS5）：補 header comment + UTF-8 BOM（既有 `█▒` block chars 與新增 em-dash 都是非 ASCII，補 BOM 滿足 PS5 parser 對非 ASCII 內容的要求）
 
 **Existing machine state changes**：
 - scoop 卸載 3 個套件（clink + winget + winget-ps）

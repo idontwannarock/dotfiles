@@ -27,7 +27,7 @@ Wave 4 規模刻意維持輕量：**0 個新 external entry** + 5 個 scoop inst
 
 | 工具 | 處理方式 | 理由 |
 |---|---|---|
-| `clink` | 硬清（scoop uninstall） | 純孤兒，dotfiles 沒任何 init 跑 `clink autorun install`，starship 已透過 PowerShell/Git Bash/zsh init |
+| `clink` | 硬清（scoop uninstall） | dotfiles 沒任何 init 跑 `clink autorun install`，且互動式 shell 統一用 PowerShell/Git Bash/zsh（不用 cmd.exe），所以 clink 提供的 cmd.exe 命令列增強無使用者 |
 | `winget` | 硬清（scoop uninstall） | OS-bundled `%LOCALAPPDATA%\Microsoft\WindowsApps\winget.exe`（Win10 1809+/Win11）取代；scoop shim 純冗餘 |
 | `winget-ps` | 硬清（scoop uninstall） | dotfiles 完全沒有 import `Microsoft.WinGet.Client` cmdlet；99-command-not-found.ps1 用的是另一個 PowerToys 模組（`Microsoft.WinGet.CommandNotFound`），不依賴 winget-ps |
 | `dark` | 軟脫管（只刪 install） | grep 全 repo 無人用 `dark.exe`，掃描所有已安裝 scoop manifest 也無人宣告為 dep；但保留現有安裝避免破壞未驗證的人工流程 |
