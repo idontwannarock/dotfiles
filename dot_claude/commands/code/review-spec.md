@@ -1,6 +1,6 @@
 ---
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*), Bash(openspec:*)
-description: 需求導向 code review — 帶著 OpenSpec artifacts 上下文，檢查實作與需求的對齊程度
+description: Spec-driven code review — uses OpenSpec artifacts as context to verify implementation aligns with requirements
 disable-model-invocation: true
 ---
 

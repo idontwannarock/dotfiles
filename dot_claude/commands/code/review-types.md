@@ -1,6 +1,6 @@
 ---
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*)
-description: 型別設計 review — 封裝、不變量表達、型別安全
+description: Type design review — encapsulation, invariant expression, type safety
 disable-model-invocation: true
 ---
 

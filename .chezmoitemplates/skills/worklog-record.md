@@ -1,6 +1,6 @@
 ---
 name: worklog-record
-description: 記錄工作項目到 GitHub Issue Comment — 支援手動呼叫或 assistant 主動提議。**主動提議觸發時機**：使用者完成有意義的任務且已 commit、技術探索或設計討論得出明確結論或決策、對話尾聲使用者發出結束訊號（「差不多了」「先這樣」「今天到這」）且本次有實質成果。**也適用於**使用者明確提到記錄工作、筆記、行政事項、OKR，或直接呼叫 worklog-record skill。**不要觸發於**：瑣碎修改（typo、格式調整、重排 import）、純粹問答或查資料且無實質產出、使用者已經在 worklog repo 裡工作（避免重複記錄）。有疑慮時寧可詢問也不要漏問——使用者可以拒絕，但漏記的成果拿不回來。
+description: Record a work item as a GitHub Issue comment — supports manual invocation or assistant-initiated proposal. **When to proactively propose**: the user finished meaningful work and committed it, a technical exploration or design discussion reached a clear conclusion/decision, or the user signals end-of-conversation — including Chinese phrasings like 「差不多了」、「先這樣」、「今天到這」 — with substantive output this session. **Also applies when** the user explicitly mentions recording work, notes, admin items, OKR, or invokes the worklog-record skill directly. **Do not trigger on** trivial edits (typos, formatting, import reordering), pure Q&A or lookups with no substantive output, or when the user is already working inside the worklog repo (avoid double-recording). When in doubt, ask rather than skip — the user can decline, but missed work is gone.
 ---
 
 # Worklog Record — 記錄工作項目
