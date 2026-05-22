@@ -39,10 +39,16 @@ Install-ScoopPackage "7z" "7zip"
 Install-ScoopPackage "ffmpeg"
 
 # ── Shell enhancement ────────────────────────────────────────────────────
-Install-ScoopPackage "clink"
+# clink removed from dotfiles install in Wave 4 (2026-05-21). dotfiles never
+# invoked `clink autorun install`, and starship already provides prompt
+# enhancement across PowerShell / Git Bash / zsh. The migration script
+# run_once_after_migrate-scoop-wave4.ps1.tmpl handles scoop uninstall on
+# existing machines.
 
 # ── WiX toolset ──────────────────────────────────────────────────────────
-Install-ScoopPackage "dark"
+# dark removed from dotfiles install in Wave 4 (2026-05-21). Verified unused
+# across the repo and not declared as a dependency by any installed scoop
+# manifest. Soft unmanage: existing installs are left untouched.
 
 # ── Static site / Network diagnostics / Video download ─────────────────
 # hugo (extended), nexttrace, yt-dlp moved to .chezmoiexternal.toml in Wave 2
@@ -50,26 +56,26 @@ Install-ScoopPackage "dark"
 # handles scoop uninstall on existing machines.
 
 # ── Vim tutor ────────────────────────────────────────────────────────────
-$vimtutorPath = Join-Path $env:USERPROFILE "scoop\apps\vimtutor"
-if (-not (Test-Path $vimtutorPath)) {
-    Write-Host "[vimtutor] Installing via scoop..." -ForegroundColor Yellow
-    scoop install vimtutor
-} else {
-    Write-Host "[vimtutor] already installed, skipping." -ForegroundColor Gray
-}
+# vimtutor removed from dotfiles install in Wave 4 (2026-05-21). Interactive
+# tutorial, no scripted dependency. Soft unmanage: existing installs are left
+# untouched.
 
 # ── Go tooling ───────────────────────────────────────────────────────────
 # golangci-lint moved to .chezmoiexternal.toml in Wave 2 (2026-05-20).
 
 # ── Windows package managers ─────────────────────────────────────────────
-Install-ScoopPackage "winget"
-$wingetPs = Join-Path $env:USERPROFILE "scoop\apps\winget-ps"
-if (-not (Test-Path $wingetPs)) {
-    Write-Host "[winget-ps] Installing via scoop..." -ForegroundColor Yellow
-    scoop install winget-ps
-} else {
-    Write-Host "[winget-ps] already installed, skipping." -ForegroundColor Gray
-}
+# winget removed from dotfiles install in Wave 4 (2026-05-21). Win10 1809+ and
+# Win11 ship winget.exe OS-bundled at
+# %LOCALAPPDATA%\Microsoft\WindowsApps\winget.exe via the Microsoft.DesktopApp
+# Installer Store package, so the scoop shim was pure duplication.
+#
+# winget-ps (Microsoft.WinGet.Client PowerShell module) removed in the same
+# wave -- no dotfiles script imports it. Note that 99-command-not-found.ps1
+# uses the separate PowerToys Microsoft.WinGet.CommandNotFound module, which
+# is independent of winget-ps.
+#
+# The migration script run_once_after_migrate-scoop-wave4.ps1.tmpl handles
+# scoop uninstall on existing machines (winget + winget-ps).
 
 # ── GPG + password store for corp-ssh-askpass (Phase 2) ─────────────────
 # gpg suite stays on scoop: multi-binary suite (gpg + gpg-agent + gpgconf +
