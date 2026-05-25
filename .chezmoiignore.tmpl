@@ -50,3 +50,24 @@ Documents
 {{- if ne .chezmoi.os "windows" }}
 Documents/_shared-profile.d/30-ssh-askpass.ps1
 {{- end }}
+
+# ── vim wrappers: deploy only on Windows (paired with chezmoi-external archive) ──
+# 15 .cmd files in ~/.local/bin/ delegating to ~/.local/share/vim/vim92/*.exe.
+# Mirror scoop vim.json bin[] flags. See .chezmoiexternal.toml Wave 7 block.
+{{- if ne .chezmoi.os "windows" }}
+.local/bin/vim.cmd
+.local/bin/vi.cmd
+.local/bin/ex.cmd
+.local/bin/view.cmd
+.local/bin/rvim.cmd
+.local/bin/rview.cmd
+.local/bin/vimdiff.cmd
+.local/bin/gvim.cmd
+.local/bin/gview.cmd
+.local/bin/evim.cmd
+.local/bin/eview.cmd
+.local/bin/rgvim.cmd
+.local/bin/rgview.cmd
+.local/bin/gvimdiff.cmd
+.local/bin/xxd.cmd
+{{- end }}
