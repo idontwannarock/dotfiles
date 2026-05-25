@@ -36,7 +36,7 @@
 ## Impact
 
 **Code changes**：
-- `.chezmoiexternal.toml`：新增 Wave 6 區塊，含 3 條 `archive-file` external entry 與 pinned `$ffmpegTag` + `$ffmpegAssetVersion` 變數。
+- `.chezmoiexternal.toml`：新增 Wave 6 區塊，含 3 條 `archive-file` external entry 與 pinned `$ffmpegTag` + `$ffmpegAsset` 變數。
 - `run_once_install-cli-tools.ps1.tmpl`：移除 `Install-ScoopPackage "ffmpeg"` 一行，於 `# ── Media ──────` 區段留註解標明已遷至 chezmoi-external。
 - `run_once_after_migrate-scoop-wave6.ps1.tmpl`（新檔）：Windows-only，冪等 scoop uninstall ffmpeg。
 
