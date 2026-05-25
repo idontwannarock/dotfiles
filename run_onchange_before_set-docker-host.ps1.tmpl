@@ -1,0 +1,30 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_onchange_before_ script -- ensure User-scope DOCKER_HOST is set
+#
+# Scope: personal developer machine only. Single architecture assumed --
+#   Windows-side docker CLI talking to a Docker daemon inside WSL Ubuntu,
+#   reachable via tcp://127.0.0.1:2375 (WSL2 localhost forwarding).
+#
+# Out of scope per Wave 5 design: bastion hosts, CI runners, remote Docker
+# hosts. If the user manually changes DOCKER_HOST to another value, this
+# script will overwrite it back to the WSL-local endpoint on next apply.
+#
+# Idempotent: no-op when DOCKER_HOST already equals the expected value.
+
+$ErrorActionPreference = "Stop"
+
+$expected = "tcp://127.0.0.1:2375"
+$current  = [Environment]::GetEnvironmentVariable("DOCKER_HOST", "User")
+
+if ($current -eq $expected) {
+    Write-Host "[docker-host] DOCKER_HOST already set to $expected, skipping." -ForegroundColor Gray
+} else {
+    if ([string]::IsNullOrEmpty($current)) {
+        Write-Host "[docker-host] DOCKER_HOST not set; writing $expected to User env." -ForegroundColor Cyan
+    } else {
+        Write-Warning "[docker-host] DOCKER_HOST was '$current'; overwriting with $expected (Wave 5 design pins WSL-local endpoint)."
+    }
+    [Environment]::SetEnvironmentVariable("DOCKER_HOST", $expected, "User")
+    Write-Warning "[docker-host] restart your terminal/SSH session for DOCKER_HOST change to apply."
+}
+{{ end -}}

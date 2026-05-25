@@ -142,4 +142,28 @@
     url = "https://github.com/gopasspw/gopass/releases/download/v{{ $gopassVersion }}/gopass-{{ $gopassVersion }}-windows-amd64.zip"
     path = "gopass.exe"
     executable = true
+
+# Scoop migration — Wave 5 (2026-05-25)
+# Docker CLI client + docker-compose. WSL Ubuntu hosts the engine; Windows side
+# is CLI-only (no dockerd.exe, no Docker Desktop). DOCKER_HOST=tcp://127.0.0.1:2375
+# is set by run_onchange_before_set-docker-host.ps1.tmpl. lazydocker stays on
+# scoop per user preference (not chezmoi-managed).
+{{- $dockerVersion        := "29.5.2" }}
+{{- $dockerComposeVersion := "5.1.4" }}
+
+# Docker Inc. official static binary archive (NOT GitHub release — first-party
+# CDN at download.docker.com). Archive ships docker/docker.exe + docker/dockerd.exe;
+# `path` filter extracts only the CLI, dockerd.exe is discarded.
+[".local/bin/docker.exe"]
+    type = "archive-file"
+    url = "https://download.docker.com/win/static/stable/x86_64/docker-{{ $dockerVersion }}.zip"
+    path = "docker/docker.exe"
+    executable = true
+
+# Docker Compose v5+ ships a single Windows binary on GitHub Releases.
+# URL tag uses `v` prefix; binary filename has no version string.
+[".local/bin/docker-compose.exe"]
+    type = "file"
+    url = "https://github.com/docker/compose/releases/download/v{{ $dockerComposeVersion }}/docker-compose-windows-x86_64.exe"
+    executable = true
 {{- end }}
