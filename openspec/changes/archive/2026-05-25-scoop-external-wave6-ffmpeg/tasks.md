@@ -38,9 +38,9 @@
 
 ## 6. 文件 / memory 更新（archive step 處理）
 
-- [ ] 6.1 更新 `C:\Users\user\.claude\projects\D--ws-github-dotfiles\memory\reference_chezmoi_external_cli_tools.md`：新增 Wave 6 區塊，記錄 ffmpeg 3 條 entry、BtbN dated tag 與 asset filename 雙變數模式、archive-file 共用 URL 的 cache 行為觀察結果
-- [ ] 6.2 更新 `C:\Users\user\.claude\projects\D--ws-github-dotfiles\memory\project_scoop_external_wave4_candidates.md`：Category A 表格將 ffmpeg 劃掉、標記 Wave 6 完成，並補一段「archive-pattern 第一個遷的設計選擇：archive-file × N 而非 archive × 1，PATH 不變」結論供後續 vim/nvm/gpg 參考
-- [ ] 6.3 視需要更新 `MEMORY.md` 索引（若主要連結文字或描述需要改）
-- [ ] 6.4 `openspec validate scoop-external-wave6-ffmpeg --strict`：確認無紅字
-- [ ] 6.5 `openspec archive scoop-external-wave6-ffmpeg`：完成歸檔（含 spec sync 進 `openspec/specs/tool-dependencies/spec.md`）
-- [ ] 6.6 `openspec spec validate tool-dependencies`：確保 spec 同步無誤
+- [x] 6.1 更新 `C:\Users\user\.claude\projects\D--ws-github-dotfiles\memory\reference_chezmoi_external_cli_tools.md`：新增 Wave 6 區塊，記錄 ffmpeg 3 條 entry、BtbN dated tag 與 asset filename 雙變數模式、archive-file 共用 URL 的 cache 行為觀察結果
+- [x] 6.2 更新 `C:\Users\user\.claude\projects\D--ws-github-dotfiles\memory\project_scoop_external_wave4_candidates.md`：Category A 表格將 ffmpeg 劃掉、標記 Wave 6 完成，並補一段「archive-pattern 第一個遷的設計選擇：archive-file × N 而非 archive × 1，PATH 不變」結論供後續 vim/nvm/gpg 參考
+- [x] 6.3 視需要更新 `MEMORY.md` 索引（若主要連結文字或描述需要改）
+- [x] 6.4 `openspec validate scoop-external-wave6-ffmpeg --strict`：確認無紅字
+- [x] 6.5 `openspec archive scoop-external-wave6-ffmpeg`：完成歸檔（含 spec sync 進 `openspec/specs/tool-dependencies/spec.md`）
+- [x] 6.6 `openspec spec validate tool-dependencies`：確保 spec 同步無誤
