@@ -1,0 +1,44 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_after_ script -- Wave 6 Scoop cleanup
+#
+# Uninstall scoop packages that dotfiles now manages via .chezmoiexternal.toml:
+#   - ffmpeg : BtbN n8.1 stable + static GPL build; three binaries now at
+#              ~/.local/bin/{ffmpeg,ffprobe,ffplay}.exe
+#
+# Wave 1 already handled User PATH ordering (`~/.local/bin` before
+# `~/scoop/shims`), so this script does NOT touch PATH.
+#
+# Idempotent: skips uninstall if scoop is unaware of the package; skips
+# entirely if scoop itself is not installed.
+
+$ErrorActionPreference = "Continue"
+$pkgs = @("ffmpeg")
+
+Write-Host "=== Wave 6: Scoop cleanup ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
+    Write-Host "=== Wave 6 migration complete. ===" -ForegroundColor Cyan
+    return
+}
+
+foreach ($pkg in $pkgs) {
+    $installed = $false
+    try {
+        $listOutput = scoop list $pkg 2>$null | Out-String
+        $pattern = "(?im)^\s*$([regex]::Escape($pkg))\b"
+        if ($listOutput -match $pattern) { $installed = $true }
+    } catch {}
+    if ($installed) {
+        Write-Host "[$pkg] uninstalling from scoop..." -ForegroundColor Yellow
+        scoop uninstall $pkg 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "[$pkg] scoop uninstall returned non-zero exit; continuing."
+        }
+    } else {
+        Write-Host "[$pkg] not installed via scoop, skipping." -ForegroundColor Gray
+    }
+}
+
+Write-Host "=== Wave 6 migration complete. ===" -ForegroundColor Cyan
+{{ end -}}
