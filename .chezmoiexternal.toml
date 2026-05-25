@@ -199,4 +199,29 @@
     url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/{{ $ffmpegTag }}/{{ $ffmpegAsset }}"
     path = "{{ $ffmpegRoot }}/bin/ffplay.exe"
     executable = true
+
+# Scoop migration -- Wave 7 (2026-05-25)
+# vim distribution from vim/vim-win32-installer GitHub Release. Unlike Wave 1-6
+# which targeted standalone CLI binaries, vim ships an application bundle: 3 real
+# .exe files (vim, gvim, xxd) require 4 sibling DLLs (vim64.dll, libiconv-2.dll,
+# libintl-8.dll, libsodium.dll) plus a runtime/ tree with 2000+ files
+# (autoload/, syntax/, doc/, tutor/, ...). The archive-file pattern from Wave 6
+# cannot work; we use `type = "archive"` to extract the whole zip.
+#
+# stripComponents = 1 drops the top-level `vim/` folder from the upstream zip,
+# keeping `vim92/` as the runtime subdir. The runtime subdir is named after
+# vim's <MAJOR><MINOR> version: vim 9.2.x patches all share `vim92/`; a 9.3
+# bump becomes `vim93/`. When that happens, BOTH this $vimVersion AND the
+# `vim92` path inside the 15 .cmd wrappers under dot_local/bin/ must change
+# in the same commit. See design.md D2 and R1 for the rationale.
+#
+# Wrappers (15 .cmd files at ~/.local/bin/) mirror scoop vim.json `bin[]`,
+# delegating each alias to vim.exe/gvim.exe/xxd.exe with the right flag.
+# PATH is not modified -- ~/.local/bin is already Wave 1's first PATH entry.
+{{- $vimVersion := "9.2.0530" }}
+
+[".local/share/vim"]
+    type = "archive"
+    url = "https://github.com/vim/vim-win32-installer/releases/download/v{{ $vimVersion }}/gvim_{{ $vimVersion }}_x64.zip"
+    stripComponents = 1
 {{- end }}
