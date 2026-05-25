@@ -57,9 +57,9 @@
 
 ## 7. 文件 / memory 更新（archive step 處理）
 
-- [ ] 7.1 `openspec validate scoop-external-wave7-vim --strict` 通過
-- [ ] 7.2 `openspec archive scoop-external-wave7-vim` 完成歸檔（含 spec sync 進 `openspec/specs/tool-dependencies/spec.md`）
-- [ ] 7.3 `openspec spec validate tool-dependencies` 通過
-- [ ] 7.4 更新 `C:\Users\user\.claude\projects\D--ws-github-dotfiles\memory\reference_chezmoi_external_cli_tools.md`：新增 Wave 7 區塊，記錄 vim archive-mode 設計、15 wrapper 對應表、minor-version-bump invariant（同步改 `$vimVersion` 與 15 wrappers）
-- [ ] 7.5 更新 `C:\Users\user\.claude\projects\D--ws-github-dotfiles\memory\project_scoop_external_wave4_candidates.md`：Category A 表格將 vim 劃掉、標記 Wave 7 完成；補一段「archive-pattern 第二案——`type = "archive"` 整包 + `.cmd` wrappers，PATH 不變」結論供 nvm/gpg 參考
-- [ ] 7.6 視需要更新 `MEMORY.md` 索引（若主要連結文字或描述需要改）
+- [x] 7.1 `openspec validate scoop-external-wave7-vim --strict` 通過
+- [x] 7.2 `openspec archive scoop-external-wave7-vim` 完成歸檔（含 spec sync 進 `openspec/specs/tool-dependencies/spec.md`：+4 added requirements）
+- [x] 7.3 `openspec validate --specs tool-dependencies` 通過（已改用 verb-first 命令，舊 `openspec spec validate` 已 deprecated）
+- [x] 7.4 更新 `C:\Users\user\.claude\projects\D--ws-github-dotfiles\memory\reference_chezmoi_external_cli_tools.md`：新增 Wave 7 區塊（vim archive-mode 設計、15 wrapper 對應表、minor-version-bump invariant、stripComponents=1 / XDG / .chezmoiignore + .gitattributes 細節），擴充「archive-pattern 設計決議」為「Wave 6+7」兩種子模式並存
+- [x] 7.5 更新 `C:\Users\user\.claude\projects\D--ws-github-dotfiles\memory\project_scoop_external_wave4_candidates.md`：Category A 表格 vim 標記完成；標題與 description 從「Wave 7+」改「Wave 8+」；「Wave 8+ 是否值得啟動」段補 nvm/gpg 後續討論方向
+- [x] 7.6 更新 `MEMORY.md` 索引：兩條相關連結（候選清單 + chezmoi-external 工具清單）都改 Wave 7 描述
