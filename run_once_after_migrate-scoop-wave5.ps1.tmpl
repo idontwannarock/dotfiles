@@ -1,0 +1,49 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_after_ script -- Wave 5 Scoop cleanup
+#
+# Uninstall scoop packages that dotfiles now manages via .chezmoiexternal.toml:
+#   - docker         : CLI client; CLI-only binary now at ~/.local/bin/docker.exe
+#                      (Docker Inc. static binary; scoop bundle also shipped
+#                      dockerd.exe which we never used on Windows)
+#   - docker-compose : v5+ standalone binary; now at ~/.local/bin/docker-compose.exe
+#                      (GitHub release single-binary, no archive)
+#
+# Intentionally NOT uninstalled (per Wave 5 design):
+#   - lazydocker : user preference -- TUI tool stays on scoop, not chezmoi-managed
+#
+# Wave 1 already handled User PATH ordering (`~/.local/bin` before
+# `~/scoop/shims`), so this script does NOT touch PATH.
+#
+# Idempotent: skips uninstall if scoop is unaware of the package.
+
+$ErrorActionPreference = "Continue"
+$pkgs = @("docker", "docker-compose")
+
+Write-Host "=== Wave 5: Scoop cleanup ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
+    Write-Host "=== Migration complete. ===" -ForegroundColor Cyan
+    return
+}
+
+foreach ($pkg in $pkgs) {
+    $installed = $false
+    try {
+        $listOutput = scoop list $pkg 2>$null | Out-String
+        $pattern = "(?im)^\s*$([regex]::Escape($pkg))\b"
+        if ($listOutput -match $pattern) { $installed = $true }
+    } catch {}
+    if ($installed) {
+        Write-Host "[$pkg] uninstalling from scoop..." -ForegroundColor Yellow
+        scoop uninstall $pkg 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "[$pkg] scoop uninstall returned non-zero exit; continuing."
+        }
+    } else {
+        Write-Host "[$pkg] not installed via scoop, skipping." -ForegroundColor Gray
+    }
+}
+
+Write-Host "=== Migration complete. ===" -ForegroundColor Cyan
+{{ end -}}

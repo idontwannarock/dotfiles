@@ -21,8 +21,9 @@ function Install-ScoopPackage {
 }
 
 # ── Docker ───────────────────────────────────────────────────────────────
-Install-ScoopPackage "docker"
-Install-ScoopPackage "docker-compose"
+# docker and docker-compose moved to .chezmoiexternal.toml in Wave 5 (2026-05-25).
+# Engine runs in WSL2 Ubuntu; Windows side is CLI-only via tcp://127.0.0.1:2375.
+# lazydocker (TUI) intentionally stays on scoop (not chezmoi-managed).
 
 # ── Kubernetes ───────────────────────────────────────────────────────────
 # kubectl and kubelogin moved to .chezmoiexternal.toml in Wave 2 (2026-05-20).
