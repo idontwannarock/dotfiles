@@ -36,7 +36,11 @@ Install-ScoopPackage "7z" "7zip"
 # run_onchange_install-03-claude-config.sh.tmpl is .sh.tmpl (Linux/macOS only).
 
 # ── Media ────────────────────────────────────────────────────────────────
-Install-ScoopPackage "ffmpeg"
+# ffmpeg moved to .chezmoiexternal.toml in Wave 6 (2026-05-25). Three archive-file
+# entries (ffmpeg.exe + ffprobe.exe + ffplay.exe) share a single BtbN/FFmpeg-Builds
+# zip, pinned to a dated autobuild tag for reproducibility. The migration script
+# run_once_after_migrate-scoop-wave6.ps1.tmpl handles scoop uninstall on existing
+# machines.
 
 # ── Shell enhancement ────────────────────────────────────────────────────
 # clink removed from dotfiles install in Wave 4 (2026-05-21). dotfiles never
