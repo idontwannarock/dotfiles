@@ -1,66 +1,81 @@
 ## Purpose
 
-Capture the minimum state needed for a new session to continue the current work without re-exploring. Two outputs:
-1. A markdown file at `<repo>/.claude/handoffs/<timestamp>__<slug>.md`
-2. A resumption prompt -- copied to the user's clipboard and printed in the response -- designed to be pasted verbatim to boot the next session
+Capture the minimum state needed for a new session to continue the current work without re-exploring. The output is a single markdown file at `~/.local/state/handoffs/<repo-slug>/<id>.md` whose last block prints the exact `/pickup <id>` command to revive it from any future session.
 
-The handoff directory is named `.claude/handoffs/` for historical reasons; any AI tool can write and read there -- it is not Claude-exclusive.
+The location is user-level and AI-agnostic on purpose: a handoff produced by Claude Code can be picked up by Codex CLI (or any other tool that follows this convention) without the file living inside a tool-specific dotdir.
 
 ## Principles
 
-- **ASCII-only output.** The handoff file body and resumption prompt MUST contain only ASCII characters (code points 0x20-0x7E plus newline). Clipboard tools on Windows (`clip.exe`) use the system ANSI codepage and corrupt UTF-8, producing mojibake when the prompt is pasted into a new session. Substitute em dashes and en dashes with `--` or `-`, math operators with their ASCII equivalents (e.g. less-than-or-equal becomes `<=`), and check marks with plain `OK`/`FAIL`. Transliterate or translate non-ASCII proper nouns. Paths are exempt in practice (paths on this system are ASCII), but if a path contains non-ASCII, describe it in English rather than embedding it.
-- **References over duplication.** Link to project docs (CLAUDE.md, AGENTS.md, memory files, openspec changes, READMEs) instead of re-summarizing them.
-- **Resumption prompt is the primary artifact.** The surrounding markdown is context for humans browsing later; the prompt is what boots the next session.
-- **Lean.** Target <= 60 lines total. If it reads like a report, cut it.
+- **References over duplication.** Do not re-summarize content already captured in other artifacts -- PRDs, plans, ADRs, issues, commits, diffs, memory files, READMEs. List them by absolute path or URL with a one-line "why it matters". Re-summarizing wastes tokens both now (writing) and later (reading) when the next session could just open the source.
+- **Lean.** Target <= 50 lines total. If it reads like a report, cut it.
+- **Args-driven tailoring.** If the user passed arguments, treat them as the description of what the next session will focus on -- they override or refine the first item in "Next steps".
+- **Redact secrets.** Replace API keys, passwords, TOTP codes, corp identifiers with placeholders. Note in "Open / unresolved" if redaction loses information the next session needs.
 - **No confirmation.** The user invoked you -- just do it.
 
 ## Gather
 
 Run these before composing:
 
-- `git rev-parse --show-toplevel` -- repo root (absolute)
-- `git rev-parse --abbrev-ref HEAD` -- current branch
-- `git status --porcelain` -- dirty files
-- `git diff --shortstat` -- change magnitude
-- `git log -3 --oneline` -- recent commits
-- Current task/todo list snapshot (if any is active)
-- What was being worked on in the last 2-3 turns
+- Repo root: `git rev-parse --show-toplevel` (if it fails OR the result is not a prefix of `$PWD`, fall back to `$PWD` -- a slug derived from a non-repo dir is fine; writing to the wrong repo is not).
+- Branch: `git rev-parse --abbrev-ref HEAD` (skip if non-git).
+- Dirty state: `git status --porcelain` and `git diff --shortstat`.
+- Recent commits: `git log -3 --oneline`.
+- Current task/todo list snapshot (if any is active).
+- What was being worked on in the last 2-3 turns.
 
 ## Flow
 
 ### 1. Pick a slug
 
-2-4 kebab-case words describing the current task. Examples: `handoff-skill-design`, `statusline-color-tier`, `auth-middleware-refactor`. Infer from the conversation topic, the most-edited file, or the top open todo.
+2-4 kebab-case words describing the current task. Examples: `phone-ssh-shortcuts`, `statusline-color-tier`, `auth-middleware-refactor`. Infer from the conversation topic, the most-edited file, or the top open todo.
 
-### 2. Compose the handoff file
+### 2. Compose the ID, repo slug, and path
 
-Write to `<repo>/.claude/handoffs/YYYY-MM-DD-HHMM__<slug>.md` using this exact shape. Omit empty sections rather than leaving placeholders.
+- **ID**: `YYYY-MM-DD-HHMM__<slug>` (no extension). Use the user's local time.
+- **Repo slug**: the absolute repo path with every `:`, `\`, `/`, and `.` replaced by `-`. Examples:
+  - `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`
+  - `/home/user/work/api` becomes `-home-user-work-api`
+  - `\\wsl.localhost\Ubuntu\home\me\proj` becomes `--wsl-localhost-Ubuntu-home-me-proj`
+  (This matches the existing convention used by `~/.claude/projects/<slug>/` so users can mentally align handoff and memory layouts.)
+- **Path**: `~/.local/state/handoffs/<repo-slug>/<ID>.md`. Create the directory if missing.
+
+### 3. Compose the file
+
+Use this shape. Omit empty sections rather than leaving placeholders. Non-ASCII (Chinese, em-dash, check marks) is fine -- this file is read, not pasted through a clipboard.
 
 ```markdown
 # Handoff: <slug> @ <ISO-8601 timestamp>
 
 - Repo / cwd: <absolute path>
 - Branch: <branch>  <worktree name if any>
-- Tool: <your tool name, e.g. Claude Code, Codex CLI>
+- Tool: <Claude Code | Codex CLI | ...>
 
-## Resumption Prompt (copy this into the new session)
+## Task
 
-We were working in `<absolute repo path>` on <one-sentence task description>, paused at <precise pause point>.
+<one sentence: what we were doing, paused at what precise point>
 
-Key files:
-- <absolute path> -- <one-line "why it matters">
-- <absolute path> -- <...>
+## Next steps
 
-Next steps:
 1. <step + success criterion>
 2. <step>
 3. <step>
 
-References:
-- <project doc path> -- <why>
-- Files modified this session: <paste `git diff --shortstat` output>
+## Key files (open these first)
 
-Please continue from the next steps above. Do not re-summarize or confirm -- just proceed. Respond in zh-TW from now on (the user writes in Traditional Chinese).
+- <absolute path> -- <one-line why it matters>
+- <absolute path> -- <...>
+
+## Suggested skills
+
+- `<skill name>` -- <why this skill applies to the next steps>
+- `<skill name>` -- <...>
+
+## References (do NOT re-read; just know they exist)
+
+- <PRD / plan / ADR / issue URL> -- <relevance>
+- <memory file absolute path> -- <relevance>
+- Recent commits: <`git log -3 --oneline` output>
+- This session diff: <`git diff --shortstat` output>
 
 ## Decisions made this session (load-bearing only)
 
@@ -69,40 +84,29 @@ Please continue from the next steps above. Do not re-summarize or confirm -- jus
 ## Open / unresolved
 
 - <if any>
+
+---
+
+To resume in any future session (Claude Code or Codex CLI), run:
+
+    /pickup <ID>
 ```
 
-### 3. Copy the Resumption Prompt to clipboard
-
-Extract everything between `## Resumption Prompt ...` and the next `##` header, then pipe it to the first available clipboard tool:
-
-```bash
-if command -v clip.exe >/dev/null 2>&1; then copy=clip.exe                   # WSL / Git Bash
-elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null 2>&1; then copy=wl-copy
-elif command -v xclip >/dev/null 2>&1; then copy='xclip -selection clipboard'
-elif command -v xsel >/dev/null 2>&1; then copy='xsel --clipboard --input'
-elif command -v pbcopy >/dev/null 2>&1; then copy=pbcopy                     # macOS
-else copy=''
-fi
-```
-
-If no clipboard tool is available, skip silently -- the printed output is the fallback.
-
-### 4. Ensure .gitignore covers the handoff dir
-
-Check `<repo>/.gitignore` for any pattern that excludes `.claude/handoffs/` (e.g. `.claude/`, `.claude/handoffs/`, `.claude/handoffs/*`). If none match, append `.claude/handoffs/` on a new line.
-
-### 5. Report to the user
+### 4. Report to the user
 
 Print, concisely:
-1. Absolute path of the handoff file just written
-2. Whether the clipboard copy succeeded (OK / FAIL)
-3. The full Resumption Prompt inline, so the user can copy from the chat if the clipboard step failed
+
+1. Absolute path of the handoff file just written.
+2. The exact `/pickup <ID>` line the user can copy.
+
+Do not re-print the file content -- it is on disk.
 
 ## Anti-patterns
 
 - **Don't** duplicate content from project docs. Link with absolute path + one-line "why it matters".
 - **Don't** dump the entire todo list. Keep the 2-3 items that matter for resumption.
 - **Don't** list every file touched. Only files the next session must open immediately.
-- **Don't** include commit SHAs or diff hunks inline -- they rot; `git log` / `git diff` are authoritative.
+- **Don't** include commit SHAs or diff hunks inline -- `git log` / `git diff` are authoritative.
 - **Don't** ask clarifying questions before writing. Infer from conversation; if genuinely blocked, pick a reasonable slug and note the ambiguity in "Open / unresolved".
-- **Don't** restate what the file already contains at the end of your reply. Link + clipboard status + prompt inline is enough.
+- **Don't** write a "Resumption Prompt" section -- the file itself is the resumption artifact and `/pickup` reads it.
+- **Don't** write inside any tool-specific dotdir (`.claude/`, `.codex/`, etc.). The handoff must be tool-agnostic so any AI tool can pick it up.
