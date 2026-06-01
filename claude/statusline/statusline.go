@@ -25,6 +25,7 @@ const (
 	cWhite   = "\033[38;2;220;220;220m"
 	cMagenta = "\033[38;2;180;140;255m"
 	cDim     = "\033[2m"
+	cBold    = "\033[1m"
 	cReset   = "\033[0m"
 )
 
@@ -198,31 +199,55 @@ func modelEmoji(model string) string {
 	return "🤖"
 }
 
-func getEffortLevel() string {
+// claudeSettings holds the subset of ~/.claude/settings.json we care about.
+// ultracode is a Claude Code orchestration flag (xhigh effort + auto dynamic
+// workflows), not an effort level — it sits alongside effortLevel.
+type claudeSettings struct {
+	EffortLevel string `json:"effortLevel"`
+	Ultracode   bool   `json:"ultracode"`
+}
+
+func readClaudeSettings() claudeSettings {
 	home, _ := os.UserHomeDir()
-	path := filepath.Join(home, ".claude", "settings.json")
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
 	if err != nil {
-		return ""
+		return claudeSettings{}
 	}
-	var settings struct {
-		EffortLevel string `json:"effortLevel"`
+	var s claudeSettings
+	_ = json.Unmarshal(data, &s)
+	return s
+}
+
+func getEffortLevel(s claudeSettings) string {
+	// CLAUDE_EFFORT reflects the session's current effort and updates with
+	// runtime toggles like /effort. Prefer it over the static settings.json value.
+	if v := strings.TrimSpace(os.Getenv("CLAUDE_EFFORT")); v != "" {
+		return v
 	}
-	if json.Unmarshal(data, &settings) != nil || settings.EffortLevel == "" {
-		return ""
-	}
-	return settings.EffortLevel
+	return s.EffortLevel
 }
 
 func formatEffort(effort string) string {
+	// Claude Code effort ladder (low → max). ultracode is NOT a level —
+	// it's rendered separately as a badge via formatUltracodeBadge.
 	switch effort {
-	case "high":
-		return cMagenta + "● " + effort + cReset
 	case "low":
 		return cDim + "◔ " + effort + cReset
-	default:
+	case "medium":
 		return cDim + "◑ " + effort + cReset
+	case "high":
+		return cMagenta + "● " + effort + cReset
+	case "xhigh":
+		return cMagenta + "◉ " + effort + cReset
+	case "max":
+		return cBold + cMagenta + "✦ " + effort + cReset
+	default:
+		return cDim + "· " + effort + cReset
 	}
+}
+
+func formatUltracodeBadge() string {
+	return cBold + cYellow + "⚡ultra" + cReset
 }
 
 // writeContextWindowCache 將 Claude Code 傳來的 context_window_size 寫成兩份
@@ -317,7 +342,8 @@ func main() {
 	model := data.Model.DisplayName
 	emoji := modelEmoji(model)
 	dir := filepath.Base(data.Workspace.CurrentDir)
-	effort := getEffortLevel()
+	settings := readClaudeSettings()
+	effort := getEffortLevel(settings)
 
 	ctxPercent := 0.0
 	if data.ContextWindow.UsedPercentage != nil {
@@ -387,6 +413,9 @@ func main() {
 
 	if effort != "" {
 		line1 += sep + formatEffort(effort)
+		if settings.Ultracode {
+			line1 += " " + formatUltracodeBadge()
+		}
 	}
 
 	// === 第二行：Session │ Cost │ Rate Limits ===
