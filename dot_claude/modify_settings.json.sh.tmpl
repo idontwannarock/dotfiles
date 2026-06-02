@@ -6,6 +6,7 @@
 # 等會被 Claude Code runtime 寫入的部分。
 #
 # 同步的欄位：
+# - model = claude-opus-4-8（200K context 變體，非 [1m] 1M variant）
 # - effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
 # - permissions.defaultMode = bypassPermissions
 # - permissions.allow 併入 "Skill(*)"（union + unique，不覆蓋現有 entries）
@@ -18,7 +19,8 @@
 # per-session cache 成為主要來源；這個 env var 只保留給 debug/override 用
 # （需要時手動 export，不進 settings.json）。
 #
-# 不同步：model 交給 Claude Code runtime（/model 指令）管理，保持原廠 default
+# model 固定為 claude-opus-4-8（200K context）。需要 1M 時用 /model 臨時切，
+# 或在該機器的 settings.local.json 覆寫；此處 patch 的是各機器的預設值。
 
 set -euo pipefail
 
@@ -36,7 +38,8 @@ echo "$input" | jq \
   --arg git_bash '{{ printf "%s/scoop/apps/git/current/bin/bash.exe" .chezmoi.homeDir | replace "/" "\\" }}' \
 {{- end }}
   '
-    .effortLevel = "medium"
+    .model = "claude-opus-4-8"
+    | .effortLevel = "medium"
     | .autoUpdatesChannel = "latest"
     | .skipDangerousModePermissionPrompt = true
     | .skillListingBudgetFraction = 0.02
