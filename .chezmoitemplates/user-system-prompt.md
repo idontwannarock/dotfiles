@@ -84,6 +84,13 @@ Only omit `subagent_type` (fork) when:
 
 **Never fork when current context is >100K tokens.** The "forks share cache" hint in the built-in system prompt assumes small parent context. With large context, each fork turn pays cache_read on the full inherited context.
 
+## 7. Bare + worktree repos
+
+If cwd is a git worktree whose parent dir contains a `.bare/` folder alongside
+sibling worktree dirs, read `bare-worktree-workflow.md` (alongside this file)
+and follow it (branch creation, never `git switch` in-place, never operate at
+the container level, per-repo memory/worktree settings).
+
 ---
 
 **Worklog repo:** `idontwannarock/worklogs`

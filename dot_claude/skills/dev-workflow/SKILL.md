@@ -30,6 +30,8 @@ Run `git:sync` unless already on a worktree.
 
 Look up `~/.claude/workflow-registry.md` for this repo's main repo path and project memory path. If no entry: derive with `git rev-parse --git-common-dir`, compute the project memory path, add a row. Registry is per-machine, not synced.
 
+> **Bare+worktree repos**: registry auto-derivation is wrong here — set the row by hand. See `~/.claude/bare-worktree-workflow.md` → "Workflow registry & project-memory path".
+
 ### 2c. Check active workflows
 
 Read `active_workflows.md` from the project memory directory. Clean stale entries (missing worktree paths, deleted branches).
@@ -38,6 +40,8 @@ Read `active_workflows.md` from the project memory directory. Clean stale entrie
 |-------|--------|
 | **None active** | Work directly in main repo: `git checkout -b <new-branch>`. Register row with Type=`main`. |
 | **Any active/paused** | Read `references/isolation.md` — requires worktree. |
+
+> **Bare+worktree repos**: the "None active → `checkout -b` in main" row doesn't apply — always add a worktree off `main` (one branch per worktree). See `~/.claude/bare-worktree-workflow.md`.
 
 The `active_workflows.md` row format:
 
