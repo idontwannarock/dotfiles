@@ -89,6 +89,31 @@ createnewlog() {
     printf '==> Workflow 完成。\n'
 }
 
+# ── claude-zai: route Claude Code to z.ai Anthropic-compatible endpoint ─────
+# 從 pass vault 取 token；vault 不可用時 fallback 到 $ZAI_API_KEY env var。
+# 每次呼叫可覆寫 model：ZAI_OPUS_MODEL=GLM-4.6 claude-zai
+claude-zai() {
+    local token=""
+    if command -v pass >/dev/null 2>&1; then
+        token="$(pass show z.ai/claude-code-token 2>/dev/null)"
+    fi
+    if [ -z "$token" ]; then
+        token="$ZAI_API_KEY"
+    fi
+    if [ -z "$token" ]; then
+        printf >&2 'claude-zai: no token (pass z.ai/claude-code-token unreadable and $ZAI_API_KEY unset)\n'
+        return 1
+    fi
+
+    ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" \
+    ANTHROPIC_AUTH_TOKEN="$token" \
+    ANTHROPIC_DEFAULT_OPUS_MODEL="${ZAI_OPUS_MODEL:-GLM-5.1}" \
+    ANTHROPIC_DEFAULT_SONNET_MODEL="${ZAI_SONNET_MODEL:-GLM-5}" \
+    ANTHROPIC_DEFAULT_HAIKU_MODEL="${ZAI_HAIKU_MODEL:-GLM-5-Turbo}" \
+    API_TIMEOUT_MS="${ZAI_TIMEOUT_MS:-3000000}" \
+    claude "$@"
+}
+
 # ── 自動 fetch dotfiles 並提示更新 ───────────────────────────────────────────
 _dotfiles_check_update() {
     local flag_file="$HOME/.local/share/chezmoi-last-fetch"
