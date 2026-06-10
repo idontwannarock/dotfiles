@@ -1,6 +1,6 @@
 ## Purpose
 
-Capture the minimum state needed for a new session to continue the current work without re-exploring. The output is a single markdown file at `~/.local/state/handoffs/<repo-slug>/<id>.md` whose last block prints the exact `/pickup <id>` command to revive it from any future session.
+Capture the minimum state needed for a new session to continue the current work without re-exploring. The output is a single markdown file at `~/.agent/handoffs/<repo-slug>/<id>.md` whose last block prints the exact `/pickup <id>` command to revive it from any future session.
 
 The location is user-level and AI-agnostic on purpose: a handoff produced by Claude Code can be picked up by Codex CLI (or any other tool that follows this convention) without the file living inside a tool-specific dotdir.
 
@@ -37,7 +37,7 @@ Run these before composing:
   - `/home/user/work/api` becomes `-home-user-work-api`
   - `\\wsl.localhost\Ubuntu\home\me\proj` becomes `--wsl-localhost-Ubuntu-home-me-proj`
   (This matches the existing convention used by `~/.claude/projects/<slug>/` so users can mentally align handoff and memory layouts.)
-- **Path**: `~/.local/state/handoffs/<repo-slug>/<ID>.md`. Create the directory if missing.
+- **Path**: `~/.agent/handoffs/<repo-slug>/<ID>.md`. Create the directory if missing.
 
 ### 3. Compose the file
 

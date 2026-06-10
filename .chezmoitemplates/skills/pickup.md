@@ -6,14 +6,14 @@ Boot a new session from a previously saved handoff file. Reads the file, invokes
 
 Compute the **repo slug** from the current working repo: take the absolute path (`git rev-parse --show-toplevel` falling back to `$PWD`) and replace every `:`, `\`, `/`, and `.` with `-`. Example: `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`.
 
-Then look in `~/.local/state/handoffs/<repo-slug>/`. Resolution order, given the user's argument:
+Then look in `~/.agent/handoffs/<repo-slug>/`. Resolution order, given the user's argument:
 
 1. **Exact ID** (with or without `.md`): `<id>.md` -- single file match.
 2. **Slug only** (e.g. `phone-ssh-shortcuts`): glob `*__<slug>.md`. If exactly one match, use it. If multiple, list them with mtime and ask the user which.
 3. **Date prefix** (e.g. `2026-05-26` or `2026-05-26-1430`): glob `<prefix>*.md`. Same disambiguation rule as slug.
 4. **No argument**: pick the file with the latest mtime.
 
-If nothing matches in `~/.local/state/handoffs/<repo-slug>/`, also check the legacy location `<repo>/.claude/handoffs/` once (for files written before 2026-05-26). If still nothing, report the absolute paths searched and stop -- do not invent a file.
+If nothing matches in `~/.agent/handoffs/<repo-slug>/`, check the legacy locations once, in order: `~/.local/state/handoffs/<repo-slug>/` (the pre-`~/.agent` location), then `<repo>/.claude/handoffs/` (files written before 2026-05-26). If still nothing, report the absolute paths searched and stop -- do not invent a file.
 
 ## Apply
 
