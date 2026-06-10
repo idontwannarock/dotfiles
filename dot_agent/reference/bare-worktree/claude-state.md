@@ -1,51 +1,9 @@
-# Bare + worktree repo workflow
+# Bare + worktree — Claude Code state
 
-Reference for repos organized as a bare git repo plus per-branch worktrees.
-Loaded on demand (progressive disclosure) — the pointer lives in your
-top-level agent instructions (CLAUDE.md / AGENTS.md).
-
-## How to detect this layout
-
-You are in a bare+worktree layout when cwd is a git worktree whose **parent
-directory contains a `.bare/` folder** alongside sibling worktree directories:
-
-```
-<repo>/
-├── .bare/                  # the bare git repo (no working tree)
-├── main/                   # worktree pinned to main
-├── add-<feature-1>/        # worktree pinned to add-<feature-1>
-└── add-<feature-2>/        # ...
-```
-
-Cross-check: `git rev-parse --git-common-dir` resolves to `.../.bare`, and
-`git rev-parse --is-inside-work-tree` is true.
-
-## Operating rules
-
-- **One branch per worktree.** Never `git switch` / `git checkout <branch>`
-  inside a worktree — that breaks the mental model and can collide with
-  another worktree already on that branch. To work on a different branch,
-  create another worktree.
-- **Create a new long-lived branch** from the parent container:
-  ```bash
-  cd <repo>
-  git --git-dir=.bare worktree add -b add-<name> add-<name> main
-  cd add-<name>
-  ```
-- **Remove a worktree** with git, never plain `rm -rf` (leaves stale admin
-  records):
-  ```bash
-  git --git-dir=.bare worktree remove add-<name>
-  git --git-dir=.bare branch -d add-<name>     # if merged
-  ```
-- **Never open or operate at the parent container level.** It holds only
-  `.bare/` — no source, no agent instructions, no context. Always be inside a
-  worktree.
-- **The whole tree is not relocatable.** Worktree admin files store absolute
-  paths; if the container is renamed/moved, run
-  `git --git-dir=.bare worktree repair`.
-- `git stash` is repo-global — a stash made in one worktree is visible in all.
-  Prefer commits over stash to avoid cross-worktree confusion.
+**Claude-specific.** How Claude Code's state behaves under a bare+worktree
+layout. Other AI tools can skip this file (add a sibling `<tool>-state.md` if
+your tool needs equivalent handling). For the tool-agnostic git mechanics see
+`operating.md` and `setup.md`.
 
 ## Claude state across worktrees
 
@@ -98,18 +56,29 @@ path) assumes a normal checkout and is **wrong for a bare+worktree repo** —
 alongside the auto-memory facts. It's workflow state, not a remembered fact,
 so it is **not** indexed in `MEMORY.md`.
 
+## Migrating Claude state — memory vs transcripts go to DIFFERENT roots
+
+When converting an existing flat repo (see `setup.md`), migrate Claude's
+state too. This is the easy thing to get wrong:
+
+- **Memory → `autoMemoryDirectory`** (`~/.claude/memory/<repo-name>`), *not* the
+  cwd-slug `projects/<slug>/memory`. This is the target **even though the global
+  CLAUDE.md default writes memory to `projects/<slug>/memory`** — the repo's
+  `settings.local.json` override wins, so migrate to (and thereafter write to)
+  the override location. The source projects-slug memory is often **empty**, so
+  "nothing to copy" ≠ "nothing to do": still establish autoMemoryDirectory as the
+  home and scaffold `MEMORY.md` (+ move/write fact files) there.
+- **Transcripts → new cwd-slug projects dir** (`~/.claude/projects/<new-slug>/`),
+  where `<new-slug>` = the `main/` worktree path with `/`→`-`. Copy the `*.jsonl`
+  so `--resume`/`--continue` work at the new location.
+
+Memory and transcripts therefore live under **separate roots by design**
+(`~/.claude/memory/<repo>` vs `~/.claude/projects/<new-slug>`) — don't try to
+unify them. Also add the `workflow-registry.md` row (see above).
+
 ## Not the same as `--bare`
 
 The `--bare` CLI flag is a headless `-p` minimal-execution mode (skips hooks,
 LSP, plugin sync; disables auto-memory). It has nothing to do with a bare git
 repo. Claude has no special bare-repo mode — it simply runs inside whichever
 worktree is its cwd.
-
-## Bootstrapping on a new machine
-
-```bash
-mkdir <repo> && cd <repo>
-git clone --bare <url> .bare
-git --git-dir=.bare config core.hooksPath .githooks
-git --git-dir=.bare worktree add main main      # fires post-checkout hook
-```

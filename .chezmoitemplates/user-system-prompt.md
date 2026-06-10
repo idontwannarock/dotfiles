@@ -87,9 +87,9 @@ Only omit `subagent_type` (fork) when:
 ## 7. Bare + worktree repos
 
 If cwd is a git worktree whose parent dir contains a `.bare/` folder alongside
-sibling worktree dirs, read `bare-worktree-workflow.md` (alongside this file)
-and follow it (branch creation, never `git switch` in-place, never operate at
-the container level, per-repo memory/worktree settings).
+sibling worktree dirs, read `~/.agent/reference/bare-worktree/index.md` and
+follow it (branch creation, never `git switch` in-place, never operate at the
+container level, per-repo memory/worktree settings).
 
 ---
 

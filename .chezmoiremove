@@ -1,0 +1,10 @@
+# Retired targets — chezmoi removes these on apply across all machines.
+# Deleting a source file does NOT remove its deployed target; list it here.
+
+# Consolidated into ~/.agent/reference/bare-worktree/ (single tool-agnostic copy)
+.claude/bare-worktree-workflow.md
+.codex/bare-worktree-workflow.md
+
+# Stale/unused machine-local docs, never re-deployed
+.claude/reference.md
+.claude/worklog-config.md
