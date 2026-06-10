@@ -39,7 +39,7 @@ echo "$input" | jq \
 {{- end }}
   '
     .model = "claude-opus-4-8"
-    | .effortLevel = "medium"
+    | .effortLevel = "high"
     | .autoUpdatesChannel = "latest"
     | .skipDangerousModePermissionPrompt = true
     | .skillListingBudgetFraction = 0.02
