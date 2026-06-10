@@ -8,67 +8,76 @@
 
 | 項目 | 狀態 |
 |------|------|
-| Phase 1（Windows PS 7 本機部署） | ✅ 已啟用 |
-| Phase 3a（WSL bash + WSLENV propagation） | ✅ 已啟用 |
-| Phase 2（chezmoi 管理 + gopass 存 key） | ⏳ 規劃中 |
-| Phase 3b（macOS zsh / 純 Linux 機器） | ⏳ 規劃中 |
+| Phase 1（Windows PS 7 wrapper） | ✅ 已進 chezmoi |
+| Phase 2（vault 存 token，跨平台 fan-out） | ✅ 已進 chezmoi |
+| Phase 3a（WSL bash wrapper） | ✅ 已進 chezmoi |
+| Phase 3b（macOS zsh / 純 Linux）| ✅ 同 Phase 2，等實際機器部署 |
+| Windows gopass 解密 | ✅ 已修（gpg 移出 scoop，Wave 8 / 2026-06-10）；vault 正常解密，registry 降為選用 fallback |
 
-整套採「**本機部署、不進 chezmoi source**」做法，方便快速試味道；確認長期要用後再走 Phase 2 統一搬進 chezmoi。
+Wrapper code 全部進 chezmoi source，Token source 走 vault（WSL `pass` / macOS+Linux 同；Windows 走 `gopass`，gpg 移出 scoop 後正常解密）。
 
-## 部署位置
+## 部署位置（chezmoi-managed）
 
-| 路徑 | 平台 | 用途 |
+| 平台 | 路徑 | 內容 |
 |------|------|------|
-| `~/Documents/PowerShell/profile.d/25-claude-zai.ps1` | Windows | PS 7 wrapper 函式定義（profile loader 自動 source） |
-| `~/claude-zai.ps1` | Windows | 原始 scratch 檔（可砍） |
-| `HKCU\Environment\ZAI_API_KEY` | Windows | z.ai API key（user-level env var） |
-| `HKCU\Environment\WSLENV` | Windows | 含 `ZAI_API_KEY/u`，Windows→WSL propagation |
-| `~/.bashrc.local`（WSL Ubuntu） | WSL | bash wrapper 函式定義（在 zellij 區塊之後） |
+| 跨平台 bash/zsh | `.chezmoitemplates/shell-common/base` → `~/.shell_common` | `claude-zai()` 函式 |
+| Windows PS 5/7 | `Documents/exact__shared-profile.d/25-claude-zai.ps1` → `~/Documents/_shared-profile.d/25-claude-zai.ps1` | `claude-zai` 函式（兩個 profile loader 都 source） |
 
-> 兩端 wrapper 都在使用者目錄底下，不在 `D:\ws\github\dotfiles\` 內。Windows 端 `chezmoi diff` 會顯示 `profile.d/25-claude-zai.ps1` 為 extra file（不會被 apply 砍）。WSL 端 `.bashrc.local` 本來就是 dotfiles 預留的 chezmoi-bypass 擴充點，完全不衝突。
+Token vault：
+
+| 平台 | CLI | Entry path |
+|------|-----|------------|
+| WSL / Linux / macOS | `pass` | `z.ai/claude-code-token` |
+| Windows | `gopass` | 同上（共享 `%USERPROFILE%\.password-store\`） |
 
 ## 一次性設定
 
-### Windows PS 7
+### 1. 把 token 存進 vault
+
+任一台已裝 `pass` + 已 init password store 的機器（最常見是 WSL）：
+
+```bash
+# 直接 paste key，按 Enter，再 Ctrl+D 結束
+pass insert -e z.ai/claude-code-token
+
+# 或從現有 env var 灌進去
+printf '%s' "$ZAI_API_KEY" | pass insert -e -f z.ai/claude-code-token
+```
+
+Insert 後跑一次 `pass show z.ai/claude-code-token`，第一次會彈 pinentry 要 passphrase（之後 gpg-agent cache 起來）。
+
+### 2. （選用）同步到其他機器
+
+`~/.password-store/z.ai/claude-code-token.gpg` 是 GPG-encrypted blob，可以直接 `scp` / `rsync` 或經由 Windows ↔ WSL 共用路徑複製過去。recipient 同（同一把 GPG key），對端解得開。
+
+```bash
+# WSL → Windows store
+cp ~/.password-store/z.ai/claude-code-token.gpg /mnt/c/Users/$USER/.password-store/z.ai/
+```
+
+### 3. （選用）registry env var fallback
+
+gpg 移出 scoop（Wave 8）後 Windows `gopass show` 正常解密，**不再需要** registry 明文 key。
+wrapper 仍保留 `$env:ZAI_API_KEY` fallback，只在 vault 不可用（沒裝 gpg / CI 容器）時用得到——
+要設可以設，平常不必：
 
 ```powershell
-# 設 z.ai API key（落到 registry HKCU\Environment）
+# 選用：僅供無 gpg 環境 fallback
 [Environment]::SetEnvironmentVariable('ZAI_API_KEY', '<key>', 'User')
-
-# 對當前 session 也補吃一次（registry 寫了但 process 不會 reload）
-$env:ZAI_API_KEY = [Environment]::GetEnvironmentVariable('ZAI_API_KEY', 'User')
 ```
 
-之後新開的 PS 7 session 直接打 `claude-zai` 即可。
-
-### WSL bash（一次性 WSLENV 設定）
+`WSLENV=ZAI_API_KEY/u` 在 Phase 2 之後**不再需要**（WSL 走 `pass`，不靠 propagation），可以一併拆掉：
 
 ```powershell
-# Windows-side：把 ZAI_API_KEY 加進 WSLENV propagation list（保留現有 vars）
 $cur = [Environment]::GetEnvironmentVariable('WSLENV', 'User')
-if (-not ($cur -split ':' | Where-Object { $_ -match '^ZAI_API_KEY(/|$)' })) {
-    $new = if ($cur) { "${cur}:ZAI_API_KEY/u" } else { 'ZAI_API_KEY/u' }
-    [Environment]::SetEnvironmentVariable('WSLENV', $new, 'User')
-}
-
-# WSL 已跑著的 distro 不會 reload env，需重啟才生效
-wsl --terminate Ubuntu   # 收掉現有 session（zellij 等請先存好）
+$new = ($cur -split ':' | Where-Object { $_ -notmatch '^ZAI_API_KEY(/|$)' }) -join ':'
+[Environment]::SetEnvironmentVariable('WSLENV', $new, 'User')
+wsl --terminate Ubuntu   # 收掉現有 WSL session 讓新 env 生效
 ```
-
-之後新開的 WSL bash 直接打 `claude-zai` 即可。`$ZAI_API_KEY` 由 Windows kernel 自動 propagate，不需在 WSL 內再 export。
 
 ## 使用
 
-### Windows PS 7
-
-```powershell
-claude-zai                              # 用預設 model
-claude-zai -OpusModel 'GLM-4.6'         # 單次覆寫主推理 model
-claude-zai mcp list                      # CC 子命令照樣帶
-claude-zai --resume                      # CC flag 照樣帶
-```
-
-### WSL bash
+### Bash / Zsh (WSL / Linux / macOS / Git Bash)
 
 ```bash
 claude-zai                              # 預設 model
@@ -77,7 +86,18 @@ claude-zai mcp list                      # CC 子命令照樣帶
 claude-zai --resume                      # CC flag 照樣帶
 ```
 
-> Bash 用**行內 env var** 覆寫（`ZAI_OPUS_MODEL`、`ZAI_SONNET_MODEL`、`ZAI_HAIKU_MODEL`、`ZAI_TIMEOUT_MS`）而非命名參數，避免跟 `claude` 自己的 args 競爭 positional。PS 用 named params 是 PowerShell 慣例。兩邊功能對等。
+可覆寫 env var：`ZAI_OPUS_MODEL`、`ZAI_SONNET_MODEL`、`ZAI_HAIKU_MODEL`、`ZAI_TIMEOUT_MS`。
+
+### PowerShell 7（與 5）
+
+```powershell
+claude-zai                              # 預設 model
+claude-zai -OpusModel 'GLM-4.6'         # 單次覆寫
+claude-zai mcp list                      # CC 子命令照樣帶
+claude-zai --resume                      # CC flag 照樣帶
+```
+
+可覆寫 named param：`-OpusModel`、`-SonnetModel`、`-HaikuModel`、`-TimeoutMs`。
 
 ### 預設 model tier 對應
 
@@ -90,27 +110,26 @@ claude-zai --resume                      # CC flag 照樣帶
 三個 tier 指向**三個不同 model**，讓 CC 內 `/model opus|sonnet|haiku` 切換能真的換到不同 model
 （z.ai 官方推薦的 `GLM-4.7` 在 opus/sonnet 兩 tier 都用同一個，等於切了等於沒切）。
 
-### 可覆寫的參數
-
-| 參數 | 預設 |
-|------|------|
-| `-OpusModel` | `GLM-5.1` |
-| `-SonnetModel` | `GLM-5` |
-| `-HaikuModel` | `GLM-5-Turbo` |
-| `-TimeoutMs` | `3000000`（50 分鐘，z.ai 官方建議） |
-
-### Wrapper 內部會設的 env var（離開後還原）
+### Wrapper 內部會設的 env var
 
 | Env var | 值 |
 |---------|-----|
 | `ANTHROPIC_BASE_URL` | `https://api.z.ai/api/anthropic` |
-| `ANTHROPIC_AUTH_TOKEN` | `$env:ZAI_API_KEY` |
-| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `-OpusModel` |
-| `ANTHROPIC_DEFAULT_SONNET_MODEL` | `-SonnetModel` |
-| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `-HaikuModel` |
-| `API_TIMEOUT_MS` | `-TimeoutMs` |
+| `ANTHROPIC_AUTH_TOKEN` | vault 取出的 token（或 fallback 到 `$ZAI_API_KEY`） |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | `-OpusModel` / `$ZAI_OPUS_MODEL` |
+| `ANTHROPIC_DEFAULT_SONNET_MODEL` | `-SonnetModel` / `$ZAI_SONNET_MODEL` |
+| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | `-HaikuModel` / `$ZAI_HAIKU_MODEL` |
+| `API_TIMEOUT_MS` | `-TimeoutMs` / `$ZAI_TIMEOUT_MS`（預設 50 分鐘，z.ai 官方建議） |
 
-PowerShell 函式內動 `$env:` 會洩漏到 process scope（不像普通變數那樣 function-scoped），所以 wrapper 用 `try/finally` 把這 6 個 env var snapshot 後還原，確保**離開 `claude-zai` 就完全乾淨**。
+PowerShell 函式內動 `$env:` 會洩漏到 process scope（不像普通變數那樣 function-scoped），所以 PS wrapper 用 `try/finally` 把這 6 個 env var snapshot 後還原。Bash/zsh 的 `VAR=val cmd` 行內 env 語法天然只影響子進程，不需 snapshot。
+
+## Token resolution 優先順序（兩平台共通）
+
+1. **Vault**：`pass show z.ai/claude-code-token` (Unix) / `gopass show -o z.ai/claude-code-token` (Windows)
+2. **Env var fallback**：`$ZAI_API_KEY`
+3. 兩者皆無 → wrapper 報錯不執行
+
+正常情況跑 1（含 Windows，gpg 移出 scoop 後 vault 正常）；CI / 沒裝 gpg 的容器跑 2。
 
 ## 注意事項
 
@@ -120,94 +139,54 @@ PowerShell 函式內動 `$env:` 會洩漏到 process scope（不像普通變數�
 - **Statusline `cost` / `rate_limits` 欄位可能顯示異常**——CC 從 API response `usage` shape 解，z.ai 若不完全對齊會空值或誤算；`five_hour` / `seven_day` 是 Claude.ai 訂閱專屬，必定不會出現。
 - **Tool use / thinking blocks 相容性是常見踩雷點**——若出現「卡住但 process 還活著」或「tool call 跑一半斷掉」，多半是 z.ai 端 adapter 對 Anthropic streaming SSE event 順序或 thinking shape 不完全相容；拿同 prompt 跑純 `claude` 對照可確認。
 - **`/model` 在 z.ai 場景的意義**：只在你 wrapper 啟動時把 opus/sonnet/haiku 指向不同 z.ai model 時才有切換效果。三個 tier 都指同一個 model 時，`/model` 切等於沒切。
-- **API key 安全性**：HKCU\Environment 是**明文**（任何能讀使用者 registry 的程式都看得到）。測試階段可接受，長期建議 Phase 2 改 gopass。
+- **Windows gopass 解密（已修，2026-06-10）**：scoop gpg 2.5.20 的 `gpgconf.ctl` 把 GnuPG 鎖進 portable 模式（homedir 變空、GNUPGHOME 被忽略），`gopass show` 解不開 vault。Wave 8 把 gpg 移出 scoop（vanilla gnupg.org 裝到 `~/.local/opt/gnupg`，無 gpgconf.ctl）後 Windows 自動走 vault 模式，wrapper 完全不用改。完整失敗鏈見 memory `reference_corp_ssh_windows_askpass_chain.md`。
 
 ## 移除（回到動手前）
 
-### Windows PS 7
+```bash
+# 1. 從 vault 砍掉 entry
+pass rm z.ai/claude-code-token
+
+# 2. （所有共用該 vault 的 Windows store 也要刪）
+rm /mnt/c/Users/$USER/.password-store/z.ai/claude-code-token.gpg 2>/dev/null
+rmdir /mnt/c/Users/$USER/.password-store/z.ai 2>/dev/null
+```
 
 ```powershell
-Remove-Item "$env:USERPROFILE\Documents\PowerShell\profile.d\25-claude-zai.ps1"
+# 3. Windows registry 那把 fallback key
 [Environment]::SetEnvironmentVariable('ZAI_API_KEY', $null, 'User')
-Remove-Item C:\Users\user\claude-zai.ps1 -ErrorAction SilentlyContinue
 ```
 
-### WSL bash + WSLENV
+Wrapper 本身在 chezmoi source，整個 z.ai 嘗試結束後若要連 wrapper 也拿掉，刪掉這兩個檔案再 `chezmoi apply`：
 
-```bash
-# WSL 內砍掉 claude-zai function 段（保留 zellij 區塊）
-sed -i '/^# ── claude-zai:/,$d' ~/.bashrc.local
-```
+- `.chezmoitemplates/shell-common/base` 內 `claude-zai()` 那段
+- `Documents/exact__shared-profile.d/25-claude-zai.ps1`
 
-```powershell
-# Windows-side：從 WSLENV 拆掉 ZAI_API_KEY/u
-$cur = [Environment]::GetEnvironmentVariable('WSLENV', 'User')
-$new = ($cur -split ':' | Where-Object { $_ -notmatch '^ZAI_API_KEY(/|$)' }) -join ':'
-[Environment]::SetEnvironmentVariable('WSLENV', $new, 'User')
-```
+## 設計筆記
 
-清完，chezmoi source 完全沒被動過。
+### 為什麼 token 走 vault 而不是 env var
 
-## Phase 2 規劃（chezmoi + gopass）
+`HKCU\Environment` 跟 `~/.bashrc` 內的 export 都是**明文**，任何能讀使用者環境的程式都看得到。Vault 用 GPG 加密、gpg-agent 短期 unlock，passphrase-protected。重大下行：gpg-agent 沒 warm 時要打 passphrase（一次性），跨機器要先把 entry encrypt blob 複製過去。
 
-- Wrapper 進 `Documents/exact__shared-profile.d/`（與 `which`、`Edit-WTSettings` 等共用函式同住）
-- 函式內把 `$env:ZAI_API_KEY` 改成 `gopass show -o z.ai/claude-code-token`
-- 移除 registry 明文 key、改走 gopass 加密 + 跨機 sync
+### 為什麼 wrapper code 進 chezmoi 而不是 scratch
 
-不走 `~/.claude/settings.json` 的 `env` block（z.ai 官方文件建議路徑）的理由：
-1. 那是**全域**設定，每次跑 `claude` 都套用，沒辦法快速切回 Anthropic
-2. `settings.json` 已由 `modify_settings.json.sh.tmpl` 用 jq patch 管理，多寫 `env` block 會跟 chezmoi 流程打架
-3. Wrapper try/finally 保證「離開 z.ai = 真的離開」，settings.json env 沒這個保護
+四個 wrapper 變體（PS / WSL bash / macOS zsh / 純 Linux bash）若各自手寫，必養出 inconsistency。進 `shell-common/base` 後 Linux/WSL/macOS/Git Bash 一份 code 全部 fan-out；PS 一份 code 同時給 PS 5 與 PS 7（透過 `_shared-profile.d` loader）。
 
-## Phase 3a 設計筆記（WSL bash）
+### 為什麼 PS 用 named param、bash 用 env var 覆寫
 
-### 為什麼 bash 不需要 try/finally
+PowerShell 函式天生支援 named param（`[CmdletBinding()] param(...)`），符合 PS 慣例。Bash function 沒對應語法，行內 env (`VAR=val cmd`) 是 bash/zsh 慣用法且天然 process-scoped，沒洩漏問題。兩邊功能對等。
 
-PS 函式內動 `$env:` 會洩漏到 process scope（必須 snapshot+restore）；bash 的 `VAR=val cmd` 行內 env 語法**天然只影響子進程**，函式回來後 parent shell 完全乾淨。所以 bash wrapper 兩行就解決：
+### 為什麼不直接寫進 `~/.claude/settings.json` 的 `env` block
 
-```bash
-ANTHROPIC_BASE_URL='https://api.z.ai/api/anthropic' \
-... \
-claude "$@"
-```
+z.ai 官方文件建議走 settings.json env，但：
 
-### 為什麼放在 `~/.bashrc.local` 而非 chezmoi source
+1. 那是**全域**設定，每次跑 `claude` 都套用，沒辦法快速切回 Anthropic。
+2. `settings.json` 已由 `modify_settings.json.sh.tmpl` 用 jq patch 管理，多寫 `env` block 會跟 chezmoi 流程打架。
+3. Wrapper try/finally 保證「離開 z.ai = 真的離開」，settings.json env 沒這個保護。
 
-`bashrc/linux` 第 29 行明確標註：「各機器的本機客製內容放 `~/.bashrc.local`，這個檔不被 chezmoi 管」。完美符合「scratch + auto-load」需求：
+### 為什麼 `WSLENV` propagation 拆掉
 
-- 不在 chezmoi source → 不需 commit、易刪
-- 由 dotfiles 部署的 `.bashrc` 主動 source → 跟 Windows `profile.d/*.ps1` 對稱、auto-load
-
-### 為什麼用 `WSLENV` 而非 WSL 內各自 export
-
-`WSLENV=ZAI_API_KEY/u` 讓 Windows User env var 在 WSL 啟動時自動 inject。**單一 source of truth**——之後 rotate key 只動 Windows 那份，WSL 重啟自動同步。`/u` flag 限制單向（Windows→WSL），WSL 內若有同名 var 不會反向污染 Windows process。
-
-### 啟動 ordering 與 zellij 共存
-
-`.bashrc.local` 內順序：
-
-```
-1. zellij auto-attach 區塊（含 exec）
-2. claude-zai function 定義
-```
-
-- **本機 WSL bash**（無 `$SSH_CONNECTION`）：zellij 區塊跳過 → 繼續往下 → claude-zai 載入
-- **SSH 外層 bash**：被 `exec zellij` 取代，外層 shell 消失（claude-zai 沒載到也無所謂）
-- **zellij pane subshells**：重新 source `.bashrc` → `.bashrc.local`，`$ZELLIJ` 已設 → zellij 區塊跳過 → claude-zai 載入
-
-## Phase 3b 規劃（剩餘平台）
-
-### macOS（純 zsh）
-
-zsh 跟 bash 同樣支援 `VAR=val cmd` 行內 env 語法，wrapper 函式可直接搬用。但 macOS 沒有 `WSLENV` 概念——`ZAI_API_KEY` 要嘛從 macOS-side 自己設、要嘛走 Phase 2 的 gopass。
-
-### 純 Linux 機器（非 WSL）
-
-同 macOS——`ZAI_API_KEY` 從 Linux-side 自己設或走 gopass。函式定義位置可繼承 `.bashrc.local` pattern。
-
-### 跨平台統一進 chezmoi（合併 Phase 2）
-
-進 `.chezmoitemplates/shell-common/base` 後，**Linux/WSL/macOS/Git Bash 全部 fan-out**。要做的時候建議跟 token 改 gopass 一起做，一次反轉到位、不留中間狀態。
+Phase 3a 用 `WSLENV=ZAI_API_KEY/u` 讓 Windows env var 自動 inject 到 WSL，當時 WSL 沒裝 pass。Phase 2 後 WSL 走 vault，那條 propagation 失去意義——WSL 直接讀本地 vault，比 propagation 還省。Windows 端的 registry env var 仍保留當 fallback（直到 Windows gopass bug 修好）。
 
 ## 相關文件
 
