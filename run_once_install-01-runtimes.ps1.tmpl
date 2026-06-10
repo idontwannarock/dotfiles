@@ -32,18 +32,9 @@ function Install-ScoopPackageByPath {
 }
 
 # ── NVM + Node.js ────────────────────────────────────────────────────────
-Install-ScoopPackage "nvm"
-if (Get-Command "nvm" -ErrorAction SilentlyContinue) {
-    $nodeInstalled = $false
-    try { $null = nvm current 2>$null; $nodeInstalled = $true } catch {}
-    if (-not (Get-Command "node" -ErrorAction SilentlyContinue)) {
-        Write-Host "[node] Installing latest LTS via nvm..." -ForegroundColor Yellow
-        nvm install lts
-        nvm use lts
-    } else {
-        Write-Host "[node] already installed, skipping." -ForegroundColor Gray
-    }
-}
+# nvm-windows managed by .chezmoiexternal.toml (Wave 9 migration, 2026-06-10).
+# Env (NVM_HOME/NVM_SYMLINK), User PATH, settings.txt, and the Node LTS bootstrap
+# are handled by run_once_after_migrate-scoop-wave9-nvm.ps1.tmpl.
 
 # ── Vim ──────────────────────────────────────────────────────────────────
 Install-ScoopPackage "vim"

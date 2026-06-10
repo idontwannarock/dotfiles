@@ -1,0 +1,118 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_after_ script -- Wave 9 Scoop -> chezmoi-external migration (nvm-windows)
+#
+# Runs after .chezmoiexternal.toml extracts nvm-noinstall.zip into ~/.local/opt/nvm/.
+# All steps are idempotent (gated on desired-state). Steps:
+#   (1) scoop uninstall nvm -- also strips scoop's User NVM_HOME/NVM_SYMLINK env
+#       and the env_add_path PATH entries scoop's manifest registered.
+#   (2) Set User env NVM_HOME / NVM_SYMLINK to the new ~/.local/opt/nvm location.
+#   (3) Prepend NVM_HOME (for nvm.exe) and NVM_SYMLINK (for node/npm) to User PATH.
+#   (4) Write settings.txt (ASCII) so nvm installs Node into ~/.local/opt/nvm/nodejs.
+#   (5) Bootstrap latest LTS Node if no version is active yet.
+#
+# Off-scoop rationale + SSH-symlink safety: the scoop breakage was the shim
+# (CreateProcess fails under SSH ConPTY) plus the `current` JUNCTION (mklink /J)
+# whose Test-Path returns False under the SSH restricted token. nvm's own
+# NVM_SYMLINK is a directory SYMLINK (mklink /D), a different reparse type that
+# was verified to traverse fine under a real SSH session. Migrating removes the
+# shim entirely and the remaining symlink is SSH-safe.
+
+$ErrorActionPreference = "Continue"
+
+$nvmHome    = Join-Path $env:USERPROFILE ".local\opt\nvm"
+$nvmRoot    = Join-Path $nvmHome "nodejs"
+$nvmSymlink = Join-Path $nvmRoot "nodejs"
+$nvmExe     = Join-Path $nvmHome "nvm.exe"
+
+Write-Host "=== Wave 9: Scoop -> chezmoi-external migration (nvm) ===" -ForegroundColor Cyan
+
+# --- (0) Guard: external must have deployed nvm.exe first --------------------
+if (-not (Test-Path $nvmExe)) {
+    Write-Warning "[nvm] $nvmExe not found -- .chezmoiexternal.toml has not extracted nvm-noinstall.zip yet. Skipping; rerun 'chezmoi apply'."
+    return
+}
+
+# --- (1) Scoop uninstall ----------------------------------------------------
+if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
+    $installed = $false
+    try {
+        $listOutput = scoop list nvm 2>$null | Out-String
+        if ($listOutput -match "(?im)^\s*nvm\b") { $installed = $true }
+    } catch {}
+    if ($installed) {
+        Write-Host "[nvm] uninstalling from scoop..." -ForegroundColor Yellow
+        scoop uninstall nvm 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "[nvm] scoop uninstall returned non-zero exit; continuing."
+        }
+    } else {
+        Write-Host "[nvm] not installed via scoop, skipping uninstall." -ForegroundColor Gray
+    }
+} else {
+    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
+}
+
+# --- (2) User env NVM_HOME / NVM_SYMLINK ------------------------------------
+foreach ($pair in @(@("NVM_HOME", $nvmHome), @("NVM_SYMLINK", $nvmSymlink))) {
+    $name = $pair[0]
+    $want = $pair[1]
+    $cur  = [Environment]::GetEnvironmentVariable($name, "User")
+    if ($cur -ieq $want) {
+        Write-Host "[$name] already set, no change." -ForegroundColor Gray
+    } else {
+        [Environment]::SetEnvironmentVariable($name, $want, "User")
+        Write-Host "[$name] set -> $want" -ForegroundColor Yellow
+    }
+    # Also set in THIS process so the bootstrap below can invoke nvm.
+    Set-Item "env:$name" $want
+}
+
+# --- (3) User PATH: NVM_HOME (nvm.exe) + NVM_SYMLINK (node/npm) --------------
+$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+$entries  = if ($userPath) { @($userPath.Split(';') | Where-Object { $_ -ne '' }) } else { @() }
+$expanded = @($entries | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_).TrimEnd('\') })
+
+$pathChanged = $false
+foreach ($p in @($nvmHome, $nvmSymlink)) {
+    $pNorm = $p.TrimEnd('\')
+    if ($expanded -inotcontains $pNorm) {
+        $entries  = @($p) + $entries
+        $expanded = @($pNorm) + $expanded
+        $pathChanged = $true
+        Write-Host "[PATH] prepended $p" -ForegroundColor Yellow
+    }
+}
+if ($pathChanged) {
+    [Environment]::SetEnvironmentVariable("Path", ($entries -join ';'), "User")
+    Write-Warning "[PATH] User PATH updated -- restart your terminal/SSH session to pick it up."
+} else {
+    Write-Host "[PATH] NVM_HOME + NVM_SYMLINK already present, no change." -ForegroundColor Gray
+}
+# In-process PATH for the bootstrap below.
+$env:PATH = "$nvmHome;$nvmSymlink;$env:PATH"
+
+# --- (4) settings.txt -------------------------------------------------------
+# nvm-windows reads %NVM_HOME%\settings.txt; `root` decides where Node versions
+# install. ASCII encoding mirrors the scoop manifest's pre_install writer.
+$settings = Join-Path $nvmHome "settings.txt"
+if (-not (Test-Path $settings)) {
+    $content = "root: $nvmRoot`r`narch: 64`r`nproxy: none`r`n"
+    [System.IO.File]::WriteAllText($settings, $content, [System.Text.Encoding]::ASCII)
+    Write-Host "[settings.txt] written (root: $nvmRoot)" -ForegroundColor Yellow
+} else {
+    Write-Host "[settings.txt] already present, skipping." -ForegroundColor Gray
+}
+
+# --- (5) Bootstrap latest LTS Node ------------------------------------------
+# `nvm use` creates the active-version symlink via mklink, which triggers a UAC/
+# elevate prompt -- expected and interactive. Skipped entirely if a Node is active.
+if (Test-Path (Join-Path $nvmSymlink "node.exe")) {
+    Write-Host "[node] already active, skipping bootstrap." -ForegroundColor Gray
+} else {
+    Write-Host "[node] installing latest LTS via nvm (will prompt for elevation on 'use')..." -ForegroundColor Yellow
+    & $nvmExe install lts
+    & $nvmExe use lts
+}
+
+Write-Host "=== Wave 9 migration (nvm) complete. ===" -ForegroundColor Cyan
+{{ end -}}

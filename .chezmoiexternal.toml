@@ -224,4 +224,26 @@
     type = "archive"
     url = "https://github.com/vim/vim-win32-installer/releases/download/v{{ $vimVersion }}/gvim_{{ $vimVersion }}_x64.zip"
     stripComponents = 1
+
+# Scoop migration -- Wave 9 (2026-06-10)
+# nvm-windows (coreybutler/nvm-windows) from its GitHub Release nvm-noinstall.zip.
+# Like Wave 7 vim, nvm is a stateful app bundle, not a standalone binary: the zip
+# ships nvm.exe + elevate.cmd/.vbs, and at runtime nvm writes settings.txt and
+# installs Node versions into a `nodejs/` subdir with an active-version symlink
+# (`nodejs/nodejs`). We extract to ~/.local/opt/nvm, matching the gpg `~/.local/opt/`
+# app-bundle location (stateful) rather than ~/.local/bin (single binaries).
+#
+# `type = "archive"` WITHOUT `exact` is load-bearing: exact defaults to false, so
+# chezmoi only ensures the zip's files exist and NEVER prunes the settings.txt or
+# the installed Node versions that nvm writes inside this dir on every apply. The
+# zip extracts flat (nvm.exe at root), so no stripComponents.
+#
+# Env (NVM_HOME / NVM_SYMLINK), User PATH, settings.txt, and the Node bootstrap
+# are handled by run_once_after_migrate-scoop-wave9-nvm.ps1.tmpl, which runs after
+# this external deploys. Bump $nvmVersion + rerun `chezmoi apply` to upgrade.
+{{- $nvmVersion := "1.2.2" }}
+
+[".local/opt/nvm"]
+    type = "archive"
+    url = "https://github.com/coreybutler/nvm-windows/releases/download/{{ $nvmVersion }}/nvm-noinstall.zip"
 {{- end }}
