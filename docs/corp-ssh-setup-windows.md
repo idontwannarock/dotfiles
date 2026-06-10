@@ -26,13 +26,17 @@ After setup:
 | Dependency | Used for | Install |
 |---|---|---|
 | Win32-OpenSSH ≥ 9.0 | ssh.exe with SSH_ASKPASS support | Bundled with Windows 11 (Optional Feature) — verify `ssh -V` |
-| Scoop | Package management for `gpg`/`gopass` | https://scoop.sh |
-| `gpg` (Scoop) | GnuPG 2.x + `gpg-agent.exe` + `pinentry-basic.exe` | `scoop install gpg` |
-| `gopass` (Scoop) | `pass`-compatible native binary; built-in TOTP | `scoop install gopass` |
+| Git for Windows | Provides bash (chezmoi `sh`) and the GUI `pinentry-w32.exe` gpg-agent uses | Scoop or https://gitforwindows.org |
+| GnuPG (self-managed) | GnuPG 2.5.x suite under `~/.local/opt/gnupg`; homedir `~/.gnupg` | Auto, off Scoop — see below |
+| `gopass` (chezmoi-external) | `pass`-compatible native binary; built-in TOTP | Auto via `.chezmoiexternal.toml` |
 | PowerShell 7 (optional) | Faster cold-start for askpass helper (`pwsh.exe` ~80ms vs `powershell.exe` ~200ms) | `winget install Microsoft.PowerShell` |
 
-The `chezmoi apply` step (below) installs `gpg` + `gopass` automatically via
-the existing `run_once_install-cli-tools.ps1.tmpl`.
+The `chezmoi apply` step (below) provisions GnuPG and `gopass` automatically:
+GnuPG via `run_onchange_install-gnupg.ps1.tmpl` (vanilla gnupg.org installer to
+`~/.local/opt/gnupg`, **not** Scoop — Scoop's `gpgconf.ctl` forces portable mode
+and breaks decryption; see `run_once_after_migrate-scoop-wave8-gpg.ps1.tmpl`),
+and `gopass` from `.chezmoiexternal.toml`. The installer also sets User-level
+`GNUPGHOME=~/.gnupg` + PATH and writes `gpg-agent.conf` (8h TTL + GUI pinentry).
 
 ## Setup, Path A: Existing WSL deployment
 
@@ -75,17 +79,25 @@ gpg --edit-key <FPR>
 # save
 ```
 
-### A.3 Configure gpg-agent (8h cache TTL)
+### A.3 Configure gpg-agent (8h cache TTL + pinentry)
+
+`chezmoi apply` already wrote `~/.gnupg/gpg-agent.conf` (8h TTL + GUI
+`pinentry-w32.exe`) via `run_onchange_install-gnupg.ps1.tmpl`. The homedir is
+`~/.gnupg` (set by User `GNUPGHOME`), **not** `%APPDATA%\gnupg` — the self-hosted
+GnuPG honors `GNUPGHOME` because, unlike the Scoop build, it has no `gpgconf.ctl`
+portable marker. Verify:
 
 ```powershell
-$gnupgHome = Join-Path $env:APPDATA 'gnupg'
-New-Item -ItemType Directory -Path $gnupgHome -Force | Out-Null
-@'
-default-cache-ttl 28800
-max-cache-ttl 28800
-'@ | Set-Content -Path (Join-Path $gnupgHome 'gpg-agent.conf') -Encoding ascii
+gpgconf --list-dirs homedir      # expect C:\Users\<you>\.gnupg
+Get-Content ~\.gnupg\gpg-agent.conf
 gpg-connect-agent reloadagent /bye
 ```
+
+> A **console** pinentry (`pinentry-basic.exe`, all the gnupg.org installer
+> ships) is unreliable when the detached agent spawns it; the installer prefers
+> Git for Windows' GUI `pinentry-w32.exe`. If the agent's pinentry path points at
+> a missing binary you get `No pinentry` / `The system cannot find the path
+> specified.` — re-run `chezmoi apply` to rewrite the conf.
 
 ### A.4 Copy the vault from WSL
 

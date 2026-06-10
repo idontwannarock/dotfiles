@@ -11,6 +11,15 @@
 
 $ErrorActionPreference = 'Stop'
 
+# Self-contained: ssh.exe hands this helper a minimal environment (no profile,
+# possibly no PATH). gopass locates gpg via PATH, so ensure the self-managed
+# GnuPG (run_onchange_install-gnupg.ps1.tmpl) is discoverable and points at the
+# user keyring. Without this, corp-ssh breaks once the scoop gpg shim (which used
+# to be on PATH everywhere) is gone.
+$gpgBin = Join-Path $env:USERPROFILE '.local\opt\gnupg\bin'
+if (Test-Path -LiteralPath $gpgBin) { $env:Path = "$gpgBin;$env:Path" }
+if (-not $env:GNUPGHOME) { $env:GNUPGHOME = Join-Path $env:USERPROFILE '.gnupg' }
+
 $prompt    = if ($args.Count -ge 1) { $args[0] } else { '' }
 $hostsFile = Join-Path $env:USERPROFILE '.corp-ssh\hosts.yaml'
 

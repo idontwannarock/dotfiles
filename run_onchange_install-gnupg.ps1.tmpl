@@ -1,0 +1,94 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_onchange_ script -- GnuPG suite (Windows), self-managed off Scoop.
+#
+# WHY off Scoop: Scoop's gpg manifest drops an empty `bin\gpgconf.ctl` on every
+# install/update, forcing GnuPG into portable mode -> homedir becomes an empty
+# `scoop\apps\gpg\current\home` and GNUPGHOME is IGNORED. The corp-ssh keyring
+# lives in ~/.gnupg, so gpg can't decrypt -> corp-ssh-askpass breaks. The marker
+# returns on every `scoop update gpg`, so owning the install is the only durable
+# fix. The gnupg.org NSIS installer (which Scoop merely repackages) supports
+# silent install and does NOT create gpgconf.ctl, so vanilla gpg honors GNUPGHOME.
+#
+# run_onchange_: re-runs only when this file changes -> bump $gpgVersion/$gpgDate/
+# $gpgSha256 to upgrade. Scoop uninstall of the old gpg + stale-state cleanup lives
+# in run_once_after_migrate-scoop-wave8-gpg.ps1.tmpl (runs in a later phase).
+#
+# checkver: https://www.gnupg.org/download/index.html  regex gnupg-w32-([\d.]+)_(\d+)\.exe
+{{- /* pin: bump these three together (SHA-256 from gnupg.org integrity_check.html) */}}
+{{- $gpgVersion := "2.5.20" }}
+{{- $gpgDate    := "20260513" }}
+{{- $gpgSha256  := "CA26CD20602581B2CE05E95B16F6249F6FB6C4DCF32304165FC90519328D7981" }}
+
+$ErrorActionPreference = "Stop"
+$ver    = "{{ $gpgVersion }}"
+$date   = "{{ $gpgDate }}"
+$sha256 = "{{ $gpgSha256 }}"
+$optDir = Join-Path $env:USERPROFILE ".local\opt\gnupg"
+$gpgExe = Join-Path $optDir "bin\gpg.exe"
+
+# NSIS /D= takes the literal command-line tail and rejects quotes, so the target
+# must not contain spaces. Fail loud rather than mis-install to a truncated path.
+if ($optDir -match '\s') { throw "GnuPG target path contains whitespace ('$optDir'); NSIS /D= cannot handle it -- use the 7z-extract path instead." }
+
+Write-Host "=== GnuPG (self-managed) ===" -ForegroundColor Cyan
+
+# 1. Install vanilla GnuPG (idempotent on pinned version).
+$haveVer = if (Test-Path $gpgExe) { (& $gpgExe --version 2>$null | Select-Object -First 1) } else { "" }
+if ($haveVer -match ("\b" + [regex]::Escape($ver) + "\b")) {
+    Write-Host "[gnupg] $ver already installed at $optDir, skipping." -ForegroundColor Gray
+} else {
+    $url = "https://www.gnupg.org/ftp/gcrypt/binary/gnupg-w32-${ver}_${date}.exe"
+    $dl  = Join-Path $env:TEMP "gnupg-w32-${ver}_${date}.exe"
+    Write-Host "[gnupg] downloading $url" -ForegroundColor Yellow
+    Invoke-WebRequest -Uri $url -OutFile $dl -UseBasicParsing
+    $got = (Get-FileHash -Algorithm SHA256 $dl).Hash
+    if ($got -ne $sha256) { throw "gnupg SHA256 mismatch: got $got expected $sha256" }
+    # NSIS silent install into an independent folder. /D must be last and unquoted
+    # (no spaces in the target). This installer does NOT create gpgconf.ctl.
+    Write-Host "[gnupg] installing to $optDir" -ForegroundColor Yellow
+    $p = Start-Process -FilePath $dl -ArgumentList "/S","/D=$optDir" -Wait -PassThru
+    if ($p.ExitCode -ne 0) { throw "gnupg installer exited $($p.ExitCode)" }
+    if (Test-Path (Join-Path $optDir "bin\gpgconf.ctl")) {
+        throw "unexpected gpgconf.ctl present after vanilla install"
+    }
+    Remove-Item $dl -ErrorAction SilentlyContinue
+}
+
+# 2. Point gpg at the user keyring (~/.gnupg). Set at USER scope, not a profile.d
+#    fragment, because corp-ssh-askpass.cmd runs `pwsh -NoProfile` -- a per-session
+#    fragment would not reach the askpass subprocess that ssh.exe spawns.
+$gnupgHome = Join-Path $env:USERPROFILE ".gnupg"
+if ([Environment]::GetEnvironmentVariable('GNUPGHOME','User') -ne $gnupgHome) {
+    [Environment]::SetEnvironmentVariable('GNUPGHOME', $gnupgHome, 'User')
+    Write-Host "[gnupg] set User GNUPGHOME=$gnupgHome" -ForegroundColor Yellow
+}
+$bin = Join-Path $optDir "bin"
+$userPath = [Environment]::GetEnvironmentVariable('Path','User')
+if (($userPath -split ';') -notcontains $bin) {
+    [Environment]::SetEnvironmentVariable('Path', "$bin;$userPath", 'User')
+    Write-Host "[gnupg] prepended $bin to User PATH" -ForegroundColor Yellow
+}
+
+# 3. gpg-agent.conf: cache TTL + a pinentry the detached agent can launch.
+#    GnuPG's simple installer ships only console pinentry-basic.exe, which is
+#    unreliable when gpg-agent (detached) spawns it; Git for Windows bundles the
+#    GUI pinentry-w32.exe, which always works. Fall back to pinentry-basic.
+New-Item -ItemType Directory -Force $gnupgHome | Out-Null
+$pinentryW32 = Join-Path $env:USERPROFILE "scoop\apps\git\current\usr\bin\pinentry-w32.exe"
+$pinentry = if (Test-Path $pinentryW32) { $pinentryW32 } else { Join-Path $bin "pinentry-basic.exe" }
+$conf = @(
+    "default-cache-ttl 28800"
+    "max-cache-ttl 28800"
+    "pinentry-program $($pinentry -replace '\\','/')"
+)
+$confPath = Join-Path $gnupgHome "gpg-agent.conf"
+$existing = if (Test-Path $confPath) { (Get-Content $confPath) -join "`n" } else { "" }
+if ($existing -ne ($conf -join "`n")) {
+    Set-Content -Path $confPath -Value $conf -Encoding ascii
+    Write-Host "[gnupg] wrote gpg-agent.conf (pinentry: $pinentry)" -ForegroundColor Yellow
+    # Reload so the running agent picks up the new conf/binary on next use.
+    & (Join-Path $bin "gpgconf.exe") --kill gpg-agent 2>$null
+}
+
+Write-Host "=== GnuPG ready. New shells get gpg from $bin + GNUPGHOME=$gnupgHome. ===" -ForegroundColor Cyan
+{{ end -}}

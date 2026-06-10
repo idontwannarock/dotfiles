@@ -89,10 +89,11 @@ Install-ScoopPackage "7z" "7zip"
 # scoop uninstall on existing machines (winget + winget-ps).
 
 # ── GPG + password store for corp-ssh-askpass (Phase 2) ─────────────────
-# gpg suite stays on scoop: multi-binary suite (gpg + gpg-agent + gpgconf +
-# pinentry + DLLs) with installer side-effects (gpgconf.ctl, gpg2.exe alias,
-# $persist_dir/home relocation). Upstream is gnupg.org NSIS .exe, not GitHub.
-Install-ScoopPackage "gpg"
+# gpg moved OFF scoop in Wave 8 (2026-06-10): scoop's manifest dropped an empty
+# bin\gpgconf.ctl that forced GnuPG into portable mode (empty homedir, GNUPGHOME
+# ignored), breaking corp-ssh decryption on every `scoop update gpg`. Now self-
+# managed via run_onchange_install-gnupg.ps1.tmpl (vanilla gnupg.org installer,
+# no gpgconf.ctl), with scoop uninstall in run_once_after_migrate-scoop-wave8-gpg.
 # gopass moved to .chezmoiexternal.toml in Wave 3 (2026-05-20).
 
 Write-Host "=== CLI tools setup complete. ===" -ForegroundColor Cyan
