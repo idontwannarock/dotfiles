@@ -8,3 +8,25 @@
 # Stale/unused machine-local docs, never re-deployed
 .claude/reference.md
 .claude/worklog-config.md
+
+# Skills demoted to commands (source removed in 7a555e8 / cb28647 / 852cd89);
+# the deployed skill dirs lingered because .chezmoiremove did not exist yet.
+.claude/skills/handoff
+.claude/skills/git-amend
+.claude/skills/git-commit
+.claude/skills/git-push
+.claude/skills/git-sync
+.claude/skills/review-codex
+.claude/skills/review-comprehensive
+.claude/skills/review-linus
+.claude/skills/review-surgical
+.claude/skills/review-uncommitted
+.claude/skills/worklog-daily
+.claude/skills/worklog-team-status
+
+# Same migration on the Codex side — orphaned skill dirs
+.codex/skills/git-amend
+.codex/skills/git-commit
+.codex/skills/git-push
+.codex/skills/git-sync
+.codex/skills/review-codex
