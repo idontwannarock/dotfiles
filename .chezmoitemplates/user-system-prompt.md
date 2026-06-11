@@ -103,7 +103,12 @@ out-of-repo, mirroring the same substructure, under:
     ~/.local/share/superpowers/<repo>/specs/YYYY-MM-DD-<topic>-design.md
     ~/.local/share/superpowers/<repo>/plans/YYYY-MM-DD-<feature-name>.md
 {{ end }}
-- `<repo>` = basename of `git rev-parse --show-toplevel` (fallback: current dir name).
+- `<repo>` = basename of the directory holding the git *common* dir — i.e.
+  `basename` of `dirname` of the absolute `git rev-parse --git-common-dir`. This
+  pins every worktree of one project to a single home: a plain repo resolves to
+  its own dir, a linked worktree to the main repo's dir, and a bare + worktree
+  layout (a `.bare/` beside sibling worktrees) to the container dir. Fallback:
+  current dir name when not in a git repo.
 - Transient working artifacts for cross-session / cross-agent reference — not
   Claude-specific, so they live in the shared data dir, not `~/.claude/`.
 - The skill's "commit to git" step is a harmless no-op (the file is outside the repo).

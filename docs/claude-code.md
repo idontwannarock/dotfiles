@@ -40,7 +40,10 @@ repo 的 `docs/superpowers/{specs,plans}/`，會污染 repo 且與 OpenSpec 的
 ~/.local/share/superpowers/<repo>/plans/YYYY-MM-DD-<feature-name>.md
 ```
 
-- `<repo>` = `git rev-parse --show-toplevel` 的 basename。
+- `<repo>` = 含 git *common* dir 之目錄的 basename（`git rev-parse --git-common-dir`
+  解析為絕對路徑後取 `dirname` 再 `basename`）；如此同一專案的所有 worktree 共用
+  一個落點——plain repo 取自身目錄、linked worktree 取主 repo 目錄、bare + worktree
+  佈局（`.bare/` 與並排 worktree）取容器目錄。非 git repo 則 fallback 當前目錄名。
 - 工具中立（放共用 data 區，非 `~/.claude/`）、跨 session/agent 可參考；因在 repo
   外，skill 的 commit 步驟自動空轉。
 - 機制是踩 `brainstorming`／`writing-plans` SKILL.md 既有的「使用者偏好覆寫位置」鉤子，未 fork plugin。
