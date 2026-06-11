@@ -1,0 +1,21 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_onchange_ — point git at the global hooks dispatcher so local-files
+# restore (and repo-local hook chaining) applies to every repo. Idempotent;
+# never clobbers an existing non-target value.
+set -eu
+
+target="{{ .chezmoi.homeDir }}/.config/git/hooks"
+current=$(git config --global --get core.hooksPath || true)
+
+if [ "$current" = "$target" ]; then
+    exit 0
+elif [ -n "$current" ]; then
+    echo "core.hooksPath already set to '$current' (not '$target'); leaving as-is." >&2
+    echo "To enable global local-files restore, set it to '$target' manually." >&2
+    exit 0
+fi
+
+git config --global core.hooksPath "$target"
+echo "Set global core.hooksPath -> $target"
+{{ end -}}
