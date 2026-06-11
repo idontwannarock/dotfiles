@@ -91,6 +91,25 @@ sibling worktree dirs, read `~/.agent/reference/bare-worktree/index.md` and
 follow it (branch creation, never `git switch` in-place, never operate at the
 container level, per-repo memory/worktree settings).
 
+## 8. Superpowers design / plan documents
+
+When a superpowers skill would write under `docs/superpowers/` — `brainstorming`
+→ `specs/`, `writing-plans` → `plans/` — do NOT write inside the repository. Write
+out-of-repo, mirroring the same substructure, under:
+{{ if eq .chezmoi.os "windows" }}
+    %LOCALAPPDATA%\superpowers\<repo>\specs\YYYY-MM-DD-<topic>-design.md
+    %LOCALAPPDATA%\superpowers\<repo>\plans\YYYY-MM-DD-<feature-name>.md
+{{ else }}
+    ~/.local/share/superpowers/<repo>/specs/YYYY-MM-DD-<topic>-design.md
+    ~/.local/share/superpowers/<repo>/plans/YYYY-MM-DD-<feature-name>.md
+{{ end }}
+- `<repo>` = basename of `git rev-parse --show-toplevel` (fallback: current dir name).
+- Transient working artifacts for cross-session / cross-agent reference — not
+  Claude-specific, so they live in the shared data dir, not `~/.claude/`.
+- The skill's "commit to git" step is a harmless no-op (the file is outside the repo).
+- If the work becomes an OpenSpec change, the durable home is
+  `openspec/changes/<change>/design.md` (and its `tasks.md`); the note may be discarded.
+
 ---
 
 **Worklog repo:** `idontwannarock/worklogs`

@@ -29,6 +29,23 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 
 瑣碎任務（改 typo、一行修改）會自動跳過詢問。
 
+### Superpowers 設計／計畫文件位置
+
+Superpowers 的 `brainstorming`／`writing-plans` 預設會把 design／plan 文件寫進
+repo 的 `docs/superpowers/{specs,plans}/`，會污染 repo 且與 OpenSpec 的
+`design.md`／`tasks.md` 重複。全域 CLAUDE.md（section 8）改寫其落點到 repo 外：
+
+```
+~/.local/share/superpowers/<repo>/specs/YYYY-MM-DD-<topic>-design.md
+~/.local/share/superpowers/<repo>/plans/YYYY-MM-DD-<feature-name>.md
+```
+
+- `<repo>` = `git rev-parse --show-toplevel` 的 basename。
+- 工具中立（放共用 data 區，非 `~/.claude/`）、跨 session/agent 可參考；因在 repo
+  外，skill 的 commit 步驟自動空轉。
+- 機制是踩 `brainstorming`／`writing-plans` SKILL.md 既有的「使用者偏好覆寫位置」鉤子，未 fork plugin。
+- 變成 OpenSpec change 後，永久版在 `openspec/changes/<change>/design.md`（+ `tasks.md`）。
+
 ### 前置需求
 
 - **superpowers** plugin — 提供 brainstorming 等技能

@@ -72,9 +72,11 @@ OpenSpec uses skill-based delivery — invoke by skill name, not slash commands.
 
 ```
 ~/.claude/skills/dev-workflow/scripts/ensure-openspec.sh
-→ superpowers:brainstorming   (design stays in conversation; do NOT write to docs/superpowers/specs/)
-→ openspec-propose            (formal spec goes into openspec/)
-→ superpowers:writing-plans → openspec-apply-change
+→ superpowers:brainstorming   (design → ~/.local/share/superpowers/<repo>/specs/, NOT docs/)
+→ openspec-propose            (proposal + design.md + tasks.md into openspec/)
+→ [superpowers:writing-plans — only if implementation needs choreography beyond
+   tasks.md (multi-session, executing-plans/subagent handoff); else tasks.md IS the plan]
+→ openspec-apply-change
 → superpowers:verification-before-completion → openspec validate → openspec-archive-change
 → git:commit → code:review-full
 → Fixes needed? → Confirm scope, start a new change round
