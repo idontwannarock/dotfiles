@@ -1,0 +1,62 @@
+#!/bin/sh
+# claude-memory-seed — seed Claude Code's autoMemoryDirectory for bare+worktree
+# repos so every worktree of a repo shares one auto-memory home
+# (~/.claude/memory/<repo-name>) instead of the default per-cwd-slug path.
+#
+# Idempotent and self-gating: applies ONLY to bare+worktree layouts (git
+# common-dir basename == .bare) and only when the worktree's
+# .claude/settings.local.json has no autoMemoryDirectory yet. A normal repo,
+# a non-git cwd, an already-set value, or a missing jq all no-op silently.
+#
+# Called from two triggers that share this single source of truth:
+#   - Claude SessionStart hook  (covers pre-existing worktrees, no git event)
+#   - global post-checkout hook (covers new worktrees at `worktree add`/checkout)
+#
+# usage: claude-memory-seed {apply | where}
+set -eu
+
+common=$(git rev-parse --git-common-dir 2>/dev/null) || common=""
+toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || toplevel=""
+
+# Absolute, symlink-resolved common-dir (handles relative ".git"/".bare").
+common_abs() {
+    [ -n "$common" ] || return 1
+    CDPATH= cd -- "$common" 2>/dev/null && pwd -P
+}
+
+# Bare+worktree iff the common-dir is a ".bare" directory. <repo-name> is the
+# container that holds it — basename(dirname(realpath(common-dir))) — stable
+# across every worktree of the repo (same derivation as `localfiles` repo-id).
+target_dir() {
+    rp=$(common_abs) || return 1
+    [ "$(basename "$rp")" = ".bare" ] || return 1
+    printf '~/.claude/memory/%s' "$(basename "$(dirname "$rp")")"
+}
+
+do_apply() {
+    dir=$(target_dir) || return 0            # not bare+worktree: no-op
+    [ -n "$toplevel" ] || return 0
+    command -v jq >/dev/null 2>&1 || return 0 # no jq: no-op, never block caller
+
+    settings="$toplevel/.claude/settings.local.json"
+    if [ -f "$settings" ]; then
+        existing=$(jq -r '.autoMemoryDirectory // ""' "$settings" 2>/dev/null) || existing=""
+        [ -n "$existing" ] && return 0       # already set: never overwrite
+        input=$(cat "$settings")
+    else
+        input='{}'
+    fi
+    [ -n "$input" ] || input='{}'
+
+    mkdir -p "$toplevel/.claude"
+    printf '%s' "$input" | jq --arg d "$dir" '.autoMemoryDirectory = $d' \
+        | tr -d '\r' >"$settings"
+    printf 'claude-memory-seed: set autoMemoryDirectory=%s\n' "$dir" >&2
+}
+
+cmd=${1:-apply}
+case "$cmd" in
+    apply) do_apply ;;
+    where) target_dir || true; echo ;;
+    *)     echo "usage: claude-memory-seed {apply | where}" >&2; exit 1 ;;
+esac

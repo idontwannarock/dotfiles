@@ -8,9 +8,16 @@ your tool needs equivalent handling). For the tool-agnostic git mechanics see
 ## Claude state across worktrees
 
 - **Auto-memory:** shared via `autoMemoryDirectory` in each worktree's
-  `.claude/settings.local.json`. This explicit override is deliberate —
-  native worktree memory resolution has changed between releases, so don't
-  rely on it. A repo `post-checkout` hook seeds this file on new worktrees.
+  `.claude/settings.local.json` (→ `~/.claude/memory/<repo-name>`). This
+  explicit override is deliberate — native worktree memory resolution has
+  changed between releases, so don't rely on it. Seeding is automatic and
+  centralized: the `claude-memory-seed` helper (`~/.local/bin`) writes this
+  key when missing, fired from two triggers — Claude's SessionStart hook
+  (covers pre-existing worktrees, no git event needed) and the global
+  `post-checkout` dispatcher (covers new worktrees at `worktree add`). It
+  only acts on bare+worktree layouts and never overwrites an existing value,
+  so it's safe to leave on. Only `autoMemoryDirectory` is auto-seeded;
+  `worktree.baseRef` below stays a manual setting.
 - **Transcripts / `--resume`:** recent Claude Code resumes sessions across
   worktrees of the same repo (switches cwd back). The bare layout (no main
   checkout) is an edge case — verify once per machine.
