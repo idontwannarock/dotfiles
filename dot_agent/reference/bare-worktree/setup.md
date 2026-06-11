@@ -9,9 +9,14 @@ machine or by converting an existing flat repo. For daily-use rules see
 ```bash
 mkdir <repo> && cd <repo>
 git clone --bare <url> .bare
-git --git-dir=.bare config core.hooksPath .githooks
 git --git-dir=.bare worktree add main main      # fires post-checkout hook
 ```
+
+Don't set a per-repo `core.hooksPath` — hooks come from the machine-global
+`core.hooksPath` dispatcher, which runs local-files restore and then chains
+the repo's tracked `.githooks/post-checkout`. A per-repo `core.hooksPath`
+overrides the global one and bypasses local-files restore. See
+`../local-files/setup.md` (and its migration note for existing bare repos).
 
 ## Converting an existing flat repo (local, no remote)
 

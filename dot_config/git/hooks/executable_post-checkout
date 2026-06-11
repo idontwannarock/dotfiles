@@ -1,0 +1,19 @@
+#!/bin/sh
+# Global post-checkout dispatcher, installed via `git config --global
+# core.hooksPath ~/.config/git/hooks`. Because a global hooksPath replaces
+# per-repo .git/hooks entirely, this dispatcher must (1) run local-files
+# restore and (2) chain any repo-local hooks itself, or it would silently
+# swallow them. realpath comparison guards against invoking itself.
+
+command -v localfiles >/dev/null 2>&1 && localfiles restore || true
+
+self=$(realpath "$0" 2>/dev/null || echo "$0")
+top=$(git rev-parse --show-toplevel 2>/dev/null || true)
+common=$(git rev-parse --git-common-dir 2>/dev/null || true)
+
+for h in ${top:+"$top/.githooks/post-checkout"} ${common:+"$common/hooks/post-checkout"}; do
+    [ -x "$h" ] || continue
+    rh=$(realpath "$h" 2>/dev/null || echo "$h")
+    [ "$rh" = "$self" ] && continue
+    "$h" "$@"
+done

@@ -1,0 +1,75 @@
+#!/bin/sh
+# localfiles — sync gitignored local files (.env*) to a per-repo global store
+# so they survive branch / worktree switches.
+#
+# store layout:
+#   ${XDG_STATE_HOME:-~/.local/state}/localfiles/<repo-id>/{_default,<branch>}/
+# authority: global store = durable backup; the in-folder copy is the working
+# source. restore only fills a MISSING file; backup is explicit.
+#
+# usage: localfiles {restore | backup [--branch] | where}
+set -eu
+
+warn() { printf 'localfiles: %s\n' "$*" >&2; }
+die()  { warn "$*"; exit 1; }
+
+toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || toplevel=""
+common=$(git rev-parse --git-common-dir 2>/dev/null) || common=""
+
+# repo-id = basename(dirname(realpath(git-common-dir))) — stable across all
+# branches/worktrees of a repo (incl. bare+worktree: yields the container name).
+repo_id() {
+    rp=$(CDPATH= cd -- "$common" 2>/dev/null && pwd -P) || die "cannot resolve git dir"
+    basename "$(dirname "$rp")"
+}
+
+branch_name() {
+    b=$(git symbolic-ref --short -q HEAD 2>/dev/null) || b=""
+    [ -n "$b" ] && printf '%s' "$b" || printf '_default'
+}
+
+store_root() {
+    printf '%s/localfiles/%s' "${XDG_STATE_HOME:-$HOME/.local/state}" "$(repo_id)"
+}
+
+do_restore() {
+    [ -n "$toplevel" ] || return 0          # not a git repo: silently no-op
+    sr=$(store_root)
+    bucket="$sr/$(branch_name)"
+    [ -d "$bucket" ] || bucket="$sr/_default"
+    [ -d "$bucket" ] || return 0            # nothing stored yet
+    # find (not a glob) so dot-leading names like .env are enumerated
+    find "$bucket" -maxdepth 1 -type f 2>/dev/null | while IFS= read -r src; do
+        name=$(basename "$src")
+        dst="$toplevel/$name"
+        [ -e "$dst" ] && continue          # in-folder is source: never overwrite
+        cp -p "$src" "$dst"
+        warn "restored $name (${bucket##*/} bucket)"
+    done
+}
+
+do_backup() {
+    [ -n "$toplevel" ] || die "not inside a git repository"
+    sr=$(store_root)
+    if [ "${use_branch:-0}" = 1 ]; then bucket="$sr/$(branch_name)"; else bucket="$sr/_default"; fi
+    mkdir -p "$bucket"
+    n=0
+    for f in "$toplevel"/.env "$toplevel"/.env.local "$toplevel"/.env.*.local; do
+        [ -f "$f" ] || continue            # unmatched glob stays literal: skipped
+        cp -p "$f" "$bucket/$(basename "$f")"
+        n=$((n + 1))
+    done
+    warn "backed up $n file(s) to $bucket"
+}
+
+cmd=${1:-}
+[ $# -gt 0 ] && shift
+use_branch=0
+for a in "$@"; do [ "$a" = "--branch" ] && use_branch=1; done
+
+case "$cmd" in
+    restore) do_restore ;;
+    backup)  do_backup ;;
+    where)   [ -n "$toplevel" ] || die "not inside a git repository"; store_root; echo ;;
+    *)       die "usage: localfiles {restore | backup [--branch] | where}" ;;
+esac

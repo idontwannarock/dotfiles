@@ -14,9 +14,12 @@ your tool needs equivalent handling). For the tool-agnostic git mechanics see
 - **Transcripts / `--resume`:** recent Claude Code resumes sessions across
   worktrees of the same repo (switches cwd back). The bare layout (no main
   checkout) is an edge case — verify once per machine.
-- **`.env` is the one thing a new worktree can't auto-figure-out** (secrets,
-  gitignored, no discoverable source). Everything else — `uv sync`, codegraph
-  indexing — can be done on the fly. Proactively flag a missing `.env`.
+- **`.env` and other gitignored local files** are filled into a fresh worktree
+  by the local-files restore mechanism (global `post-checkout` dispatcher) when
+  a copy exists in the global store — see `../local-files/index.md`. Everything
+  else — `uv sync`, codegraph indexing — can be done on the fly. Only flag a
+  missing `.env` when the global store has no copy either (run `localfiles
+  backup` once in a worktree that has it to seed the store).
 
 ## Settings to set per repo (not globally)
 
