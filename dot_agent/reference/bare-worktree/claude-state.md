@@ -7,17 +7,30 @@ your tool needs equivalent handling). For the tool-agnostic git mechanics see
 
 ## Claude state across worktrees
 
-- **Auto-memory:** shared via `autoMemoryDirectory` in each worktree's
-  `.claude/settings.local.json` (→ `~/.claude/memory/<repo-name>`). This
+- **Auto-memory:** every git repo's auto-memory is consolidated at
+  `~/.claude/memory/<id>`, where `<id>` is the repo's **canonical-root path**
+  slugified (`/`→`-`) — the main checkout for a normal repo, the container for
+  a bare+worktree layout. Anchoring on `dirname(git-common-dir)` makes `<id>`
+  identical for all worktrees of a repo (so they share one memory home) and
+  unique across repos (full path, no folder-name clash). Set via
+  `autoMemoryDirectory` in the worktree's `.claude/settings.local.json`; this
   explicit override is deliberate — native worktree memory resolution has
-  changed between releases, so don't rely on it. Seeding is automatic and
-  centralized: the `claude-memory-seed` helper (`~/.local/bin`) writes this
-  key when missing, fired from two triggers — Claude's SessionStart hook
-  (covers pre-existing worktrees, no git event needed) and the global
-  `post-checkout` dispatcher (covers new worktrees at `worktree add`). It
-  only acts on bare+worktree layouts and never overwrites an existing value,
-  so it's safe to leave on. Only `autoMemoryDirectory` is auto-seeded;
-  `worktree.baseRef` below stays a manual setting.
+  changed between releases. Seeding **and migration** are automatic and
+  centralized: the `claude-memory-seed` helper (`~/.local/bin`) writes the key
+  and, on first run, moves any existing memory (old basename dir, then Claude's
+  default `projects/<id>/memory`) into the new home — transcripts stay put.
+  Fired from two triggers: Claude's SessionStart hook (covers pre-existing
+  repos, no git event needed) and the global `post-checkout` dispatcher (new
+  worktrees at `worktree add`). It never overwrites a value pointing outside the
+  managed roots (`~/.claude/memory`, `~/.claude/projects`), so it's safe to
+  leave on. Only `autoMemoryDirectory` is auto-seeded; `worktree.baseRef` below
+  stays a manual setting.
+- **Cross-tool note:** this is Claude-only. Codex and other agents use
+  incompatible, non-relocatable memory stores — Codex keeps a global
+  `~/.codex/memories/` (markdown + SQLite state) with no per-project
+  memory-directory setting (only `CODEX_HOME` moves the whole home). So memory
+  can't be shared into a common tool-neutral `~/.agent` location today; that's
+  why this lives under Claude's own `~/.claude/memory/`.
 - **Transcripts / `--resume`:** recent Claude Code resumes sessions across
   worktrees of the same repo (switches cwd back). The bare layout (no main
   checkout) is an edge case — verify once per machine.
@@ -30,13 +43,14 @@ your tool needs equivalent handling). For the tool-agnostic git mechanics see
 
 ## Settings to set per repo (not globally)
 
-Put these in the repo's `.claude/settings.local.json` so they scope to this
-repo only and don't change behavior in non-bare repos:
+`autoMemoryDirectory` is now **auto-seeded** by `claude-memory-seed` (above), so
+you rarely set it by hand. `worktree.baseRef` is still manual — put it in the
+repo's `.claude/settings.local.json`:
 
 ```jsonc
 {
-  "autoMemoryDirectory": "~/.claude/memory/<repo-name>",
-  "worktree": { "baseRef": "head" }
+  "autoMemoryDirectory": "~/.claude/memory/<id>",   // auto-seeded; <id> = canonical-root path slug
+  "worktree": { "baseRef": "head" }                 // manual
 }
 ```
 
@@ -55,14 +69,15 @@ path) assumes a normal checkout and is **wrong for a bare+worktree repo** —
 `~/.claude/projects/<slug>/memory` path does not exist. Set the row by hand:
 
 - **Project Memory Path** = the `autoMemoryDirectory` from this repo's
-  `.claude/settings.local.json` (`~/.claude/memory/<repo-name>`). Migration
-  consolidates both auto-memory (`MEMORY.md` + fact files) and workflow
-  tracking (`active_workflows.md`) there. Don't use the cwd-slug
-  `projects/<slug>/memory` path — it isn't created under this layout.
+  `.claude/settings.local.json` (`~/.claude/memory/<id>`, auto-seeded). Both
+  auto-memory (`MEMORY.md` + fact files) and workflow tracking
+  (`active_workflows.md`) live there. Don't use the cwd-slug
+  `projects/<slug>/memory` path — auto-memory is migrated out of it into
+  `~/.claude/memory/<id>`.
 - **Main Repo Path** = the `main/` worktree (`<repo>/main`), never the parent
   container (which holds only `.bare/` and must never be operated at).
 
-`active_workflows.md` therefore lives in `~/.claude/memory/<repo-name>/`
+`active_workflows.md` therefore lives in `~/.claude/memory/<id>/`
 alongside the auto-memory facts. It's workflow state, not a remembered fact,
 so it is **not** indexed in `MEMORY.md`.
 
@@ -71,19 +86,19 @@ so it is **not** indexed in `MEMORY.md`.
 When converting an existing flat repo (see `setup.md`), migrate Claude's
 state too. This is the easy thing to get wrong:
 
-- **Memory → `autoMemoryDirectory`** (`~/.claude/memory/<repo-name>`), *not* the
-  cwd-slug `projects/<slug>/memory`. This is the target **even though the global
-  CLAUDE.md default writes memory to `projects/<slug>/memory`** — the repo's
-  `settings.local.json` override wins, so migrate to (and thereafter write to)
-  the override location. The source projects-slug memory is often **empty**, so
-  "nothing to copy" ≠ "nothing to do": still establish autoMemoryDirectory as the
-  home and scaffold `MEMORY.md` (+ move/write fact files) there.
+- **Memory → `autoMemoryDirectory`** (`~/.claude/memory/<id>`) is handled
+  **automatically** by `claude-memory-seed` on the next session/checkout (it
+  moves `projects/<id>/memory` into `~/.claude/memory/<id>`). You only do it by
+  hand if seeding is somehow disabled — and even then the source projects-slug
+  memory is often **empty**, so "nothing to copy" ≠ "nothing to do": still
+  scaffold `MEMORY.md` (+ fact files) at the new home.
 - **Transcripts → new cwd-slug projects dir** (`~/.claude/projects/<new-slug>/`),
   where `<new-slug>` = the `main/` worktree path with `/`→`-`. Copy the `*.jsonl`
-  so `--resume`/`--continue` work at the new location.
+  so `--resume`/`--continue` work at the new location. Transcripts are **not**
+  moved by the seeder — only `memory/` is.
 
 Memory and transcripts therefore live under **separate roots by design**
-(`~/.claude/memory/<repo>` vs `~/.claude/projects/<new-slug>`) — don't try to
+(`~/.claude/memory/<id>` vs `~/.claude/projects/<new-slug>`) — don't try to
 unify them. Also add the `workflow-registry.md` row (see above).
 
 ## Not the same as `--bare`

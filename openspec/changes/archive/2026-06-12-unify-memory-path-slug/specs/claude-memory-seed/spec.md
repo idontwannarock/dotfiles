@@ -1,38 +1,14 @@
-# claude-memory-seed Specification
+## REMOVED Requirements
 
-## Purpose
-TBD - created by archiving change add-auto-memory-seed. Update Purpose after archive.
-## Requirements
-### Requirement: SessionStart 觸發以 union-append 併入且不覆寫既有 hook
+### Requirement: bare+worktree 偵測與 autoMemoryDirectory 目標推導
 
-機器的 Claude `settings.json` SHALL 含一個 SessionStart hook 呼叫 `claude-memory-seed apply`,使每次 session 啟動都嘗試種子。該 hook SHALL 由 `modify_settings` 以 **union-append** 併入:既有 SessionStart entries(如其他工具於 runtime 註冊者)SHALL 被保留;當既有任一 SessionStart hook command 已含 `claude-memory-seed` 時 SHALL NOT 重複加入。
+(由「git repo 偵測與 path-slug 目標推導」取代:適用範圍從 bare-only 擴大到所有 git repo,key 從 folder basename 改為正規路徑 slug。)
 
-#### Scenario: 保留既有 SessionStart entries
+### Requirement: apply 只在缺值時寫入且不覆寫既有設定
 
-- **WHEN** 現行 settings.json 的 SessionStart 已含其他工具註冊的 entry,經 `modify_settings` 處理
-- **THEN** 那些 entry 仍在,且新增一個呼叫 `claude-memory-seed apply` 的 entry
+(由「apply:自動遷移既有記憶並依覆寫政策寫入」取代:新增 path-based 自動遷移,覆寫政策從「一律不覆寫」放寬為「受管根值可升級」。)
 
-#### Scenario: 重複套用不重加
-
-- **WHEN** settings.json 的 SessionStart 已含 `claude-memory-seed` 的 hook,再次經 `modify_settings` 處理
-- **THEN** 不再新增重複 entry
-
-### Requirement: post-checkout 觸發沿用全域 dispatcher 且不覆蓋 repo-local hook
-
-全域 `post-checkout` dispatcher SHALL 在其既有步驟(`localfiles restore`)之後呼叫
-`claude-memory-seed apply`,且呼叫失敗 SHALL NOT 阻斷 checkout。dispatcher 對 repo-local
-`.githooks/post-checkout` 與 `.git/hooks/post-checkout` 的 chain(含 realpath 防遞迴)SHALL
-維持不變。
-
-#### Scenario: checkout 後種子
-
-- **WHEN** 對任一 git repo 執行 `git worktree add` 或 branch checkout,且其目標 `~/.claude/memory/<id>` 尚未建立
-- **THEN** dispatcher 觸發 `claude-memory-seed apply`,完成遷移/種入
-
-#### Scenario: 保留 repo-local hook
-
-- **WHEN** repo 內存在可執行的 `.githooks/post-checkout`
-- **THEN** dispatcher 在種子步驟後仍呼叫該 repo-local hook(傳入原始參數),不因新增步驟而被覆蓋
+## ADDED Requirements
 
 ### Requirement: git repo 偵測與 path-slug 目標推導
 
@@ -101,3 +77,21 @@ LF 結尾。
 - **WHEN** 對同一 repo 連續執行 apply 兩次
 - **THEN** 第二次目標已有內容、值已為 canonical → 不搬移、不產生變更
 
+## MODIFIED Requirements
+
+### Requirement: post-checkout 觸發沿用全域 dispatcher 且不覆蓋 repo-local hook
+
+全域 `post-checkout` dispatcher SHALL 在其既有步驟(`localfiles restore`)之後呼叫
+`claude-memory-seed apply`,且呼叫失敗 SHALL NOT 阻斷 checkout。dispatcher 對 repo-local
+`.githooks/post-checkout` 與 `.git/hooks/post-checkout` 的 chain(含 realpath 防遞迴)SHALL
+維持不變。
+
+#### Scenario: checkout 後種子
+
+- **WHEN** 對任一 git repo 執行 `git worktree add` 或 branch checkout,且其目標 `~/.claude/memory/<id>` 尚未建立
+- **THEN** dispatcher 觸發 `claude-memory-seed apply`,完成遷移/種入
+
+#### Scenario: 保留 repo-local hook
+
+- **WHEN** repo 內存在可執行的 `.githooks/post-checkout`
+- **THEN** dispatcher 在種子步驟後仍呼叫該 repo-local hook(傳入原始參數),不因新增步驟而被覆蓋

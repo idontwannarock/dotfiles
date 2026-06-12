@@ -8,18 +8,19 @@ TBD - created by archiving change 2026-06-11-add-local-files-store. Update Purpo
 被管理的 gitignored 本地檔 SHALL 以耐久副本保存於全域 store
 `${XDG_STATE_HOME:-~/.local/state}/localfiles/<repo-id>/` 下,以 `_default/`
 為共用桶,並以需要時才建立的 `<branch>/` 桶承載 per-branch override。
-`<repo-id>` SHALL 推導為 `basename(dirname(realpath(git-common-dir)))`,使
-同一 repo 的所有 branch 與 worktree(含 bare+worktree 佈局)解析到同一桶。
+`<repo-id>` SHALL 推導為 `slug(dirname(realpath(git-common-dir)))`(把絕對路徑的
+`/` 換成 `-`,與 claude-memory-seed 的 `<id>` 同式),使同一 repo 的所有 branch 與
+worktree(含 bare+worktree 佈局)解析到同一桶,且不同路徑的 repo 不撞桶。
 
 #### Scenario: 跨 worktree 解析到同一 repo-id
 
 - **WHEN** 在同一 repo 的兩個不同 worktree 內各執行 `localfiles where`
 - **THEN** 兩者印出的 store 路徑前綴(`.../localfiles/<repo-id>`)相同
 
-#### Scenario: bare+worktree 以容器名為 repo-id
+#### Scenario: repo-id 為 canonical 路徑的 slug
 
-- **WHEN** cwd 為 `<container>/.bare` 佈局下任一 worktree
-- **THEN** `<repo-id>` 為 `<container>` 的 basename,而非個別 worktree 目錄名
+- **WHEN** cwd 為一般 repo(common-dir `<repo>/.git`)或 bare+worktree(`<container>/.bare`)
+- **THEN** `<repo-id>` 為主 checkout(`<repo>`)或容器(`<container>`)絕對路徑的 slug,而非個別 worktree 目錄名或 basename
 
 ### Requirement: localfiles restore 只填補缺檔(in-folder 為 source)
 

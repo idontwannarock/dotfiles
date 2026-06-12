@@ -31,11 +31,13 @@ ${XDG_STATE_HOME:-~/.local/state}/localfiles/<repo-id>/
     <branch>/        # per-branch override bucket, created on demand
 ```
 
-- `<repo-id>` = `basename(dirname(realpath(git-common-dir)))`. Stable across
-  every branch and worktree of a repo. For a normal repo it's the repo dir
-  name; for a bare+worktree layout it's the **container** name (the dir that
-  holds `.bare/`), not the individual worktree dir. (Two unrelated repos with
-  the same dir name collide — known trade-off, kept simple for now.)
+- `<repo-id>` = `slug(dirname(realpath(git-common-dir)))` — the canonical-root
+  absolute path with `/`→`-` (same `<id>` as `claude-memory-seed`). Stable
+  across every branch and worktree of a repo. For a normal repo the canonical
+  root is the main checkout; for a bare+worktree layout it's the **container**
+  (the dir that holds `.bare/`), not the individual worktree dir. Using the full
+  path (not the folder name) keeps unrelated repos with the same dir name from
+  colliding.
 - **Restore** picks the `<branch>/` bucket if it exists, else `_default/`.
 - **Backup** writes `_default/` by default; `--branch` writes the current
   branch's bucket (opting that branch into its own override, which restore
