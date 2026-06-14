@@ -22,6 +22,27 @@ Skip → stop here and proceed with standard development.
 
 ## Step 2: Locate or Start a Workflow
 
+Detect the repo architecture **once** up front — it decides the mechanics at
+three points below (new-branch workspace, registry derivation, finishing). The
+abstract flow is identical for both architectures; only the rows of the dispatch
+table differ.
+
+```bash
+GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
+case "$(basename "$GIT_COMMON")" in
+  .bare) ARCH=bare-worktree ;;
+  *)     ARCH=normal ;;
+esac
+```
+
+Follow the column for your `ARCH` at each marked step:
+
+| Divergence point | `ARCH=normal` | `ARCH=bare-worktree` |
+|------------------|---------------|----------------------|
+| **New-branch workspace** (2c) | `git checkout -b <branch>` in the main repo; or `superpowers:using-git-worktrees` if another workflow is active | always add a worktree off `main`: `git --git-dir=.bare worktree add -b add-<name> add-<name> main` (one branch per worktree). See `~/.agent/reference/bare-worktree/operating.md`. |
+| **Registry / project-memory path** (2b) | auto-derive: `git rev-parse --git-common-dir` + cwd-slug project path | manual — Main Repo Path = `<repo>/main`, Project Memory Path = the repo's `autoMemoryDirectory`. See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & project-memory path". |
+| **Finishing** (end of Step 3) | `superpowers:finishing-a-development-branch` as written | rebase → `git merge --ff-only` from the `main/` worktree → dispose worktree + branch. See `~/.agent/reference/bare-worktree/operating.md` → "Finishing / merging a branch back". Do **not** use the skill's in-place Step 5/6. |
+
 ### 2a. Sync main
 
 Run `git:sync` unless already on a worktree.
@@ -30,7 +51,7 @@ Run `git:sync` unless already on a worktree.
 
 Look up `~/.claude/workflow-registry.md` for this repo's main repo path and project memory path. If no entry: derive with `git rev-parse --git-common-dir`, compute the project memory path, add a row. Registry is per-machine, not synced.
 
-> **Bare+worktree repos**: registry auto-derivation is wrong here — set the row by hand. See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & project-memory path".
+> **Architecture-specific:** follow the **Registry / project-memory path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
 
 ### 2c. Check active workflows
 
@@ -41,7 +62,7 @@ Read `active_workflows.md` from the project memory directory. Clean stale entrie
 | **None active** | Work directly in main repo: `git checkout -b <new-branch>`. Register row with Type=`main`. |
 | **Any active/paused** | Read `references/isolation.md` — requires worktree. |
 
-> **Bare+worktree repos**: the "None active → `checkout -b` in main" row doesn't apply — always add a worktree off `main` (one branch per worktree). See `~/.agent/reference/bare-worktree/index.md`.
+> **Architecture-specific:** create the workspace per the **New-branch workspace** row of the dispatch table above. Under `ARCH=bare-worktree` the "None active → `checkout -b` in main" row does **not** apply — always add a worktree off `main`, Type=`worktree`.
 
 The `active_workflows.md` row format:
 
@@ -82,6 +103,13 @@ OpenSpec uses skill-based delivery — invoke by skill name, not slash commands.
 → Fixes needed? → Confirm scope, start a new change round
 → No fixes → superpowers:finishing-a-development-branch → [git:clean-gone]
 ```
+
+> **Finishing is architecture-specific** (dispatch table, **Finishing** row): under
+> `ARCH=bare-worktree`, the `finishing-a-development-branch` step does **not** use
+> the skill's in-place checkout/cleanup — merge + dispose follow
+> `~/.agent/reference/bare-worktree/operating.md` ("Finishing / merging a branch
+> back"). Disposing the worktree + branch and removing the `active_workflows.md`
+> row are part of finishing, not manual afterwork.
 
 ## Code Review Commands
 

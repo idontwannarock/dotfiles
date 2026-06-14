@@ -91,6 +91,12 @@ sibling worktree dirs, read `~/.agent/reference/bare-worktree/index.md` and
 follow it (branch creation, never `git switch` in-place, never operate at the
 container level, per-repo memory/worktree settings).
 
+When running `finishing-a-development-branch` in this layout, do NOT follow
+the skill's in-place `git checkout <base> && git merge` — use the "Finishing /
+merging a branch back" section of `~/.agent/reference/bare-worktree/operating.md`
+instead, and treat disposing of the merged worktree + branch as part of
+finishing, not optional cleanup.
+
 ## 8. Superpowers design / plan documents
 
 When a superpowers skill would write under `docs/superpowers/` — `brainstorming`
