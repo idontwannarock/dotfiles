@@ -123,6 +123,11 @@ if (-not (Test-Path $nvmRoot)) {
 # --- (5) Bootstrap latest LTS Node ------------------------------------------
 # `nvm use` creates the active-version symlink via mklink, which triggers a UAC/
 # elevate prompt -- expected and interactive. Skipped entirely if a Node is active.
+#
+# CAVEAT: a NON-interactive `chezmoi apply` cannot answer that UAC prompt, so
+# `nvm use` may fail/hang and leave Node installed-but-not-activated (no symlink
+# -> node not on PATH). If so, finish in an interactive shell: `nvm use <version>`
+# and approve the UAC dialog. `nvm install` itself needs no elevation.
 if (Test-Path (Join-Path $nvmSymlink "node.exe")) {
     Write-Host "[node] already active, skipping bootstrap." -ForegroundColor Gray
 } else {
