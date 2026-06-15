@@ -42,8 +42,15 @@ if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
     if ($installed) {
         Write-Host "[nvm] uninstalling from scoop..." -ForegroundColor Yellow
         scoop uninstall nvm 2>&1 | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "[nvm] scoop uninstall returned non-zero exit; continuing."
+        # scoop returns exit 0 EVEN when it refuses to uninstall because a node.exe
+        # is still running ("instances of nvm are still running"). Trusting
+        # $LASTEXITCODE silently leaves scoop's nvm + its PATH/env entries behind,
+        # and this run_once never retries -- so verify the app dir is actually gone.
+        $scoopNvmDir = Join-Path $env:USERPROFILE "scoop\apps\nvm"
+        if (Test-Path $scoopNvmDir) {
+            Write-Warning "[nvm] scoop uninstall did NOT remove $scoopNvmDir (a running node.exe usually blocks it). Close every node process, run 'scoop uninstall nvm' manually, then strip any leftover scoop\apps\nvm entries from User PATH."
+        } else {
+            Write-Host "[nvm] scoop nvm removed." -ForegroundColor Green
         }
     } else {
         Write-Host "[nvm] not installed via scoop, skipping uninstall." -ForegroundColor Gray
@@ -101,6 +108,16 @@ if (-not (Test-Path $settings)) {
     Write-Host "[settings.txt] written (root: $nvmRoot)" -ForegroundColor Yellow
 } else {
     Write-Host "[settings.txt] already present, skipping." -ForegroundColor Gray
+}
+
+# nvm-windows never creates its own `root` dir -- the NSIS installer normally
+# does. We deploy via chezmoi-external (zip extract, no installer), so create it
+# here or `nvm install` aborts with "<root> could not be found or does not exist".
+if (-not (Test-Path $nvmRoot)) {
+    New-Item -ItemType Directory -Force -Path $nvmRoot | Out-Null
+    Write-Host "[root] created $nvmRoot" -ForegroundColor Yellow
+} else {
+    Write-Host "[root] already present, skipping." -ForegroundColor Gray
 }
 
 # --- (5) Bootstrap latest LTS Node ------------------------------------------
