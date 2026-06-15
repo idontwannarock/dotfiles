@@ -82,7 +82,7 @@
 # 6 chezmoi-managed CLI tools migrated from Scoop to chezmoi-external.
 # Bump versions below and rerun `chezmoi apply` to upgrade.
 {{- $kubectlVersion      := "1.36.1" }}
-{{- $kubeloginVersion    := "0.2.17" }}
+{{- $kubeloginVersion    := "1.36.2" }}
 {{- $ytdlpVersion        := "2026.03.17" }}
 {{- $hugoVersion         := "0.161.1" }}
 {{- $nexttraceVersion    := "1.6.5" }}
@@ -95,10 +95,22 @@
     url = "https://dl.k8s.io/release/v{{ $kubectlVersion }}/bin/windows/amd64/kubectl.exe"
     executable = true
 
+# int128/kubelogin (generic OIDC). The win zip holds kubelogin.exe at its ROOT
+# (not bin/windows_amd64/ like Azure/kubelogin). NOT Azure/kubelogin -- that one
+# is Azure-AD-only and ships no kubectl plugin.
 [".local/bin/kubelogin.exe"]
     type = "archive-file"
-    url = "https://github.com/Azure/kubelogin/releases/download/v{{ $kubeloginVersion }}/kubelogin-win-amd64.zip"
-    path = "bin/windows_amd64/kubelogin.exe"
+    url = "https://github.com/int128/kubelogin/releases/download/v{{ $kubeloginVersion }}/kubelogin_windows_amd64.zip"
+    path = "kubelogin.exe"
+    executable = true
+
+# kubectl plugin alias: the SAME int128 binary under the kubectl plugin name, so
+# `kubectl plugin list` finds it and `kubectl oidc-login` works. chezmoi caches
+# the shared download, so the second entry reuses the same zip.
+[".local/bin/kubectl-oidc_login.exe"]
+    type = "archive-file"
+    url = "https://github.com/int128/kubelogin/releases/download/v{{ $kubeloginVersion }}/kubelogin_windows_amd64.zip"
+    path = "kubelogin.exe"
     executable = true
 
 # yt-dlp uses CalVer (YYYY.MM.DD), no `v` prefix on the tag.
