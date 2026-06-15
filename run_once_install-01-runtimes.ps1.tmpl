@@ -1,110 +1,23 @@
 {{- if eq .chezmoi.os "windows" -}}
-# chezmoi run_once_ script — 開發語言與 runtime 安裝（Windows）
-# 每個工具各自做冪等檢查，已安裝則跳過
+# chezmoi run_once_ script -- dev language & runtime setup (Windows)
+#
+# As of Wave 10 (2026-06-12) the entire Category D toolchain is provisioned OFF
+# Scoop. Nothing is installed here on Windows anymore; this file is a pointer map
+# (the `01-` prefix is kept as the dependency-order anchor for 02-npm-tools etc).
+#
+#   nvm + node -> .chezmoiexternal.toml (Wave 9) + run_once_after_migrate-scoop-wave9-nvm.ps1.tmpl
+#   vim        -> .chezmoiexternal.toml (Wave 7) + dot_local/bin/*.cmd wrappers
+#   go         -> .chezmoiexternal.toml (Wave 10) -> ~/.local/opt/go ; GOTOOLCHAIN handles per-project versions
+#   uv         -> .chezmoiexternal.toml (Wave 1)
+#   python     -> `uv python install 3.11 3.13` in the Wave 10 migrate script (runs after externals
+#                 deploy; versioned python3.x land on ~/.local/bin, no global `python` -- matches Unix)
+#   rust       -> official rustup-init in the Wave 10 migrate script (needs CARGO_HOME/RUSTUP_HOME
+#                 dropped from scoop persist first)
+#   maven      -> .chezmoiexternal.toml (Wave 10) -> ~/.local/opt/maven
+#   jdk x5     -> .chezmoiexternal.toml (Wave 10) -> ~/.local/opt/jdk-N ; JAVA_HOME + %JAVA_HOME%\bin +
+#                 java{8,11,17,21,25}.cmd aliases + use-java switcher (Wave 10 migrate script + dot_local/bin +
+#                 Documents/exact__shared-profile.d/22-use-java.ps1). graalvm packages are removed, not migrated.
+#   starship   -> .chezmoiexternal.toml (Wave 1)
 
-$ErrorActionPreference = "Stop"
-
-Write-Host "=== Runtime & Language Setup ===" -ForegroundColor Cyan
-
-if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
-    Write-Host "scoop not found. Cannot install tools." -ForegroundColor Red
-    exit 1
-}
-
-function Install-ScoopPackage {
-    param([string]$Name, [string]$Package = $Name)
-    if (Get-Command $Name -ErrorAction SilentlyContinue) {
-        Write-Host "[$Name] already installed, skipping." -ForegroundColor Gray
-    } else {
-        Write-Host "[$Package] Installing via scoop..." -ForegroundColor Yellow
-        scoop install $Package
-    }
-}
-
-function Install-ScoopPackageByPath {
-    param([string]$Label, [string]$Package, [string]$CheckPath)
-    if (Test-Path $CheckPath) {
-        Write-Host "[$Label] already installed, skipping." -ForegroundColor Gray
-    } else {
-        Write-Host "[$Package] Installing via scoop..." -ForegroundColor Yellow
-        scoop install $Package
-    }
-}
-
-# ── NVM + Node.js ────────────────────────────────────────────────────────
-# nvm-windows managed by .chezmoiexternal.toml (Wave 9 migration, 2026-06-10).
-# Env (NVM_HOME/NVM_SYMLINK), User PATH, settings.txt, and the Node LTS bootstrap
-# are handled by run_once_after_migrate-scoop-wave9-nvm.ps1.tmpl.
-
-# ── Vim ──────────────────────────────────────────────────────────────────
-Install-ScoopPackage "vim"
-
-# ── Go ───────────────────────────────────────────────────────────────────
-# Base version must support GOTOOLCHAIN (≥ {{ .goMinVersion }}); scoop versions bucket pins go124.
-$goMinVersion = "{{ .goMinVersion }}"
-scoop bucket add versions 2>$null
-
-$goVersionOk = $false
-$existingGo = Get-Command "go" -ErrorAction SilentlyContinue
-if ($existingGo) {
-    $verLine = (& go version) 2>$null
-    if ($verLine -match 'go(\d+)\.(\d+)') {
-        $curMajor = [int]$matches[1]
-        $curMinor = [int]$matches[2]
-        $minParts = $goMinVersion -split '\.'
-        $minMajor = [int]$minParts[0]
-        $minMinor = [int]$minParts[1]
-        if ($curMajor -gt $minMajor -or ($curMajor -eq $minMajor -and $curMinor -ge $minMinor)) {
-            Write-Host "[go] already installed ($verLine), version OK." -ForegroundColor Gray
-            $goVersionOk = $true
-        }
-    }
-}
-if (-not $goVersionOk) {
-    if ($existingGo) {
-        Write-Host "[go] existing version below $goMinVersion — replacing with go124..." -ForegroundColor Yellow
-        foreach ($app in @("go", "go123", "go122", "go121", "go120")) {
-            if (Test-Path (Join-Path $env:USERPROFILE "scoop\apps\$app")) {
-                scoop uninstall $app 2>$null
-            }
-        }
-    } else {
-        Write-Host "[go124] Installing via scoop..." -ForegroundColor Yellow
-    }
-    scoop install go124
-}
-
-# ── Python ───────────────────────────────────────────────────────────────
-Install-ScoopPackage "python3" "python313"
-# Additional Python version
-$py311 = Join-Path $env:USERPROFILE "scoop\apps\python311"
-Install-ScoopPackageByPath "python311" "python311" $py311
-
-# ── uv (Python package manager) ─────────────────────────────────────────
-# Managed by .chezmoiexternal.toml (Wave 1 migration, 2026-05-18).
-
-# ── Rust ─────────────────────────────────────────────────────────────────
-Install-ScoopPackage "rustup"
-if ((Get-Command "rustup" -ErrorAction SilentlyContinue) -and
-    -not (Get-Command "rustc" -ErrorAction SilentlyContinue)) {
-    Write-Host "[rust] Initializing default toolchain..." -ForegroundColor Yellow
-    rustup default stable
-}
-
-# ── Maven ────────────────────────────────────────────────────────────────
-scoop bucket add versions 2>$null
-Install-ScoopPackage "mvn" "maven3"
-
-# ── JDKs (Adoptium Temurin) ──────────────────────────────────────────────
-scoop bucket add java 2>$null
-foreach ($ver in @("8", "11", "17", "21", "25")) {
-    $pkg = "temurin${ver}-jdk"
-    $jdkPath = Join-Path $env:USERPROFILE "scoop\apps\$pkg"
-    Install-ScoopPackageByPath $pkg $pkg $jdkPath
-}
-
-# ── Starship (shell prompt) ──────────────────────────────────────────────
-# Managed by .chezmoiexternal.toml (Wave 1 migration, 2026-05-18).
-
-Write-Host "=== Runtime setup complete. ===" -ForegroundColor Cyan
+Write-Host "=== Windows runtimes provisioned via chezmoi-external + Wave 10 migrate script (no-op here). ===" -ForegroundColor Cyan
 {{ end -}}

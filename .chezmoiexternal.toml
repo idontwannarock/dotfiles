@@ -246,4 +246,67 @@
 [".local/opt/nvm"]
     type = "archive"
     url = "https://github.com/coreybutler/nvm-windows/releases/download/{{ $nvmVersion }}/nvm-noinstall.zip"
+
+# Scoop migration -- Wave 10 (2026-06-12)
+# Category D: the multi-version dev toolchains. go/python/rust were "version
+# managers on scoop", but their first-party managers match the Unix side
+# (go.dev zip + GOTOOLCHAIN, uv, official rustup-init); JDK/maven have no Windows
+# sdkman, so they take the Wave 6 archive pattern. Everything lands in
+# ~/.local/opt/<tool> (real dirs, no scoop 'current' junction) -> SSH-safe.
+#
+# python (uv) install, rust bootstrap, all env/PATH wiring, and the scoop
+# uninstall live in run_once_after_migrate-scoop-wave10-toolchain.ps1.tmpl
+# (runs after these externals deploy). go/maven need no script -- PATH is wired
+# by the Wave 10 migrate script.
+#
+# JDKs: 5 temurin majors installed in parallel (not switched). stripComponents = 1
+# drops each zip's single versioned top-level dir (e.g. jdk-21.0.11+10/) so the
+# contents land directly in ~/.local/opt/jdk-N. Temurin 8 uses a different naming
+# scheme (jdk8u<NNN>-b<BB>); 11+ use jdk-<V>+<B> (the '+' is %2B in the GitHub URL,
+# '_' in the asset filename). Pinned to the currently-installed versions; bump the
+# URL + rerun `chezmoi apply` to upgrade (Adoptium quarterly CU -- review every 6
+# months). graalvm21-jdk21 + graalvm-oracle-jdk are NOT migrated; the Wave 10
+# script uninstalls them (GraalVM CE 21 is frozen at 21.0.2; user does not need
+# graalvm/native-image).
+# Go pinned locally (not via the .goLinuxTarballVersion data var): config data
+# freezes at chezmoi init, so a local var renders fresh at apply and avoids a
+# downgrade from the currently-installed 1.24.13. The Unix tarball var sits at
+# 1.24.4; the two Go pins are allowed to drift (both >= goMinVersion).
+{{- $goVersion    := "1.24.13" }}
+{{- $mavenVersion := "3.9.16" }}
+
+[".local/opt/go"]
+    type = "archive"
+    url = "https://go.dev/dl/go{{ $goVersion }}.windows-amd64.zip"
+    stripComponents = 1
+
+[".local/opt/jdk-8"]
+    type = "archive"
+    url = "https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u492-b09/OpenJDK8U-jdk_x64_windows_hotspot_8u492b09.zip"
+    stripComponents = 1
+
+[".local/opt/jdk-11"]
+    type = "archive"
+    url = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.31%2B11/OpenJDK11U-jdk_x64_windows_hotspot_11.0.31_11.zip"
+    stripComponents = 1
+
+[".local/opt/jdk-17"]
+    type = "archive"
+    url = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.19%2B10/OpenJDK17U-jdk_x64_windows_hotspot_17.0.19_10.zip"
+    stripComponents = 1
+
+[".local/opt/jdk-21"]
+    type = "archive"
+    url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_windows_hotspot_21.0.11_10.zip"
+    stripComponents = 1
+
+[".local/opt/jdk-25"]
+    type = "archive"
+    url = "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.3%2B9/OpenJDK25U-jdk_x64_windows_hotspot_25.0.3_9.zip"
+    stripComponents = 1
+
+[".local/opt/maven"]
+    type = "archive"
+    url = "https://archive.apache.org/dist/maven/maven-3/{{ $mavenVersion }}/binaries/apache-maven-{{ $mavenVersion }}-bin.zip"
+    stripComponents = 1
 {{- end }}

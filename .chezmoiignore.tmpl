@@ -72,3 +72,19 @@ Documents/_shared-profile.d/30-ssh-askpass.ps1
 .local/bin/gvimdiff.cmd
 .local/bin/xxd.cmd
 {{- end }}
+
+# ── Wave 10 toolchain: java version aliases (Windows only) ─────────────────
+# 5 .cmd wrappers delegate java8/11/17/21/25 to ~/.local/opt/jdk-N/bin/java.exe.
+# The use-java switcher lives under Documents/, already excluded on non-Windows.
+# See .chezmoiexternal.toml Wave 10 block.
+{{- if ne .chezmoi.os "windows" }}
+.local/bin/java.cmd
+.local/bin/javac.cmd
+.local/bin/java8.cmd
+.local/bin/java11.cmd
+.local/bin/java17.cmd
+.local/bin/java21.cmd
+.local/bin/java25.cmd
+.local/bin/python3.11.cmd
+.local/bin/python3.13.cmd
+{{- end }}

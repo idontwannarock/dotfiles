@@ -1,0 +1,221 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_after_ script -- Wave 10 Scoop -> chezmoi-external migration
+# (Category D multi-version dev toolchain).
+#
+# Covers go124, python311/313, rustup, maven3, temurin 8/11/17/21/25, plus the two
+# manually-installed graalvm packages (removed, not migrated). Runs after
+# .chezmoiexternal.toml extracts go / jdk-N / maven into ~/.local/opt/. Idempotent
+# (every step gated on desired state); also provisions fresh machines (the scoop
+# steps no-op when nothing is installed).
+#
+# Off-scoop rationale: scoop's `current` junction (mklink /J) + ~/scoop/shims both
+# fail under a Win32-OpenSSH session token (cf. Wave 1-9). The externals land real
+# dirs in ~/.local/opt; this script removes the scoop installs and rewires env/PATH.
+#
+# Steps:
+#   (0) Guard: externals must have deployed first.
+#   (1) scoop uninstall the 12 Category D packages (incl. both graalvm).
+#   (2) JAVA_HOME -> ~/.local/opt/jdk-21; drop scoop-persist CARGO_HOME/RUSTUP_HOME.
+#   (3) User PATH (REG_EXPAND_SZ): add %JAVA_HOME%\bin (follows use-java) + go bin +
+#       maven bin; strip any leftover scoop Category-D toolchain entries.
+#   (4) Bootstrap: uv python install 3.11 3.13; official rustup-init (default stable).
+
+$ErrorActionPreference = "Continue"
+
+$opt      = Join-Path $env:USERPROFILE ".local\opt"
+$goBin    = Join-Path $opt "go\bin"
+$jdk21    = Join-Path $opt "jdk-21"
+$mavenBin = Join-Path $opt "maven\bin"
+$cargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
+
+Write-Host "=== Wave 10: Scoop -> chezmoi-external migration (Category D toolchain) ===" -ForegroundColor Cyan
+
+# --- (0) Guard: externals must have deployed first --------------------------
+$goExe    = Join-Path $goBin "go.exe"
+$jdk21Exe = Join-Path $jdk21 "bin\java.exe"
+if (-not ((Test-Path $goExe) -and (Test-Path $jdk21Exe))) {
+    Write-Warning "[wave10] externals not fully extracted yet (need $goExe + $jdk21Exe). Skipping; rerun 'chezmoi apply'."
+    return
+}
+
+# --- (1) Scoop uninstall (12 Category D packages) ---------------------------
+if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
+    $pkgs = @(
+        "go124", "python311", "python313", "rustup", "maven3",
+        "temurin8-jdk", "temurin11-jdk", "temurin17-jdk", "temurin21-jdk", "temurin25-jdk",
+        "graalvm21-jdk21", "graalvm-oracle-jdk"
+    )
+    foreach ($pkg in $pkgs) {
+        $installed = $false
+        try {
+            $listOutput = scoop list $pkg 2>$null | Out-String
+            if ($listOutput -match ("(?im)^\s*" + [regex]::Escape($pkg) + "\b")) { $installed = $true }
+        } catch {}
+        if ($installed) {
+            Write-Host "[$pkg] uninstalling from scoop..." -ForegroundColor Yellow
+            scoop uninstall $pkg 2>&1 | Out-Null
+        } else {
+            Write-Host "[$pkg] not installed via scoop, skipping." -ForegroundColor Gray
+        }
+    }
+} else {
+    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
+}
+
+# --- (2) Env: JAVA_HOME + drop scoop-persist CARGO_HOME/RUSTUP_HOME ----------
+$curJavaHome = [Environment]::GetEnvironmentVariable("JAVA_HOME", "User")
+if ($curJavaHome -ieq $jdk21) {
+    Write-Host "[JAVA_HOME] already $jdk21, no change." -ForegroundColor Gray
+} else {
+    [Environment]::SetEnvironmentVariable("JAVA_HOME", $jdk21, "User")
+    Write-Host "[JAVA_HOME] set -> $jdk21" -ForegroundColor Yellow
+}
+$env:JAVA_HOME = $jdk21
+
+# rustup uses ~/.cargo + ~/.rustup when these are unset. Scoop pointed them at
+# scoop\persist\rustup; drop them so the official rustup-init uses the defaults
+# (matches the Unix side). scoop uninstall usually clears them, but be explicit.
+foreach ($n in @("CARGO_HOME", "RUSTUP_HOME")) {
+    $v = [Environment]::GetEnvironmentVariable($n, "User")
+    if ($v -and ($v -like "*scoop*")) {
+        [Environment]::SetEnvironmentVariable($n, $null, "User")
+        Write-Host "[$n] cleared (was scoop persist: $v)" -ForegroundColor Yellow
+    } elseif (-not $v) {
+        Write-Host "[$n] unset (rustup will use default), ok." -ForegroundColor Gray
+    } else {
+        Write-Host "[$n] = $v (non-scoop), left as-is." -ForegroundColor Gray
+    }
+    Remove-Item "env:$n" -ErrorAction SilentlyContinue
+}
+
+# --- (3) User PATH (REG_EXPAND_SZ) ------------------------------------------
+# Read the raw User PATH WITHOUT expanding, so any existing %VAR% refs survive,
+# strip leftover scoop Category-D toolchain entries, prepend the new bins, and
+# write back as REG_EXPAND_SZ so %JAVA_HOME%\bin re-expands per session (this is
+# what lets `use-java` switch the default java without rewriting PATH). Note:
+# [Environment]::SetEnvironmentVariable writes REG_SZ (expanded), which would kill
+# the %JAVA_HOME% indirection -- hence the direct registry API here.
+$envKey  = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("Environment", $true)
+$rawPath = $envKey.GetValue("Path", "", [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+$parts   = @($rawPath -split ';' | Where-Object { $_ -ne '' })
+
+$kept = @()
+foreach ($p in $parts) {
+    $e = [Environment]::ExpandEnvironmentVariables($p).TrimEnd('\')
+    # Drop the old default-JDK PATH entry: %JAVA_HOME%\bin (literal -- Win32-OpenSSH
+    # won't expand it under SSH) or any absolute jdk-N\bin. The default java/javac
+    # come from ~/.local/bin/java.cmd + javac.cmd (which expand %JAVA_HOME% at
+    # runtime, SSH-safe), so no JDK bin belongs on PATH.
+    if ($p -ieq '%JAVA_HOME%\bin' -or $e -ilike "*\.local\opt\jdk-*\bin") {
+        Write-Host "[PATH] dropping default-jdk entry (java.cmd handles it now): $p" -ForegroundColor Yellow
+        continue
+    }
+    if ($e -ilike "*\scoop\apps\go124\*"        -or
+        $e -ilike "*\scoop\apps\python31?\*"    -or
+        $e -ilike "*\scoop\apps\rustup\*"       -or
+        $e -ilike "*\scoop\apps\maven3\*"       -or
+        $e -ilike "*\scoop\apps\temurin*-jdk\*" -or
+        $e -ilike "*\scoop\apps\graalvm*\*") {
+        Write-Host "[PATH] dropping scoop entry: $p" -ForegroundColor Yellow
+        continue
+    }
+    $kept += $p
+}
+
+# Prepend desired entries if absent. No JDK bin here -- java.cmd/javac.cmd handle
+# the default JDK (SSH-safe). ~/.cargo/bin: rustup-init runs with --no-modify-path,
+# so we own its PATH entry (mirrors the Unix shell-rc convention). The dir may not
+# exist until step 4 on a fresh machine -- a PATH entry for a missing dir is harmless.
+$wantLiteral  = @($goBin, $mavenBin, $cargoBin)
+$keptExpanded = @($kept | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_).TrimEnd('\') })
+foreach ($w in $wantLiteral) {
+    $wExp = [Environment]::ExpandEnvironmentVariables($w).TrimEnd('\')
+    if ($keptExpanded -inotcontains $wExp) {
+        $kept = @($w) + $kept
+        $keptExpanded = @($wExp) + $keptExpanded
+        Write-Host "[PATH] prepended $w" -ForegroundColor Yellow
+    }
+}
+
+$newPath = $kept -join ';'
+$envKey.SetValue("Path", $newPath, [Microsoft.Win32.RegistryValueKind]::ExpandString)
+$envKey.Close()
+Write-Warning "[PATH] User PATH rewritten as REG_EXPAND_SZ -- restart terminal/SSH session to pick it up."
+
+# Broadcast WM_SETTINGCHANGE so running shells/Explorer notice (own process env unchanged).
+if (-not ('Win32.NativeMethods' -as [type])) {
+    Add-Type -Namespace Win32 -Name NativeMethods -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError=true, CharSet=System.Runtime.InteropServices.CharSet.Auto)]
+public static extern System.IntPtr SendMessageTimeout(
+    System.IntPtr hWnd, uint Msg, System.IntPtr wParam, string lParam,
+    uint fuFlags, uint uTimeout, out System.UIntPtr lpdwResult);
+'@
+}
+$smtoResult = [System.UIntPtr]::Zero
+[void][Win32.NativeMethods]::SendMessageTimeout([System.IntPtr]0xffff, 0x1A, [System.IntPtr]::Zero, "Environment", 0x2, 5000, [ref]$smtoResult)
+
+# In-process PATH for the bootstrap below (include cargo bin so the rustup probe
+# finds an existing install and takes the fast path on re-runs).
+$env:PATH = "$jdk21\bin;$goBin;$mavenBin;$cargoBin;$env:PATH"
+
+# --- (4) Bootstrap python (uv) + rust (official rustup-init) -----------------
+# Done here (run_after_, after externals deploy + env reset) rather than in
+# run_once_install-01-runtimes.ps1.tmpl: that runs before externals land, and
+# run_once would not retry once uv/externals appear.
+# uv-managed python is NOT SSH-safe via uv's own resolution: uv junctions the
+# version-alias dir (cpython-3.13 -> cpython-3.13.13, mklink /J), and the trampolines,
+# `uv run`, and `uv python find` all traverse that junction -- which a Win32-OpenSSH
+# restricted token rejects (os error 448/2). Only the real patch-versioned interpreter
+# dir works under SSH. So:
+#   - pin EXACT patch versions ($pyVersions) so the real dir name is stable
+#   - install under ~/.local (traversable, not %APPDATA%\Roaming) via UV_PYTHON_INSTALL_DIR
+#   - disable uv's bin trampolines (UV_PYTHON_INSTALL_BIN=0) and remove stale ones
+#   - expose python via dot_local/bin/python3.{11,13}.cmd pointing at the real
+#     interpreter dir (SSH-safe).
+# MAINTENANCE: bump $pyVersions here AND the dir name inside python3.11.cmd /
+# python3.13.cmd together (mirrors the vim92-in-wrappers invariant).
+$pyVersions = @("3.11.15", "3.13.13")
+$uvPyDir = Join-Path $env:USERPROFILE ".local\share\uv\python"
+[Environment]::SetEnvironmentVariable("UV_PYTHON_INSTALL_DIR", $uvPyDir, "User")
+[Environment]::SetEnvironmentVariable("UV_PYTHON_INSTALL_BIN", "0", "User")
+$env:UV_PYTHON_INSTALL_DIR = $uvPyDir
+$env:UV_PYTHON_INSTALL_BIN = "0"
+if (Get-Command uv -ErrorAction SilentlyContinue) {
+    Write-Host "[python] uv python install $($pyVersions -join ' ') (-> $uvPyDir, no trampolines) ..." -ForegroundColor Yellow
+    uv python install @pyVersions
+    # Remove stale uv trampolines from earlier installs; python3.*.cmd wrappers replace them.
+    foreach ($t in @("python3.11.exe", "python3.13.exe", "python3.exe", "python.exe")) {
+        $tp = Join-Path $env:USERPROFILE ".local\bin\$t"
+        if (Test-Path $tp) {
+            Remove-Item $tp -Force -ErrorAction SilentlyContinue
+            Write-Host "[python] removed stale trampoline $t" -ForegroundColor Yellow
+        }
+    }
+    # Reclaim the orphaned interpreters from the earlier %APPDATA%\Roaming install.
+    $oldAppData = Join-Path $env:APPDATA "uv\python"
+    if (Test-Path $oldAppData) {
+        Remove-Item $oldAppData -Recurse -Force -ErrorAction SilentlyContinue
+        Write-Host "[python] removed orphaned AppData interpreters ($oldAppData)" -ForegroundColor Yellow
+    }
+} else {
+    Write-Warning "[python] uv not on PATH -- skipping; rerun 'chezmoi apply' once uv (Wave 1 external) is present."
+}
+
+if (Get-Command rustup -ErrorAction SilentlyContinue) {
+    Write-Host "[rust] rustup present; ensuring stable default toolchain..." -ForegroundColor Gray
+    rustup default stable 2>&1 | Out-Null
+} else {
+    Write-Host "[rust] installing official rustup-init (default stable, ~/.cargo + ~/.rustup)..." -ForegroundColor Yellow
+    $rustupInit = Join-Path $env:TEMP "rustup-init.exe"
+    try {
+        Invoke-WebRequest -Uri "https://win.rustup.rs/x86_64" -OutFile $rustupInit -UseBasicParsing
+        & $rustupInit -y --default-toolchain stable --no-modify-path
+    } catch {
+        Write-Warning "[rust] rustup-init failed: $_"
+    } finally {
+        Remove-Item $rustupInit -ErrorAction SilentlyContinue
+    }
+}
+
+Write-Host "=== Wave 10 migration (Category D toolchain) complete. ===" -ForegroundColor Cyan
+{{ end -}}
