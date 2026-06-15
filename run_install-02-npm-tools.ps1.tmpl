@@ -1,6 +1,11 @@
 {{- if eq .chezmoi.os "windows" -}}
-# chezmoi run_once_ script — npm 全域工具安裝（Windows）
+# chezmoi run_ script — npm 全域工具安裝（Windows）
 # 需要 npm，由 install-01-runtimes 安裝
+#
+# 用 run_（每次 apply 都重跑），而非 run_once_：Node runtime 一旦被換掉
+# （scoop→nvm 遷移、或 nvm 版本升級換成空的 global node_modules），舊 Node 底下
+# 的 npm 全域套件就全部失效。每次 apply 重新檢查、缺什麼補什麼，即可自動補回。
+# 下方每個安裝都有 Get-Command idempotent 守衛，已安裝者直接略過，重跑成本極低。
 
 $ErrorActionPreference = "Stop"
 

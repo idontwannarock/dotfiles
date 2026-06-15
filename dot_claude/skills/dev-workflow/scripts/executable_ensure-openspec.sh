@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ensure-openspec.sh — 初始化/更新當前專案的 OpenSpec 設定
-# 全域安裝由 chezmoi run_once_install-02-npm-tools 處理
+# 全域安裝由 chezmoi run_install-02-npm-tools 處理
 # Exit code: 0 = 成功, 非 0 = 有錯誤需要人工處理
 
 set -euo pipefail

@@ -1,7 +1,12 @@
 {{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
-# chezmoi run_once_ script — npm 全域工具安裝（Unix/macOS/WSL）
+# chezmoi run_ script — npm 全域工具安裝（Unix/macOS/WSL）
 # 需要 nvm/npm，由 install-01-runtimes 安裝
+#
+# 用 run_（每次 apply 都重跑），而非 run_once_：Node runtime 一旦被換掉（nvm 換版
+# 等）會換成空的 global node_modules，舊 Node 底下的 npm 全域套件就全部失效。每次
+# apply 重新檢查、缺什麼補什麼即可自動補回；每個安裝都有 command -v idempotent
+# 守衛，已安裝者直接略過，重跑成本極低。
 
 set -euo pipefail
 
