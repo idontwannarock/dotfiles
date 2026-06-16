@@ -22,7 +22,7 @@ cat << 'GLOBAL'
 #:schema https://developers.openai.com/codex/config-schema.json
 
 model = "gpt-5.5"
-model_reasoning_effort = "medium"
+model_reasoning_effort = "high"
 model_verbosity = "medium"
 hide_agent_reasoning = true
 project_doc_fallback_filenames = ["CLAUDE.md"]
