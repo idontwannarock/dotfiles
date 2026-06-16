@@ -103,9 +103,9 @@ claude-zai --resume                      # CC flag 照樣帶
 
 | CC tier | z.ai model | 用途 |
 |---------|-----------|------|
-| Opus | `GLM-5.1` | 主對話、複雜推理 |
-| Sonnet | `GLM-5` | `/model sonnet` 切換時 |
-| Haiku | `GLM-5-Turbo` | auto-compaction、conversation title、subagent default |
+| Opus | `GLM-5.2` | 主對話、複雜推理 |
+| Sonnet | `GLM-5.1` | `/model sonnet` 切換時 |
+| Haiku | `GLM-5` | auto-compaction、conversation title、subagent default |
 
 三個 tier 指向**三個不同 model**，讓 CC 內 `/model opus|sonnet|haiku` 切換能真的換到不同 model
 （z.ai 官方推薦的 `GLM-4.7` 在 opus/sonnet 兩 tier 都用同一個，等於切了等於沒切）。

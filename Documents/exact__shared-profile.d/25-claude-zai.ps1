@@ -12,9 +12,9 @@
 function claude-zai {
     [CmdletBinding()]
     param(
-        [string] $OpusModel = 'GLM-5.1',
-        [string] $SonnetModel = 'GLM-5',
-        [string] $HaikuModel = 'GLM-5-Turbo',
+        [string] $OpusModel = 'GLM-5.2',
+        [string] $SonnetModel = 'GLM-5.1',
+        [string] $HaikuModel = 'GLM-5',
         [string] $TimeoutMs = '3000000',
         [Parameter(ValueFromRemainingArguments = $true)]
         [string[]] $Remaining
