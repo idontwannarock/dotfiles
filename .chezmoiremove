@@ -26,7 +26,5 @@
 
 # Same migration on the Codex side — orphaned skill dirs
 .codex/skills/git-amend
-.codex/skills/git-commit
 .codex/skills/git-push
-.codex/skills/git-sync
 .codex/skills/review-codex
