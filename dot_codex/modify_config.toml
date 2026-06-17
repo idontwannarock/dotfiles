@@ -31,7 +31,7 @@ project_doc_max_bytes = 65536
 instructions = """
 Prefer native Codex features over Claude-specific abstractions.
 If a repository contains .claude/CLAUDE.md, read it when project workflow matters.
-For non-trivial coding tasks, suggest using the $codex-claude-parity skill before implementation.
+For non-trivial coding tasks, suggest using the $dev-workflow skill before implementation.
 When a task ends with meaningful progress, ask whether it should be recorded in worklog.
 """
 
