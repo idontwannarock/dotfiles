@@ -113,5 +113,4 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 
 ## Code Review Commands
 
-`{{ .n.reviewQuick }}`, `{{ .n.reviewFull }}`, `code:review-spec`, `code:review-linus`,
-`code:review-security`, `code:review-types`.
+{{ .n.reviewList }}
