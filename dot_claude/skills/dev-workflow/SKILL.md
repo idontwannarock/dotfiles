@@ -76,16 +76,19 @@ Update Current Step + Last Updated after each skill completes. Set Status to `pa
 
 ## Step 3: Run the Core Flow
 
-OpenSpec uses skill-based delivery — invoke by skill name, not slash commands.
+OpenSpec uses skill-based delivery — invoke by skill name (e.g. `openspec-new-change`),
+NOT slash commands (`/opsx:*`). Skills are agent- and subagent-invocable and portable to
+Codex; slash commands are user-typed UI only and unavailable to dispatched subagents.
 
 ### Small workflow
 
 ```
 ~/.claude/skills/dev-workflow/scripts/ensure-openspec.sh
-→ openspec-propose
-→ openspec-apply-change → openspec validate → openspec-archive-change
+→ openspec-new-change → openspec-continue-change (loop until artifacts ready)
+→ openspec-apply-change → openspec validate
+→ [openspec-sync-specs — ask if implementation drifted from specs] → openspec-archive-change
 → git:commit → code:review-quick
-→ Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from openspec-propose)
+→ Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from openspec-new-change)
 → No fixes → superpowers:finishing-a-development-branch → [git:clean-gone]
 ```
 
@@ -94,11 +97,13 @@ OpenSpec uses skill-based delivery — invoke by skill name, not slash commands.
 ```
 ~/.claude/skills/dev-workflow/scripts/ensure-openspec.sh
 → superpowers:brainstorming   (design → ~/.local/share/superpowers/<repo>/specs/, NOT docs/)
-→ openspec-propose            (proposal + design.md + tasks.md into openspec/)
+→ openspec-new-change → openspec-continue-change   (proposal + design.md + tasks.md into openspec/)
 → [superpowers:writing-plans — only if implementation needs choreography beyond
    tasks.md (multi-session, executing-plans/subagent handoff); else tasks.md IS the plan]
 → openspec-apply-change
-→ superpowers:verification-before-completion → openspec validate → openspec-archive-change
+→ superpowers:verification-before-completion (run tests / verify commands — hard evidence)
+→ openspec-verify-change (three-dimension spec/code coherence report)
+→ openspec validate → openspec-sync-specs → openspec-archive-change
 → git:commit → code:review-full
 → Fixes needed? → Confirm scope, start a new change round
 → No fixes → superpowers:finishing-a-development-branch → [git:clean-gone]
