@@ -61,25 +61,22 @@ routinely have unpushed commits.
 
 ## Workflow registry & project-memory path
 
-The `dev-workflow` skill keeps a per-machine `~/.claude/workflow-registry.md`
-mapping each repo to a **Main Repo Path** and **Project Memory Path**. Its
-auto-derivation (`git rev-parse --git-common-dir` plus a cwd-slug project
-path) assumes a normal checkout and is **wrong for a bare+worktree repo** —
-`--git-common-dir` yields `.bare`, and the derived
-`~/.claude/projects/<slug>/memory` path does not exist. Set the row by hand:
+The `dev-workflow` skill keeps a per-machine `~/.agent/workflow-registry.md`
+mapping each repo to a **Main Repo Path** and **Active-workflows Path**. Its
+auto-derivation (`git rev-parse --git-common-dir` → slug →
+`~/.agent/workflows/<slug>/active_workflows.md`) assumes a normal checkout
+and is **wrong for a bare+worktree repo** — `--git-common-dir` yields `.bare`,
+and the derived slug does not match the intended repo slug. Set the row by
+hand:
 
-- **Project Memory Path** = the `autoMemoryDirectory` from this repo's
-  `.claude/settings.local.json` (`~/.claude/memory/<id>`, auto-seeded). Both
-  auto-memory (`MEMORY.md` + fact files) and workflow tracking
-  (`active_workflows.md`) live there. Don't use the cwd-slug
-  `projects/<slug>/memory` path — auto-memory is migrated out of it into
-  `~/.claude/memory/<id>`.
+- **Active-workflows Path** = `~/.agent/workflows/<slug>/active_workflows.md`,
+  where `<slug>` is the same id used as the `autoMemoryDirectory` key (i.e.
+  the canonical-root path slugified with `/`→`-`). `active_workflows.md` lives
+  here separately from Claude's auto-memory (`~/.claude/memory/<id>`). It's
+  workflow state, not a remembered fact, so it is **not** indexed in
+  `MEMORY.md`.
 - **Main Repo Path** = the `main/` worktree (`<repo>/main`), never the parent
   container (which holds only `.bare/` and must never be operated at).
-
-`active_workflows.md` therefore lives in `~/.claude/memory/<id>/`
-alongside the auto-memory facts. It's workflow state, not a remembered fact,
-so it is **not** indexed in `MEMORY.md`.
 
 ## Migrating Claude state — memory vs transcripts go to DIFFERENT roots
 

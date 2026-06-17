@@ -35,7 +35,7 @@ Follow the column for your `ARCH` at each marked step:
 | Divergence point | `ARCH=normal` | `ARCH=bare-worktree` |
 |------------------|---------------|----------------------|
 | **New-branch workspace** (2c) | `git checkout -b <branch>` in the main repo; or `{{ .n.worktrees }}` if another workflow is active | always add a worktree off `main`: `git --git-dir=.bare worktree add -b add-<name> add-<name> main` (one branch per worktree). See `~/.agent/reference/bare-worktree/operating.md`. |
-| **Registry / project-memory path** (2b) | auto-derive: `git rev-parse --git-common-dir` + cwd-slug project path | manual — Main Repo Path = `<repo>/main`, Project Memory Path = the repo's `autoMemoryDirectory`. See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & project-memory path". |
+| **Registry / active-workflows path** (2b) | auto-derive: `git rev-parse --git-common-dir` → slug → `~/.agent/workflows/<slug>/active_workflows.md` | manual — Main Repo Path = `<repo>/main`, Active-workflows Path = `~/.agent/workflows/<slug>/active_workflows.md` (slug from `autoMemoryDirectory` key). See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & project-memory path". |
 | **Finishing** (end of Step 3) | `{{ .n.finishing }}` as written | rebase → `git merge --ff-only` from the `main/` worktree → dispose worktree + branch. See `~/.agent/reference/bare-worktree/operating.md` → "Finishing / merging a branch back". Do **not** use the skill's in-place Step 5/6. |
 
 ### 2a. Sync main
@@ -44,18 +44,18 @@ Run `{{ .n.gitSync }}` unless already on a worktree.
 
 ### 2b. Resolve workflow registry
 
-Look up `~/.agent/workflow-registry.md` for this repo's main repo path and project memory path. If no entry: derive with `git rev-parse --git-common-dir`, compute the project memory path, add a row. Registry is per-machine, not synced.
+Look up `~/.agent/workflow-registry.md` for this repo's main repo path and active-workflows path. If no entry: derive the repo slug from `git rev-parse --git-common-dir` (slugify the result with `/`→`-`), set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row. Registry is per-machine, not synced.
 
 > **Architecture-specific:** follow the **Registry / project-memory path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
 
 ### 2c. Check active workflows
 
-Read `active_workflows.md` from the project memory directory. Clean stale entries (missing worktree paths, deleted branches).
+Read `~/.agent/workflows/<repo-slug>/active_workflows.md` (slug derived from `git rev-parse --git-common-dir` as above). Clean stale entries (missing worktree paths, deleted branches).
 
 | State | Action |
 |-------|--------|
 | **None active** | Work directly in main repo: `git checkout -b <new-branch>`. Register row with Type=`main`. |
-| **Any active/paused** | Read `references/isolation.md` — requires worktree. |
+| **Any active/paused** | Read `~/.agent/reference/dev-workflow-isolation.md` — requires worktree. |
 
 > **Architecture-specific:** create the workspace per the **New-branch workspace** row of the dispatch table above. Under `ARCH=bare-worktree` the "None active → `checkout -b` in main" row does **not** apply — always add a worktree off `main`, Type=`worktree`.
 
