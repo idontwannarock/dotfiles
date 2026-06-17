@@ -46,7 +46,7 @@ Run `{{ .n.gitSync }}` unless already on a worktree.
 
 Look up `~/.agent/workflow-registry.md` for this repo's main repo path and active-workflows path. If no entry: derive the repo slug from `git rev-parse --git-common-dir` (slugify the result with `/`→`-`), set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row. Registry is per-machine, not synced.
 
-> **Architecture-specific:** follow the **Registry / project-memory path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
+> **Architecture-specific:** follow the **Registry / active-workflows path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
 
 ### 2c. Check active workflows
 
