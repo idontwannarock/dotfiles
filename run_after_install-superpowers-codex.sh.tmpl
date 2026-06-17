@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Re-link superpowers skills for Codex after each apply (cache version may change).
+set -euo pipefail
+if [ -x "$HOME/.agent/bin/install-superpowers-codex.sh" ]; then
+  "$HOME/.agent/bin/install-superpowers-codex.sh"
+fi
