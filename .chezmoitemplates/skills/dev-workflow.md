@@ -1,8 +1,3 @@
----
-name: dev-workflow
-description: Use when receiving any implementation task — adding features, fixing bugs, refactoring code, or modifying behavior beyond trivial one-line changes. Also use when the user asks about the development workflow, process, or OpenSpec flow. Handles requests in any language (e.g. 加功能、修 bug、重構). Orchestrates the full OpenSpec + Superpowers lifecycle: workflow selection, worktree isolation decisions, spec → implement → review → merge. Make sure to invoke this skill whenever a real implementation task arrives, even if the user doesn't explicitly ask for a "workflow" — skipping it risks losing spec tracking and review gates.
----
-
 # Development Workflow
 
 Structured flow for real implementation work — specs, tracking, review gates.
@@ -39,17 +34,17 @@ Follow the column for your `ARCH` at each marked step:
 
 | Divergence point | `ARCH=normal` | `ARCH=bare-worktree` |
 |------------------|---------------|----------------------|
-| **New-branch workspace** (2c) | `git checkout -b <branch>` in the main repo; or `superpowers:using-git-worktrees` if another workflow is active | always add a worktree off `main`: `git --git-dir=.bare worktree add -b add-<name> add-<name> main` (one branch per worktree). See `~/.agent/reference/bare-worktree/operating.md`. |
+| **New-branch workspace** (2c) | `git checkout -b <branch>` in the main repo; or `{{ .n.worktrees }}` if another workflow is active | always add a worktree off `main`: `git --git-dir=.bare worktree add -b add-<name> add-<name> main` (one branch per worktree). See `~/.agent/reference/bare-worktree/operating.md`. |
 | **Registry / project-memory path** (2b) | auto-derive: `git rev-parse --git-common-dir` + cwd-slug project path | manual — Main Repo Path = `<repo>/main`, Project Memory Path = the repo's `autoMemoryDirectory`. See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & project-memory path". |
-| **Finishing** (end of Step 3) | `superpowers:finishing-a-development-branch` as written | rebase → `git merge --ff-only` from the `main/` worktree → dispose worktree + branch. See `~/.agent/reference/bare-worktree/operating.md` → "Finishing / merging a branch back". Do **not** use the skill's in-place Step 5/6. |
+| **Finishing** (end of Step 3) | `{{ .n.finishing }}` as written | rebase → `git merge --ff-only` from the `main/` worktree → dispose worktree + branch. See `~/.agent/reference/bare-worktree/operating.md` → "Finishing / merging a branch back". Do **not** use the skill's in-place Step 5/6. |
 
 ### 2a. Sync main
 
-Run `git:sync` unless already on a worktree.
+Run `{{ .n.gitSync }}` unless already on a worktree.
 
 ### 2b. Resolve workflow registry
 
-Look up `~/.claude/workflow-registry.md` for this repo's main repo path and project memory path. If no entry: derive with `git rev-parse --git-common-dir`, compute the project memory path, add a row. Registry is per-machine, not synced.
+Look up `~/.agent/workflow-registry.md` for this repo's main repo path and project memory path. If no entry: derive with `git rev-parse --git-common-dir`, compute the project memory path, add a row. Registry is per-machine, not synced.
 
 > **Architecture-specific:** follow the **Registry / project-memory path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
 
@@ -72,7 +67,7 @@ The `active_workflows.md` row format:
 - **Type**: `main` or `worktree`
 - **Status**: `active` or `paused`
 
-Update Current Step + Last Updated after each skill completes. Set Status to `paused` when switching workflows. Remove the row after `superpowers:finishing-a-development-branch`.
+Update Current Step + Last Updated after each skill completes. Set Status to `paused` when switching workflows. Remove the row after `{{ .n.finishing }}`.
 
 ## Step 3: Run the Core Flow
 
@@ -83,30 +78,30 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 ### Small workflow
 
 ```
-~/.claude/skills/dev-workflow/scripts/ensure-openspec.sh
+{{ .n.ensureScript }}
 → openspec-new-change → openspec-continue-change (loop until artifacts ready)
 → openspec-apply-change → openspec validate
 → [openspec-sync-specs — ask if implementation drifted from specs] → openspec-archive-change
-→ git:commit → code:review-quick
+→ {{ .n.gitCommit }} → {{ .n.reviewQuick }}
 → Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from openspec-new-change)
-→ No fixes → superpowers:finishing-a-development-branch → [git:clean-gone]
+→ No fixes → {{ .n.finishing }} → [{{ .n.gitCleanGone }}]
 ```
 
 ### Large workflow
 
 ```
-~/.claude/skills/dev-workflow/scripts/ensure-openspec.sh
-→ superpowers:brainstorming   (design → ~/.local/share/superpowers/<repo>/specs/, NOT docs/)
+{{ .n.ensureScript }}
+→ {{ .n.brainstorm }}   (design → ~/.local/share/superpowers/<repo>/specs/, NOT docs/)
 → openspec-new-change → openspec-continue-change   (proposal + design.md + tasks.md into openspec/)
-→ [superpowers:writing-plans — only if implementation needs choreography beyond
+→ [{{ .n.writingPlans }} — only if implementation needs choreography beyond
    tasks.md (multi-session, executing-plans/subagent handoff); else tasks.md IS the plan]
 → openspec-apply-change
-→ superpowers:verification-before-completion (run tests / verify commands — hard evidence)
+→ {{ .n.verification }} (run tests / verify commands — hard evidence)
 → openspec-verify-change (three-dimension spec/code coherence report)
 → openspec validate → openspec-sync-specs → openspec-archive-change
-→ git:commit → code:review-full
+→ {{ .n.gitCommit }} → {{ .n.reviewFull }}
 → Fixes needed? → Confirm scope, start a new change round
-→ No fixes → superpowers:finishing-a-development-branch → [git:clean-gone]
+→ No fixes → {{ .n.finishing }} → [{{ .n.gitCleanGone }}]
 ```
 
 > **Finishing is architecture-specific** (dispatch table, **Finishing** row): under
@@ -118,5 +113,5 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 
 ## Code Review Commands
 
-`code:review-quick`, `code:review-full`, `code:review-spec`, `code:review-linus`,
+`{{ .n.reviewQuick }}`, `{{ .n.reviewFull }}`, `code:review-spec`, `code:review-linus`,
 `code:review-security`, `code:review-types`.
