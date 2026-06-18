@@ -1,0 +1,27 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_onchange_ script — install Codex plugins (parity with install-03-claude-config)
+# Codex ships the `openai-curated` marketplace; superpowers is published there.
+# Reruns when this script's content changes.
+
+set -euo pipefail
+
+if ! command -v codex &>/dev/null; then
+    echo "[codex-plugins] codex CLI not found, skipping."
+    exit 0
+fi
+
+echo "=== Codex Plugins Setup ==="
+
+# superpowers: planning / TDD / debugging / review skills — the cross-tool dev-workflow
+# skill references these by name (brainstorming, writing-plans, verification-before-completion,
+# finishing-a-development-branch, using-git-worktrees).
+if codex plugin list 2>/dev/null | grep -q 'superpowers@openai-curated.*installed'; then
+    echo "[plugins] superpowers already installed."
+else
+    echo "[plugins] Installing superpowers..."
+    codex plugin add superpowers@openai-curated 2>&1 | sed 's/^/  /' || true
+fi
+
+echo "=== Codex plugins setup complete. Restart Codex to activate. ==="
+{{ end -}}
