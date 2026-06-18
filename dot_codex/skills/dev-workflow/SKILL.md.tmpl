@@ -14,7 +14,7 @@
     "reviewList" "`review-surgical`, `review-comprehensive`, `review-linus`, `review-uncommitted`" -}}
 ---
 name: dev-workflow
-description: Use when receiving any implementation task — adding features, fixing bugs, refactoring code, or modifying behavior beyond trivial one-line changes. Also use when the user asks about the development workflow, process, or OpenSpec flow. Handles requests in any language (e.g. 加功能、修 bug、重構). Orchestrates the full OpenSpec + Superpowers lifecycle: workflow selection, worktree isolation decisions, spec → implement → review → merge. Make sure to invoke this skill whenever a real implementation task arrives, even if the user doesn't explicitly ask for a "workflow" — skipping it risks losing spec tracking and review gates.
+description: "Use when receiving any implementation task — adding features, fixing bugs, refactoring code, or modifying behavior beyond trivial one-line changes. Also use when the user asks about the development workflow, process, or OpenSpec flow. Handles requests in any language (e.g. 加功能、修 bug、重構). Orchestrates the full OpenSpec + Superpowers lifecycle: workflow selection, worktree isolation decisions, spec → implement → review → merge. Make sure to invoke this skill whenever a real implementation task arrives, even if the user doesn't explicitly ask for a \"workflow\" — skipping it risks losing spec tracking and review gates."
 ---
 
 {{ template "skills/dev-workflow.md" (dict "n" $n "chez" .chezmoi) -}}
