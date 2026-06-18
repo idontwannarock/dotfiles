@@ -344,4 +344,18 @@
 [".local/opt/jdtls"]
     type = "archive"
     url = "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-{{ $jdtlsVersion }}.tar.gz"
+
+# Scoop migration -- Wave 12a (2026-06-18)
+# dos2unix: single standalone binary (no DLLs -- verified the .exe runs alone).
+# The waterlander.net win64 zip ships bin/{dos2unix,mac2unix,unix2dos,unix2mac}.exe
+# plus share/; we extract ONLY dos2unix.exe (the one this repo uses to fix plugin
+# .sh CRLF in install-03). Source is the upstream dos2unix Windows build site
+# (same as scoop's manifest), not GitHub. Bump $dos2unixVersion to upgrade.
+{{- $dos2unixVersion := "7.5.6" }}
+
+[".local/bin/dos2unix.exe"]
+    type = "archive-file"
+    url = "https://waterlander.net/dos2unix/files/dos2unix-{{ $dos2unixVersion }}-win64.zip"
+    path = "bin/dos2unix.exe"
+    executable = true
 {{- end }}

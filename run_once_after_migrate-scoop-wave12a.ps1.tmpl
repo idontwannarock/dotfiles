@@ -1,0 +1,48 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_after_ script -- Wave 12a Scoop cleanup
+#
+# Uninstall scoop packages that dotfiles now manages via .chezmoiexternal.toml:
+#   - dos2unix : single standalone binary, now at ~/.local/bin/dos2unix.exe.
+#
+# NOT handled here (intentional):
+#   - lens  : soft-unmanaged in Wave 12a -- existing installs left untouched.
+#   - jdtls : already uninstalled by the Wave 11 migrate script; Wave 12a only
+#             removes the leftover `scoop install jdtls` from install-03.
+#
+# Wave 1 already handled User PATH ordering (`~/.local/bin` before `~/scoop/shims`),
+# so this script does NOT touch PATH.
+#
+# Idempotent: skips uninstall if scoop is unaware of the package; skips entirely
+# if scoop itself is not installed.
+
+$ErrorActionPreference = "Continue"
+$pkgs = @("dos2unix")
+
+Write-Host "=== Wave 12a: Scoop cleanup ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
+    Write-Host "=== Wave 12a migration complete. ===" -ForegroundColor Cyan
+    return
+}
+
+foreach ($pkg in $pkgs) {
+    $installed = $false
+    try {
+        $listOutput = scoop list $pkg 2>$null | Out-String
+        $pattern = "(?im)^\s*$([regex]::Escape($pkg))\b"
+        if ($listOutput -match $pattern) { $installed = $true }
+    } catch {}
+    if ($installed) {
+        Write-Host "[$pkg] uninstalling from scoop..." -ForegroundColor Yellow
+        scoop uninstall $pkg 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "[$pkg] scoop uninstall returned non-zero exit; continuing."
+        }
+    } else {
+        Write-Host "[$pkg] not installed via scoop, skipping." -ForegroundColor Gray
+    }
+}
+
+Write-Host "=== Wave 12a migration complete. ===" -ForegroundColor Cyan
+{{ end -}}

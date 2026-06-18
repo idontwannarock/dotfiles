@@ -44,13 +44,9 @@ if ($installedPlugins -match "learning-output-style@claude-plugins-official") {
 }
 
 # ── jdtls（Java LSP 依賴）───────────────────────────────────────────────
-# ⚠ 版本同步：Unix 版用 pinned tarball，這裡用 scoop rolling release
-Write-Host "[jdtls] Installing via scoop..." -ForegroundColor Yellow
-if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
-    scoop install jdtls 2>&1 | Out-Null
-} else {
-    Write-Host "WARNING: scoop not found. Install jdtls manually." -ForegroundColor Yellow
-}
+# jdtls moved OFF scoop in Wave 11 (2026-06-18): now provided by
+# .chezmoiexternal.toml at ~/.local/opt/jdtls, launched via ~/.local/bin/jdtls(.cmd).
+# Do NOT reintroduce `scoop install jdtls` here -- it would undo the migration.
 
 # ── Plugin cache cleanup ─────────────────────────────────────────────────
 Write-Host "[cleanup] Removing stale plugin caches..." -ForegroundColor Yellow

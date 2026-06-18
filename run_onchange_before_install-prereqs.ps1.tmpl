@@ -1,22 +1,9 @@
 {{- if eq .chezmoi.os "windows" -}}
-# chezmoi run_onchange_before_ script — 安裝後續 phase 需要的 CLI 依賴
+# chezmoi run_onchange_before_ script — CLI 依賴（給後續 phase 用）
 #
-# jq:       modify_settings.json.sh.tmpl 用來 patch Claude Code settings.json
-# dos2unix: run_onchange_install-03-claude-config.ps1.tmpl 用來修正 plugin .sh 的 CRLF
-
-if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
-    Write-Host "scoop not available. Install prereqs manually:" -ForegroundColor Red
-    Write-Host "  scoop install jq dos2unix" -ForegroundColor Yellow
-    exit 1
-}
-
-function Ensure-ScoopTool {
-    param([string]$Name)
-    if (Get-Command $Name -ErrorAction SilentlyContinue) { return }
-    Write-Host "Installing $Name (required by later chezmoi scripts)..." -ForegroundColor Cyan
-    scoop install $Name
-}
-
-# jq is managed by .chezmoiexternal.toml (Wave 1 migration, 2026-05-18).
-Ensure-ScoopTool "dos2unix"
+# Both prerequisites now come from .chezmoiexternal.toml (deployed in the file
+# phase, before the run_ scripts that consume them), so this script no longer
+# installs anything via scoop:
+#   jq       -> Wave 1  (2026-05-18); used by modify_settings.json.sh.tmpl
+#   dos2unix -> Wave 12a (2026-06-18); used by install-03 to fix plugin .sh CRLF
 {{ end -}}

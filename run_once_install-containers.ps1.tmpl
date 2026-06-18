@@ -1,24 +1,10 @@
 {{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_once_ script — 容器與雲端工具安裝（Windows）
 
-$ErrorActionPreference = "Stop"
-
 Write-Host "=== Container & Cloud Tools Setup ===" -ForegroundColor Cyan
 
-if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
-    Write-Host "scoop not found. Cannot install tools." -ForegroundColor Red
-    exit 1
-}
-
-function Install-ScoopPackage {
-    param([string]$Name, [string]$Package = $Name)
-    if (Get-Command $Name -ErrorAction SilentlyContinue) {
-        Write-Host "[$Name] already installed, skipping." -ForegroundColor Gray
-    } else {
-        Write-Host "[$Package] Installing via scoop..." -ForegroundColor Yellow
-        scoop install $Package
-    }
-}
+# This script no longer installs anything -- all of its former packages have been
+# moved off scoop or unmanaged. Kept as a historical record of where each landed.
 
 # ── Docker ───────────────────────────────────────────────────────────────
 # docker and docker-compose moved to .chezmoiexternal.toml in Wave 5 (2026-05-25).
@@ -27,11 +13,11 @@ function Install-ScoopPackage {
 
 # ── Kubernetes ───────────────────────────────────────────────────────────
 # kubectl and kubelogin moved to .chezmoiexternal.toml in Wave 2 (2026-05-20).
-# Lens stays on scoop — it's a GUI app, not a single binary.
 
 # ── Lens (K8s GUI) ──────────────────────────────────────────────────────
-scoop bucket add extras 2>$null
-Install-ScoopPackage "lens"
+# lens unmanaged in Wave 12a (2026-06-18): a GUI app the user now manages by hand.
+# Soft unmanage -- existing scoop installs are left untouched (no scoop uninstall),
+# matching the clink/dark/vimtutor precedent.
 
-Write-Host "=== Container tools setup complete. ===" -ForegroundColor Cyan
+Write-Host "=== Container tools setup complete (nothing to install). ===" -ForegroundColor Cyan
 {{ end -}}
