@@ -5,25 +5,15 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "=== CLI Tools Setup ===" -ForegroundColor Cyan
 
-if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
-    Write-Host "scoop not found. Cannot install tools." -ForegroundColor Red
-    exit 1
-}
-
-function Install-ScoopPackage {
-    param([string]$Name, [string]$Package = $Name)
-    if (Get-Command $Name -ErrorAction SilentlyContinue) {
-        Write-Host "[$Name] already installed, skipping." -ForegroundColor Gray
-    } else {
-        Write-Host "[$Package] Installing via scoop..." -ForegroundColor Yellow
-        scoop install $Package
-    }
-}
-
-scoop bucket add extras 2>$null
+# This script no longer installs anything -- all of its former packages have been
+# moved off scoop. Kept as a historical record of where each landed.
 
 # ── Archive ──────────────────────────────────────────────────────────────
-Install-ScoopPackage "7z" "7zip"
+# 7z moved to .chezmoiexternal.toml in Wave 12b (2026-06-18). The source is an
+# MSI (chezmoi-external cannot extract MSI), so the external only downloads the
+# pinned MSI; run_once_after_migrate-scoop-wave12b.ps1.tmpl does `msiexec /a` to
+# lay it out under ~/.local/opt/7zip, registers the COM shell-extension (right-
+# click menu), and uninstalls scoop's 7zip. The 7z.cmd wrapper puts it on PATH.
 
 # ── Network ──────────────────────────────────────────────────────────────
 # curl moved out of scoop in Wave 3 (2026-05-20). Win10 build 17063+ ships
@@ -96,5 +86,5 @@ Install-ScoopPackage "7z" "7zip"
 # no gpgconf.ctl), with scoop uninstall in run_once_after_migrate-scoop-wave8-gpg.
 # gopass moved to .chezmoiexternal.toml in Wave 3 (2026-05-20).
 
-Write-Host "=== CLI tools setup complete. ===" -ForegroundColor Cyan
+Write-Host "=== CLI tools setup complete (nothing to install). ===" -ForegroundColor Cyan
 {{ end -}}

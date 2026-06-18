@@ -1,0 +1,79 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_ script -- Wave 12b per-user font registration (Windows)
+#
+# Runs after .chezmoiexternal.toml extracts the two Nerd Font zips to
+# ~/.local/share/fonts/{cascadiacode-nf-mono,jetbrains-mono}. Replicates scoop's
+# per-user nerd-fonts install so the fonts are available to every app without
+# admin rights: copy the .ttf into %LOCALAPPDATA%\Microsoft\Windows\Fonts, set the
+# AppContainer ACL (so sandboxed UWP apps like Windows Terminal can read them),
+# and register each face under HKCU Fonts.
+#
+# SOFT-UNMANAGE: there is deliberately NO `scoop uninstall` here. scoop's font
+# install COPIES the .ttf (it is not a symlink), so its uninstaller would delete
+# the real installed fonts. We only stop installing via scoop (see
+# run_once_install-fonts.ps1.tmpl) and take over the register here; existing
+# installs are left untouched (cf. clink/dark/vimtutor soft-unmanage precedent).
+#
+# Idempotent: New-ItemProperty -Force rewrites the registration in place, and the
+# .ttf copy is skipped when the destination already exists (see the loop), so a
+# re-apply over already-installed fonts is a no-op in effect. NOTE: because the
+# copy is skip-if-exists, bumping a font's version in .chezmoiexternal.toml
+# re-extracts the new .ttf but does NOT overwrite the already-installed copy (an
+# in-use font is locked anyway). To force a font upgrade: delete the stale
+# %LOCALAPPDATA%\Microsoft\Windows\Fonts\<face>.ttf (after closing apps using it)
+# and re-apply, or reinstall after sign-out.
+
+$ErrorActionPreference = "Continue"
+
+$fontInstallDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
+$registryKey    = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+
+Write-Host "=== Wave 12b: per-user font registration ===" -ForegroundColor Cyan
+
+# Ensure the per-user font dir exists and carries the AppContainer ACL that lets
+# sandboxed apps read the fonts. SIDs: S-1-15-2-1 = ALL APPLICATION PACKAGES,
+# S-1-15-2-2 = ALL RESTRICTED APPLICATION PACKAGES (scoop-nerd-fonts#198).
+New-Item -ItemType Directory -Force $fontInstallDir | Out-Null
+$acl = Get-Acl $fontInstallDir
+foreach ($sid in @("S-1-15-2-1", "S-1-15-2-2")) {
+    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+        [System.Security.Principal.SecurityIdentifier]::new($sid),
+        "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")
+    $acl.SetAccessRule($rule)
+}
+Set-Acl -AclObject $acl $fontInstallDir
+
+function Register-UserFonts($sourceDir, $filter, $label) {
+    if (-not (Test-Path $sourceDir)) {
+        Write-Warning "[$label] $sourceDir not found -- .chezmoiexternal.toml has not extracted the font zip yet. Skipping; rerun 'chezmoi apply'."
+        return
+    }
+    $ttf = @(Get-ChildItem $sourceDir -Filter $filter -ErrorAction SilentlyContinue)
+    if ($ttf.Count -eq 0) {
+        Write-Warning "[$label] no fonts matching '$filter' in $sourceDir. Skipping."
+        return
+    }
+    foreach ($f in $ttf) {
+        $name = "$($f.BaseName) (TrueType)"
+        $dest = Join-Path $fontInstallDir $f.Name
+        New-ItemProperty -Path $registryKey -Name $name -Value $dest -PropertyType String -Force | Out-Null
+        # Copy only when missing. An already-installed .ttf is memory-mapped and
+        # locked by every app using it, so overwriting an in-use font fails (and
+        # there is nothing to update -- same version). Skipping keeps re-applies
+        # silent; a fresh machine has no lock and copies normally.
+        if (-not (Test-Path -LiteralPath $dest)) {
+            Copy-Item -LiteralPath $f.FullName -Destination $dest -Force
+        }
+    }
+    Write-Host "[$label] registered $($ttf.Count) fonts." -ForegroundColor Green
+}
+
+$share = Join-Path $env:USERPROFILE ".local\share\fonts"
+# cascadia: the external already kept only the Mono faces; the *NerdFontMono-*
+# filter matches scoop's manifest. jetbrains: all *.ttf (the external kept only
+# fonts/ttf/, excluding the variable fonts scoop also skips).
+Register-UserFonts (Join-Path $share "cascadiacode-nf-mono") "*NerdFontMono-*" "cascadiacode-nf-mono"
+Register-UserFonts (Join-Path $share "jetbrains-mono") "*.ttf" "jetbrains-mono"
+
+Write-Host "=== Wave 12b font registration complete. ===" -ForegroundColor Cyan
+{{ end -}}

@@ -358,4 +358,49 @@
     url = "https://waterlander.net/dos2unix/files/dos2unix-{{ $dos2unixVersion }}-win64.zip"
     path = "bin/dos2unix.exe"
     executable = true
+
+# Scoop migration -- Wave 12b (2026-06-18)
+# 7z + two Nerd Fonts -- the last scoop apps in this series, both needing
+# install-time behavior a plain binary copy would miss.
+#
+# 7z: the source is an MSI, which chezmoi-external cannot extract. So this entry
+# ONLY downloads the pinned MSI; run_once_after_migrate-scoop-wave12b.ps1.tmpl
+# does `msiexec /a` to lay out the suite under ~/.local/opt/7zip, registers the
+# COM shell-extension (right-click menu), and uninstalls scoop's 7zip. The dest
+# filename is version-stable (decoupled from the URL's version string) so a
+# version bump leaves no orphan MSI. The asset name drops the dot (26.01 ->
+# 2601). To upgrade: bump $sevenZipVersion AND delete ~/.local/opt/7zip so the
+# run_once re-extracts (the run_once is hash-keyed, not version-aware).
+{{- $sevenZipVersion := "26.01" }}
+{{- $sevenZipAsset := $sevenZipVersion | replace "." "" }}
+
+[".local/share/7zip/7zip-x64.msi"]
+    type = "file"
+    url = "https://github.com/ip7z/7zip/releases/download/{{ $sevenZipVersion }}/7z{{ $sevenZipAsset }}-x64.msi"
+
+# Nerd Fonts (cascadiacode-nf-mono + jetbrains-mono) -- SOFT-UNMANAGE. These
+# externals fetch the upstream zips; run_once_register-fonts.ps1.tmpl replicates
+# scoop's per-user font install (copy .ttf to %LOCALAPPDATA%\...\Fonts + set the
+# AppContainer ACL + register HKCU Fonts). We do NOT scoop-uninstall the fonts:
+# scoop's font install COPIES the .ttf, so its uninstaller would delete the real
+# installed fonts (cf. clink/dark/vimtutor soft-unmanage precedent).
+#
+# Cascadia ships its .ttf at the zip root in three widths (NerdFont /
+# NerdFontMono / NerdFontPropo); `include` keeps only the Mono variants this
+# repo registers. JetBrains ships .ttf under fonts/ttf/ (fonts/variable/ holds 2
+# more that scoop's `extract_dir: fonts/ttf` excludes), so include +
+# stripComponents = 2 keeps only fonts/ttf/*.ttf, flattened into the dest dir.
+{{- $cascadiaNfVersion    := "3.4.0" }}
+{{- $jetbrainsMonoVersion := "2.304" }}
+
+[".local/share/fonts/cascadiacode-nf-mono"]
+    type = "archive"
+    url = "https://github.com/ryanoasis/nerd-fonts/releases/download/v{{ $cascadiaNfVersion }}/CascadiaCode.zip"
+    include = ["*NerdFontMono-*.ttf"]
+
+[".local/share/fonts/jetbrains-mono"]
+    type = "archive"
+    url = "https://github.com/JetBrains/JetBrainsMono/releases/download/v{{ $jetbrainsMonoVersion }}/JetBrainsMono-{{ $jetbrainsMonoVersion }}.zip"
+    include = ["fonts/ttf/**"]
+    stripComponents = 2
 {{- end }}

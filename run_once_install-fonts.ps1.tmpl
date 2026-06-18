@@ -1,34 +1,19 @@
 {{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_once_ script — 字型安裝（Windows）
 
-$ErrorActionPreference = "Stop"
-
 Write-Host "=== Font Setup ===" -ForegroundColor Cyan
 
-if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
-    Write-Host "scoop not found. Cannot install fonts." -ForegroundColor Red
-    exit 1
-}
+# This script no longer installs anything -- both fonts moved off scoop in Wave 12b.
+# Kept as a historical record.
 
-scoop bucket add nerd-fonts 2>$null
+# ── Nerd Fonts (CaskaydiaCove Mono + JetBrains Mono) ────────────────────────
+# cascadiacode-nf-mono and jetbrains-mono moved to .chezmoiexternal.toml in Wave
+# 12b (2026-06-18): the externals fetch the upstream zips and
+# run_once_register-fonts.ps1.tmpl replicates scoop's per-user install (copy .ttf
+# to %LOCALAPPDATA%\Microsoft\Windows\Fonts + AppContainer ACL + HKCU register).
+# Soft unmanage -- existing scoop installs are left untouched (no scoop uninstall):
+# scoop's font install COPIES the .ttf, so its uninstaller would delete the real
+# installed fonts. Matches the clink/dark/vimtutor precedent.
 
-# ── CaskaydiaCove Nerd Font Mono ─────────────────────────────────────────
-$cascadia = Join-Path $env:USERPROFILE "scoop\apps\cascadiacode-nf-mono"
-if (Test-Path $cascadia) {
-    Write-Host "[cascadiacode-nf-mono] already installed, skipping." -ForegroundColor Gray
-} else {
-    Write-Host "[cascadiacode-nf-mono] Installing via scoop..." -ForegroundColor Yellow
-    scoop install cascadiacode-nf-mono
-}
-
-# ── JetBrains Mono ───────────────────────────────────────────────────────
-$jbmono = Join-Path $env:USERPROFILE "scoop\apps\jetbrains-mono"
-if (Test-Path $jbmono) {
-    Write-Host "[jetbrains-mono] already installed, skipping." -ForegroundColor Gray
-} else {
-    Write-Host "[jetbrains-mono] Installing via scoop..." -ForegroundColor Yellow
-    scoop install jetbrains-mono
-}
-
-Write-Host "=== Font setup complete. ===" -ForegroundColor Cyan
+Write-Host "=== Font setup complete (nothing to install). ===" -ForegroundColor Cyan
 {{ end -}}
