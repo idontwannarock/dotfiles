@@ -8,6 +8,9 @@
 # OpenSpec generated (per-project, managed by openspec CLI)
 .claude/commands/opsx/
 .claude/skills/
+.codex/skills/
+.agent/skills/
+openspec/config.yaml
 
 # chezmoi
 .chezmoi*.toml.bak
