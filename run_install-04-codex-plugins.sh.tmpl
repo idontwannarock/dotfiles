@@ -1,8 +1,13 @@
 {{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
-# chezmoi run_onchange_ script — install Codex plugins (parity with install-03-claude-config)
+# chezmoi run_ script — install Codex plugins
 # Codex ships the `openai-curated` marketplace; superpowers is published there.
-# Reruns when this script's content changes.
+#
+# Uses run_ (reruns every apply), not run_onchange_: the guard is idempotent (skip
+# if installed) and cheap. If an apply no-ops because codex isn't on PATH yet,
+# run_onchange_ would record the content hash and never retry even after the
+# environment is fixed; run_ rechecks every apply and self-heals (same rationale as
+# install-02-npm-tools).
 
 set -euo pipefail
 
@@ -16,7 +21,10 @@ echo "=== Codex Plugins Setup ==="
 # superpowers: planning / TDD / debugging / review skills — the cross-tool dev-workflow
 # skill references these by name (brainstorming, writing-plans, verification-before-completion,
 # finishing-a-development-branch, using-git-worktrees).
-if codex plugin list 2>/dev/null | grep -q 'superpowers@openai-curated.*installed'; then
+# Match name + whitespace + "installed" (ERE). NOT '.*installed' — that greedily
+# matches the "not installed" status too, so an uninstalled plugin would be
+# misread as installed and never get installed. Parity with the .ps1 guard.
+if codex plugin list 2>/dev/null | grep -Eq 'superpowers@openai-curated[[:space:]]+installed'; then
     echo "[plugins] superpowers already installed."
 else
     echo "[plugins] Installing superpowers..."

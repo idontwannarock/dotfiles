@@ -32,9 +32,20 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
 #     chezmoi's PATH at startup — which on a fresh VM lacks ~/.local/bin.
 # scriptEnv plugs that gap by injecting PATH at subprocess-spawn time.
 # Existing machines: harmless duplicate of ~/.local/bin at the head of PATH.
+#
+# Windows deliberately does NOT use `env "PATH"` for the rest of PATH. `env "PATH"`
+# is the *launching shell's process PATH*, frozen at chezmoi startup; it goes stale
+# whenever a migration updates the registry PATH but the shell isn't restarted (a
+# pre-migration shell is exactly why run_install-02-npm-tools once reported "npm not
+# found" — the nvm dir was already in the registry User PATH but not in that shell).
+# Instead we read the authoritative persisted PATH straight from the registry
+# (Machine + User) at render time, so every chezmoi subprocess sees the current PATH
+# — node/npm and any future registry-managed tool — regardless of the launching
+# shell. .NET expands REG_EXPAND_SZ, so no %VAR% leaks through. Unix keeps env "PATH"
+# (its login shells stay fresh; nvm is sourced via the load-nvm template fragment).
 [scriptEnv]
 {{- if eq .chezmoi.os "windows" }}
-    PATH = {{ printf "%s;%s" (joinPath .chezmoi.homeDir ".local/bin") (env "PATH") | quote }}
+    PATH = {{ printf "%s;%s" (joinPath .chezmoi.homeDir ".local/bin") (output "powershell" "-NoProfile" "-Command" "[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User')" | trim) | quote }}
 {{- else }}
     PATH = {{ printf "%s:%s" (joinPath .chezmoi.homeDir ".local/bin") (env "PATH") | quote }}
 {{- end }}

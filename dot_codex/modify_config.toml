@@ -53,14 +53,16 @@ model_verbosity = "medium"
 web_search = "live"
 GLOBAL
 
-# ── 保留本機 per-project 設定 ────────────────────────────────────────────────
-# 從現有檔案中提取 [projects.*] 和其下的 key = value 行
+# ── 保留本機 per-machine 區塊：[projects.*] 與 [plugins.*] ────────────────────
+# [projects.*]：per-project 設定。
+# [plugins.*]：codex plugin add 寫入的 plugin 註冊；不保留就會被本次整份重寫洗掉，
+#              害 install-04-codex-plugins 每次 apply 重裝又被洗、無限 flip-flop。
 if [ -n "$existing" ]; then
     echo ""
     echo "$existing" | awk '
-        /^\[projects\./ { in_proj=1; print; next }
-        /^\[/ { in_proj=0 }
-        in_proj { print }
+        /^\[(projects|plugins)\./ { in_keep=1; print; next }
+        /^\[/ { in_keep=0 }
+        in_keep { print }
     '
 fi
 
