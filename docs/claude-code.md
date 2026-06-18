@@ -98,8 +98,8 @@ repo 的 `docs/superpowers/{specs,plans}/`，會污染 repo 且與 OpenSpec 的
 | [Claude Code](https://claude.com/claude-code) | `claude plugin` 指令 | 必須先安裝 |
 | [jq](https://jqlang.github.io/jq/) | plugin hook 腳本 | Windows: `scoop install jq` |
 | [dos2unix](https://dos2unix.sourceforge.io/) | 修復 hook CRLF (Windows) | Windows: `scoop install dos2unix` |
-| [jdtls](https://github.com/eclipse-jdtls/eclipse.jdt.ls) | Java LSP server | Windows: `scoop install jdtls`；Linux: 同步腳本自動下載 |
-| JDK 21+ | jdtls 執行環境 | wrapper (`~/.local/bin/jdtls`) 自動從 scoop/系統 JDK 中選擇 |
+| [jdtls](https://github.com/eclipse-jdtls/eclipse.jdt.ls) | Java LSP server | Windows: `.chezmoiexternal.toml` 自動下載至 `~/.local/opt/jdtls`（Wave 11）；Linux: 同步腳本自動下載 |
+| JDK 21+ | jdtls 執行環境 | wrapper (`~/.local/bin/jdtls`) 從 `JAVA_HOME` / `~/.local/opt/jdk-N` 選擇（Windows 經 uv-managed python 啟動 launcher） |
 
 ### Plugin Scope 管理
 

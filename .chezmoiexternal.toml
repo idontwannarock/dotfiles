@@ -321,4 +321,27 @@
     type = "archive"
     url = "https://archive.apache.org/dist/maven/maven-3/{{ $mavenVersion }}/binaries/apache-maven-{{ $mavenVersion }}-bin.zip"
     stripComponents = 1
+
+# Scoop migration -- Wave 11 (2026-06-18)
+# jdtls (Eclipse JDT Language Server) -- the last dev tool still on scoop after
+# Wave 10 moved the JDKs off. jdtls is a Java app: a python launcher (bin/jdtls)
+# over OSGi plugin jars. The tarball extracts FLAT (bin/, plugins/, config_win/,
+# config_ss_win/, config_*, features/) with no versioned top-level dir, so -- like
+# Wave 9 nvm -- we use `type = "archive"` WITHOUT stripComponents.
+#
+# Runtime needs (1) a JDK >= 21 and (2) a python3. (1) is satisfied by Wave 10's
+# ~/.local/opt/jdk-21 -- jdtls.py reads $JAVA_HOME itself, which 22-use-java.ps1
+# persists. (2) is satisfied by Wave 10's uv-managed CPython; the ~/.local/bin/jdtls
+# wrapper resolves it via `uv python find` (the system python is a WindowsApps stub).
+#
+# Eclipse publishes under snapshots/ with a milestone+timestamp filename. milestones/
+# no longer carries this build -- Eclipse prunes it. Pin BOTH the milestone and the
+# build timestamp (cf. Wave 6 ffmpeg). Do NOT use jdt-language-server-latest.tar.gz
+# (breaks reproducibility). To upgrade: bump $jdtlsVersion to a CURRENT snapshots
+# build + rerun `chezmoi apply` (old snapshot builds 404 once pruned).
+{{- $jdtlsVersion := "1.59.0-202605111959" }}
+
+[".local/opt/jdtls"]
+    type = "archive"
+    url = "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-{{ $jdtlsVersion }}.tar.gz"
 {{- end }}

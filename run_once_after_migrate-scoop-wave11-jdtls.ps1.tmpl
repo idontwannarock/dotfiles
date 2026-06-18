@@ -1,0 +1,58 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_after_ script -- Wave 11 Scoop cleanup
+#
+# Uninstall scoop packages that dotfiles now manages via .chezmoiexternal.toml:
+#   - jdtls : Eclipse JDT Language Server. The full distribution now lives at
+#             ~/.local/opt/jdtls/ (archive external). The ~/.local/bin/jdtls
+#             wrapper launches it via uv-managed python + $JAVA_HOME (jdk-21).
+#
+# Wave 1 already handled User PATH ordering (`~/.local/bin` before
+# `~/scoop/shims`), so this script does NOT touch PATH.
+#
+# Idempotent: skips uninstall if scoop is unaware of the package; skips
+# entirely if scoop itself is not installed.
+
+$ErrorActionPreference = "Continue"
+$pkgs = @("jdtls")
+
+Write-Host "=== Wave 11: Scoop cleanup ===" -ForegroundColor Cyan
+
+if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
+    Write-Host "=== Wave 11 migration complete. ===" -ForegroundColor Cyan
+    return
+}
+
+foreach ($pkg in $pkgs) {
+    $installed = $false
+    try {
+        $listOutput = scoop list $pkg 2>$null | Out-String
+        $pattern = "(?im)^\s*$([regex]::Escape($pkg))\b"
+        if ($listOutput -match $pattern) { $installed = $true }
+    } catch {}
+    if ($installed) {
+        Write-Host "[$pkg] uninstalling from scoop..." -ForegroundColor Yellow
+        scoop uninstall $pkg 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "[$pkg] scoop uninstall returned non-zero exit; continuing."
+        }
+    } else {
+        Write-Host "[$pkg] not installed via scoop, skipping." -ForegroundColor Gray
+    }
+
+    # Defensive: scoop uninstall can leave orphan shims in ~/scoop/shims that point
+    # at the now-removed app (and the now-removed scoop python). Prune them so a
+    # stale jdtls.exe doesn't shadow-compete with ~/.local/bin/jdtls.cmd. Only the
+    # scoop shims dir is touched -- never ~/.local/bin.
+    $shimDir = Join-Path $env:USERPROFILE "scoop\shims"
+    foreach ($ext in @("", ".exe", ".cmd", ".shim", ".ps1")) {
+        $shim = Join-Path $shimDir ($pkg + $ext)
+        if (Test-Path $shim) {
+            Write-Host "[$pkg] removing orphan scoop shim: $($pkg + $ext)" -ForegroundColor Yellow
+            Remove-Item $shim -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+Write-Host "=== Wave 11 migration complete. ===" -ForegroundColor Cyan
+{{ end -}}

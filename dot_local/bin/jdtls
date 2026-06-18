@@ -15,11 +15,11 @@ find_suitable_jdk() {
 
     case "$(uname -s)" in
         MINGW*|MSYS*)
-            # Windows (Git Bash): scan scoop JDK installations
-            for d in "$HOME/scoop/apps"/temurin{21,22,23,24,25}-jdk/current \
-                     "$HOME/scoop/apps"/graalvm-oracle-jdk/current \
-                     "$HOME/scoop/apps"/graalvm{21,22,23,24,25}*/current \
-                     "$HOME/scoop/apps"/openjdk{21,22,23,24,25}/current; do
+            # Windows: prefer $JAVA_HOME (persisted by 22-use-java.ps1), then scan
+            # off-scoop JDKs at ~/.local/opt/jdk-N (Wave 10). scoop JDKs were removed
+            # in Wave 10, so the old ~/scoop/apps scan no longer finds anything.
+            [[ -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/java.exe" ]] && candidates+=("$JAVA_HOME")
+            for d in "$HOME/.local/opt"/jdk-{21,22,23,24,25}; do
                 [[ -d "$d" ]] && candidates+=("$d")
             done
             ;;
@@ -65,8 +65,9 @@ find_real_jdtls() {
 
     case "$(uname -s)" in
         MINGW*|MSYS*)
-            local scoop_jdtls="$HOME/scoop/apps/jdtls/current/bin/jdtls"
-            [[ -f "$scoop_jdtls" ]] && echo "$scoop_jdtls" && return 0
+            # Off-scoop install from .chezmoiexternal.toml (Wave 11).
+            local opt_jdtls="$HOME/.local/opt/jdtls/bin/jdtls"
+            [[ -f "$opt_jdtls" ]] && echo "$opt_jdtls" && return 0
             ;;
         *)
             for p in /usr/bin/jdtls /usr/local/bin/jdtls \
@@ -86,7 +87,7 @@ find_real_jdtls() {
 # ── Main ──────────────────────────────────────────────────────────────────────
 JAVA_HOME=$(find_suitable_jdk) || {
     echo "ERROR: No JDK >= $REQUIRED_JAVA_VERSION found for jdtls" >&2
-    echo "  Windows: scoop install temurin21-jdk" >&2
+    echo "  Windows: chezmoi apply (installs ~/.local/opt/jdk-21) or set JAVA_HOME" >&2
     echo "  Linux:   apt install temurin-21-jdk / sdkman install java 21-tem" >&2
     exit 1
 }
@@ -94,9 +95,25 @@ export JAVA_HOME
 
 REAL_JDTLS=$(find_real_jdtls) || {
     echo "ERROR: jdtls not found" >&2
-    echo "  Windows: scoop install jdtls" >&2
+    echo "  Windows: chezmoi apply (installs ~/.local/opt/jdtls)" >&2
     echo "  Linux:   see ~/.local/bin/install-jdtls" >&2
     exit 1
 }
 
-exec "$REAL_JDTLS" "$@"
+# bin/jdtls is a python3 script. On Windows its shebang can't be honored (and the
+# system `python` is a WindowsApps stub), so run it through the uv-managed CPython
+# resolved via `uv python find` (Wave 10). On Unix the shebang resolves python3.
+case "$(uname -s)" in
+    MINGW*|MSYS*)
+        PY=$("$HOME/.local/bin/uv.exe" python find 2>/dev/null) || PY=""
+        [[ -n "$PY" ]] || {
+            echo "ERROR: no python found for jdtls launcher (uv python find failed)" >&2
+            echo "  run: uv python install" >&2
+            exit 1
+        }
+        exec "$PY" "$REAL_JDTLS" "$@"
+        ;;
+    *)
+        exec "$REAL_JDTLS" "$@"
+        ;;
+esac
