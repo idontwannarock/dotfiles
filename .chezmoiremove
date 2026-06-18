@@ -28,3 +28,9 @@
 .codex/skills/git-amend
 .codex/skills/git-push
 .codex/skills/review-codex
+
+# Review commands renamed to the parity set (quick→surgical, full→comprehensive)
+# and review-codex dropped; the old command files were unmanaged orphans.
+.claude/commands/code/review-quick.md
+.claude/commands/code/review-full.md
+.claude/commands/code/review-codex.md
