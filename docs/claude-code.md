@@ -195,6 +195,19 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 
 待官方修復後可移除 workaround。
 
+### episodic-memory MCP 連不上（plugin cache 不完整）
+
+`claude mcp list` 顯示 `plugin:episodic-memory:episodic-memory - ✘ Failed to connect`。
+
+| 項目 | 說明 |
+|------|------|
+| 症狀 | MCP server 啟動指令 `node .../cli/mcp-server-wrapper.js` 找不到檔案 |
+| 根因 | plugin cache (`~/.claude/plugins/cache/superpowers-marketplace/episodic-memory/`) 被 Claude 內部 GC 誤刪目錄，缺 `cli/ dist/ src/ scripts/` 等，只剩 `docs/ skills/ test/`（會留下 `.orphaned_at` 標記） |
+| 修復 | 重裝讓 Claude 重新 clone 完整 repo：`claude plugin uninstall episodic-memory@superpowers-marketplace` 後 `claude plugin install episodic-memory@superpowers-marketplace`（單純 install 不會修復已存在的壞 cache，需先 uninstall） |
+| 首次啟動 | `cli/dist` 已隨 repo commit，但執行期依賴（better-sqlite3 等原生模組）需 `node_modules`；wrapper 首次啟動會自動 `npm install`（約 30–60 秒，含原生編譯），故第一次 health check 可能逾時顯示 failed，裝完即恢復 |
+
+安裝腳本 `run_onchange_install-03-claude-config` 已包含 episodic-memory 安裝，新機器會自動裝；cache 損壞時手動重裝即可。
+
 ## /ensure-openspec Skill
 
 全域 user-invocable skill，用於按需安裝 OpenSpec CLI 並初始化當前專案。

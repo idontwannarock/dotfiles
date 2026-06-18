@@ -26,6 +26,12 @@ claude plugin install superpowers 2>&1 || true
 echo "[plugins] Installing slack..."
 claude plugin install slack 2>&1 || true
 
+echo "[plugins] Installing episodic-memory..."
+claude plugin install episodic-memory@superpowers-marketplace 2>&1 || true
+
+echo "[plugins] Installing elements-of-style..."
+claude plugin install elements-of-style@superpowers-marketplace 2>&1 || true
+
 # ── Output style plugin: explanatory (insight-only, replaces learning) ──
 # Learning 會要求 scaffold + 留 5-10 行給使用者寫；explanatory 只留 ★ Insight 解說。
 INSTALLED_PLUGINS="$(claude plugin list 2>/dev/null || true)"
