@@ -71,7 +71,7 @@ Update Current Step + Last Updated after each skill completes. Set Status to `pa
 
 ## Step 3: Run the Core Flow
 
-OpenSpec uses skill-based delivery — invoke by skill name (e.g. `openspec-new-change`),
+OpenSpec uses skill-based delivery — invoke by skill name (e.g. `{{ .n.sk }}openspec-new-change`),
 NOT slash commands (`/opsx:*`). Skills are agent- and subagent-invocable and portable to
 Codex; slash commands are user-typed UI only and unavailable to dispatched subagents.
 
@@ -79,11 +79,11 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 
 ```
 {{ .n.ensureScript }}
-→ openspec-new-change → openspec-continue-change (loop until artifacts ready)
-→ openspec-apply-change → openspec validate
-→ [openspec-sync-specs — ask if implementation drifted from specs] → openspec-archive-change
+→ {{ .n.sk }}openspec-new-change → {{ .n.sk }}openspec-continue-change (loop until artifacts ready)
+→ {{ .n.sk }}openspec-apply-change → openspec validate
+→ [{{ .n.sk }}openspec-sync-specs — ask if implementation drifted from specs] → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewQuick }}
-→ Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from openspec-new-change)
+→ Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from {{ .n.sk }}openspec-new-change)
 → No fixes → {{ .n.finishing }} → [{{ .n.gitCleanGone }}]
 ```
 
@@ -92,13 +92,13 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 ```
 {{ .n.ensureScript }}
 → {{ .n.brainstorm }}   (design → ~/.local/share/superpowers/<repo>/specs/, NOT docs/)
-→ openspec-new-change → openspec-continue-change   (proposal + design.md + tasks.md into openspec/)
+→ {{ .n.sk }}openspec-new-change → {{ .n.sk }}openspec-continue-change   (proposal + design.md + tasks.md into openspec/)
 → [{{ .n.writingPlans }} — only if implementation needs choreography beyond
    tasks.md (multi-session, executing-plans/subagent handoff); else tasks.md IS the plan]
-→ openspec-apply-change
+→ {{ .n.sk }}openspec-apply-change
 → {{ .n.verification }} (run tests / verify commands — hard evidence)
-→ openspec-verify-change (three-dimension spec/code coherence report)
-→ openspec validate → openspec-sync-specs → openspec-archive-change
+→ {{ .n.sk }}openspec-verify-change (three-dimension spec/code coherence report)
+→ openspec validate → {{ .n.sk }}openspec-sync-specs → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewFull }}
 → Fixes needed? → Confirm scope, start a new change round
 → No fixes → {{ .n.finishing }} → [{{ .n.gitCleanGone }}]
