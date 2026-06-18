@@ -65,6 +65,7 @@ The `active_workflows.md` row format:
 
 - **Path**: actual working directory (main repo or worktree path)
 - **Type**: `main` or `worktree`
+- **Current Step**: a tool-neutral semantic label (e.g. `apply-change done`, `review`) — this file is shared across tools, so never write a sigil'd skill token (`{{ .n.sk }}openspec-…`); the resuming tool re-derives the token from its own name-map.
 - **Status**: `active` or `paused`
 
 Update Current Step + Last Updated after each skill completes. Set Status to `paused` when switching workflows. Remove the row after `{{ .n.finishing }}`.
