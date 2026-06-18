@@ -13,8 +13,8 @@
 #      primary source — mirrors the actual context_window_size Claude Code
 #      pushes to the statusline command)
 #   3. ~/.cache/claude-handoff/latest.cache (statusline-written, cross-session
-#      fallback — covers the race window where SessionEnd just cleaned the
-#      per-session cache and the new session's statusline hasn't rendered yet)
+#      fallback — covers a brand-new session whose first prompt arrives before
+#      its statusline has rendered, so session-<id>.cache does not exist yet)
 #   4. Model name mapping fallback (claude-opus-*/sonnet-*/haiku-* → 200000)
 #   5. Fallback default 200000
 #

@@ -13,9 +13,12 @@
 # - statusLine（跨平台處理執行檔路徑）
 # - hooks.PreToolUse（註冊 rtk-rewrite.sh，Bash matcher）
 # - hooks.UserPromptSubmit（註冊 handoff-reminder.sh，context 用量階梯提醒）
-# - hooks.SessionEnd（註冊 handoff-cleanup.sh，清理 per-session cache）
 # - hooks.SessionStart（union-append claude-memory-seed；**不** hard-assign，
 #   以保留 herdr / agent-sessions 等工具於 runtime 註冊的 SessionStart entries）
+#
+# 主動刪除（modify_ 是 patch 而非 render，停止寫入不會抹掉既有部署的舊值）：
+# - hooks.SessionEnd 與 env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS —— 退役的
+#   handoff-cleanup hook 殘留，跨機器 del 清除。
 #
 # 注意：CLAUDE_HANDOFF_CONTEXT_WINDOW 故意**不**設 — 讓 statusline 寫的
 # per-session cache 成為主要來源；這個 env var 只保留給 debug/override 用
@@ -55,7 +58,7 @@ echo "$input" | jq \
       }
     | .env = (.env // {})
     | .env.CLAUDE_CODE_NO_FLICKER = "1"
-    | .env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS = "10000"
+    | .env |= del(.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS)
 {{- if eq .chezmoi.os "windows" }}
     | .env.CLAUDE_CODE_GIT_BASH_PATH = $git_bash
     | .env.CLAUDE_CODE_USE_POWERSHELL_TOOL = "1"
@@ -63,6 +66,7 @@ echo "$input" | jq \
     | .env |= del(.CLAUDE_CODE_GIT_BASH_PATH)
 {{- end }}
     | .hooks = (.hooks // {})
+    | .hooks |= del(.SessionEnd)
     | .hooks.PreToolUse = [
         {
           matcher: "Bash",
@@ -80,16 +84,6 @@ echo "$input" | jq \
             {
               type: "command",
               command: "bash ~/.claude/hooks/handoff-reminder.sh"
-            }
-          ]
-        }
-      ]
-    | .hooks.SessionEnd = [
-        {
-          hooks: [
-            {
-              type: "command",
-              command: "bash ~/.claude/hooks/handoff-cleanup.sh"
             }
           ]
         }

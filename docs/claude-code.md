@@ -376,7 +376,6 @@ go build -o statusline statusline.go       # macOS/Linux
 |---|---|---|
 | Skill | `dot_claude/skills/handoff/`（+ `dot_codex/skills/handoff/`，共用 body 在 `.chezmoitemplates/skills/handoff.md`） | `/handoff`、「切 session」、reminder 後確認 |
 | 提醒 hook | `dot_claude/hooks/executable_handoff-reminder.sh` | UserPromptSubmit；context 達 40/70/90% 各提醒一次 |
-| 清理 hook | `dot_claude/hooks/executable_handoff-cleanup.sh` | SessionEnd；刪 per-session cache + sentinel |
 | Cache writer | `claude/statusline/statusline.go` 的 `writeContextWindowCache()` | 每次 statusline 渲染 |
 | 註冊 | `dot_claude/modify_settings.json.sh.tmpl` jq patch | chezmoi apply 時生效 |
 
@@ -391,11 +390,13 @@ Reminder hook 解析當前 context 使用率的順序：
 
 1. `$CLAUDE_HANDOFF_CONTEXT_WINDOW` env var（debug/override 專用）
 2. `session-<id>.cache`（主要）
-3. `latest.cache`（race window fallback）
+3. `latest.cache`（跨 session fallback）
 4. Model name mapping → 200000
 5. Default 200000
 
-`latest.cache` 存在的原因：SessionEnd 清完舊 session cache 後、新 session 的 statusline 首次重繪前的 1-3 秒 race window，避免誤觸發 200k fallback。
+`latest.cache` 存在的原因：新 session 的首個 prompt 在 statusline 首次重繪前就進來時，`session-<id>.cache` 尚未寫出，靠它避免誤觸發 200k fallback。
+
+Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：檔案僅 7B、以 session-id 命名永不撞號，留著無害；過去的 SessionEnd 清理 hook 因 SessionEnd 觸發不可靠（terminal 直接關、crash 都不跑）本就會洩漏，已移除。
 
 ### 產出
 
@@ -410,6 +411,6 @@ Reminder hook 解析當前 context 使用率的順序：
 - `jq` 必須安裝（hooks 依賴）
 - `CLAUDE_HANDOFF_CONTEXT_WINDOW` env var **不要**放進 settings.json — 會破壞 cache-first 的動態性（每次都走 env 就不會讀 cache）
 
-### 已知小缺陷
+### 維護備註
 
-- `/exit` 時 CC 可能印 `SessionEnd hook ... failed: Hook cancelled` — 純 UI 噪音，cleanup 實際有跑（cross-checked by cache dir 無 orphan）。詳 `bug_sessionend_hook_cancelled` 上游 issue tracking。
+- Per-session cache（`session-<id>.cache`、`reminded-<id>-<tier>`）無自動清理機制；單檔 7B、無功能影響。真要清空可手動 `rm ~/.cache/claude-handoff/session-* ~/.cache/claude-handoff/reminded-*`（保留 `latest.cache`）。

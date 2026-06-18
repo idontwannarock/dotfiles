@@ -252,10 +252,9 @@ func formatUltracodeBadge() string {
 
 // writeContextWindowCache 將 Claude Code 傳來的 context_window_size 寫成兩份
 // cache 檔供 UserPromptSubmit hook 取用：
-//   - session-<session_id>.cache — 精確匹配，SessionEnd hook 會清掉
-//   - latest.cache — 跨 session 的 fallback，永不清理；處理 session 轉換的
-//     race window（舊 session cleanup → 新 session 首個 prompt 在 statusline
-//     首次重繪前就進來）情境
+//   - session-<session_id>.cache — 精確匹配當前 session
+//   - latest.cache — 跨 session 的 fallback，永不清理；處理新 session 首個
+//     prompt 在 statusline 首次重繪前就進來、session-<id>.cache 尚未存在的情境
 //
 // 只在 size > 0 時寫；採 tmp+rename 避免部分寫。任何錯誤都靜默 —
 // 這是錦上添花的資料，失敗不該影響 statusline 顯示。

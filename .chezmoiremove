@@ -34,3 +34,8 @@
 .claude/commands/code/review-quick.md
 .claude/commands/code/review-full.md
 .claude/commands/code/review-codex.md
+
+# Retired SessionEnd cleanup hook — vestigial (SessionEnd fires unreliably so it
+# leaked anyway) and unnecessary (per-session caches are 7B, latest.cache fallback
+# covers reminders cross-session). Source removed; prune deployed copy everywhere.
+.claude/hooks/handoff-cleanup.sh
