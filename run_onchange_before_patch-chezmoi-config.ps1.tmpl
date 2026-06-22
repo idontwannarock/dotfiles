@@ -23,8 +23,32 @@
 
 $ErrorActionPreference = "Stop"
 
-$configPath      = Join-Path $env:USERPROFILE ".config\chezmoi\chezmoi.toml"
-$expectedCommand = {{ joinPath .chezmoi.homeDir "scoop/apps/git/current/bin/bash.exe" | quote }}
+$configPath = Join-Path $env:USERPROFILE ".config\chezmoi\chezmoi.toml"
+
+# Detect git-bash: ordered candidate Git-for-Windows roots, first whose
+# bin\bash.exe exists wins. Non-scoop first (new installs win), scoop last
+# (back-compat). NEVER a PATH `where bash` -- that picks WSL System32 bash or the
+# wrong usr\bin variant. The official/winget installer registers its dir at
+# HKLM/HKCU\SOFTWARE\GitForWindows\InstallPath, so probe that too (catches a
+# non-default install dir; PortableGit + scoop don't write that key). This
+# mirrors the static list in .chezmoi.toml.tmpl, plus the registry probe that a
+# Go template can't do -- so this self-heal is what fixes a non-default install.
+$gitRoots = [System.Collections.Generic.List[string]]::new()
+$gitRoots.Add((Join-Path $env:USERPROFILE ".local\opt\git"))
+$gitRoots.Add("C:\Program Files\Git")
+foreach ($hive in @("HKLM:\SOFTWARE\GitForWindows", "HKCU:\SOFTWARE\GitForWindows")) {
+    try {
+        $ip = (Get-ItemProperty -Path $hive -Name InstallPath -ErrorAction Stop).InstallPath
+        if ($ip -and -not $gitRoots.Contains($ip)) { $gitRoots.Add($ip) }
+    } catch {}
+}
+$gitRoots.Add((Join-Path $env:USERPROFILE "scoop\apps\git\current"))  # scoop -- last, back-compat
+
+$expectedCommand = $null
+foreach ($root in $gitRoots) {
+    $cand = Join-Path $root "bin\bash.exe"
+    if (Test-Path $cand) { $expectedCommand = $cand; break }
+}
 
 if (-not (Test-Path $configPath)) {
     # No local config means chezmoi has never been init'd here. The script
@@ -33,9 +57,9 @@ if (-not (Test-Path $configPath)) {
     return
 }
 
-if (-not (Test-Path $expectedCommand)) {
-    Write-Warning "Expected Git Bash wrapper not found at: $expectedCommand"
-    Write-Warning "Install git via scoop (scoop install git) so chezmoi can exec .sh scripts."
+if (-not $expectedCommand) {
+    Write-Warning "No Git Bash (bin\bash.exe) found under any known Git-for-Windows root."
+    Write-Warning "Install git via winget (winget install Git.Git) so chezmoi can exec .sh scripts."
     return
 }
 
@@ -45,7 +69,12 @@ $content = Get-Content $configPath -Raw
 $blockRegex = '(?ms)^\[interpreters\.sh\][^\[]*?command\s*=\s*"([^"]*)"'
 $match      = [regex]::Match($content, $blockRegex)
 
-if ($match.Success -and $match.Groups[1].Value -eq $expectedCommand) {
+# The config stores the path TOML-escaped ("C:\\Users\\..."); un-escape the
+# captured value before comparing to the raw $expectedCommand, else the block is
+# rewritten on every run (and the write below would emit invalid single-backslash
+# TOML, where e.g. \b is a backspace escape).
+$currentCmd = if ($match.Success) { $match.Groups[1].Value.Replace('\\', '\') } else { $null }
+if ($currentCmd -eq $expectedCommand) {
     # Already correct; nothing to do.
     return
 }
@@ -56,9 +85,10 @@ if ($match.Success -and $match.Groups[1].Value -eq $expectedCommand) {
 $stripRegex = '(?ms)\r?\n?^\[interpreters\.sh\].*?(?=^\[|\z)'
 $cleaned    = [regex]::Replace($content, $stripRegex, '').TrimEnd()
 
+$escapedCommand = $expectedCommand.Replace('\', '\\')
 $freshBlock = @"
 [interpreters.sh]
-    command = "$expectedCommand"
+    command = "$escapedCommand"
 "@
 
 $newContent = $cleaned + "`n`n" + $freshBlock + "`n"

@@ -23,20 +23,20 @@ brew install chezmoi
 
 ### Windows（PowerShell）
 
-> **前提**：Windows 上 git 一律透過 scoop 安裝。chezmoi 的 `.sh` script interpreter
-> 硬指向 `~/scoop/apps/git/current/bin/bash.exe`，其他安裝方式會導致 script 執行失敗。
+> **前提**：先裝好 **git** 與 **chezmoi**。chezmoi 的 `.sh` interpreter 會自動偵測
+> Git for Windows（依序找 `~/.local/opt/git`、`C:\Program Files\Git`、scoop git），
+> 所以 git 用 winget、官方安裝器或 scoop 皆可，**不再硬依賴 scoop**。
 
 ```powershell
-# 1. 安裝 scoop（若尚未安裝）
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+# 1. 安裝 git（winget 為 OS 內建，不需 scoop）
+winget install Git.Git
 
-# 2. 安裝 git（scoop 本身首次安裝不需要 git，但後續 scoop update 需要）
-scoop install git
-
-# 3. 安裝 chezmoi
-scoop install chezmoi
+# 2. 安裝 chezmoi
+winget install twpayne.chezmoi
 ```
+
+> scoop 為**選用**：僅在你要用它管理 GUI 應用程式時才需安裝
+> （參考 [`scoop/scoopfile.json`](scoop/scoopfile.json)）。chezmoi 本身不需要 scoop。
 
 ### Linux / WSL
 

@@ -95,7 +95,7 @@ if (Get-Command "dos2unix" -ErrorAction SilentlyContinue) {
     $ErrorActionPreference = "Stop"
 } else {
     Write-Host "  WARNING: dos2unix not found. Plugin .sh scripts may have CRLF issues." -ForegroundColor Yellow
-    Write-Host "  Install with: scoop install dos2unix" -ForegroundColor Yellow
+    Write-Host "  Re-run 'chezmoi apply' to fetch ~/.local/bin/dos2unix.exe (provided by .chezmoiexternal.toml)." -ForegroundColor Yellow
 }
 
 # ── hooks.json UTF-8 BOM 移除 ───────────────────────────────────────────

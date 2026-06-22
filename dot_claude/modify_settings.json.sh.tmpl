@@ -40,7 +40,12 @@ fi
 echo "$input" | jq \
   --arg statusline_cmd '{{ .chezmoi.homeDir }}/.local/bin/statusline{{ if eq .chezmoi.os "windows" }}.exe{{ end }}' \
 {{- if eq .chezmoi.os "windows" }}
-  --arg git_bash '{{ printf "%s/scoop/apps/git/current/bin/bash.exe" .chezmoi.homeDir | replace "/" "\\" }}' \
+{{- /* git-bash detection mirrors .chezmoi.toml.tmpl: non-scoop first, scoop last; joinPath yields backslashes */}}
+{{-   $gbCands := list (joinPath .chezmoi.homeDir ".local/opt/git/bin/bash.exe") (joinPath "C:/Program Files" "Git/bin/bash.exe") (joinPath .chezmoi.homeDir "scoop/apps/git/current/bin/bash.exe") }}
+{{-   $gitBash := "" }}
+{{-   range $c := $gbCands }}{{ if and (eq $gitBash "") (stat $c) }}{{ $gitBash = $c }}{{ end }}{{ end }}
+{{-   if eq $gitBash "" }}{{ $gitBash = (joinPath "C:/Program Files" "Git/bin/bash.exe") }}{{ end }}
+  --arg git_bash '{{ $gitBash }}' \
 {{- end }}
   '
     .model = "claude-opus-4-8"

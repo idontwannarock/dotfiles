@@ -74,8 +74,27 @@ if (($userPath -split ';') -notcontains $bin) {
 #    unreliable when gpg-agent (detached) spawns it; Git for Windows bundles the
 #    GUI pinentry-w32.exe, which always works. Fall back to pinentry-basic.
 New-Item -ItemType Directory -Force $gnupgHome | Out-Null
-$pinentryW32 = Join-Path $env:USERPROFILE "scoop\apps\git\current\usr\bin\pinentry-w32.exe"
-$pinentry = if (Test-Path $pinentryW32) { $pinentryW32 } else { Join-Path $bin "pinentry-basic.exe" }
+# pinentry-w32 from the detected Git-for-Windows install. Same candidate roots and
+# GitForWindows\InstallPath registry probe as patch-chezmoi-config / the
+# interpreter detection (non-scoop first, scoop last), so a non-default install dir
+# resolves consistently here too. Falls back to GnuPG's own pinentry-basic.exe if
+# no git is found.
+$gitRoots = [System.Collections.Generic.List[string]]::new()
+$gitRoots.Add((Join-Path $env:USERPROFILE ".local\opt\git"))
+$gitRoots.Add("C:\Program Files\Git")
+foreach ($hive in @("HKLM:\SOFTWARE\GitForWindows", "HKCU:\SOFTWARE\GitForWindows")) {
+    try {
+        $ip = (Get-ItemProperty -Path $hive -Name InstallPath -ErrorAction Stop).InstallPath
+        if ($ip -and -not $gitRoots.Contains($ip)) { $gitRoots.Add($ip) }
+    } catch {}
+}
+$gitRoots.Add((Join-Path $env:USERPROFILE "scoop\apps\git\current"))  # scoop -- last, back-compat
+$pinentryW32 = $null
+foreach ($root in $gitRoots) {
+    $cand = Join-Path $root "usr\bin\pinentry-w32.exe"
+    if (Test-Path $cand) { $pinentryW32 = $cand; break }
+}
+$pinentry = if ($pinentryW32) { $pinentryW32 } else { Join-Path $bin "pinentry-basic.exe" }
 $conf = @(
     "default-cache-ttl 28800"
     "max-cache-ttl 28800"

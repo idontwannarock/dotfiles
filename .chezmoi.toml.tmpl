@@ -61,10 +61,19 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
 # 2. 必須用 bin/bash.exe 而非 usr/bin/bash.exe — 後者是 real bash，
 #    從非 MSYS parent 直接呼叫時 MSYSTEM 環境沒設好，coreutils
 #    （cat 等）會 DLL 載入失敗。bin/bash.exe 是設環境再 exec real bash 的 wrapper。
-# 前提：Windows 上 git 一律用 scoop 安裝。
+# git-bash 由偵測解析（不再硬指 scoop）：依序取第一個 bin/bash.exe 存在的
+# 已知 Git-for-Windows 安裝 root，非-scoop 優先、scoop 殿後（相容舊機）。
+# 不用 PATH 搜尋（會錯選 WSL System32 bash 或裸 usr/bin/bash，見上）。
+# template 無法讀 registry，故非預設目錄的官方/winget 安裝改由
+# run_onchange_before_patch-chezmoi-config.ps1.tmpl 的 InstallPath probe
+# 在 apply 時補上並 self-heal。
 [interpreters.sh]
 {{- if eq .chezmoi.os "windows" }}
-    command = {{ joinPath .chezmoi.homeDir "scoop/apps/git/current/bin/bash.exe" | quote }}
+{{-   $cands := list (joinPath .chezmoi.homeDir ".local/opt/git/bin/bash.exe") (joinPath "C:/Program Files" "Git/bin/bash.exe") (joinPath .chezmoi.homeDir "scoop/apps/git/current/bin/bash.exe") }}
+{{-   $bash := "" }}
+{{-   range $c := $cands }}{{ if and (eq $bash "") (stat $c) }}{{ $bash = $c }}{{ end }}{{ end }}
+{{-   if eq $bash "" }}{{ $bash = (joinPath "C:/Program Files" "Git/bin/bash.exe") }}{{ end }}
+    command = {{ $bash | quote }}
 {{- else }}
     command = "bash"
 {{- end }}
