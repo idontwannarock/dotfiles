@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# chezmoi modify_ script — 全域 git ignore (~/.config/git/ignore)
+#
+# 策略：append-merge（不整份覆寫）。
+# 全域 ignore 因機器而異 —— 某些工具只裝在部分機器上 —— 所以這裡
+# 只「確保 baseline 行存在」（缺了才補到檔尾），其餘各機器自己加的行
+# 一律保留，絕不刪除。chezmoi modify_ 腳本的 stdin 是當前 target 內容。
+set -euo pipefail
+
+current="$(cat)"
+
+# 原樣輸出既有內容（保留各機器手加的行與順序）
+printf '%s' "$current"
+# 既有內容非空但結尾沒換行 → 補一個，避免與新增行黏在一起
+if [ -n "$current" ] && [ "${current: -1}" != $'\n' ]; then
+  printf '\n'
+fi
+
+# 缺少的 baseline 行才補到檔尾（grep -xF：整行、純字串比對）
+for line in \
+  '**/.claude/settings.local.json' \
+  '.codegraph/'
+do
+  if ! printf '%s\n' "$current" | grep -qxF -- "$line"; then
+    printf '%s\n' "$line"
+  fi
+done
