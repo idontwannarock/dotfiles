@@ -8,15 +8,20 @@ Read this when editing `.ps1`/`.ps1.tmpl`, `Documents/`, `scoop/`, `bashrc/windo
 - Tool source: Scoop (`scoop install <pkg>`)
 - `scoop/scoopfile.json` is a hand-curated **GUI app** reference list, not a full `scoop export`. Auto-installed CLI tools belong in install scripts, not in scoopfile.json.
 
-## sh Interpreter Pinning
+## sh Interpreter (git-bash detection — Wave 13)
 
-Windows `sh` interpreter must be pinned to `~/scoop/apps/git/current/bin/bash.exe` (scoop-installed git). Do not assume system bash — `bash` on PATH from PowerShell 7 may resolve to `C:\Windows\System32\bash.exe` (WSL bash), which cannot handle the Windows tmp paths chezmoi passes.
+Windows `sh` interpreter points to Git for Windows' `bin/bash.exe`, **detected** (not hardcoded to scoop) from an ordered candidate list of known install roots, first whose `bin/bash.exe` exists wins — non-scoop first, scoop last for back-compat:
+1. `~/.local/opt/git/bin/bash.exe` (PortableGit)
+2. `C:\Program Files\Git\bin\bash.exe` (winget / official installer)
+3. `~/scoop/apps/git/current/bin/bash.exe` (scoop)
+
+Never resolve via PATH (`where bash` / `lookPath`) — that picks WSL `C:\Windows\System32\bash.exe` (can't handle the Windows tmp paths chezmoi passes) or the wrong `usr/bin/bash.exe`.
 
 Use `bin/bash.exe`, NOT `usr/bin/bash.exe`:
 - `bin/bash.exe` is a wrapper that sets `MSYSTEM` then exec's the real bash; works when invoked from a non-MSYS parent (PowerShell, chezmoi)
 - `usr/bin/bash.exe` is the real bash directly — coreutils DLLs fail to load from a non-MSYS parent
 
-The pin is in `.chezmoi.toml.tmpl` under `[interpreters.sh]`.
+Detection lives in `.chezmoi.toml.tmpl` `[interpreters.sh]` (Go `stat` static list, render-time) and `run_onchange_before_patch-chezmoi-config.ps1.tmpl` (PowerShell self-heal, same list + a `HKLM/HKCU\SOFTWARE\GitForWindows\InstallPath` registry probe for non-default install dirs). The same candidate roots are mirrored in `dot_claude/modify_settings.json.sh.tmpl` (git_bash arg) and `run_onchange_install-gnupg.ps1.tmpl` (pinentry-w32). git is a manual bootstrap prerequisite installed before `chezmoi init` (winget/PortableGit/scoop) — it can't be a chezmoi-external because chezmoi needs it to run `.sh` scripts.
 
 ## `modify_*` Scripts — Extension Dispatch
 
