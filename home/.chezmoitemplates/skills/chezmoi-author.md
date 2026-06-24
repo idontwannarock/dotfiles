@@ -8,6 +8,8 @@ description: Use when authoring or modifying files in the dotfiles chezmoi sourc
 Reference for writing/modifying chezmoi source files in this dotfiles repo.
 The repo is **source of truth** — changes here do not take effect until `chezmoi apply` runs on each machine.
 
+**Source root is `home/`** (set by the repo-root `.chezmoiroot`). Every chezmoi source entry — `dot_*`, `run_*`, `.chezmoi*` config, `.chezmoitemplates/` — lives under `home/`, and every path named in this skill is relative to that root (which is also where `chezmoi cd` lands). Put new source files under `home/`, **not** the repo root: a `run_*`/`dot_*` left at the repo root is outside the source root, so chezmoi silently ignores it. The repo root holds only non-deployed infra (CI sources, `docs/`, `tests/`, `openspec/`), which is why they no longer need `.chezmoiignore` excludes.
+
 ## Routing — Read Only What Applies
 
 Touch a file → read the matching reference. Skip the others.
