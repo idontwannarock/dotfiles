@@ -14,7 +14,7 @@ Touch a file → read the matching reference. Skip the others.
 
 | Editing... | Then read |
 |------------|-----------|
-| Windows-only files (`.ps1`/`.ps1.tmpl`, `Documents/`, `scoop/`, `bashrc/windows`, `run_after_modify-codex-config.ps1.tmpl`, anything that touches Scoop or Git Bash) | `references/windows.md` |
+| Windows-only files (`.ps1`/`.ps1.tmpl`, `Documents/`, `bashrc/windows`, `run_after_modify-codex-config.ps1.tmpl`, anything that touches Scoop or Git Bash) | `references/windows.md` |
 | Linux/WSL files (apt installers, `bashrc/linux`, `shell-common/linux`, anything using `load-nvm`) | `references/linux.md` |
 | macOS files (`.zshrc*`, brew installers, `shell-common/darwin`, `zshrc/darwin`) | `references/macos.md` |
 | Cross-platform plumbing only (chezmoi config, template fragments, `.chezmoiignore.tmpl`) | (this file alone is enough) |

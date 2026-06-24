@@ -87,10 +87,6 @@ Windows 上 jq SHALL 由 `.chezmoiexternal.toml` 直接下載 GitHub Release 的
 - **WHEN** chezmoi apply 在 Windows 執行
 - **THEN** `.chezmoiexternal.toml` 從 `https://github.com/jqlang/jq/releases/download/jq-<version>/jq-windows-amd64.exe` 下載至 `~/.local/bin/jq.exe`，設為 executable
 
-#### Scenario: Windows 上 jq 不再經由 Scoop prereq 腳本
-- **WHEN** 在 Windows 上的 `run_onchange_before_install-prereqs.ps1.tmpl` 執行
-- **THEN** 該腳本 SHALL NOT 呼叫 `Ensure-ScoopTool "jq"`
-
 #### Scenario: Fresh VM 上 jq.exe 早於 modify_settings 落地
 - **WHEN** 全新 Windows VM 上 `chezmoi init <repo> && chezmoi apply`，且 modify_ 階段（step 4）尚未開始
 - **THEN** `run_onchange_before_setup-paths.ps1.tmpl`（step 3）已從 GitHub Release 下載 jq.exe 至 `~/.local/bin/`；後續 `modify_settings.json.sh.tmpl` 啟動的 bash 程序透過 scriptEnv 注入的 PATH 解析到該 jq.exe 並成功 patch settings.json
@@ -686,13 +682,6 @@ Windows 上 `dos2unix.exe` SHALL 由 `.chezmoiexternal.toml` 以 `type = "archiv
 #### Scenario: 版本 pinning 跨機器 reproducible
 - **WHEN** 同一 commit 在不同機器執行 chezmoi apply
 - **THEN** 取得的 dos2unix 版本一致（採 pinned 版本變數，不使用 rolling URL）
-
-### Requirement: install-prereqs 不再經 Scoop 安裝 dos2unix
-`run_onchange_before_install-prereqs.ps1.tmpl` SHALL NOT 呼叫 `scoop install dos2unix`（或經 `Ensure-ScoopTool "dos2unix"`）。dos2unix 由 `.chezmoiexternal.toml` 提供；腳本可保留註解標明此事（比照既有 jq 的處理）。
-
-#### Scenario: prereqs 不主動裝 scoop dos2unix
-- **WHEN** 在 Windows 上執行 prereqs 腳本
-- **THEN** 不執行 `scoop install dos2unix`；後續 phase 仍能用到 `~/.local/bin/dos2unix.exe`（chezmoi-external 在 file 階段已部署）
 
 ### Requirement: jdtls 不再由 install-03 經 Scoop 安裝（補修 Wave 11）
 `run_onchange_install-03-claude-config.ps1.tmpl` SHALL NOT 呼叫 `scoop install jdtls`。jdtls 已於 Wave 11 由 `.chezmoiexternal.toml` 提供（`~/.local/opt/jdtls`）；此 leftover 移除後，install-03 不會在 hash 變動時把 jdtls 重新裝回 scoop。

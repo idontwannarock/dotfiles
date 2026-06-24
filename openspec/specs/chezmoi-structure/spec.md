@@ -43,7 +43,7 @@ Repo 根目錄 SHALL 包含 `.chezmoiignore.tmpl`，依 OS 排除不適用的檔
 
 #### Scenario: Repo 管理檔案永遠排除
 - **WHEN** chezmoi apply 在任何環境執行
-- **THEN** `.claude/`、`openspec/`、`docs/`、`README.md`、`ssh/`、`neovim/`、`scoop/` 不被部署
+- **THEN** `.claude/`、`openspec/`、`docs/`、`README.md`、`ssh/`、`neovim/` 不被部署
 
 ### Requirement: .chezmoi.toml.tmpl 為所有 chezmoi-spawned scripts 注入 ~/.local/bin 到 PATH
 `.chezmoi.toml.tmpl` SHALL 包含 `[scriptEnv]` 區塊，將 `~/.local/bin` prepend 到 PATH 環境變數。此設定 SHALL 透過 chezmoi 套用到所有由 chezmoi 啟動的子程序，包含 `run_*` scripts、modify_ files 經 `[interpreters.sh]` 啟動的 bash 程序、以及 hooks。

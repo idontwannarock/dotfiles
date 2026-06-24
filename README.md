@@ -296,8 +296,7 @@ dotfiles/
 ├── run_after_*.tmpl          # 後置腳本（Windows codex config 合併）
 ├── claude/statusline/        # statusline 原始碼（CI 編譯）
 ├── neovim/                   # NeoVim 設定（已棄用）
-├── scoop/                    # Scoop 套件參考清單（手動管理的 GUI 應用等）
-└── scripts/                  # 輔助腳本（worklogs 設定等）
+└── scripts/                  # 輔助腳本（worklogs 設定、scoop 互動更新等）
 ```
 
 ---
