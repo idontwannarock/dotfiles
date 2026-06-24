@@ -1,7 +1,11 @@
 ## ADDED Requirements
 
-### Requirement: Repo 目錄結構符合 chezmoi source 格式
-Repo 根目錄 SHALL 作為 chezmoi source dir，所有需要部署到 `$HOME` 的檔案須使用 chezmoi 檔名前綴慣例（`dot_`、`exact_`、`.tmpl` 等）。
+### Requirement: chezmoi source root 由 .chezmoiroot 指向 home/
+Repo root SHALL 包含 `.chezmoiroot`（內容為 `home`），將 `home/` 指定為 chezmoi source root。所有需要部署到 `$HOME` 的檔案 SHALL 置於 `home/` 之下並使用 chezmoi 檔名前綴慣例（`dot_`、`exact_`、`.tmpl` 等）。repo root 其餘項目（CI 原始碼、`docs/`、`tests/`、`openspec/` 等）位於 source root 之外，chezmoi 不會看到，因此無須以 `.chezmoiignore` 排除。
+
+#### Scenario: chezmoi 從 home/ 讀取 source state
+- **WHEN** chezmoi apply 或 chezmoi managed 執行
+- **THEN** chezmoi source-path 解析為 `<repo>/home`，僅 `home/` 內的檔案被視為 source state
 
 #### Scenario: dot_ 前綴對應隱藏檔案
 - **WHEN** chezmoi apply 執行
@@ -16,7 +20,7 @@ Repo 根目錄 SHALL 作為 chezmoi source dir，所有需要部署到 `$HOME` �
 - **THEN** 檔案內容經過 Go template 渲染後部署，目標檔案不含 `.tmpl` 後綴
 
 ### Requirement: .chezmoi.toml.tmpl 提供環境偵測
-Repo 根目錄 SHALL 包含 `.chezmoi.toml.tmpl`，在 `chezmoi init` 時產生機器專屬的 chezmoi config。
+chezmoi source root（`home/`）SHALL 包含 `.chezmoi.toml.tmpl`，在 `chezmoi init` 時產生機器專屬的 chezmoi config。
 
 #### Scenario: WSL 環境自動偵測
 - **WHEN** chezmoi init 在 Linux 環境執行，且 `uname -r` 輸出包含 `microsoft`
@@ -31,7 +35,7 @@ Repo 根目錄 SHALL 包含 `.chezmoi.toml.tmpl`，在 `chezmoi init` 時產生�
 - **THEN** `data.isWSL = false`，`.chezmoi.os = "darwin"`
 
 ### Requirement: .chezmoiignore.tmpl 排除非 dotfile 項目
-Repo 根目錄 SHALL 包含 `.chezmoiignore.tmpl`，依 OS 排除不適用的檔案，並永遠排除 repo 本身的管理檔案。
+chezmoi source root（`home/`）SHALL 包含 `.chezmoiignore.tmpl`，依 OS 排除不適用的檔案。（repo 基礎建設位於 source root 之外，毋須由此排除。）
 
 #### Scenario: Windows 專屬目錄在非 Windows 環境排除
 - **WHEN** chezmoi apply 在 macOS 或 Linux 執行
@@ -41,9 +45,9 @@ Repo 根目錄 SHALL 包含 `.chezmoiignore.tmpl`，依 OS 排除不適用的檔
 - **WHEN** chezmoi apply 在 Windows 執行
 - **THEN** `dot_bashrc`、`dot_zshrc`、`dot_shell_common` 不被部署
 
-#### Scenario: Repo 管理檔案永遠排除
+#### Scenario: Repo 基礎建設不被部署（位於 source root 之外）
 - **WHEN** chezmoi apply 在任何環境執行
-- **THEN** `.claude/`、`openspec/`、`docs/`、`README.md`、`ssh/`、`neovim/` 不被部署
+- **THEN** `.claude/`、`openspec/`、`docs/`、`README.md`、`neovim/`、`passgen/` 等位於 `home/` 之外，不在 chezmoi source state 中，故不被部署
 
 ### Requirement: .chezmoi.toml.tmpl 為所有 chezmoi-spawned scripts 注入 ~/.local/bin 到 PATH
 `.chezmoi.toml.tmpl` SHALL 包含 `[scriptEnv]` 區塊，將 `~/.local/bin` prepend 到 PATH 環境變數。此設定 SHALL 透過 chezmoi 套用到所有由 chezmoi 啟動的子程序，包含 `run_*` scripts、modify_ files 經 `[interpreters.sh]` 啟動的 bash 程序、以及 hooks。
@@ -63,7 +67,7 @@ Repo 根目錄 SHALL 包含 `.chezmoiignore.tmpl`，依 OS 排除不適用的檔
 - **THEN** scriptEnv 注入的 PATH **prepend** 而非 replace；原系統 PATH 內所有條目仍保留在 `~/.local/bin` 之後
 
 ### Requirement: .chezmoiexternal.toml 管理外部二進位
-Repo 根目錄 SHALL 包含 `.chezmoiexternal.toml`，宣告需從外部下載的資源（目前為 statusline binary）。
+chezmoi source root（`home/`）SHALL 包含 `.chezmoiexternal.toml`，宣告需從外部下載的資源（statusline、passgen binary）。
 
 #### Scenario: 正確平台的 statusline binary 被下載
 - **WHEN** chezmoi apply 執行

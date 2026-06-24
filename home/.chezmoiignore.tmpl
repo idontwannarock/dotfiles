@@ -1,13 +1,6 @@
-# ── 專案文件（不部署到任何平台）─────────────────────────────────────────────
-AGENTS.md
-README.md
-claude
-docs
-neovim
-openspec
-passgen
-scripts
-tests
+# 註：repo 基礎建設（README.md、docs/、passgen/、claude/statusline 等）已移出 source
+# root（見 ../.chezmoiroot，source 改從 home/ 讀取），chezmoi 看不到它們，故不再需要
+# ignore 規則。新增的非部署檔只要放在 repo root（home/ 之外）即可，無須在此排除。
 
 # ── Windows 專屬（非 Windows 環境排除）─────────────────────────────────────
 {{- if ne .chezmoi.os "windows" }}
