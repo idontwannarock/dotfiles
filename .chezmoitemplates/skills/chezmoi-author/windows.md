@@ -6,7 +6,7 @@ Read this when editing `.ps1`/`.ps1.tmpl`, `Documents/`, `scoop/`, `bashrc/windo
 
 - File extension: `.ps1.tmpl`
 - Tool source: Scoop (`scoop install <pkg>`)
-- `scoop/scoopfile.json` is a hand-curated **GUI app** reference list, not a full `scoop export`. Auto-installed CLI tools belong in install scripts, not in scoopfile.json.
+- The **GUI app** list is maintained in an external [gist](https://gist.github.com/idontwannarock/cef42b856b878e718a2e402eb8e5d7e1), not in this repo. Scoop's only residual role here is the interactive update helper `scripts/scoop-interactive-update.ps1`; do not add a scoop app list or `scoop import` back into the repo.
 
 ## sh Interpreter (git-bash detection — Wave 13)
 

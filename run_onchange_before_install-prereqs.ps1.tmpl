@@ -1,9 +1,0 @@
-{{- if eq .chezmoi.os "windows" -}}
-# chezmoi run_onchange_before_ script — CLI 依賴（給後續 phase 用）
-#
-# Both prerequisites now come from .chezmoiexternal.toml (deployed in the file
-# phase, before the run_ scripts that consume them), so this script no longer
-# installs anything via scoop:
-#   jq       -> Wave 1  (2026-05-18); used by modify_settings.json.sh.tmpl
-#   dos2unix -> Wave 12a (2026-06-18); used by install-03 to fix plugin .sh CRLF
-{{ end -}}

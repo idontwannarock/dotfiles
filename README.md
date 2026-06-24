@@ -36,7 +36,7 @@ winget install twpayne.chezmoi
 ```
 
 > scoop 為**選用**：僅在你要用它管理 GUI 應用程式時才需安裝
-> （參考 [`scoop/scoopfile.json`](scoop/scoopfile.json)）。chezmoi 本身不需要 scoop。
+> （GUI app 清單維護於 [gist](https://gist.github.com/idontwannarock/cef42b856b878e718a2e402eb8e5d7e1)，不在本 repo）。chezmoi 本身不需要 scoop。
 
 ### Linux / WSL
 
@@ -253,7 +253,7 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 |------|------|
 | [SSH keys](docs/ssh.md) | 每台機器獨立，不應同步 |
 | [Git 憑證](docs/git-credentials.md) | 包含機器專屬 access token |
-| GUI 應用程式 | 各機器需求不同（參考 [`scoop/scoopfile.json`](scoop/scoopfile.json)） |
+| GUI 應用程式 | 各機器需求不同（清單維護於 [gist](https://gist.github.com/idontwannarock/cef42b856b878e718a2e402eb8e5d7e1)） |
 | NeoVim（`neovim/`） | 已棄用 |
 
 ---
