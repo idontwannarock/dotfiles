@@ -260,43 +260,49 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 
 ## 目錄結構
 
+chezmoi 的 source state 全部收在 `home/` 底下，由 repo root 的 `.chezmoiroot`
+（內容為 `home`）指向。repo root 只保留「不部署」的專案基礎建設（CI 原始碼、文件、
+測試、OpenSpec），讓根目錄保持精簡。兩者互不干擾：root 的檔案 chezmoi 根本看不到，
+因此不需要再用 `.chezmoiignore` 排除。
+
 ```
 dotfiles/
-├── .chezmoi.toml.tmpl        # chezmoi 環境偵測設定（WSL detection 等）
-├── .chezmoiignore.tmpl       # 依 OS 排除不適用的檔案
-├── .chezmoiexternal.toml     # 外部資源（statusline binary）
-├── .chezmoitemplates/        # 平台專用 template 片段
-│   ├── bashrc/               #   bashrc/{windows,linux}
-│   ├── scripts/              #   scripts/{load-nvm}（安裝腳本共用片段）
-│   ├── shell-common/         #   shell-common/{base,windows,linux,darwin}
-│   └── zshrc/                #   zshrc/{darwin}
-├── .github/workflows/        # GitHub Actions（statusline 自動編譯發佈）
-├── Documents/                # Windows PowerShell profiles（chezmoi 管理）
-│   ├── _shared-profile.d/    # PS5 + PS7 共用 fragments
-│   ├── PowerShell/           # PS7 專屬 profile
-│   └── WindowsPowerShell/    # PS5 專屬 profile
+├── .chezmoiroot              # 內容為 "home"：chezmoi 從 home/ 讀取 source state
+├── home/                     # ← chezmoi source root（所有受管設定與安裝腳本）
+│   ├── .chezmoi.toml.tmpl    # chezmoi 環境偵測設定（WSL detection 等）
+│   ├── .chezmoiignore.tmpl   # 依 OS 排除不適用的檔案
+│   ├── .chezmoiexternal.toml # 外部資源（statusline / passgen binary）
+│   ├── .chezmoiremove        # 退役檔案清單（跨機器清除已部署的舊檔）
+│   ├── .chezmoitemplates/    # 平台專用 template 片段
+│   │   ├── bashrc/           #   bashrc/{windows,linux}
+│   │   ├── scripts/          #   scripts/{load-nvm}（安裝腳本共用片段）
+│   │   ├── shell-common/     #   shell-common/{base,windows,linux,darwin}
+│   │   └── zshrc/            #   zshrc/{darwin}
+│   ├── Documents/            # Windows PowerShell profiles（chezmoi 管理）
+│   │   ├── _shared-profile.d/ #   PS5 + PS7 共用 fragments
+│   │   ├── PowerShell/       #   PS7 專屬 profile
+│   │   └── WindowsPowerShell/ #   PS5 專屬 profile
+│   ├── dot_config/           # ~/.config/ 設定（starship 等）
+│   ├── dot_claude/           # ~/.claude/ 設定（exact_commands / exact_agents）
+│   ├── dot_codex/            # ~/.codex/ 設定（skills）
+│   ├── dot_local/bin/        # ~/.local/bin/ 腳本
+│   ├── dot_shell_common.tmpl # ~/.shell_common 入口（依 OS 載入 template 片段）
+│   ├── dot_bashrc.tmpl       # ~/.bashrc 入口（Windows Git Bash / Linux/WSL）
+│   ├── dot_zshrc.tmpl        # ~/.zshrc 入口（macOS）
+│   ├── dot_vimrc / dot_ideavimrc / dot_vim/  # Vim / IdeaVim
+│   ├── run_onchange_before_*.tmpl # 前置腳本（jq 安裝、chezmoi config 修復）
+│   ├── run_once_install-*.tmpl    # 工具安裝腳本（01-runtimes → 02-npm-tools → 03-claude-config, containers, cli-tools, fonts）
+│   ├── run_onchange_*.tmpl        # 設定更新腳本（變更時重跑）
+│   └── run_after_*.tmpl           # 後置腳本（Windows codex config 合併）
+│
+├── .github/workflows/        # GitHub Actions（statusline / passgen 自動編譯發佈）
+├── claude/statusline/        # statusline 原始碼（CI 編譯，不部署）
+├── passgen/                  # passgen 原始碼（CI 編譯，不部署）
+├── neovim/                   # NeoVim 設定（已棄用，不部署）
+├── scripts/                  # 輔助腳本（worklogs 設定、scoop 互動更新等，不部署）
 ├── docs/                     # 工具設定說明文件
-├── dot_config/               # ~/.config/ 設定
-│   └── starship/
-├── dot_claude/               # ~/.claude/ 設定
-│   ├── exact_commands/       # Commands（exact_：自動清理移除的檔案）
-│   └── exact_agents/         # Agents（exact_：自動清理移除的檔案）
-├── dot_codex/                # ~/.codex/ 設定
-│   └── skills/               # Codex skills
-├── dot_local/bin/            # ~/.local/bin/ 腳本
-├── dot_shell_common.tmpl     # ~/.shell_common 入口（依 OS 載入 template 片段）
-├── dot_bashrc.tmpl           # ~/.bashrc 入口（Windows Git Bash / Linux/WSL）
-├── dot_zshrc.tmpl            # ~/.zshrc 入口（macOS）
-├── dot_vimrc                 # ~/.vimrc
-├── dot_ideavimrc             # ~/.ideavimrc
-├── dot_vim/                  # ~/.vim/
-├── run_onchange_before_*.tmpl # 前置腳本（jq 安裝、chezmoi config 修復）
-├── run_once_install-*.tmpl   # 工具安裝腳本（依序：01-runtimes → 02-npm-tools → 03-claude-config, containers, cli-tools, fonts）
-├── run_onchange_*.tmpl       # 設定更新腳本（變更時重跑）
-├── run_after_*.tmpl          # 後置腳本（Windows codex config 合併）
-├── claude/statusline/        # statusline 原始碼（CI 編譯）
-├── neovim/                   # NeoVim 設定（已棄用）
-└── scripts/                  # 輔助腳本（worklogs 設定、scoop 互動更新等）
+├── tests/                    # Pester 測試
+└── openspec/                 # OpenSpec 變更追蹤
 ```
 
 ---

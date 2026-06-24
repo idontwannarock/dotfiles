@@ -13,10 +13,13 @@
 
 ## 本 repo 的相關位置
 
-- `dot_claude/`：由 chezmoi 管理並部署到 `~/.claude/`
+chezmoi 的 source state 全部位於 `home/`（由 root 的 `.chezmoiroot` 指向）；root 只放
+不部署的專案基礎建設（CI 原始碼、文件、測試、OpenSpec）。
+
+- `home/dot_claude/`：由 chezmoi 管理並部署到 `~/.claude/`
+- `home/dot_codex/`：由 chezmoi 管理並部署到 `~/.codex/`
 - `docs/claude-code.md`：Claude Code 設定與 workflow 說明
-- `.claude/CLAUDE.md`：這個 repo 原本的 Claude 專案記憶
-- `dot_codex/`：由 chezmoi 管理並部署到 `~/.codex/`
+- `.claude/CLAUDE.md`：這個 repo 原本的 Claude 專案記憶（root，不部署）
 
 ## Codex 對齊原則
 
@@ -25,4 +28,4 @@
 - 優先沿用這個 repo 既有 workflow，而不是發明第二套平行規則。
 - Codex 原生能力優先：`AGENTS.md`、skills、profiles、MCP、subagents。
 - 不要依賴 `model_instructions_file` 覆蓋內建 prompt；那只適合非常特殊的情況。
-- 如果需要對齊 Claude 的 `/git:*`、`/code:*`、OpenSpec 或 worklog 流程，優先參考 `dot_claude/CLAUDE.md` 與 `docs/claude-code.md`，再用 Codex 的 skills/subagents 重新表達。
+- 如果需要對齊 Claude 的 `/git:*`、`/code:*`、OpenSpec 或 worklog 流程，優先參考 `home/dot_claude/CLAUDE.md` 與 `docs/claude-code.md`，再用 Codex 的 skills/subagents 重新表達。
