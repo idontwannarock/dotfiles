@@ -1,4 +1,4 @@
-# corp-ssh-askpass.Tests.ps1 — Pester 5 tests for dot_local/bin/corp-ssh-askpass.ps1
+# corp-ssh-askpass.Tests.ps1 — Pester 5 tests for home/dot_local/bin/corp-ssh-askpass.ps1
 #
 # Black-box: invokes the helper as a child process with controlled $env:USERPROFILE,
 # a mock gopass.cmd on PATH, and various prompt strings. Asserts exit code,
@@ -6,7 +6,7 @@
 
 BeforeAll {
     $script:RepoRoot   = Split-Path -Parent $PSScriptRoot
-    $script:HelperPath = Join-Path $RepoRoot 'dot_local\bin\corp-ssh-askpass.ps1'
+    $script:HelperPath = Join-Path $RepoRoot 'home\dot_local\bin\corp-ssh-askpass.ps1'
 
     function Invoke-Helper {
         param([string]$Prompt)
