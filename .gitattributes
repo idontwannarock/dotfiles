@@ -16,13 +16,14 @@
 *.cmd text eol=crlf
 
 # Shell scripts without extension (wrappers in ~/.local/bin/)
-dot_local/bin/* text eol=lf
+# Paths are under home/ since the chezmoi source root moved there (.chezmoiroot).
+home/dot_local/bin/* text eol=lf
 
 # Git hooks (POSIX sh, run by git-bash on Windows — force LF)
-dot_config/git/hooks/* text eol=lf
+home/dot_config/git/hooks/* text eol=lf
 
 # Chezmoi template fragments (shell scripts, force LF)
-.chezmoitemplates/** text eol=lf
+home/.chezmoitemplates/** text eol=lf
 
 # Config files
 *.md text eol=lf
