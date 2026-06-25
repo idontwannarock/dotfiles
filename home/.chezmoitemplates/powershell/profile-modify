@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# chezmoi modify_ — regenerate the {{ .editionTitle }} profile loader while PRESERVING
+# an externally-injected coreutils block (uutils, GUID-marked) the third-party tool
+# appends to this profile. A plain managed file would let `chezmoi apply` wipe it.
+#
+# chezmoi feeds the current target on stdin; our stdout becomes the new target. We emit
+# the canonical loader, then re-attach whatever coreutils block the current profile
+# carries, so the tool may re-inject freely (the next apply carries it forward). A
+# machine without the block just gets the loader (no-op).
+#
+# Shared by PS7 (Documents/PowerShell) and PS5 (Documents/WindowsPowerShell); the ONLY
+# per-edition difference is the .editionTitle / .editionShort labels passed in by each
+# modify_ wrapper. Output is CRLF to match the Windows profile (fragment is LF).
+set -euo pipefail
+current="$(cat | tr -d '\r')"
+{
+  # 1) canonical managed loader (single source of truth for both editions)
+  cat <<'LOADER'
+# {{ .editionTitle }} profile loader
+# Uncomment to detect which step throws error
+#$ErrorActionPreference = 'Stop'
+
+# Load shared fragments (compatible with PS5 & PS7)
+$sharedDir = Join-Path (Split-Path (Split-Path $PROFILE)) "_shared-profile.d"
+$sharedNames = @()
+if (Test-Path $sharedDir) {
+    $sharedScripts = Get-ChildItem $sharedDir -Filter *.ps1 | Sort-Object Name
+    $sharedNames = $sharedScripts | ForEach-Object { $_.Name }
+    $sharedScripts | ForEach-Object { . $_.FullName }
+}
+
+# Load {{ .editionShort }}-specific fragments (skip any already loaded from _shared-profile.d)
+$profileDir = Join-Path (Split-Path $PROFILE) "profile.d"
+if (Test-Path $profileDir) {
+    Get-ChildItem $profileDir -Filter *.ps1 |
+        Where-Object { $_.Name -notin $sharedNames } |
+        Sort-Object Name |
+        ForEach-Object { . $_.FullName }
+}
+LOADER
+  # 2) preserve an externally-injected coreutils block, if present
+  if printf '%s\n' "$current" | grep -qF 'DO NOT MODIFY -- coreutils'; then
+    printf '\n'
+    printf '%s\n' "$current" | awk '/DO NOT MODIFY -- coreutils/{c++; print; if(c==2) exit; next} c==1{print}'
+  fi
+} | sed 's/$/\r/'
