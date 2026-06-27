@@ -19,6 +19,7 @@
 
 # rtk binary — token-reducing CLI proxy (https://github.com/rtk-ai/rtk)
 # Pinned to 0.36.0. Update by bumping version + rerunning `chezmoi apply`.
+# renovate: datasource=github-releases depName=rtk-ai/rtk
 {{- $rtkVersion := "0.36.0" }}
 {{- $rtkAsset := "" }}
 {{- if eq .chezmoi.os "linux" }}
@@ -43,10 +44,15 @@
 # scoop shim + 'current' junction failures under Win32-OpenSSH SSH sessions.
 # Bump versions below and rerun `chezmoi apply` to upgrade.
 {{- if eq .chezmoi.os "windows" }}
+# renovate: datasource=github-releases depName=starship/starship
 {{- $starshipVersion := "1.25.1" }}
+# renovate: datasource=github-releases depName=zellij-org/zellij
 {{- $zellijVersion   := "0.44.3" }}
+# renovate: datasource=github-releases depName=astral-sh/uv
 {{- $uvVersion       := "0.11.14" }}
+# renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
 {{- $jqVersion       := "1.8.1" }}
+# renovate: datasource=github-releases depName=BurntSushi/ripgrep
 {{- $ripgrepVersion  := "15.1.0" }}
 
 [".local/bin/starship.exe"]
@@ -81,11 +87,17 @@
 # Scoop migration — Wave 2 (2026-05-20)
 # 6 chezmoi-managed CLI tools migrated from Scoop to chezmoi-external.
 # Bump versions below and rerun `chezmoi apply` to upgrade.
+# renovate: datasource=github-releases depName=kubernetes/kubernetes extractVersion=^v(?<version>.+)$
 {{- $kubectlVersion      := "1.36.1" }}
+# renovate: datasource=github-releases depName=int128/kubelogin
 {{- $kubeloginVersion    := "1.36.2" }}
+# renovate: datasource=github-releases depName=yt-dlp/yt-dlp versioning=loose
 {{- $ytdlpVersion        := "2026.03.17" }}
+# renovate: datasource=github-releases depName=gohugoio/hugo
 {{- $hugoVersion         := "0.161.1" }}
+# renovate: datasource=github-releases depName=nxtrace/NTrace-V1
 {{- $nexttraceVersion    := "1.6.5" }}
+# renovate: datasource=github-releases depName=golangci/golangci-lint
 {{- $golangciLintVersion := "2.12.2" }}
 
 # kubectl is hosted at Kubernetes' official static CDN (dl.k8s.io), not GitHub.
@@ -145,6 +157,7 @@
 # Final wave for single-binary GitHub-release tools. gopass is the corp-ssh-askpass
 # password store CLI. gpg suite stays on scoop (multi-binary suite, gnupg.org NSIS).
 # Bump version below and rerun `chezmoi apply` to upgrade.
+# renovate: datasource=github-releases depName=gopasspw/gopass
 {{- $gopassVersion := "1.16.1" }}
 
 # URL tag uses `v` prefix; archive filename version string omits `v`. Same
@@ -160,7 +173,9 @@
 # is CLI-only (no dockerd.exe, no Docker Desktop). DOCKER_HOST=tcp://127.0.0.1:2375
 # is set by run_onchange_before_set-docker-host.ps1.tmpl. lazydocker stays on
 # scoop per user preference (not chezmoi-managed).
+# renovate: datasource=github-releases depName=docker/cli extractVersion=^v(?<version>.+)$
 {{- $dockerVersion        := "29.5.2" }}
+# renovate: datasource=github-releases depName=docker/compose extractVersion=^v(?<version>.+)$
 {{- $dockerComposeVersion := "5.1.4" }}
 
 # Docker Inc. official static binary archive (NOT GitHub release — first-party
@@ -190,6 +205,7 @@
 # the asset filename's git-describe suffix changes each build.
 # Three archive-file entries share the same URL; chezmoi caches by URL so the
 # zip is only downloaded once even though three binaries are extracted.
+# renovate: ignore — deferred to mirror phase: BtbN dated autobuild tag + git-describe asset filename is not derivable from a version; chezmoi can't extract GyanD's clean .7z.
 {{- $ffmpegTag   := "autobuild-2026-05-24-13-16" }}
 {{- $ffmpegAsset := "ffmpeg-n8.1.1-8-gb21e00eda5-win64-gpl-8.1.zip" }}
 {{- $ffmpegRoot  := trimSuffix ".zip" $ffmpegAsset }}
@@ -230,6 +246,7 @@
 # Wrappers (15 .cmd files at ~/.local/bin/) mirror scoop vim.json `bin[]`,
 # delegating each alias to vim.exe/gvim.exe/xxd.exe with the right flag.
 # PATH is not modified -- ~/.local/bin is already Wave 1's first PATH entry.
+# renovate: ignore — deferred to mirror phase: vim92 runtime-dir name is coupled to MAJOR.MINOR and hardcoded in 15 .cmd wrappers; resolved by mirror-side layout normalization, not by a version bump.
 {{- $vimVersion := "9.2.0530" }}
 
 [".local/share/vim"]
@@ -253,6 +270,7 @@
 # Env (NVM_HOME / NVM_SYMLINK), User PATH, settings.txt, and the Node bootstrap
 # are handled by run_once_after_migrate-scoop-wave9-nvm.ps1.tmpl, which runs after
 # this external deploys. Bump $nvmVersion + rerun `chezmoi apply` to upgrade.
+# renovate: datasource=github-releases depName=coreybutler/nvm-windows
 {{- $nvmVersion := "1.2.2" }}
 
 [".local/opt/nvm"]
@@ -284,7 +302,9 @@
 # freezes at chezmoi init, so a local var renders fresh at apply and avoids a
 # downgrade from the currently-installed 1.24.13. The Unix tarball var sits at
 # 1.24.4; the two Go pins are allowed to drift (both >= goMinVersion).
+# renovate: datasource=golang-version depName=go
 {{- $goVersion    := "1.24.13" }}
+# renovate: datasource=maven depName=org.apache.maven:maven-core
 {{- $mavenVersion := "3.9.16" }}
 
 [".local/opt/go"]
@@ -292,29 +312,56 @@
     url = "https://go.dev/dl/go{{ $goVersion }}.windows-amd64.zip"
     stripComponents = 1
 
+# JDKs refactored to per-major version variables so Renovate can bump each one.
+# Each major is its OWN GitHub repo (temurin21-binaries only ships 21.x), so
+# Renovate cannot cross majors -- no allowedVersions needed. The version is
+# encoded twice with different escaping: the release tag uses '+' (URL-encoded
+# %2B), the asset filename uses '_'. jdk-8 uses the legacy 8uNNN-bNN scheme
+# (tag jdk8u..., asset drops the '-'); 11+ use jdk-<X.Y.Z>+<B>. The renovate
+# `versioning` for these lives in renovate.json packageRules (the +build suffix
+# needs a regex versioning; jdk-8's scheme needs a different one).
+# renovate: datasource=github-releases depName=adoptium/temurin8-binaries extractVersion=^jdk(?<version>.+)$
+{{- $jdk8Version := "8u492-b09" }}
+{{- $jdk8Asset := $jdk8Version | replace "-" "" }}
 [".local/opt/jdk-8"]
     type = "archive"
-    url = "https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u492-b09/OpenJDK8U-jdk_x64_windows_hotspot_8u492b09.zip"
+    url = "https://github.com/adoptium/temurin8-binaries/releases/download/jdk{{ $jdk8Version }}/OpenJDK8U-jdk_x64_windows_hotspot_{{ $jdk8Asset }}.zip"
     stripComponents = 1
 
+# renovate: datasource=github-releases depName=adoptium/temurin11-binaries extractVersion=^jdk-(?<version>.+)$
+{{- $jdk11Version := "11.0.31+11" }}
+{{- $jdk11Tag := $jdk11Version | replace "+" "%2B" }}
+{{- $jdk11Asset := $jdk11Version | replace "+" "_" }}
 [".local/opt/jdk-11"]
     type = "archive"
-    url = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-11.0.31%2B11/OpenJDK11U-jdk_x64_windows_hotspot_11.0.31_11.zip"
+    url = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-{{ $jdk11Tag }}/OpenJDK11U-jdk_x64_windows_hotspot_{{ $jdk11Asset }}.zip"
     stripComponents = 1
 
+# renovate: datasource=github-releases depName=adoptium/temurin17-binaries extractVersion=^jdk-(?<version>.+)$
+{{- $jdk17Version := "17.0.19+10" }}
+{{- $jdk17Tag := $jdk17Version | replace "+" "%2B" }}
+{{- $jdk17Asset := $jdk17Version | replace "+" "_" }}
 [".local/opt/jdk-17"]
     type = "archive"
-    url = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.19%2B10/OpenJDK17U-jdk_x64_windows_hotspot_17.0.19_10.zip"
+    url = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-{{ $jdk17Tag }}/OpenJDK17U-jdk_x64_windows_hotspot_{{ $jdk17Asset }}.zip"
     stripComponents = 1
 
+# renovate: datasource=github-releases depName=adoptium/temurin21-binaries extractVersion=^jdk-(?<version>.+)$
+{{- $jdk21Version := "21.0.11+10" }}
+{{- $jdk21Tag := $jdk21Version | replace "+" "%2B" }}
+{{- $jdk21Asset := $jdk21Version | replace "+" "_" }}
 [".local/opt/jdk-21"]
     type = "archive"
-    url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.11%2B10/OpenJDK21U-jdk_x64_windows_hotspot_21.0.11_10.zip"
+    url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-{{ $jdk21Tag }}/OpenJDK21U-jdk_x64_windows_hotspot_{{ $jdk21Asset }}.zip"
     stripComponents = 1
 
+# renovate: datasource=github-releases depName=adoptium/temurin25-binaries extractVersion=^jdk-(?<version>.+)$
+{{- $jdk25Version := "25.0.3+9" }}
+{{- $jdk25Tag := $jdk25Version | replace "+" "%2B" }}
+{{- $jdk25Asset := $jdk25Version | replace "+" "_" }}
 [".local/opt/jdk-25"]
     type = "archive"
-    url = "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25.0.3%2B9/OpenJDK25U-jdk_x64_windows_hotspot_25.0.3_9.zip"
+    url = "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-{{ $jdk25Tag }}/OpenJDK25U-jdk_x64_windows_hotspot_{{ $jdk25Asset }}.zip"
     stripComponents = 1
 
 [".local/opt/maven"]
@@ -339,6 +386,7 @@
 # build timestamp (cf. Wave 6 ffmpeg). Do NOT use jdt-language-server-latest.tar.gz
 # (breaks reproducibility). To upgrade: bump $jdtlsVersion to a CURRENT snapshots
 # build + rerun `chezmoi apply` (old snapshot builds 404 once pruned).
+# renovate: ignore — deferred to mirror phase: Eclipse snapshots/ milestone+timestamp build, pruned over time, no off-the-shelf datasource (scoop scrapes snapshots/latest.txt).
 {{- $jdtlsVersion := "1.59.0-202605111959" }}
 
 [".local/opt/jdtls"]
@@ -351,6 +399,7 @@
 # plus share/; we extract ONLY dos2unix.exe (the one this repo uses to fix plugin
 # .sh CRLF in install-03). Source is the upstream dos2unix Windows build site
 # (same as scoop's manifest), not GitHub. Bump $dos2unixVersion to upgrade.
+# renovate: ignore — deferred to mirror phase: waterlander.net HTML page, no off-the-shelf Renovate datasource (scoop's free-form checkver scrapes "Stable version: X.Y.Z").
 {{- $dos2unixVersion := "7.5.6" }}
 
 [".local/bin/dos2unix.exe"]
@@ -371,6 +420,7 @@
 # version bump leaves no orphan MSI. The asset name drops the dot (26.01 ->
 # 2601). To upgrade: bump $sevenZipVersion AND delete ~/.local/opt/7zip so the
 # run_once re-extracts (the run_once is hash-keyed, not version-aware).
+# renovate: datasource=github-releases depName=ip7z/7zip versioning=loose
 {{- $sevenZipVersion := "26.01" }}
 {{- $sevenZipAsset := $sevenZipVersion | replace "." "" }}
 
@@ -390,7 +440,9 @@
 # repo registers. JetBrains ships .ttf under fonts/ttf/ (fonts/variable/ holds 2
 # more that scoop's `extract_dir: fonts/ttf` excludes), so include +
 # stripComponents = 2 keeps only fonts/ttf/*.ttf, flattened into the dest dir.
+# renovate: datasource=github-releases depName=ryanoasis/nerd-fonts
 {{- $cascadiaNfVersion    := "3.4.0" }}
+# renovate: datasource=github-releases depName=JetBrains/JetBrainsMono
 {{- $jetbrainsMonoVersion := "2.304" }}
 
 [".local/share/fonts/cascadiacode-nf-mono"]

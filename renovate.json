@@ -1,0 +1,38 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "dependencyDashboard": true,
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "ignoreUnstable": true,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "chezmoi external tool version pins annotated with inline # renovate: comments",
+      "managerFilePatterns": ["/\\.chezmoiexternal\\.toml$/"],
+      "matchStringsStrategy": "any",
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?(?: extractVersion=(?<extractVersion>.*?))?\\s+\\{\\{-?\\s*\\$\\w+\\s*:=\\s*\"(?<currentValue>[^\"]+)\""
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Temurin 11/17/21/25 use the modern X.Y.Z+build tag scheme",
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": [
+        "adoptium/temurin11-binaries",
+        "adoptium/temurin17-binaries",
+        "adoptium/temurin21-binaries",
+        "adoptium/temurin25-binaries"
+      ],
+      "versioning": "regex:^(?<major>\\d+)?(\\.(?<minor>\\d+))?(\\.(?<patch>\\d+))?([\\._+](?<build>(\\d\\.?)+)(LTS)?)?(-(?<compatibility>.*))?$"
+    },
+    {
+      "description": "Temurin 8 uses the legacy 8uNNN-bNN tag scheme",
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": ["adoptium/temurin8-binaries"],
+      "versioning": "regex:^(?<major>\\d+)u(?<patch>\\d+)-b(?<build>\\d+)$"
+    }
+  ]
+}
