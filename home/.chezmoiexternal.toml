@@ -313,6 +313,8 @@
 {{- $goVersion    := "1.24.13" }}
 # renovate: datasource=maven depName=org.apache.maven:maven-core
 {{- $mavenVersion := "3.9.16" }}
+# major segment of the archive path is derived so a 3->4 bump can't 404 (maven-3/ vs maven-4/)
+{{- $mavenMajor := $mavenVersion | splitList "." | first }}
 
 [".local/opt/go"]
     type = "archive"
@@ -373,7 +375,7 @@
 
 [".local/opt/maven"]
     type = "archive"
-    url = "https://archive.apache.org/dist/maven/maven-3/{{ $mavenVersion }}/binaries/apache-maven-{{ $mavenVersion }}-bin.zip"
+    url = "https://archive.apache.org/dist/maven/maven-{{ $mavenMajor }}/{{ $mavenVersion }}/binaries/apache-maven-{{ $mavenVersion }}-bin.zip"
     stripComponents = 1
 
 # Scoop migration -- Wave 11 (2026-06-18)
