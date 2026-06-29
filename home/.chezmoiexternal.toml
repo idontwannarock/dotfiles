@@ -1,5 +1,12 @@
 # statusline binary — 由 GitHub Actions 在 statusline.go 變更時自動編譯並發佈
 # chezmoi apply 時自動依 OS/arch 下載對應版本
+#
+# Renovate auto-bump: most tool version pins below are preceded by an inline
+# annotation comment naming the datasource + depName; a custom regex manager in
+# renovate.json reads them and opens a PR when a newer upstream version exists.
+# To add a future tool, copy the annotation format from a neighbouring pin (full
+# details + the deferred tools jdtls/ffmpeg/dos2unix/vim in docs/renovate.md).
+# Pins with no annotation are not tracked; statusline/passgen are self-built.
 
 {{ $ext := "" -}}
 {{ if eq .chezmoi.os "windows" }}{{ $ext = ".exe" }}{{ end -}}
