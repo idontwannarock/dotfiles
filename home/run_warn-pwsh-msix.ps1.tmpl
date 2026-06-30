@@ -1,0 +1,21 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_ script (runs every apply) -- WARN ONLY when pwsh is the Microsoft
+# Store (MSIX) build. It never removes or installs anything: switching to the MSI
+# build needs admin + is destructive + pwsh is chezmoi's .ps1 interpreter
+# (chicken-and-egg), so the real switch is a manual, user-run, elevated helper at
+# ~/.local/bin/switch-pwsh-to-msi.ps1. This just nudges until that's done, and goes
+# silent once pwsh is the MSI build with no MSIX left.
+#
+# Detection: this script runs UNDER chezmoi's pwsh, so $PSHOME reveals the active
+# interpreter (MSIX lives under WindowsApps). The Appx probe also catches a leftover
+# MSIX even when an MSI pwsh is the one currently on PATH.
+
+$isMsixHost = $PSHOME -like '*WindowsApps*'
+$hasAppx    = [bool](Get-AppxPackage Microsoft.PowerShell -ErrorAction SilentlyContinue)
+
+if ($isMsixHost -or $hasAppx) {
+    Write-Warning "pwsh is the Microsoft Store (MSIX) build, not the MSI build in C:\Program Files\PowerShell\7."
+    Write-Warning "  To switch off Store onto the standard MSI build, run ELEVATED:  switch-pwsh-to-msi.ps1"
+    Write-Warning "  Safe to ignore -- the MSIX pwsh works fine as chezmoi's .ps1 interpreter. This is a preference nudge."
+}
+{{ end -}}

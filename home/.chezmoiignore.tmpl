@@ -39,6 +39,11 @@ Documents
 .local/bin/corp-ssh-askpass.cmd
 {{- end }}
 
+# ── switch-pwsh-to-msi: Windows-only helper (Store/MSIX pwsh -> official MSI) ──
+{{- if ne .chezmoi.os "windows" }}
+.local/bin/switch-pwsh-to-msi.ps1
+{{- end }}
+
 # ── PowerShell profile fragment 30-ssh-askpass: Windows only ───────────
 {{- if ne .chezmoi.os "windows" }}
 Documents/_shared-profile.d/30-ssh-askpass.ps1

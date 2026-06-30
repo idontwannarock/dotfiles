@@ -42,6 +42,14 @@ winget install Microsoft.PowerShell
 winget install twpayne.chezmoi
 ```
 
+> **MSIX vs MSI**：`winget install Microsoft.PowerShell` 交付的是 **MSIX（Store）**版
+> —— 它落在版本化的 `WindowsApps`、靠 App Execution Alias 上 PATH，且提權安裝會
+> `0x80070005`。bootstrap 用它**完全堪用**（chezmoi 的 `.ps1` interpreter 靠 PATH 解析）。
+> 若你偏好乾淨的 **MSI** 版（落 `C:\Program Files\PowerShell\7`、非 Store），winget 給不了，
+> 需改用 [GitHub release](https://github.com/PowerShell/PowerShell/releases) 的
+> `PowerShell-<ver>-win-x64.msi`（提權 `msiexec /i ... /qn`）。已是 MSIX 的機器可用部署到
+> `~/.local/bin/switch-pwsh-to-msi.ps1` 的 helper（提權執行）一鍵切換；apply 期間也會偵測並提醒。
+
 > scoop 為**選用**：僅在你要用它管理 GUI 應用程式時才需安裝
 > （GUI app 清單維護於 [gist](https://gist.github.com/idontwannarock/cef42b856b878e718a2e402eb8e5d7e1)，不在本 repo）。chezmoi 本身不需要 scoop。
 

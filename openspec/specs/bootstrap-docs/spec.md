@@ -1,5 +1,9 @@
-## ADDED Requirements
+# bootstrap-docs Specification
 
+## Purpose
+
+定義 README / docs 的 bootstrap 文件需涵蓋的內容：各平台（macOS、Windows、WSL）安裝 git / pwsh / chezmoi 的最小前置步驟、三種 `chezmoi init` 情境、日常操作與工具管理範圍，讓新機器能正確完成初始化。
+## Requirements
 ### Requirement: README 包含各平台最小前置安裝說明
 README SHALL 在顯著位置提供各平台（macOS、Windows、WSL Ubuntu）安裝 git 與 chezmoi 的最小指令，格式清晰，類似 GitHub 新建 repo 頁面的快速開始說明。
 
@@ -54,3 +58,18 @@ README 的 Windows bootstrap 章節 SHALL 以 `winget install Git.Git` 安裝 gi
 #### Scenario: scoop 降為選用
 - **WHEN** 使用者查閱 README
 - **THEN** scoop 僅出現在「選用 / GUI app」脈絡，不在 chezmoi 運作的必要 bootstrap 步驟中
+
+### Requirement: Windows bootstrap 文件化 pwsh 7 前置條件與 MSI 取得方式
+
+README 的 Windows bootstrap 章節 SHALL 將 PowerShell 7（pwsh）列為與 git 同級的前置條件（chezmoi 用它執行 `.ps1` run script，無 fallback；缺了 pwsh，第一個 `.ps1` 安裝腳本即 `exec: "pwsh": not found` 而中止）。文件 SHALL 說明 `winget install Microsoft.PowerShell` 交付的是 **MSIX** 版，並 SHALL 指出若要 MSI 版（落 `C:\Program Files\PowerShell\7`、非 Store）需改用 GitHub release 的 `PowerShell-<ver>-win-x64.msi`，可參照 `~/.local/bin/switch-pwsh-to-msi.ps1`。`docs/powershell.md` SHALL 與此一致。
+
+#### Scenario: pwsh 列為 Windows 前置條件
+
+- **WHEN** 使用者查閱 README 的 Windows bootstrap 章節
+- **THEN** 可找到 pwsh 7 被列為前置條件，且有 `winget install Microsoft.PowerShell` 安裝指令
+
+#### Scenario: 文件指出 MSI 取得方式
+
+- **WHEN** 使用者想要非 Store 的 MSI 版 pwsh
+- **THEN** README / `docs/powershell.md` 指出 winget 交付的是 MSIX、MSI 在 GitHub release，並指向 switch helper
+
