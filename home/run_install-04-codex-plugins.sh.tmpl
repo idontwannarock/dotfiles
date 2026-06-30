@@ -16,6 +16,17 @@ if ! command -v codex &>/dev/null; then
     exit 0
 fi
 
+# Codex dropped the `plugin` subcommand in newer releases (0.116+ only ships
+# exec/review/mcp/apply/...), so `codex plugin add` errors "unrecognized subcommand"
+# on every apply. Detect support by whether `codex --help` lists `plugin` as a
+# command (--help always exits 0, and a bare `codex plugin` falls through to the
+# interactive prompt, so neither exit code is a usable signal). Skip cleanly when
+# absent; kept (not deleted) so it self-heals if Codex reintroduces plugin support.
+if ! codex --help 2>&1 | grep -Eq '^[[:space:]]+plugin\b'; then
+    echo "[codex-plugins] codex build has no 'plugin' subcommand, skipping."
+    exit 0
+fi
+
 echo "=== Codex Plugins Setup ==="
 
 # superpowers: planning / TDD / debugging / review skills — the cross-tool dev-workflow

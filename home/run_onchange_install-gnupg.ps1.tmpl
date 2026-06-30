@@ -51,7 +51,12 @@ if ($haveVer -match ("\b" + [regex]::Escape($ver) + "\b")) {
     if (Test-Path (Join-Path $optDir "bin\gpgconf.ctl")) {
         throw "unexpected gpgconf.ctl present after vanilla install"
     }
-    Remove-Item $dl -ErrorAction SilentlyContinue
+    # Best-effort cleanup. $env:TEMP is an 8.3 short path (e.g. HOWARD~1.WAN); under
+    # Windows PowerShell 5.1 (chezmoi's default .ps1 interpreter) Remove-Item's -Path
+    # globbing can raise a *terminating* short-path error that -ErrorAction cannot
+    # suppress. -LiteralPath skips globbing and the catch swallows anything left, so
+    # deleting the installer can never abort an otherwise-successful install.
+    try { Remove-Item -LiteralPath $dl -Force -ErrorAction SilentlyContinue } catch {}
 }
 
 # 2. Point gpg at the user keyring (~/.gnupg). Set at USER scope, not a profile.d

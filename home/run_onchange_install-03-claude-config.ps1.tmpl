@@ -56,6 +56,32 @@ if (Test-Path "$pluginCache\superpowers-marketplace\superpowers") {
     Write-Host "  Removed marketplace superpowers" -ForegroundColor Green
 }
 
+# ── episodic-memory dep repair (onnxruntime-common hoist) ────────────────
+# The published episodic-memory lockfile nests onnxruntime-common only under
+# onnxruntime-node/-web, but @huggingface/transformers does a bare
+# `import 'onnxruntime-common'` that needs it at the package root -> its
+# SessionStart sync hook dies with ERR_MODULE_NOT_FOUND. Reinstalling reproduces
+# the broken layout (it's baked into the lockfile), so surface a top-level copy
+# from the already-present, version-matched nested one. Offline + idempotent;
+# iterates version dirs so it self-heals across plugin upgrades.
+$emBase = Join-Path $pluginCache "superpowers-marketplace\episodic-memory"
+if (Test-Path $emBase) {
+    foreach ($verDir in (Get-ChildItem -Path $emBase -Directory -ErrorAction SilentlyContinue)) {
+        $nm  = Join-Path $verDir.FullName "node_modules"
+        $top = Join-Path $nm "onnxruntime-common"
+        if (-not (Test-Path $top)) {
+            $nested = @(
+                (Join-Path $nm "onnxruntime-node\node_modules\onnxruntime-common"),
+                (Join-Path $nm "onnxruntime-web\node_modules\onnxruntime-common")
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if ($nested) {
+                Copy-Item -LiteralPath $nested -Destination $top -Recurse -Force
+                Write-Host "  Repaired episodic-memory deps (onnxruntime-common): $($verDir.Name)" -ForegroundColor Green
+            }
+        }
+    }
+}
+
 # ── Hook 路徑修復（backslash → cygpath workaround）──────────────────────
 $pluginCache = Join-Path $env:USERPROFILE ".claude\plugins\cache"
 

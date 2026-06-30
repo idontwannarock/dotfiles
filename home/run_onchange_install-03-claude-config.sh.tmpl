@@ -69,6 +69,33 @@ echo "[cleanup] Removing stale plugin caches..."
 PLUGIN_CACHE="$HOME/.claude/plugins/cache"
 rm -rf "$PLUGIN_CACHE/superpowers-marketplace/superpowers" 2>/dev/null && echo "  Removed marketplace superpowers" || true
 
+# ── episodic-memory dep repair (onnxruntime-common hoist) ────────────────
+# The published episodic-memory lockfile nests onnxruntime-common only under
+# onnxruntime-node/-web, but @huggingface/transformers does a bare
+# `import 'onnxruntime-common'` that needs it at the package root -> its
+# SessionStart sync hook dies with ERR_MODULE_NOT_FOUND. Reinstalling reproduces
+# the broken layout (it's baked into the lockfile), so surface a top-level copy
+# from the already-present, version-matched nested one. Offline + idempotent;
+# loops version dirs so it self-heals across plugin upgrades.
+em_base="$PLUGIN_CACHE/superpowers-marketplace/episodic-memory"
+if [ -d "$em_base" ]; then
+    for ver_dir in "$em_base"/*/; do
+        [ -d "$ver_dir" ] || continue
+        nm="${ver_dir%/}/node_modules"
+        top="$nm/onnxruntime-common"
+        [ -e "$top" ] && continue
+        for nested in \
+            "$nm/onnxruntime-node/node_modules/onnxruntime-common" \
+            "$nm/onnxruntime-web/node_modules/onnxruntime-common"; do
+            if [ -d "$nested" ]; then
+                cp -R "$nested" "$top"
+                echo "  Repaired episodic-memory deps (onnxruntime-common): $(basename "${ver_dir%/}")"
+                break
+            fi
+        done
+    done
+fi
+
 # ── MCP Servers ──────────────────────────────────────────────────────────
 echo "[mcp] Setting up MCP servers..."
 

@@ -13,6 +13,17 @@ if (-not (Get-Command "codex" -ErrorAction SilentlyContinue)) {
     exit 0
 }
 
+# Codex dropped the `plugin` subcommand in newer releases (0.116+ only ships
+# exec/review/mcp/apply/...), so `codex plugin add` errors "unrecognized subcommand"
+# on every apply. Detect support by whether `codex --help` lists `plugin` as a
+# command (--help always exits 0, and a bare `codex plugin` falls through to the
+# interactive prompt, so neither exit code is a usable signal). Skip cleanly when
+# absent; kept (not deleted) so it self-heals if Codex reintroduces plugin support.
+if (((& codex --help 2>&1) -join "`n") -notmatch '(?m)^\s+plugin\b') {
+    Write-Host "[codex-plugins] codex build has no 'plugin' subcommand, skipping." -ForegroundColor Yellow
+    exit 0
+}
+
 Write-Host "=== Codex Plugins Setup ===" -ForegroundColor Cyan
 
 # superpowers: planning / TDD / debugging / review skills — 跨工具的 dev-workflow skill
