@@ -51,11 +51,13 @@ if ($haveVer -match ("\b" + [regex]::Escape($ver) + "\b")) {
     if (Test-Path (Join-Path $optDir "bin\gpgconf.ctl")) {
         throw "unexpected gpgconf.ctl present after vanilla install"
     }
-    # Best-effort cleanup. $env:TEMP is an 8.3 short path (e.g. HOWARD~1.WAN); under
-    # Windows PowerShell 5.1 (chezmoi's default .ps1 interpreter) Remove-Item's -Path
-    # globbing can raise a *terminating* short-path error that -ErrorAction cannot
-    # suppress. -LiteralPath skips globbing and the catch swallows anything left, so
-    # deleting the installer can never abort an otherwise-successful install.
+    # Best-effort cleanup of the downloaded installer. This script runs under
+    # $ErrorActionPreference = "Stop", so harden the delete: -ErrorAction
+    # SilentlyContinue swallows non-terminating errors (AV lock, read-only) and the
+    # try/catch backstops any terminating one, so cleanup can never abort an
+    # otherwise-successful install. -LiteralPath avoids wildcard interpretation of the
+    # tmp path; -Force handles read-only/hidden. (Defensive only -- chezmoi runs .ps1
+    # under pwsh 7, where plain Remove-Item already cleaned up fine in testing.)
     try { Remove-Item -LiteralPath $dl -Force -ErrorAction SilentlyContinue } catch {}
 }
 

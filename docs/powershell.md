@@ -16,7 +16,7 @@ Windows PowerShell 設定檔（PS5 與 PS7 分開管理）。
 
 | 依賴 | 用途 | 備註 |
 |------|------|------|
-| [PowerShell](https://github.com/PowerShell/PowerShell) 5.1+ | Shell 環境 | Windows 內建 5.1；建議安裝 7+ |
+| [PowerShell 7](https://github.com/PowerShell/PowerShell) | Shell 環境 + chezmoi `.ps1` interpreter | Windows 內建僅 5.1；chezmoi 預設用 **pwsh 7** 執行 `.ps1` 安裝腳本（無 fallback），屬 bootstrap 前置條件，見 [README](../README.md) Bootstrap |
 | [Starship](https://starship.rs/) | Prompt 美化 | `90-prompt.ps1` |
 | [Fastfetch](https://github.com/fastfetch-cli/fastfetch) | 開啟終端機時顯示系統資訊 | 選用，`25-fastfetch.ps1` |
 | [PowerToys](https://github.com/microsoft/PowerToys) | PS7 CommandNotFound 模組 | 選用 |

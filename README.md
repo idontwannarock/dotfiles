@@ -23,15 +23,22 @@ brew install chezmoi
 
 ### Windows（PowerShell）
 
-> **前提**：先裝好 **git** 與 **chezmoi**。chezmoi 的 `.sh` interpreter 會自動偵測
-> Git for Windows（依序找 `~/.local/opt/git`、`C:\Program Files\Git`、scoop git），
-> 所以 git 用 winget、官方安裝器或 scoop 皆可，**不再硬依賴 scoop**。
+> **前提**：先裝好 **git**、**PowerShell 7（pwsh）** 與 **chezmoi**。
+> - chezmoi 的 `.sh` interpreter 會自動偵測 Git for Windows（依序找
+>   `~/.local/opt/git`、`C:\Program Files\Git`、scoop git），git 用 winget、官方安裝器
+>   或 scoop 皆可，**不再硬依賴 scoop**。
+> - chezmoi 對 `.ps1` run script 預設用 **pwsh** 執行（非 Windows 內建的 PowerShell 5.1），
+>   且**無 fallback**：缺了 pwsh，第一個 `.ps1` 安裝腳本就會 `exec: "pwsh": not found` 而中止。
+>   pwsh 之於 `.ps1` 等同 git 之於 `.sh`，故為手動前置條件。
 
 ```powershell
 # 1. 安裝 git（winget 為 OS 內建，不需 scoop）
 winget install Git.Git
 
-# 2. 安裝 chezmoi
+# 2. 安裝 PowerShell 7（chezmoi 用它執行 .ps1 安裝腳本）
+winget install Microsoft.PowerShell
+
+# 3. 安裝 chezmoi
 winget install twpayne.chezmoi
 ```
 

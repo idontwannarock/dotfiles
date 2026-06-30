@@ -77,3 +77,17 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
 {{- else }}
     command = "bash"
 {{- end }}
+{{- if eq .chezmoi.os "windows" }}
+
+# Windows: 明示把 .ps1 interpreter 釘在 PowerShell 7（pwsh）。此值與 chezmoi 目前
+# 內建預設相同（pwsh -NoLogo -File），所以今天不改變任何行為 — 純粹把預設鎖死，
+# 避免未來 chezmoi 把預設改回 Windows PowerShell 5.1，悄悄讓針對 pwsh 7 撰寫的
+# run_*.ps1 腳本退化。pwsh 是手動 bootstrap 前置條件（如同 git 之於 [interpreters.sh]）：
+# chezmoi 需要它才能執行 .ps1，故不能當 chezmoi-external，且「沒有 fallback」—
+# 缺了 pwsh，第一個 .ps1 run script 就會 exec: "pwsh": not found 而中止。見 README Bootstrap。
+# 不需路徑偵測：不像 bash（PATH 會選到 WSL System32 bash），pwsh 在 PATH 上無歧義
+# （App Execution Alias / winget / scoop 都正確解析）。非 Windows 不跑 .ps1，故僅 Windows。
+[interpreters.ps1]
+    command = "pwsh"
+    args = ["-NoLogo", "-File"]
+{{- end }}
