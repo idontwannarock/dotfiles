@@ -10,8 +10,15 @@
 # interpreter (MSIX lives under WindowsApps). The Appx probe also catches a leftover
 # MSIX even when an MSI pwsh is the one currently on PATH.
 
-$isMsixHost = $PSHOME -like '*WindowsApps*'
-$hasAppx    = [bool](Get-AppxPackage Microsoft.PowerShell -ErrorAction SilentlyContinue)
+# Detection must never fail an apply -- this is only a nudge. Any error (e.g. the
+# Appx module failing to load) is swallowed and treated as "can't tell, stay quiet".
+try {
+    $isMsixHost = $PSHOME -like '*WindowsApps*'
+    $hasAppx    = [bool](Get-AppxPackage Microsoft.PowerShell -ErrorAction SilentlyContinue)
+} catch {
+    $isMsixHost = $false
+    $hasAppx    = $false
+}
 
 if ($isMsixHost -or $hasAppx) {
     Write-Warning "pwsh is the Microsoft Store (MSIX) build, not the MSI build in C:\Program Files\PowerShell\7."
