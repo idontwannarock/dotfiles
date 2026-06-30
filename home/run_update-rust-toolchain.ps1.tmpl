@@ -1,0 +1,25 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_ script — keep the Rust stable toolchain up to date
+# 每次 chezmoi apply / update 都會跑（純 run_，非 run_once_/run_onchange_）。
+# 安裝由 wave10 migrate（官方 rustup-init）負責；本支只負責保持最新。
+
+$ErrorActionPreference = "Continue"
+
+# rustup-init runs with --no-modify-path, so add ~/.cargo/bin for this session.
+$cargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
+if (Test-Path $cargoBin) { $env:PATH = "$cargoBin;$env:PATH" }
+
+if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+    Write-Host "[rust] rustup not found, skipping toolchain update." -ForegroundColor Yellow
+    exit 0
+}
+
+Write-Host "=== Rust toolchain update (stable) ===" -ForegroundColor Cyan
+# best-effort：離線/網路錯誤時印 warning 但不中斷整體 apply
+rustup update stable 2>&1 | ForEach-Object { "  $_" }
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "=== Rust stable is up to date. ===" -ForegroundColor Cyan
+} else {
+    Write-Warning "[rust] 'rustup update stable' failed (offline?), continuing."
+}
+{{ end -}}

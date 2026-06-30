@@ -216,7 +216,7 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 | Go | Base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本）。Linux 用官方 tarball 裝到 `~/.local/go`；macOS brew；Windows scoop `go124`。 |
 | Python 3.11, 3.13 | |
 | uv | Python 套件管理 |
-| Rustup | Rust 工具鏈 |
+| Rustup | Rust 工具鏈（安裝後，每次 `chezmoi apply` 由 `run_update-rust-toolchain` 自動 `rustup update stable` 追蹤最新版） |
 | Maven 3 | Java 建置 |
 | Temurin JDK 8, 11, 17, 21, 25 | Adoptium OpenJDK |
 | Starship | Shell prompt |

@@ -1,0 +1,24 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_ script — keep the Rust stable toolchain up to date
+# 每次 chezmoi apply / update 都會跑（純 run_，非 run_once_/run_onchange_）。
+# 安裝由 install-01-runtimes（官方 rustup installer）負責；本支只負責保持最新。
+
+set -euo pipefail
+
+# Make rustup available in this session even if PATH isn't wired yet.
+[ -s "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
+if ! command -v rustup &>/dev/null; then
+    echo "[rust] rustup not found, skipping toolchain update."
+    exit 0
+fi
+
+echo "=== Rust toolchain update (stable) ==="
+# best-effort：離線/網路錯誤時印 warning 但不中斷整體 apply
+if rustup update stable; then
+    echo "=== Rust stable is up to date. ==="
+else
+    echo "[rust] WARNING: 'rustup update stable' failed (offline?), continuing." >&2
+fi
+{{ end -}}
