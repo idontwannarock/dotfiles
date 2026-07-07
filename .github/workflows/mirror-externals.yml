@@ -1,0 +1,39 @@
+name: mirror-externals
+
+# Re-hosts + layout-normalizes the three external tools Renovate cannot track
+# directly (vim, jdtls, dos2unix) to this repo's own Releases, then opens a
+# one-line pin-bump PR against home/.chezmoiexternal.toml. Nothing auto-merges;
+# nothing changes a machine until the PR is merged and `chezmoi apply` runs.
+#
+# ffmpeg is NOT here — GyanD publishes a clean-semver .zip, so it is a normal
+# Renovate-tracked pin (see docs/renovate.md).
+
+on:
+  schedule:
+    # Weekly, Monday ~06:17 UTC — just after Renovate's "before 6am on monday" window.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      publish_only:
+        description: "Seed mode: publish mirror releases but do NOT open pin-bump PRs"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write        # create Releases + push the bump branch
+  pull-requests: write   # open the bump PR
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false   # one tool's failure must not block the others
+      matrix:
+        tool: [vim, jdtls, dos2unix]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mirror ${{ matrix.tool }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_ONLY: ${{ inputs.publish_only }}
+        run: bash .github/scripts/mirror-${{ matrix.tool }}.sh

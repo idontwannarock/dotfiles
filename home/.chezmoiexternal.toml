@@ -201,38 +201,35 @@
     url = "https://github.com/docker/compose/releases/download/v{{ $dockerComposeVersion }}/docker-compose-windows-x86_64.exe"
     executable = true
 
-# Scoop migration -- Wave 6 (2026-05-25)
-# ffmpeg suite (ffmpeg + ffprobe + ffplay) from BtbN/FFmpeg-Builds GitHub Release.
-# Uses n8.1 stable channel + static GPL build (no DLLs needed at runtime).
-# BtbN ships two tag schemes:
-#   - rolling `latest` tag with placeholder filenames (e.g. ffmpeg-n8.1-latest-...)
-#   - dated `autobuild-YYYY-MM-DD-HHMM` tag with git-describe asset filenames
-# We pin to the dated tag for reproducibility (matches Wave 1-5 convention).
-# Bumping requires updating BOTH $ffmpegTag AND $ffmpegAsset together --
-# the asset filename's git-describe suffix changes each build.
-# Three archive-file entries share the same URL; chezmoi caches by URL so the
-# zip is only downloaded once even though three binaries are extracted.
-# renovate: ignore — deferred to mirror phase: BtbN dated autobuild tag + git-describe asset filename is not derivable from a version; chezmoi can't extract GyanD's clean .7z.
-{{- $ffmpegTag   := "autobuild-2026-05-24-13-16" }}
-{{- $ffmpegAsset := "ffmpeg-n8.1.1-8-gb21e00eda5-win64-gpl-8.1.zip" }}
-{{- $ffmpegRoot  := trimSuffix ".zip" $ffmpegAsset }}
+# Scoop migration -- Wave 6 (2026-05-25; ffmpeg re-sourced BtbN -> GyanD 2026-07-07)
+# ffmpeg suite (ffmpeg + ffprobe + ffplay) from the GyanD/codexffmpeg GitHub
+# Release -- gyan.dev is one of the two Windows builds endorsed on ffmpeg.org and
+# is scoop's original ffmpeg source. Uses the full_build static GPL .zip (no DLLs
+# at runtime). GyanD publishes clean semver tags, so unlike the old BtbN dated
+# autobuild this is a normal Renovate-tracked pin. The .zip's versioned inner dir
+# (ffmpeg-<v>-full_build/) is addressed via the $ffmpegVersion path variable, the
+# same trick as golangci-lint/gopass. Three archive-file entries share one URL;
+# chezmoi caches by URL so the zip downloads once. Bump $ffmpegVersion + rerun
+# `chezmoi apply` (or merge Renovate's PR).
+# renovate: datasource=github-releases depName=GyanD/codexffmpeg
+{{- $ffmpegVersion := "8.1.2" }}
 
 [".local/bin/ffmpeg.exe"]
     type = "archive-file"
-    url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/{{ $ffmpegTag }}/{{ $ffmpegAsset }}"
-    path = "{{ $ffmpegRoot }}/bin/ffmpeg.exe"
+    url = "https://github.com/GyanD/codexffmpeg/releases/download/{{ $ffmpegVersion }}/ffmpeg-{{ $ffmpegVersion }}-full_build.zip"
+    path = "ffmpeg-{{ $ffmpegVersion }}-full_build/bin/ffmpeg.exe"
     executable = true
 
 [".local/bin/ffprobe.exe"]
     type = "archive-file"
-    url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/{{ $ffmpegTag }}/{{ $ffmpegAsset }}"
-    path = "{{ $ffmpegRoot }}/bin/ffprobe.exe"
+    url = "https://github.com/GyanD/codexffmpeg/releases/download/{{ $ffmpegVersion }}/ffmpeg-{{ $ffmpegVersion }}-full_build.zip"
+    path = "ffmpeg-{{ $ffmpegVersion }}-full_build/bin/ffprobe.exe"
     executable = true
 
 [".local/bin/ffplay.exe"]
     type = "archive-file"
-    url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/{{ $ffmpegTag }}/{{ $ffmpegAsset }}"
-    path = "{{ $ffmpegRoot }}/bin/ffplay.exe"
+    url = "https://github.com/GyanD/codexffmpeg/releases/download/{{ $ffmpegVersion }}/ffmpeg-{{ $ffmpegVersion }}-full_build.zip"
+    path = "ffmpeg-{{ $ffmpegVersion }}-full_build/bin/ffplay.exe"
     executable = true
 
 # Scoop migration -- Wave 7 (2026-05-25)
