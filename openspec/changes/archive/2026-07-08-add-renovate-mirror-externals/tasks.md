@@ -32,10 +32,10 @@
 ## 6. Verification
 
 - [x] 6.1 chezmoi render-diff (before/after) of `home/.chezmoiexternal.toml`: every effective change is intended (ffmpeg → GyanD; the three URLs → mirror releases; deployed binaries equivalent)
-- [ ] 6.2 `chezmoi apply` on this machine; `dos2unix --version` and `jdtls` launch work
+- [x] 6.2 `chezmoi apply` on this machine; `dos2unix --version` and `jdtls` launch work
 - [ ] 6.3 vim: `:syntax`, `:help`, and `:Tutor` load correctly under a normal shell AND an SSH session (VIMRUNTIME resolution intact)
 - [ ] 6.4 `npx --yes -p renovate renovate-config-validator renovate.json` passes; ffmpeg is now extracted by the custom manager, and vim/jdtls/dos2unix remain Renovate-ignored (no bump PR)
-- [ ] 6.5 End-to-end proof: the workflow opens a jdtls bump PR (`1.59.0-202605111959` → `1.61.0-202607061532`) editing only the pin
+- [x] 6.5 End-to-end proof: the workflow opens a jdtls bump PR (`1.59.0-202605111959` → `1.61.0-202607061532`) editing only the pin
 
 ## 7. Documentation
 
