@@ -19,6 +19,7 @@ if [ -z "$VERSION" ]; then
   VERSION=$(printf '%s' "$latest" | sed -E 's/^jdt-language-server-(.+)\.tar\.gz$/\1/')
 fi
 [ -n "$VERSION" ] || { log "could not parse jdtls version from latest.txt"; exit 1; }
+validate_version "$VERSION" || exit 1
 log "jdtls target version: ${VERSION}"
 
 file="jdt-language-server-${VERSION}.tar.gz"

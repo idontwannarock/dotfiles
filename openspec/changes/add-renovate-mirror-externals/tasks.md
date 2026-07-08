@@ -13,7 +13,7 @@
 - [x] 3.2 Add `.github/scripts/mirror-jdtls.sh`: checver `snapshots/latest.txt` → download the `.tar.gz` and re-host it verbatim as `jdt-language-server-<v>.tar.gz`
 - [x] 3.3 Add `.github/scripts/mirror-dos2unix.sh`: checver scrape waterlander for `Stable version:\s+([\d.]+)` → download win64 zip → extract single `bin/dos2unix.exe` as `dos2unix-<v>.exe`
 - [x] 3.4 Add a shared step/script for: sha256 of the upstream file, `gh release view` idempotency check, `gh release create` with provenance notes (upstream URL + version + sha256), and the pin-bump PR (branch `mirror/<tool>-<v>`, edit the version variable, `gh pr create --label dependencies`, no auto-merge)
-- [x] 3.5 Add `.github/workflows/mirror-externals.yml`: `ubuntu-latest`, `schedule` weekly Monday + `workflow_dispatch`, one job per tool (vim, jdtls, dos2unix) wiring 3.1–3.4, `permissions: contents: write, pull-requests: write`, install `p7zip-full` where needed
+- [x] 3.5 Add `.github/workflows/mirror-externals.yml`: `ubuntu-latest`, `schedule` weekly Monday + `workflow_dispatch`, one job per tool (vim, jdtls, dos2unix) wiring 3.1–3.4, `permissions: contents: write, pull-requests: write` (uses only preinstalled `unzip`/`zip`/`curl`/`gh` — no extra apt packages)
 
 ## 4. Seed initial mirror releases
 
@@ -26,7 +26,7 @@
 - [x] 5.2 dos2unix: change `type = "archive-file"` → `type = "file"`, point the URL at `mirror-dos2unix-<v>` (`dos2unix-<v>.exe`), reword the ignore comment
 - [x] 5.3 vim: point the external URL at `mirror-vim-<v>.zip`, drop `stripComponents` (mirror zip is rooted at `current/`), keep `type = "archive"` so it extracts to `.local/share/vim/current/…`, reword the ignore comment
 - [x] 5.4 Edit the 15 `.cmd` wrappers in `home/dot_local/bin/` (`vim vi view ex evim eview rvim rview gvim gview gvimdiff rgvim rgview vimdiff xxd`): replace `vim92` with `current` and add `set "VIMRUNTIME=%USERPROFILE%\.local\share\vim\current"`
-- [x] 5.5 Confirm no remaining `vim92` reference exists outside archived openspec changes
+- [x] 5.5 Confirm no remaining FUNCTIONAL `vim92` coupling (the 15 wrappers are decoupled); historical `vim92` mentions survive only in `run_once_*` script comments, left intact so their hash does not change and re-trigger the migration scripts
 - [x] 5.6 Prune stale version files the migration orphans: add `.local/share/vim/vim92` to `home/.chezmoiremove` (one-time; the dir is now the stable `current/`); add `exact = true` to the jdtls external so its version-named jars are pruned on every bump (verified `config_win/` is pristine, so exact is safe)
 
 ## 6. Verification

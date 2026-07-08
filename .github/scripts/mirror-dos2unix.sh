@@ -15,6 +15,7 @@ if [ -z "$VERSION" ]; then
   VERSION=$(printf '%s' "$page" | grep -oiE 'Stable version:[[:space:]]+[0-9.]+' | grep -oE '[0-9.]+' | head -n1)
 fi
 [ -n "$VERSION" ] || { log "could not scrape dos2unix version"; exit 1; }
+validate_version "$VERSION" || exit 1
 log "dos2unix target version: ${VERSION}"
 
 url="https://waterlander.net/dos2unix/files/dos2unix-${VERSION}-win64.zip"

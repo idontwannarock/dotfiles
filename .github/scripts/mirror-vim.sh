@@ -14,6 +14,7 @@ if [ -z "$VERSION" ]; then
   VERSION=$(gh api repos/vim/vim-win32-installer/releases/latest --jq .tag_name | sed 's/^v//')
 fi
 [ -n "$VERSION" ] || { log "could not resolve vim version"; exit 1; }
+validate_version "$VERSION" || exit 1
 log "vim target version: ${VERSION}"
 
 url="https://github.com/vim/vim-win32-installer/releases/download/v${VERSION}/gvim_${VERSION}_x64.zip"

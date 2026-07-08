@@ -48,7 +48,7 @@ Upstream always names the runtime dir `vimXX` by MAJOR.MINOR, so any direct down
 Neither has a layout problem. jdtls: checver reads `snapshots/latest.txt` (verified single-line filename, e.g. `jdt-language-server-1.61.0-202607061532.tar.gz`); re-host the `.tar.gz` verbatim — the durability win is that Eclipse prunes old snapshots but our mirror never does. dos2unix: checver scrapes waterlander for `Stable version:\s+([\d.]+)` (verified identical to scoop's manifest); extract the single `.exe`, simplify external `archive-file` → `file`.
 
 ### D5: Workflow mechanics
-- **Runner `ubuntu-latest`**: mirroring is pure file manipulation (extract → rename/pick → repackage); the Windows `.exe`s are never executed, so no Windows runner. `7z` via `p7zip-full`.
+- **Runner `ubuntu-latest`**: mirroring is pure file manipulation (extract → rename/pick → repackage); the Windows `.exe`s are never executed, so no Windows runner. Uses only preinstalled `unzip`/`zip`/`curl`/`gh` (no `.7z` handling — ffmpeg, the only `.7z` case, left the mirror).
 - **Schedule**: weekly Monday (after Renovate's `before 6am on monday`) + `workflow_dispatch`.
 - **Naming**: tag `mirror-<tool>-<v>`; assets `mirror-vim-<v>.zip` / `jdt-language-server-<v>.tar.gz` (verbatim) / `dos2unix-<v>.exe`.
 - **Release notes**: upstream source URL + upstream version + sha256 of the upstream file (provenance for repackaged bytes).
