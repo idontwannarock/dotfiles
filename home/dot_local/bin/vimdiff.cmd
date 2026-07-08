@@ -1,2 +1,3 @@
 @echo off
-"%USERPROFILE%\.local\share\vim\vim92\vim.exe" -d %*
+set "VIMRUNTIME=%USERPROFILE%\.local\share\vim\current"
+"%USERPROFILE%\.local\share\vim\current\vim.exe" -d %*

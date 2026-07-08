@@ -232,31 +232,28 @@
     path = "ffmpeg-{{ $ffmpegVersion }}-full_build/bin/ffplay.exe"
     executable = true
 
-# Scoop migration -- Wave 7 (2026-05-25)
-# vim distribution from vim/vim-win32-installer GitHub Release. Unlike Wave 1-6
-# which targeted standalone CLI binaries, vim ships an application bundle: 3 real
-# .exe files (vim, gvim, xxd) require 4 sibling DLLs (vim64.dll, libiconv-2.dll,
-# libintl-8.dll, libsodium.dll) plus a runtime/ tree with 2000+ files
-# (autoload/, syntax/, doc/, tutor/, ...). The archive-file pattern from Wave 6
-# cannot work; we use `type = "archive"` to extract the whole zip.
+# Scoop migration -- Wave 7 (2026-05-25; mirrored via mirror-externals.yml 2026-07-07)
+# vim distribution, re-hosted from vim/vim-win32-installer through our own mirror
+# release. Unlike Wave 1-6 standalone binaries, vim ships an application bundle:
+# 3 real .exe files (vim, gvim, xxd) + 4 sibling DLLs (vim64.dll, libiconv-2.dll,
+# libintl-8.dll, libsodium.dll) plus a runtime tree of 2000+ files (autoload/,
+# syntax/, doc/, tutor/, ...). We use `type = "archive"` to extract the whole zip.
 #
-# stripComponents = 1 drops the top-level `vim/` folder from the upstream zip,
-# keeping `vim92/` as the runtime subdir. The runtime subdir is named after
-# vim's <MAJOR><MINOR> version: vim 9.2.x patches all share `vim92/`; a 9.3
-# bump becomes `vim93/`. When that happens, BOTH this $vimVersion AND the
-# `vim92` path inside the 15 .cmd wrappers under dot_local/bin/ must change
-# in the same commit. See design.md D2 and R1 for the rationale.
+# The UPSTREAM zip names its runtime dir `vimXX` by <MAJOR><MINOR> (vim92, vim93,
+# ...), coupling the version into the on-disk path and into the 15 .cmd wrappers.
+# The mirror workflow renames that dir to a stable `current/` and roots the zip
+# there -- so no stripComponents is needed, and the wrappers (which point at
+# .local/share/vim/current and set VIMRUNTIME) never change across version bumps.
 #
 # Wrappers (15 .cmd files at ~/.local/bin/) mirror scoop vim.json `bin[]`,
 # delegating each alias to vim.exe/gvim.exe/xxd.exe with the right flag.
 # PATH is not modified -- ~/.local/bin is already Wave 1's first PATH entry.
-# renovate: ignore — deferred to mirror phase: vim92 runtime-dir name is coupled to MAJOR.MINOR and hardcoded in 15 .cmd wrappers; resolved by mirror-side layout normalization, not by a version bump.
-{{- $vimVersion := "9.2.0530" }}
+# renovate: ignore — mirrored by mirror-externals.yml (upstream's vimXX runtime-dir name is coupled to MAJOR.MINOR and to the 15 .cmd wrappers; the mirror renames it to a stable `current/` so a version bump touches nothing else).
+{{- $vimVersion := "9.2.0782" }}
 
 [".local/share/vim"]
     type = "archive"
-    url = "https://github.com/vim/vim-win32-installer/releases/download/v{{ $vimVersion }}/gvim_{{ $vimVersion }}_x64.zip"
-    stripComponents = 1
+    url = "https://github.com/idontwannarock/dotfiles/releases/download/mirror-vim-{{ $vimVersion }}/mirror-vim-{{ $vimVersion }}.zip"
 
 # Scoop migration -- Wave 9 (2026-06-10)
 # nvm-windows (coreybutler/nvm-windows) from its GitHub Release nvm-noinstall.zip.
@@ -392,12 +389,18 @@
 # build timestamp (cf. Wave 6 ffmpeg). Do NOT use jdt-language-server-latest.tar.gz
 # (breaks reproducibility). To upgrade: bump $jdtlsVersion to a CURRENT snapshots
 # build + rerun `chezmoi apply` (old snapshot builds 404 once pruned).
-# renovate: ignore — deferred to mirror phase: Eclipse snapshots/ milestone+timestamp build, pruned over time, no off-the-shelf datasource (scoop scrapes snapshots/latest.txt).
-{{- $jdtlsVersion := "1.59.0-202605111959" }}
+# renovate: ignore — mirrored by mirror-externals.yml (Eclipse snapshots/ milestone+timestamp build is pruned over time and has no datasource; re-hosted verbatim for durability so the pinned URL never 404s).
+{{- $jdtlsVersion := "1.61.0-202607070104" }}
 
+# exact = true prunes stale files on a version bump. jdtls jars carry the version
+# in their filename, so a non-exact archive would leave the OLD version's jars in
+# plugins/ on every bump (they accumulate). Unlike Wave 9 nvm, jdtls writes no
+# runtime state into its install dir (config_win/ holds only config.ini), so exact
+# pruning is safe. Now that the mirror bumps jdtls regularly, this keeps it clean.
 [".local/opt/jdtls"]
     type = "archive"
-    url = "https://download.eclipse.org/jdtls/snapshots/jdt-language-server-{{ $jdtlsVersion }}.tar.gz"
+    exact = true
+    url = "https://github.com/idontwannarock/dotfiles/releases/download/mirror-jdtls-{{ $jdtlsVersion }}/jdt-language-server-{{ $jdtlsVersion }}.tar.gz"
 
 # Scoop migration -- Wave 12a (2026-06-18)
 # dos2unix: single standalone binary (no DLLs -- verified the .exe runs alone).
@@ -405,13 +408,12 @@
 # plus share/; we extract ONLY dos2unix.exe (the one this repo uses to fix plugin
 # .sh CRLF in install-03). Source is the upstream dos2unix Windows build site
 # (same as scoop's manifest), not GitHub. Bump $dos2unixVersion to upgrade.
-# renovate: ignore — deferred to mirror phase: waterlander.net HTML page, no off-the-shelf Renovate datasource (scoop's free-form checkver scrapes "Stable version: X.Y.Z").
+# renovate: ignore — mirrored by mirror-externals.yml (waterlander.net HTML page, no datasource; the single dos2unix.exe is re-hosted at a stable URL, so this is now a plain `type = "file"`).
 {{- $dos2unixVersion := "7.5.6" }}
 
 [".local/bin/dos2unix.exe"]
-    type = "archive-file"
-    url = "https://waterlander.net/dos2unix/files/dos2unix-{{ $dos2unixVersion }}-win64.zip"
-    path = "bin/dos2unix.exe"
+    type = "file"
+    url = "https://github.com/idontwannarock/dotfiles/releases/download/mirror-dos2unix-{{ $dos2unixVersion }}/dos2unix-{{ $dos2unixVersion }}.exe"
     executable = true
 
 # Scoop migration -- Wave 12b (2026-06-18)

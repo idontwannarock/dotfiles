@@ -39,3 +39,8 @@
 # leaked anyway) and unnecessary (per-session caches are 7B, latest.cache fallback
 # covers reminders cross-session). Source removed; prune deployed copy everywhere.
 .claude/hooks/handoff-cleanup.sh
+
+# vim's runtime dir was renamed vimXX -> current by the mirror (mirror-externals.yml).
+# The vim external is a non-exact archive, so it never prunes the pre-mirror vim92/
+# left on machines that had vim before the migration. Retire it explicitly.
+.local/share/vim/vim92

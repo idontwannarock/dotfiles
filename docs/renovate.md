@@ -49,17 +49,32 @@ Optional fields: `versioning=<scheme>` (e.g. `loose` for CalVer), and
 
 ## Intentionally not tracked
 
-| Tool | Why | Plan |
-|------|-----|------|
-| `statusline`, `passgen` | self-built (own GitHub Releases) | n/a |
-| `jdtls` | Eclipse snapshot + timestamp, builds pruned | mirror phase |
-| `ffmpeg` | BtbN git-describe asset filename not derivable; chezmoi can't extract GyanD's `.7z` | mirror phase |
-| `dos2unix` | waterlander.net HTML page, no off-the-shelf datasource | mirror phase |
-| `vim` | `vim92` runtime dir coupled to 15 `.cmd` wrappers — fixed by mirror-side layout normalization | mirror phase |
+| Tool | Why |
+|------|-----|
+| `statusline`, `passgen` | self-built (own GitHub Releases) |
 
-The "mirror phase" is a future change: a GitHub Actions workflow re-hosts (and
-normalizes the layout of) these tools under our own Releases, after which they
-become clean one-line annotations like everything else.
+## Mirror phase (self-hosted tools)
+
+Three tools cannot be tracked by a Renovate datasource *and* be handed to chezmoi
+directly, so a GitHub Actions workflow ([`.github/workflows/mirror-externals.yml`](../.github/workflows/mirror-externals.yml))
+re-hosts and layout-normalizes them under this repo's own Releases:
+
+| Tool | Why the upstream is hard | What the mirror does |
+|------|--------------------------|----------------------|
+| `vim` | upstream names the runtime dir `vimXX` by MAJOR.MINOR, coupling the version into 15 `.cmd` wrappers | renames it to a stable `current/` so the wrappers never change |
+| `jdtls` | Eclipse `snapshots/` builds are pruned over time (a pinned URL eventually 404s) | re-hosts the tarball verbatim for durability |
+| `dos2unix` | version lives only on an HTML page (waterlander.net), no datasource | scrapes the version, re-hosts the single `.exe` at a stable URL |
+
+The workflow runs weekly (plus `workflow_dispatch`), publishes `mirror-<tool>-<version>`
+releases (notes record the upstream URL + version + sha256), and opens a one-per-tool
+pin-bump PR labelled `dependencies` — so these bumps arrive the same way Renovate's do,
+just from our own workflow. The three pins stay `# renovate: ignore`; nothing auto-merges,
+and `chezmoi apply` is still manual. Seed mode (`workflow_dispatch` with `publish_only=true`)
+creates the releases without opening PRs.
+
+**ffmpeg is not mirrored.** GyanD publishes a clean-semver `.zip` (scoop's original
+source, one of the two builds endorsed on ffmpeg.org), so it is a normal Renovate pin
+on `GyanD/codexffmpeg` like every other tracked tool.
 
 ## Enabling
 
