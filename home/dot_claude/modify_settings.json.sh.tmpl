@@ -17,8 +17,11 @@
 #   以保留 herdr / agent-sessions 等工具於 runtime 註冊的 SessionStart entries）
 #
 # 主動刪除（modify_ 是 patch 而非 render，停止寫入不會抹掉既有部署的舊值）：
-# - hooks.SessionEnd 與 env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS —— 退役的
-#   handoff-cleanup hook 殘留，跨機器 del 清除。
+# - env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS —— 退役的 handoff-cleanup hook
+#   殘留，跨機器 del 清除。
+# - hooks.SessionEnd 只**外科式**移除 handoff-cleanup 那一條（該 hook 靠 SessionEnd
+#   做刪檔、會拖慢觸發 timeout，已退役）；保留其餘 SessionEnd entries，尤其
+#   agent-sessions 於 runtime 註冊的 `emit end`（本地 append，不會 timeout）。
 #
 # 注意：CLAUDE_HANDOFF_CONTEXT_WINDOW 故意**不**設 — 讓 statusline 寫的
 # per-session cache 成為主要來源；這個 env var 只保留給 debug/override 用
@@ -71,7 +74,13 @@ echo "$input" | jq \
     | .env |= del(.CLAUDE_CODE_GIT_BASH_PATH)
 {{- end }}
     | .hooks = (.hooks // {})
-    | .hooks |= del(.SessionEnd)
+    | .hooks.SessionEnd = (
+        (.hooks.SessionEnd // [])
+        | map(select(
+            ((.hooks // []) | map(.command // "") | any(test("handoff-cleanup"))) | not
+          ))
+      )
+    | if (.hooks.SessionEnd | length) == 0 then .hooks |= del(.SessionEnd) else . end
     | .hooks.PreToolUse = [
         {
           matcher: "Bash",
