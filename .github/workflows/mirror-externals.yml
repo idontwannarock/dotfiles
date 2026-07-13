@@ -1,9 +1,12 @@
 name: mirror-externals
 
-# Re-hosts + layout-normalizes the three external tools Renovate cannot track
-# directly (vim, jdtls, dos2unix) to this repo's own Releases, then opens a
-# one-line pin-bump PR against home/.chezmoiexternal.toml. Nothing auto-merges;
-# nothing changes a machine until the PR is merged and `chezmoi apply` runs.
+# Handles the external tools Renovate cannot track directly. Three are re-hosted +
+# layout-normalized to this repo's own Releases (vim, jdtls, dos2unix), then get a
+# one-line pin-bump PR against home/.chezmoiexternal.toml. A fourth, gnupg, is
+# detect-only: gnupg.org URLs are durable, so it is NOT re-hosted — the job only
+# detects the current version/date/sha256 and opens a 3-variable bump PR against
+# home/run_onchange_install-gnupg.ps1.tmpl. Nothing auto-merges; nothing changes a
+# machine until the PR is merged and `chezmoi apply` runs.
 #
 # ffmpeg is NOT here — GyanD publishes a clean-semver .zip, so it is a normal
 # Renovate-tracked pin (see docs/renovate.md).
@@ -29,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false   # one tool's failure must not block the others
       matrix:
-        tool: [vim, jdtls, dos2unix]
+        tool: [vim, jdtls, dos2unix, gnupg]
     steps:
       - uses: actions/checkout@v4
       - name: Mirror ${{ matrix.tool }}

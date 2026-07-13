@@ -162,7 +162,9 @@
 
 # Scoop migration — Wave 3 (2026-05-20)
 # Final wave for single-binary GitHub-release tools. gopass is the corp-ssh-askpass
-# password store CLI. gpg suite stays on scoop (multi-binary suite, gnupg.org NSIS).
+# password store CLI. The gpg suite is provisioned off scoop by Wave 8 (gpg-off-scoop):
+# run_onchange_install-gnupg.ps1.tmpl installs it from the gnupg.org NSIS into
+# ~/.local/opt/gnupg (auto-bumped by mirror-externals.yml's gnupg detector).
 # Bump version below and rerun `chezmoi apply` to upgrade.
 # renovate: datasource=github-releases depName=gopasspw/gopass
 {{- $gopassVersion := "1.16.1" }}
