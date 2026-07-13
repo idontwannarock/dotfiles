@@ -58,7 +58,7 @@
 # renovate: datasource=github-releases depName=astral-sh/uv
 {{- $uvVersion       := "0.11.14" }}
 # renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
-{{- $jqVersion       := "1.8.1" }}
+{{- $jqVersion       := "1.8.2" }}
 # renovate: datasource=github-releases depName=BurntSushi/ripgrep
 {{- $ripgrepVersion  := "15.1.0" }}
 
