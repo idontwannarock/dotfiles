@@ -5,6 +5,8 @@
   "schedule": ["before 6am on monday"],
   "labels": ["dependencies"],
   "ignoreUnstable": true,
+  "platformAutomerge": true,
+  "minimumReleaseAge": "3 days",
   "customManagers": [
     {
       "customType": "regex",
@@ -17,6 +19,16 @@
     }
   ],
   "packageRules": [
+    {
+      "description": "Auto-merge low-risk bumps once the validate-externals check passes",
+      "matchUpdateTypes": ["patch", "minor", "pin"],
+      "automerge": true
+    },
+    {
+      "description": "Major bumps stay manual (possible breaking changes)",
+      "matchUpdateTypes": ["major"],
+      "automerge": false
+    },
     {
       "description": "Temurin 11/17/21/25 use the modern X.Y.Z+build tag scheme",
       "matchDatasources": ["github-releases"],

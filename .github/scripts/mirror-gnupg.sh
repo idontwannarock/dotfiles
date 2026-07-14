@@ -86,4 +86,6 @@ gh pr create --label dependencies --base main --head "$branch" \
 
 Updates \`\$gpgVersion\`, \`\$gpgDate\`, and \`\$gpgSha256\` in \`home/run_onchange_install-gnupg.ps1.tmpl\`. SHA-256 \`${SHA256}\` was read from gnupg.org/download/integrity_check.html; the install script re-verifies it against the actual download at \`chezmoi apply\` time.
 
-Merge, then run \`chezmoi apply\` on each machine. Nothing is applied automatically."
+Squash auto-merge is enabled: this merges once the \`validate-externals\` check passes. Nothing reaches a machine until you run \`chezmoi apply\`."
+# Auto-merge once the required validate-externals check is green (GitHub waits for it).
+gh pr merge --auto --squash --delete-branch "$branch" 2>/dev/null || true

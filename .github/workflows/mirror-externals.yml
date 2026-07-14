@@ -34,9 +34,15 @@ jobs:
       matrix:
         tool: [vim, jdtls, dos2unix, gnupg]
     steps:
+      # Check out (and later push/PR) as MIRROR_PAT, not GITHUB_TOKEN: a PR opened by
+      # GITHUB_TOKEN does not trigger other workflows, so the validate-externals check
+      # would never run on it and its auto-merge would stall. The PAT identity makes the
+      # bump PR trigger the required check like a Renovate PR does.
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.MIRROR_PAT }}
       - name: Mirror ${{ matrix.tool }}
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.MIRROR_PAT }}
           PUBLISH_ONLY: ${{ inputs.publish_only }}
         run: bash .github/scripts/mirror-${{ matrix.tool }}.sh

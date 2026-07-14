@@ -76,6 +76,42 @@ creates the releases without opening PRs.
 source, one of the two builds endorsed on ffmpeg.org), so it is a normal Renovate pin
 on `GyanD/codexffmpeg` like every other tracked tool.
 
+## Auto-merge
+
+Bump PRs no longer need a manual click. A required CI check validates each one, and
+low-risk updates merge themselves once it passes.
+
+- **What auto-merges:** `patch`, `minor`, and `pin` updates (Renovate `automerge` via
+  GitHub native auto-merge). **`major` stays manual** — it may carry breaking changes.
+  A `minimumReleaseAge` of 3 days holds a bump back until the upstream release has
+  settled (catches yanked/hotfixed releases for free).
+- **The gate:** [`.github/workflows/validate-externals.yml`](../.github/workflows/validate-externals.yml)
+  runs on every PR to `main`. It reports a single `gate` status check. On a PR that
+  touches neither `home/.chezmoiexternal.toml` nor `home/run_onchange_install-gnupg.ps1.tmpl`
+  the gate passes instantly (so unrelated PRs are never blocked). On a bump PR it, per
+  OS (ubuntu/macos/windows), renders the externals with chezmoi and HEAD-checks every
+  download URL, and verifies the gnupg pin's SHA-256 against the real installer. Any
+  failure fails the gate and blocks the merge.
+- **Mirror PRs too:** the `mirror-externals` workflow opens its PRs with a PAT (not the
+  default token, whose PRs don't trigger other workflows) and enables squash auto-merge,
+  so vim/jdtls/dos2unix/gnupg bumps flow through the same gate.
+- **Machines are still safe:** auto-merge only lands the pin on `main`. Nothing changes
+  a machine until you run `chezmoi apply`, where the install scripts re-verify (e.g. the
+  gnupg SHA-256).
+
+### One-time manual setup
+
+These are GitHub settings, not code — do them once:
+
+1. **Settings → General → Pull Requests → "Allow auto-merge"**: ON.
+2. **Branch protection / ruleset on `main`**: require the **`gate`** status check
+   (from `validate-externals`). This is what makes auto-merge wait for validation.
+3. **`MIRROR_PAT` secret**: a fine-grained PAT scoped to this repo with
+   **Contents: Read/Write** + **Pull requests: Read/Write**, saved as the Actions secret
+   `MIRROR_PAT`. The mirror workflow uses it so its PRs trigger the gate. ⚠ Fine-grained
+   PATs expire (≤1 year) — note the expiry: if it lapses, mirror bump PRs stop triggering
+   the check and their auto-merge stalls (they wait, they never mis-merge).
+
 ## Enabling
 
 Renovate runs as the hosted **GitHub App** (free for this public repo; runs on

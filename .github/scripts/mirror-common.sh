@@ -93,5 +93,7 @@ open_bump_pr() {
     --title "chore(deps): mirror ${tool} ${cur} -> ${version}" \
     --body "Mirrored **${tool}** \`${cur}\` → \`${version}\` via \`mirror-externals.yml\` (release \`mirror-${tool}-${version}\`).
 
-Merge, then run \`chezmoi apply\` on each machine. Nothing is applied automatically."
+Squash auto-merge is enabled: this merges once the \`validate-externals\` check passes. Nothing reaches a machine until you run \`chezmoi apply\`."
+  # Auto-merge once the required validate-externals check is green (GitHub waits for it).
+  gh pr merge --auto --squash --delete-branch "$branch" 2>/dev/null || true
 }

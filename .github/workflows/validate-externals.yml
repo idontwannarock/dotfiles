@@ -1,0 +1,119 @@
+name: validate-externals
+
+# Required status check for every PR to main (see docs/renovate.md "Auto-merge").
+# Runs on ALL PRs with no paths filter so the required `gate` check always reports
+# — an unrelated PR passes instantly, avoiding the "required check never runs → PR
+# stuck" trap. When a PR touches the externals config or the gnupg install script it
+# renders the externals per-OS and HEAD-checks every download URL, and verifies the
+# gnupg pin's SHA-256 against the real file. Auto-merge is gated on this check.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  # Always runs; decides whether the heavy validation is relevant to this PR.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          files=$(gh pr view "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" --json files --jq '.files[].path')
+          echo "changed files:"; echo "$files"
+          if echo "$files" | grep -qE '^home/(\.chezmoiexternal\.toml|run_onchange_install-gnupg\.ps1\.tmpl)$'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Render the externals for each OS and confirm every download URL resolves.
+  render:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install chezmoi
+        run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+      - name: Render externals + check URLs
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          chezmoi execute-template < home/.chezmoiexternal.toml > rendered.toml
+          urls=$(grep -oE 'url = "[^"]+"' rendered.toml | sed -E 's/url = "(.*)"/\1/' | sort -u)
+          echo "URLs to check on ${{ matrix.os }}:"; echo "$urls"
+          fail=0
+          while IFS= read -r u; do
+            [ -n "$u" ] || continue
+            # HEAD (follow redirects); some hosts reject HEAD -> fall back to a 1-byte ranged GET.
+            if curl -fsSIL --retry 2 --max-time 40 "$u" >/dev/null 2>&1; then
+              echo "ok   $u"
+            elif curl -fsSL --retry 2 --max-time 40 -r 0-0 -o /dev/null "$u" 2>/dev/null; then
+              echo "ok*  $u  (ranged GET; HEAD refused)"
+            else
+              echo "FAIL $u"; fail=1
+            fi
+          done <<< "$urls"
+          exit $fail
+
+  # Verify the gnupg pin's SHA-256 matches the real gnupg.org installer.
+  gnupg:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify gnupg SHA-256
+        run: |
+          f=home/run_onchange_install-gnupg.ps1.tmpl
+          ver=$(sed -nE 's/.*\$gpgVersion[[:space:]]*:=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -n1)
+          date=$(sed -nE 's/.*\$gpgDate[[:space:]]*:=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -n1)
+          sha=$(sed -nE 's/.*\$gpgSha256[[:space:]]*:=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -n1)
+          [ -n "$ver" ] && [ -n "$date" ] && [ -n "$sha" ] || { echo "could not read gnupg pin vars"; exit 1; }
+          url="https://www.gnupg.org/ftp/gcrypt/binary/gnupg-w32-${ver}_${date}.exe"
+          echo "checking $url"
+          curl -fsSL --retry 2 --max-time 120 -o gnupg.exe "$url"
+          got=$(sha256sum gnupg.exe | cut -d' ' -f1 | tr 'A-Z' 'a-z')
+          want=$(echo "$sha" | tr 'A-Z' 'a-z')
+          if [ "$got" != "$want" ]; then
+            echo "SHA-256 mismatch: got $got want $want"; exit 1
+          fi
+          echo "gnupg SHA-256 OK ($ver $date)"
+
+  # Single stable required check. Passes for irrelevant PRs; else needs render+gnupg green.
+  gate:
+    needs: [changes, render, gnupg]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide
+        run: |
+          relevant='${{ needs.changes.outputs.relevant }}'
+          if [ "$relevant" != "true" ]; then
+            echo "PR does not touch externals/gnupg — gate passes."
+            exit 0
+          fi
+          render='${{ needs.render.result }}'
+          gnupg='${{ needs.gnupg.result }}'
+          echo "render=$render gnupg=$gnupg"
+          if [ "$render" = "success" ] && [ "$gnupg" = "success" ]; then
+            echo "validation passed."
+            exit 0
+          fi
+          echo "validation failed."
+          exit 1
