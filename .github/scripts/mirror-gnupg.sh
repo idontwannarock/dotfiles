@@ -88,4 +88,6 @@ Updates \`\$gpgVersion\`, \`\$gpgDate\`, and \`\$gpgSha256\` in \`home/run_oncha
 
 Squash auto-merge is enabled: this merges once the \`validate-externals\` check passes. Nothing reaches a machine until you run \`chezmoi apply\`."
 # Auto-merge once the required validate-externals check is green (GitHub waits for it).
-gh pr merge --auto --squash --delete-branch "$branch" 2>/dev/null || true
+# Log rather than silently swallow if it can't be enabled — the PR is already open.
+gh pr merge --auto --squash --delete-branch "$branch" \
+  || log "could not enable auto-merge for ${branch} (is repo 'Allow auto-merge' on + branch protection set?); PR left open for manual merge"

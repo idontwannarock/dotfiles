@@ -95,5 +95,8 @@ open_bump_pr() {
 
 Squash auto-merge is enabled: this merges once the \`validate-externals\` check passes. Nothing reaches a machine until you run \`chezmoi apply\`."
   # Auto-merge once the required validate-externals check is green (GitHub waits for it).
-  gh pr merge --auto --squash --delete-branch "$branch" 2>/dev/null || true
+  # Don't fail the job if this can't be enabled (e.g. repo "Allow auto-merge" off) — the
+  # PR is already open and recoverable — but log it rather than swallow it silently.
+  gh pr merge --auto --squash --delete-branch "$branch" \
+    || log "could not enable auto-merge for ${branch} (is repo 'Allow auto-merge' on + branch protection set?); PR left open for manual merge"
 }

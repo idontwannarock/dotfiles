@@ -26,8 +26,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          files=$(gh pr view "${{ github.event.pull_request.number }}" \
-            --repo "${{ github.repository }}" --json files --jq '.files[].path')
+          # Paginate: `gh pr view --json files` caps at 100 files, which could miss
+          # the externals file on a large PR and skip validation (fail-open).
+          files=$(gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --jq '.[].path')
           echo "changed files:"; echo "$files"
           if echo "$files" | grep -qE '^home/(\.chezmoiexternal\.toml|run_onchange_install-gnupg\.ps1\.tmpl)$'; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
@@ -103,6 +106,13 @@ jobs:
     steps:
       - name: Decide
         run: |
+          # Fail CLOSED: if the detection job itself did not succeed, `relevant` is empty
+          # and we must not let the gate pass an unvalidated PR.
+          changes='${{ needs.changes.result }}'
+          if [ "$changes" != "success" ]; then
+            echo "changes job did not succeed (result=$changes) — failing closed."
+            exit 1
+          fi
           relevant='${{ needs.changes.outputs.relevant }}'
           if [ "$relevant" != "true" ]; then
             echo "PR does not touch externals/gnupg — gate passes."
