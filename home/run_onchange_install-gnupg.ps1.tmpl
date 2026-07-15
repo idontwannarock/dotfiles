@@ -15,9 +15,9 @@
 #
 # checkver: https://www.gnupg.org/download/index.html  regex gnupg-w32-([\d.]+)_(\d+)\.exe
 {{- /* pin: bump these three together (SHA-256 from gnupg.org integrity_check.html) */}}
-{{- $gpgVersion := "2.5.20" }}
-{{- $gpgDate    := "20260513" }}
-{{- $gpgSha256  := "CA26CD20602581B2CE05E95B16F6249F6FB6C4DCF32304165FC90519328D7981" }}
+{{- $gpgVersion := "2.5.21" }}
+{{- $gpgDate    := "20260702" }}
+{{- $gpgSha256  := "6246C925A73167253444AFC24A0DEB83A3F43B7D636AF84D6AAF48A98A62F024" }}
 
 $ErrorActionPreference = "Stop"
 $ver    = "{{ $gpgVersion }}"
