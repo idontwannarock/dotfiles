@@ -30,7 +30,7 @@ jobs:
           # the externals file on a large PR and skip validation (fail-open).
           files=$(gh api --paginate \
             "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
-            --jq '.[].path')
+            --jq '.[].filename')
           echo "changed files:"; echo "$files"
           if echo "$files" | grep -qE '^home/(\.chezmoiexternal\.toml|run_onchange_install-gnupg\.ps1\.tmpl)$'; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
