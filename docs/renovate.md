@@ -126,5 +126,5 @@ Mend's infra, uses no GitHub Actions minutes):
 Validate config changes locally with:
 
 ```bash
-npx --yes -p renovate renovate-config-validator renovate.json
+npm exec --yes --package=renovate -- renovate-config-validator renovate.json
 ```
