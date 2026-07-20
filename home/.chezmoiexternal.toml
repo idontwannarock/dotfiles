@@ -60,7 +60,7 @@
 # renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
 {{- $jqVersion       := "1.8.2" }}
 # renovate: datasource=github-releases depName=BurntSushi/ripgrep
-{{- $ripgrepVersion  := "15.1.0" }}
+{{- $ripgrepVersion  := "15.2.0" }}
 
 [".local/bin/starship.exe"]
     type = "archive-file"
