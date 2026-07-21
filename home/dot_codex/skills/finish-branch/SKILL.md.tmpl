@@ -1,0 +1,8 @@
+{{- /* Codex name-map for the shared finish-branch body */ -}}
+{{- $n := dict -}}
+---
+name: finish-branch
+description: "Use when implementation is complete and verified, to integrate a development branch — presents merge locally / push + PR / keep / discard, then executes per repo architecture: normal repos merge in place; bare+worktree layouts rebase, ff-only merge from the base worktree, and always dispose the feature worktree + branch. Also removes the workflow's active_workflows.md row."
+---
+
+{{ template "skills/finish-branch.md" (dict "n" $n "chez" .chezmoi) -}}

@@ -1,0 +1,9 @@
+{{- /* Codex name-map for the shared tdd body */ -}}
+{{- $n := dict
+    "verifyDone" "$verify-done" -}}
+---
+name: tdd
+description: "Test-driven development discipline for implementation work — use during openspec-apply-change whenever a task has a testable seam agreed in design, or when the user asks to build test-first (先寫測試、TDD、red-green). Red before green, vertical slices (one test → one implementation), refactoring belongs to review, mocks only at system boundaries."
+---
+
+{{ template "skills/tdd.md" (dict "n" $n "chez" .chezmoi) -}}

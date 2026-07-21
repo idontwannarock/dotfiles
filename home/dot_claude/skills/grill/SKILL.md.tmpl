@@ -1,0 +1,8 @@
+{{- /* Claude name-map for the shared grill body */ -}}
+{{- $n := dict -}}
+---
+name: grill
+description: "Use before writing any OpenSpec artifacts when requirements or design are still fuzzy — a relentless one-question-at-a-time interview (with recommended answers) that sharpens an idea into confirmed shared understanding. Triggered at the start of the Large dev-workflow, or standalone when the user wants to think through a plan (討論需求、想法還不成形、幫我釐清). Facts are looked up, decisions are asked; nothing gets implemented until the user confirms consensus."
+---
+
+{{ template "skills/grill.md" (dict "n" $n "chez" .chezmoi) -}}

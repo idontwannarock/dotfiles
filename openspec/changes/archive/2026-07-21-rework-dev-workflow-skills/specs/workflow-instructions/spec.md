@@ -1,24 +1,6 @@
-### Requirement: 確認流程
-收到實作任務時，Claude SHALL 一次詢問兩個項目：流程選擇（OpenSpec 小型 / OpenSpec 大型 / 不使用）與推進模式（逐步確認 / 自動推進）。推進模式僅適用於 OpenSpec 流程。
+# workflow-instructions
 
-#### Scenario: 一次確認
-- **WHEN** 收到非瑣碎的實作任務
-- **THEN** Claude SHALL 在一個回合中同時詢問流程選擇和推進模式
-
-#### Scenario: 瑣碎任務自動跳過
-- **WHEN** 任務為改 typo、一行修改、簡單問答等瑣碎任務
-- **THEN** Claude SHALL 跳過詢問，直接進行
-
-### Requirement: 推進模式決定 opsx 指令
-推進模式 SHALL 同時控制 skill 之間的暫停行為和 opsx artifact 產出方式。
-
-#### Scenario: 自動推進
-- **WHEN** 使用者選擇自動推進
-- **THEN** Claude SHALL 使用 `opsx:propose` 一次產出所有 artifacts，且 skill 之間不暫停
-
-#### Scenario: 逐步確認
-- **WHEN** 使用者選擇逐步確認
-- **THEN** Claude SHALL 使用 `opsx:new` + `opsx:continue` 逐步產出 artifacts，且每個 skill 結束後等使用者確認
+## MODIFIED Requirements
 
 ### Requirement: OpenSpec 流程必須使用 worktree
 OpenSpec 流程需要隔離時 SHALL 使用自家 `worktree` skill 建立獨立工作區;無其他 active workflow 時得直接在主 repo 開 branch。
@@ -61,26 +43,21 @@ OpenSpec 流程需要隔離時 SHALL 使用自家 `worktree` skill 建立獨立�
 - **THEN** Claude SHALL 繼續執行 `finish-branch`
 
 ### Requirement: Git 整合行為
-OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同步、merge、清理等時機。
+OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為,包含同步、merge、清理等時機。
 
 #### Scenario: 流程開始前同步
 - **WHEN** OpenSpec 流程開始
-- **THEN** Claude SHALL 執行 `git:sync` 確保 main 是最新的（已在 worktree 上的 session 除外）
+- **THEN** Claude SHALL 執行 `git:sync` 確保 main 是最新的(已在 worktree 上的 session 除外)
 
 #### Scenario: Merge 前 rebase
 - **WHEN** 執行 `finish-branch`
-- **THEN** Claude SHALL 在 merge 前先 rebase main，有 conflict 暫停問使用者
+- **THEN** Claude SHALL 在 merge 前先 rebase main,有 conflict 暫停問使用者
 
 #### Scenario: 清理分支
 - **WHEN** merge 完成後
 - **THEN** Claude SHALL 自動建議執行 `git:clean-gone` 清理已合併的本地分支與 worktree
 
-### Requirement: 文件語言為中文
-全域 CLAUDE.md 的內容 SHALL 以中文撰寫。
-
-#### Scenario: 語言一致性
-- **WHEN** 安裝腳本將 CLAUDE.md 部署到 ~/.claude/
-- **THEN** 使用者看到的全域指令 SHALL 為中文
+## ADDED Requirements
 
 ### Requirement: Bug 任務進入點
 收到修 bug 或效能退化任務時,Claude SHALL 先以 `diagnose` 完成根因診斷,再進入流程選擇;診斷出的根因 SHALL 成為該 change proposal.md 的 `## Why` 依據。

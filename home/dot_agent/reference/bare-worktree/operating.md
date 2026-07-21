@@ -49,11 +49,11 @@ Cross-check: `git rev-parse --git-common-dir` resolves to `.../.bare`, and
 
 ## Finishing / merging a branch back
 
-This section **overrides** generic finishing skills (e.g. superpowers'
-`finishing-a-development-branch`): their "Merge Locally" option does
-`git checkout <base> && git merge <feature>` in place, which violates the
-one-branch-per-worktree rule, and they leave the merged worktree behind.
-Under this layout, finishing = merge **and** dispose, as one unit.
+The `finish-branch` skill's bare arm implements this natively. Background:
+a generic "Merge Locally" (`git checkout <base> && git merge <feature>` in
+place) violates the one-branch-per-worktree rule and leaves the merged
+worktree behind. Under this layout, finishing = merge **and** dispose, as
+one unit.
 
 ### 1. Merge from the base worktree, never checkout in place
 

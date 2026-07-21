@@ -1,0 +1,8 @@
+{{- /* Codex name-map for the shared verify-done body */ -}}
+{{- $n := dict -}}
+---
+name: verify-done
+description: "Use before claiming any work is complete, fixed, or passing — run the project's verification commands (tests, build, lint, typecheck) and report from actual output. Evidence before assertions; failures reported honestly with their output; partial verification stated as partial."
+---
+
+{{ template "skills/verify-done.md" (dict "n" $n "chez" .chezmoi) -}}

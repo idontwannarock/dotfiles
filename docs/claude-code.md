@@ -22,36 +22,31 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 
 ### 預設工作流程
 
-安裝後，Claude Code 在收到實作需求時會先詢問是否要使用 **OpenSpec + Superpowers** 流程：
+安裝後，Claude Code 在收到實作需求時會先詢問是否要使用 **OpenSpec** 流程
+（Small / Large / Skip）。流程與紀律全部由自家 cross-tool skills 提供
+（chezmoi shared-body + per-tool name-map，Claude / Codex 同一份身體）：
 
-- **OpenSpec** — 結構化的變更管理流程（artifact-driven workflow）
-- **Superpowers** — 進階技能集（brainstorming、TDD、systematic debugging 等）
+| Skill | 角色 |
+|-------|------|
+| `dev-workflow` | Orchestrator — 流程選擇、workspace 隔離、OpenSpec 生命週期 |
+| `grill` | Large 流程前端 — 一次一題訪談，共識確認前不動工；結論直接進 openspec artifacts |
+| `tdd` | 實作紀律 — 只在預先同意的 seam 測試、red before green、垂直切片 |
+| `diagnose` | Bug 進入點 — 先建 feedback loop 才准提假設；根因餵進 proposal 的 Why |
+| `verify-done` | 完工前驗證 — 證據先於宣稱 |
+| `worktree` | 隔離 workspace 建立（normal / bare+worktree 雙架構） |
+| `finish-branch` | 分支收尾 — merge/PR/處置,雙架構原生支援 |
 
 瑣碎任務（改 typo、一行修改）會自動跳過詢問。
 
-### Superpowers 設計／計畫文件位置
-
-Superpowers 的 `brainstorming`／`writing-plans` 預設會把 design／plan 文件寫進
-repo 的 `docs/superpowers/{specs,plans}/`，會污染 repo 且與 OpenSpec 的
-`design.md`／`tasks.md` 重複。全域 CLAUDE.md（section 8）改寫其落點到 repo 外：
-
-```
-~/.local/share/superpowers/<repo>/specs/YYYY-MM-DD-<topic>-design.md
-~/.local/share/superpowers/<repo>/plans/YYYY-MM-DD-<feature-name>.md
-```
-
-- `<repo>` = 含 git *common* dir 之目錄的 basename（`git rev-parse --git-common-dir`
-  解析為絕對路徑後取 `dirname` 再 `basename`）；如此同一專案的所有 worktree 共用
-  一個落點——plain repo 取自身目錄、linked worktree 取主 repo 目錄、bare + worktree
-  佈局（`.bare/` 與並排 worktree）取容器目錄。非 git repo 則 fallback 當前目錄名。
-- 工具中立（放共用 data 區，非 `~/.claude/`）、跨 session/agent 可參考；因在 repo
-  外，skill 的 commit 步驟自動空轉。
-- 機制是踩 `brainstorming`／`writing-plans` SKILL.md 既有的「使用者偏好覆寫位置」鉤子，未 fork plugin。
-- 變成 OpenSpec change 後，永久版在 `openspec/changes/<change>/design.md`（+ `tasks.md`）。
+設計討論的結論不寫獨立文件 — `grill` 直接分流進
+`openspec/changes/<change>/` 的 design.md / proposal.md / spec deltas。
+（歷史脈絡:舊流程用 superpowers `brainstorming`/`writing-plans`,需要把
+design doc 改道到 `~/.local/share/superpowers/<repo>/`;該機制已隨
+rework-dev-workflow-skills change 退役。superpowers plugin 目前仍安裝但
+不再接進 dev-workflow,移除待 episodic-memory 獨立性驗證後另案處理。）
 
 ### 前置需求
 
-- **superpowers** plugin — 提供 brainstorming 等技能
 - **OpenSpec CLI** (`@fission-ai/openspec`) — 透過 `/ensure-openspec` skill 按需安裝
 
 ## Plugins
@@ -60,7 +55,7 @@ repo 的 `docs/superpowers/{specs,plans}/`，會污染 repo 且與 OpenSpec 的
 
 | 名稱 | 來源 | 說明 |
 |------|------|------|
-| superpowers | `claude-plugins-official` | 核心技能引擎（brainstorming、TDD、debugging 等） |
+| superpowers | `claude-plugins-official` | 已從 dev-workflow 解除接線（流程紀律改由自家 skills 提供）；暫留因 episodic-memory 的 archive/sync 依賴 `~/.config/superpowers/`，驗證獨立性後另案移除 |
 | claude-md-management | `claude-plugins-official` | 審計與改善 CLAUDE.md |
 | context7 | `claude-plugins-official` | MCP server — 即時查詢 library 文件 |
 | code-simplifier | `claude-plugins-official` | 程式碼簡化 agent |

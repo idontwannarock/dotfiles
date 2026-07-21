@@ -2,11 +2,12 @@
 {{- $n := dict
     "ensureScript" "~/.agent/bin/ensure-openspec.sh"
     "sk" ""
-    "brainstorm" "superpowers:brainstorming"
-    "writingPlans" "superpowers:writing-plans"
-    "verification" "superpowers:verification-before-completion"
-    "finishing" "superpowers:finishing-a-development-branch"
-    "worktrees" "superpowers:using-git-worktrees"
+    "grill" "grill"
+    "tdd" "tdd"
+    "diagnose" "diagnose"
+    "verifyDone" "verify-done"
+    "worktree" "worktree"
+    "finishBranch" "finish-branch"
     "gitSync" "git:sync"
     "gitCommit" "git:commit"
     "gitCleanGone" "git:clean-gone"
@@ -15,7 +16,7 @@
     "reviewList" "`code:review-surgical`, `code:review-comprehensive`, `code:review-spec`, `code:review-linus`, `code:review-security`, `code:review-types`" -}}
 ---
 name: dev-workflow
-description: "Use when receiving any implementation task — adding features, fixing bugs, refactoring code, or modifying behavior beyond trivial one-line changes. Also use when the user asks about the development workflow, process, or OpenSpec flow. Handles requests in any language (e.g. 加功能、修 bug、重構). Orchestrates the full OpenSpec + Superpowers lifecycle: workflow selection, worktree isolation decisions, spec → implement → review → merge. Make sure to invoke this skill whenever a real implementation task arrives, even if the user doesn't explicitly ask for a \"workflow\" — skipping it risks losing spec tracking and review gates."
+description: "Use when receiving any implementation task — adding features, fixing bugs, refactoring code, or modifying behavior beyond trivial one-line changes. Also use when the user asks about the development workflow, process, or OpenSpec flow. Handles requests in any language (e.g. 加功能、修 bug、重構). Orchestrates the full OpenSpec lifecycle with built-in discipline skills: workflow selection, worktree isolation decisions, grill → spec → implement (tdd) → verify → review → merge. Make sure to invoke this skill whenever a real implementation task arrives, even if the user doesn't explicitly ask for a \"workflow\" — skipping it risks losing spec tracking and review gates."
 ---
 
 {{ template "skills/dev-workflow.md" (dict "n" $n "chez" .chezmoi) -}}
