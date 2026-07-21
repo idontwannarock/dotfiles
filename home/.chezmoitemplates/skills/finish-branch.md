@@ -3,6 +3,16 @@
 Complete a development branch: verify, integrate, dispose. Both repo
 architectures are handled natively — no external overrides.
 
+## Ground rules (apply to every option below)
+
+- **Stop on first failure.** Each command is a separate gated step; if
+  any fails (rebase conflict, `--ff-only` refused, anything), stop,
+  report the state, and wait — do NOT run the remaining steps.
+- **Dispose only after the merge is confirmed.** Worktree/branch
+  disposal and `active_workflows.md` row removal happen only once the
+  merge commit is verifiably on the base branch (or the user confirmed
+  Discard). A half-finished sequence keeps the row.
+
 ## 1. Verify before anything
 
 Run the project's verification (tests / build / lint) and confirm
@@ -18,42 +28,57 @@ case "$(basename "$GIT_COMMON")" in
 esac
 ```
 
-## 3. Ask how to integrate
+## 3. Ask how to integrate, then execute per option × ARCH
 
 Present once: **Merge locally** / **Push + PR** / **Keep branch as is**
-/ **Discard**. Then execute per `ARCH`:
+/ **Discard**.
 
-### ARCH=normal
+### Merge locally
 
-- Merge locally: rebase on main first (pause on conflict), then
-  `git checkout main && git merge <branch>`; delete the branch after.
-- Push + PR: push branch, open PR (`gh pr create`), leave branch until
-  merge; suggest cleanup later.
-- If the work happened in a linked worktree: after merging, remove it
-  with `git worktree remove <path>` before deleting the branch.
+- `normal`: rebase on up-to-date main (pause on conflict) →
+  `git checkout main && git merge <branch>` → after the merge is
+  confirmed, delete the branch; if the work was in a linked worktree,
+  `git worktree remove <path>` first.
+- `bare-worktree`: never checkout the base inside the feature worktree.
+  ```bash
+  cd <repo>/<branch> && git rebase main     # conflict → stop, resolve, rerun tests
+  cd <repo>/main && git merge --ff-only <branch>   # refused → stop, report (main moved?)
+  # ── only continue once the merge above succeeded ──
+  git --git-dir=<repo>/.bare worktree remove <branch>
+  git --git-dir=<repo>/.bare branch -d <branch>    # -d is safe after FF merge
+  git --git-dir=<repo>/.bare worktree prune
+  ```
+  Alternative `git merge --no-ff <branch>` from `main/` when the branch
+  history is worth keeping as a unit. Rebase rewrites hashes — update
+  anything that recorded old ones. Run disposal from `main/` or the
+  container, never from inside the worktree being removed. Never
+  `rm -rf` a worktree directory.
+- Then remove the workflow's row from `active_workflows.md` — resolve its
+  path per ARCH first (normal: auto-derived slug; bare-worktree: registry
+  lookup via `autoMemoryDirectory` key, auto-derivation is wrong there —
+  same dispatch as the `worktree` skill's Register step).
 
-### ARCH=bare-worktree
+### Push + PR
 
-Never checkout the base branch inside the feature worktree. Merge from
-the worktree already pinned to base (e.g. `main/`), then always dispose:
+Both ARCHes: push the branch, `gh pr create`. The branch — and under
+bare-worktree the worktree — stays until the PR merges (review fixes
+need the workspace). Keep the `active_workflows.md` row, update Current
+Step (e.g. `pr-open`); dispose + remove the row only after the PR
+merges.
 
-```bash
-cd <repo>/<feature-wt> && git rebase main     # resolve, rerun tests
-cd <repo>/main && git merge --ff-only <branch>
-git --git-dir=<repo>/.bare worktree remove <feature-wt>
-git --git-dir=<repo>/.bare branch -d <branch>
-git --git-dir=<repo>/.bare worktree prune
-```
+### Keep branch as is
 
-- Alternative `git merge --no-ff` from `main/` when branch history is
-  worth keeping as a unit.
-- Rebase rewrites hashes — update anything that recorded old hashes.
-- Run the dispose sequence from `main/` or the container, never from
-  inside the worktree being removed (dangling cwd breaks git).
-- Never `rm -rf` a worktree directory (leaves stale admin records).
+Leave branch, worktree, and the `active_workflows.md` row untouched
+(update Status/Current Step if the workflow is pausing). No disposal.
 
-## 4. Clean up tracking
+### Discard
 
-Remove this workflow's row from
-`~/.agent/workflows/<repo-slug>/active_workflows.md`. Disposal and
-row removal are part of finishing, not optional afterwork.
+Destroys unmerged commits — **confirm with the user before deleting**,
+then:
+- `normal`: `git checkout main`, remove the linked worktree if any,
+  `git branch -D <branch>`.
+- `bare-worktree`: `git --git-dir=<repo>/.bare worktree remove
+  <branch>` (add `--force` only if the tree is dirty and the user
+  confirmed), `git --git-dir=<repo>/.bare branch -D <branch>`,
+  `worktree prune`.
+- Then remove the `active_workflows.md` row.

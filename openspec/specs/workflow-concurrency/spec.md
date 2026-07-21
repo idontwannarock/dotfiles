@@ -13,7 +13,7 @@ Claude SHALL 維護 `~/.claude/workflow-registry.md`，記錄各 repo 的主 rep
 - **THEN** Claude SHALL 透過 `git rev-parse --git-common-dir` 找到主 repo，查 registry 取得正確的 project memory 路徑
 
 ### Requirement: Active Workflows Index
-每個 repo 的 project memory 下 SHALL 有 `active_workflows.md`，記錄該 repo 所有進行中的 OpenSpec 流程。
+每個 repo 的 project memory 下 SHALL 有 `active_workflows.md`，記錄該 repo 所有進行中的 OpenSpec 流程。Current Step 欄位 SHALL 使用 tool-neutral 的語義標籤(如 `apply-change done`、`review`),SHALL NOT 寫入任何工具專屬的 sigil'd skill token — 此檔案跨工具共用,恢復工作的工具依自身 name-map 重新推導 token。
 
 #### Scenario: 新流程開始
 - **WHEN** 工作區(主 repo branch 或 worktree)建立後
@@ -21,7 +21,7 @@ Claude SHALL 維護 `~/.claude/workflow-registry.md`，記錄各 repo 的主 rep
 
 #### Scenario: 流程步驟推進
 - **WHEN** 每個 skill 完成時
-- **THEN** Claude SHALL 更新該流程的 current step 和 last updated
+- **THEN** Claude SHALL 更新該流程的 current step(tool-neutral 標籤)和 last updated
 
 #### Scenario: 流程暫停
 - **WHEN** 使用者要求暫停當前流程切換到另一個任務

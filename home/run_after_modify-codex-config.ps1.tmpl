@@ -16,7 +16,7 @@ if (-not (Test-Path $configDir)) {
 
 # 從現有檔案中提取需保留的 per-machine 區塊：[projects.*]（per-project 設定）
 # 與 [plugins.*]（codex plugin add 寫入的 plugin 註冊；不保留就會被本次整份重寫洗掉，
-# 害 install-04-codex-plugins 每次 apply 重裝又被洗、無限 flip-flop）。
+# 使用者手動安裝的 plugin 每次 apply 都得重裝）。
 $keptSections = ""
 if (Test-Path $configPath) {
     $lines = Get-Content $configPath -Encoding UTF8

@@ -56,7 +56,7 @@ GLOBAL
 # ── 保留本機 per-machine 區塊：[projects.*] 與 [plugins.*] ────────────────────
 # [projects.*]：per-project 設定。
 # [plugins.*]：codex plugin add 寫入的 plugin 註冊；不保留就會被本次整份重寫洗掉，
-#              害 install-04-codex-plugins 每次 apply 重裝又被洗、無限 flip-flop。
+#              使用者手動安裝的 plugin 每次 apply 都得重裝。
 if [ -n "$existing" ]; then
     echo ""
     echo "$existing" | awk '

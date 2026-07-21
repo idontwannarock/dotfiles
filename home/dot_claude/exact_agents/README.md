@@ -48,7 +48,7 @@ Common Pipelines:
 ## MCP Servers
 
 > context7 已透過 plugin 安裝（`/plugin` → context7），不需要手動設定 MCP。
-> spec-workflow-mcp 已由 OpenSpec + Superpowers 流程取代，不再需要。
+> spec-workflow-mcp 已由 OpenSpec + 自家 discipline skills 流程取代，不再需要。
 
 - grep mcp setup: `claude mcp add --transport http grep https://mcp.grep.app`
 

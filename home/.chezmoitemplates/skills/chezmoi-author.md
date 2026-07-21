@@ -63,3 +63,5 @@ Before committing:
 4. Does `.gitattributes` cover any new script extension?
 5. If you deleted or renamed a source file, did you add the old **target path** to `.chezmoiremove` so the deployed copy is pruned across machines?
 6. Platform-specific checks: did you also walk the checklist in the matching `references/*.md`?
+7. If you touched a shared skill body (`.chezmoitemplates/skills/*.md`) or a wrapper name-map: render EVERY affected wrapper and grep for silent misses — Go templates render a missing map key as a literal no-value marker without erroring:
+   `for f in home/dot_{claude,codex}/skills/*/SKILL.md.tmpl; do chezmoi execute-template < "$f" | grep -H --label="$f" '<no'' value>'; done` (any output = a token missing from a name-map; the split-quote pattern keeps this checklist itself from matching).
