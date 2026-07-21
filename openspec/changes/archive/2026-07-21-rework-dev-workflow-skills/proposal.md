@@ -9,7 +9,7 @@ dev-workflow 目前依賴 superpowers plugin 的 5 個 skills、一支 Codex sym
 - 新增 6 個自家 cross-tool skills(chezmoi shared-body + per-tool name-map):`grill`、`tdd`、`diagnose`、`verify-done`、`worktree`、`finish-branch`
 - 改寫 dev-workflow:Large 流程以 `grill` 取代 `superpowers:brainstorming`;移除 `superpowers:writing-plans` 條件步驟(tasks.md 切片慣例取代);`openspec-apply-change` 期間接上 `tdd`;新增 bug 任務進入點(`diagnose`);`verify-done` 取代 `superpowers:verification-before-completion`;`finish-branch` 取代 `superpowers:finishing-a-development-branch`(雙架構原生內建,dispatch table 的 finishing 特例列刪除)
 - **BREAKING**:dev-workflow 不再引用任何 superpowers skill(plugin 本體保留,移除屬後續 change)
-- 刪除 `home/dot_agent/bin/executable_install-superpowers-codex.sh`(Codex symlink hack)
+- 移除機器本地的 `~/.agent/bin/install-superpowers-codex.sh`(Codex symlink hack;非 chezmoi source 檔,以 `.chezmoiremove` 跨機清除)
 - user-system-prompt.md:刪除 §8(superpowers 設計文件改道)、刪除 §7 的 finishing override 段
 
 ## Capabilities

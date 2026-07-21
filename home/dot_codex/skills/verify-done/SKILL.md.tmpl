@@ -1,4 +1,6 @@
-{{- /* Codex name-map for the shared verify-done body */ -}}
+{{- /* Codex name-map for the shared verify-done body.
+     No user-invocable flag here: that key is Claude-only frontmatter;
+     Codex has no equivalent (design D8's model-only scoping is Claude-side). */ -}}
 {{- $n := dict -}}
 ---
 name: verify-done

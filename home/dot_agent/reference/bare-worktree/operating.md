@@ -49,68 +49,29 @@ Cross-check: `git rev-parse --git-common-dir` resolves to `.../.bare`, and
 
 ## Finishing / merging a branch back
 
-The `finish-branch` skill's bare arm implements this natively. Background:
-a generic "Merge Locally" (`git checkout <base> && git merge <feature>` in
-place) violates the one-branch-per-worktree rule and leaves the merged
-worktree behind. Under this layout, finishing = merge **and** dispose, as
-one unit.
+**Commands live in one place: the `finish-branch` skill's bare arm.** This
+section keeps only the why — the layout invariants any finish must respect:
 
-### 1. Merge from the base worktree, never checkout in place
+- A generic in-place "Merge Locally" (`git checkout <base> && git merge`)
+  violates the one-branch-per-worktree rule and leaves the merged worktree
+  behind. The merge happens in the worktree already pinned to the base
+  branch (e.g. `main/`); on the local-merge path, finishing = merge **and**
+  dispose, as one unit (Keep / open-PR paths deliberately defer disposal —
+  see the `finish-branch` skill).
+- Rebase rewrites commit hashes — anything that recorded old hashes
+  (auto-memory `active_workflows`, design notes, the registry) must be
+  updated afterwards.
+- Never `rm -rf` a worktree directory (stale admin records), and never run
+  the removal from inside the worktree being removed (dangling cwd breaks
+  git). Work from `main/` or the container.
+- Removing the workflow's `active_workflows.md` row is part of finishing,
+  not a manual afterthought.
 
-Never `git checkout <base>` inside the feature worktree. The merge happens
-in the worktree already pinned to the base branch (e.g. `main/`).
-
-Preferred — linear history (rebase + fast-forward):
-
-```bash
-cd <repo>/add-<name>          # feature worktree
-git rebase main               # resolve conflicts here, rerun tests
-cd <repo>/main                # base worktree
-git merge --ff-only add-<name>
-```
-
-Alternative — merge commit: skip the rebase and run
-`git merge --no-ff add-<name>` from `main/`. Trade-off: no hash rewriting
-(history notes stay valid) but a non-linear graph; pick it when the branch
-history is worth preserving as a unit or a rebase would be painful.
-
-**Rebase rewrites commit hashes.** Any place that recorded the old hashes —
-auto-memory `active_workflows`, design notes, the workflow registry — must be
-updated. Identify work by commit message or by the post-merge hash, not by
-pre-rebase hashes.
-
-### 2. Dispose of the worktree + branch — always
-
-After the merge, **always** remove the feature worktree and branch. Leaving
-merged worktrees around accumulates stale directories and ties up the branch.
-Order matters: a branch can't be deleted while a worktree still holds it.
-
-```bash
-git --git-dir=<repo>/.bare worktree remove add-<name>
-git --git-dir=<repo>/.bare branch -d add-<name>   # -d is safe after FF merge
-git --git-dir=<repo>/.bare worktree prune
-```
-
-Never `rm -rf` the worktree directory (leaves stale admin records).
-
-**Do not run the removal from inside the worktree being removed.** If the
-shell's or agent's cwd is that worktree, removal leaves cwd dangling —
-`getcwd` fails and subsequent git commands break. Run the whole
-merge/dispose sequence from the base worktree (`main/`) or the container.
-Ideally the agent driving the finish doesn't live in the worktree being
-deleted; if the session did start there, move to `main/` (or a new
-worktree) before removing.
-
-If a workflow tracker is in use (e.g. dev-workflow's `active_workflows.md`),
-remove the branch's row as part of this dispose step — it is part of
-finishing, not a manual afterthought.
-
-### 3. Next piece of work → a fresh worktree
+### Next piece of work → a fresh worktree
 
 New feature, new requirement, or follow-up changes to the same feature: always
-create a **new** worktree (per the creation rule above:
-`git --git-dir=.bare worktree add -b add-<name> add-<name> main`). Don't
-recycle a disposed worktree's directory and don't edit directly in `main/`.
+create a **new** worktree off `main` (via the `worktree` skill). Don't recycle
+a disposed worktree's directory and don't edit directly in `main/`.
 
 Sibling worktrees on other branches are untouched by all of this — they keep
 their own branches and take no part in the merge.

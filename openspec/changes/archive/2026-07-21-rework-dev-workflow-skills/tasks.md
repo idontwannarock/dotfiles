@@ -42,7 +42,7 @@
 
 ## 7. 依賴清除(獨立)
 
-- [x] 7.1 刪 `home/dot_agent/bin/executable_install-superpowers-codex.sh`
+- [x] 7.1 移除機器本地 `~/.agent/bin/install-superpowers-codex.sh`(從未在 chezmoi source;rm + `.chezmoiremove` 跨機清除)
 - [x] 7.2 `home/.chezmoitemplates/user-system-prompt.md`:刪 §8 全段(superpowers 文件改道);§7 刪 finishing override 段(保留 bare-worktree 通用指引)
 - [x] 7.3 本機清理 `~/.codex/skills/` superpowers symlinks — 實測本機不存在(no-op);installer 改列 `.chezmoiremove` 跨機清除
 
