@@ -9,7 +9,7 @@ A single git working directory can only have one branch checked out at a time. I
 ## Flow
 
 1. Show the active workflows to the user. Ask: resume an existing one, or start a new one?
-2. If starting new: invoke `superpowers:using-git-worktrees` to create an isolated worktree.
+2. If starting new: invoke the `worktree` skill to create an isolated worktree (handles both normal and bare+worktree layouts).
 3. Register the new row in `active_workflows.md` with Type=`worktree`, Path=the worktree directory.
 
 ## Session start re-entry

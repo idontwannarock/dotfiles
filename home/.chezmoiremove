@@ -44,3 +44,11 @@
 # The vim external is a non-exact archive, so it never prunes the pre-mirror vim92/
 # left on machines that had vim before the migration. Retire it explicitly.
 .local/share/vim/vim92
+
+# superpowers unwired from dev-workflow (rework-dev-workflow-skills):
+# the Codex symlink installer was a machine-local helper; prune it everywhere.
+.agent/bin/install-superpowers-codex.sh
+
+# Stale unmanaged copy of dev-workflow-isolation.md (canonical: ~/.agent/reference/);
+# still carried the old superpowers skill name. Prune across machines.
+.claude/skills/dev-workflow/references

@@ -1,0 +1,8 @@
+{{- /* Codex name-map for the shared diagnose body */ -}}
+{{- $n := dict -}}
+---
+name: diagnose
+description: "Debugging discipline for bug reports and performance regressions — use BEFORE proposing any root cause or fix (修 bug、查問題、效能退化、debug). Builds a feedback loop first (a command that reliably goes red; no loop, no hypotheses), minimizes the reproduction, then verifies 3-5 ranked falsifiable hypotheses one variable at a time. The confirmed root cause feeds the change proposal's Why."
+---
+
+{{ template "skills/diagnose.md" (dict "n" $n "chez" .chezmoi) -}}

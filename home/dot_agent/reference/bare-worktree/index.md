@@ -15,13 +15,14 @@ dispatch table keys on `basename "$(git rev-parse --git-common-dir)"`:
 
 - **`.git` → a primary checkout exists.** Covers both classic normal repos
   **and** normal repos using `git worktree add` linked worktrees. dev-workflow
-  treats them identically and the stock `finishing-a-development-branch` skill
-  is correct for them (its `MAIN_ROOT = <common-dir>/..` resolves to the primary
-  worktree, so its in-place checkout works). No reference needed — that's the
-  assumed default everything is written against.
+  treats them identically and the `finish-branch` skill's normal arm is correct
+  for them (in-place checkout of the base branch works because a primary
+  worktree exists). No reference needed — that's the assumed default everything
+  is written against.
 - **`.bare` → no primary checkout.** `<common-dir>/..` is the container, not a
-  worktree, so the skill's merge/cleanup breaks. This is the deviation this
-  reference exists for.
+  worktree, so in-place merge/cleanup breaks. The `finish-branch` skill's bare
+  arm handles this natively; this reference documents the layout's background
+  and manual operations.
 
 The real space is 2×2 — *layout* (primary checkout vs bare) × *discipline*
 (work in-place vs every branch is a worktree). bare+worktree bundles "no
