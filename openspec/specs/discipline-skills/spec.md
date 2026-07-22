@@ -1,3 +1,10 @@
+# discipline-skills Specification
+
+## Purpose
+定義自家開發紀律 skills(grill/tdd/diagnose/verify-done/worktree/finish-branch)的跨工具(Claude/Codex)部署方式與各自行為契約。
+
+## Requirements
+
 ### Requirement: 跨工具部署
 六個自家流程/紀律 skills(`grill`、`tdd`、`diagnose`、`verify-done`、`worktree`、`finish-branch`)SHALL 以 chezmoi shared-body(`home/.chezmoitemplates/skills/<name>.md`)+ per-tool name-map wrapper 部署,Claude 與 Codex 共用同一份身體。
 

@@ -1,4 +1,9 @@
-## ADDED Requirements
+# powershell-config Specification
+
+## Purpose
+規範 PowerShell profile 佈局:PS5 與 PS7 使用獨立 profile 樹、共用邏輯抽離至 `_shared-profile.d`、PS7 專屬語法、自動 fetch 提示。
+
+## Requirements
 
 ### Requirement: PS5 與 PS7 使用獨立 profile 樹
 PowerShell 5 與 PowerShell 7 SHALL 各自擁有獨立的 profile 主檔與 `profile.d/` 目錄，路徑分別對應 Windows 的 `~/Documents/WindowsPowerShell/` 與 `~/Documents/PowerShell/`。

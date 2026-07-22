@@ -1,4 +1,9 @@
-## ADDED Requirements
+# statusline-git-diff-stats Specification
+
+## Purpose
+規範 statusline 顯示當前 git diff 的新增/刪除行數。
+
+## Requirements
 
 ### Requirement: Display git insertions and deletions
 The statusline SHALL display the number of insertions and deletions from `git diff --shortstat` next to the branch name.

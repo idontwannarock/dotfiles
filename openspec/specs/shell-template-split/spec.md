@@ -1,3 +1,10 @@
+# shell-template-split Specification
+
+## Purpose
+定義 shell 設定 template 的平台片段拆分:片段目錄結構、入口檔依 OS 選片段、include 慣例、EOL 控制,並確保部署結果與重構前一致。
+
+## Requirements
+
 ### Requirement: Template 片段目錄結構
 `.chezmoitemplates/` SHALL 按「檔案名稱/平台」組織 template 片段，包含以下結構：
 - `bashrc/windows` — Git Bash 專用 `.bashrc`

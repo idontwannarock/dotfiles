@@ -1,3 +1,10 @@
+# workflow-concurrency Specification
+
+## Purpose
+定義 dev-workflow 的併發追蹤機制:Workflow Registry、Active Workflows Index、以及 session 開始時的讀取行為。
+
+## Requirements
+
 ### Requirement: Workflow Registry
 Claude SHALL 維護 `~/.claude/workflow-registry.md`，記錄各 repo 的主 repo 路徑與對應的 project memory 路徑。此檔案各機器獨立，不透過 dotfiles 同步。格式為：
 

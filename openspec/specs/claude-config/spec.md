@@ -1,4 +1,9 @@
-## ADDED Requirements
+# claude-config Specification
+
+## Purpose
+規範 Claude Code 設定如何由 chezmoi 部署:`~/.claude/` 以 `exact_` 目錄管理、plugin 安裝走 `run_onchange_` 腳本、Windows hook 修復由 PowerShell 腳本處理。
+
+## Requirements
 
 ### Requirement: Claude Code 設定透過 chezmoi exact_ 目錄部署
 `~/.claude/` 下的 CLAUDE.md、commands、agents SHALL 由 chezmoi 以 `exact_` 目錄管理，確保 repo 中移除的檔案在 apply 後自動從系統清除。

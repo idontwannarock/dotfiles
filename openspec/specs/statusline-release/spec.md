@@ -1,4 +1,9 @@
-## ADDED Requirements
+# statusline-release Specification
+
+## Purpose
+規範 statusline binary 由 GitHub Actions 自動編譯發佈、chezmoi external 依平台下載、Release tag 以 force update 更新。
+
+## Requirements
 
 ### Requirement: GitHub Actions 自動編譯並發佈 statusline binary
 當 `claude/statusline/statusline.go` 有變更並 push 到 main branch 時，GitHub Actions workflow SHALL 自動編譯四個平台的二進位並上傳至 GitHub Release（tag: `statusline-latest`）。

@@ -1,4 +1,9 @@
-## ADDED Requirements
+# chezmoi-structure Specification
+
+## Purpose
+定義 chezmoi source root 佈局與環境偵測慣例:`.chezmoiroot` 指向 `home/`、`.chezmoi.toml.tmpl` 偵測 OS 並注入 PATH、`.chezmoiignore` 排除非 dotfile、`.chezmoiexternal.toml` 管外部二進位、git-bash interpreter 偵測。
+
+## Requirements
 
 ### Requirement: chezmoi source root 由 .chezmoiroot 指向 home/
 Repo root SHALL 包含 `.chezmoiroot`（內容為 `home`），將 `home/` 指定為 chezmoi source root。所有需要部署到 `$HOME` 的檔案 SHALL 置於 `home/` 之下並使用 chezmoi 檔名前綴慣例（`dot_`、`exact_`、`.tmpl` 等）。repo root 其餘項目（CI 原始碼、`docs/`、`tests/`、`openspec/` 等）位於 source root 之外，chezmoi 不會看到，因此無須以 `.chezmoiignore` 排除。
