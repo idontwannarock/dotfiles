@@ -92,15 +92,6 @@ follow it (branch creation, never `git switch` in-place, never operate at the
 container level, per-repo memory/worktree settings). The `finish-branch` skill
 handles merging + disposing in this layout natively.
 
-## 8. Superpowers 過渡護欄
-
-superpowers plugin 目前僅因 episodic-memory 基礎設施而保留。其 workflow skills
-已被自家 skills 取代 — 不得 invoke `superpowers:brainstorming`、
-`superpowers:writing-plans`、`superpowers:verification-before-completion`、
-`superpowers:finishing-a-development-branch`、`superpowers:using-git-worktrees`;
-改用 `grill`、tasks.md 切片慣例、`verify-done`、`finish-branch`、`worktree`。
-(plugin 移除後刪除本節。)
-
 ---
 
 **Worklog repo:** `idontwannarock/worklogs`
