@@ -1,31 +1,18 @@
 # workflow-instructions Specification
 
 ## Purpose
-規範 dev-workflow 核心流程指令:確認流程、推進模式、worktree 要求、大小型流程、code review、git 整合、文件語言、bug 進入點與 tasks.md 切片慣例。
-
+規範 dev-workflow 核心流程指令:確認流程、worktree 要求、大小型流程、code review、git 整合、文件語言、bug 進入點與 tasks.md 切片慣例。
 ## Requirements
-
 ### Requirement: 確認流程
-收到實作任務時，Claude SHALL 一次詢問兩個項目：流程選擇（OpenSpec 小型 / OpenSpec 大型 / 不使用）與推進模式（逐步確認 / 自動推進）。推進模式僅適用於 OpenSpec 流程。
+收到實作任務時，Claude SHALL 詢問流程選擇：OpenSpec 小型（Small）/ OpenSpec 大型（Large）/ 不使用（Skip）。
 
 #### Scenario: 一次確認
 - **WHEN** 收到非瑣碎的實作任務
-- **THEN** Claude SHALL 在一個回合中同時詢問流程選擇和推進模式
+- **THEN** Claude SHALL 在一個回合中詢問流程選擇
 
 #### Scenario: 瑣碎任務自動跳過
 - **WHEN** 任務為改 typo、一行修改、簡單問答等瑣碎任務
 - **THEN** Claude SHALL 跳過詢問，直接進行
-
-### Requirement: 推進模式決定 opsx 指令
-推進模式 SHALL 同時控制 skill 之間的暫停行為和 opsx artifact 產出方式。
-
-#### Scenario: 自動推進
-- **WHEN** 使用者選擇自動推進
-- **THEN** Claude SHALL 使用 `opsx:propose` 一次產出所有 artifacts，且 skill 之間不暫停
-
-#### Scenario: 逐步確認
-- **WHEN** 使用者選擇逐步確認
-- **THEN** Claude SHALL 使用 `opsx:new` + `opsx:continue` 逐步產出 artifacts，且每個 skill 結束後等使用者確認
 
 ### Requirement: OpenSpec 流程必須使用 worktree
 OpenSpec 流程需要隔離時 SHALL 使用自家 `worktree` skill 建立獨立工作區;無其他 active workflow 時得直接在主 repo 開 branch。
@@ -35,11 +22,11 @@ OpenSpec 流程需要隔離時 SHALL 使用自家 `worktree` skill 建立獨立�
 - **THEN** Claude SHALL 先執行 `git:sync`,再用 `worktree` skill 建立工作區,然後才開始後續步驟
 
 ### Requirement: 小型核心流程
-小型流程 SHALL 跳過 grill,由 opsx 直接處理設計。
+小型流程 SHALL 跳過 grill，由 openspec 直接處理設計。
 
 #### Scenario: 小型流程步驟
 - **WHEN** 選擇小型流程
-- **THEN** 執行順序 SHALL 為:ensure-openspec → openspec-new-change → openspec-continue-change(loop)→ openspec-apply-change → openspec validate → [openspec-sync-specs] → openspec-archive-change → git:commit → code:review-surgical → 如需修正走新一輪 → 如不需修正 → finish-branch → [git:clean-gone]
+- **THEN** 執行順序 SHALL 為：ensure-openspec → openspec-new-change → openspec-continue-change（loop）→ openspec-apply-change → openspec validate → [openspec-sync-specs] → openspec-archive-change → git:commit → code:review-surgical → 如需修正走新一輪 → 如不需修正 → finish-branch → [git:clean-gone]
 
 ### Requirement: 大型核心流程
 大型流程 SHALL 以 grill 開場收斂共識,並在實作與收尾套用紀律 skills。
@@ -102,3 +89,4 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 #### Scenario: 產出 tasks.md
 - **WHEN** openspec-continue-change 產出 tasks.md
 - **THEN** task 切分 SHALL 符合上述慣例,SHALL NOT 按層橫切
+
