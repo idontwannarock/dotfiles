@@ -65,7 +65,7 @@ remove-superpowers-plugin change 移除 —— 已驗證 episodic-memory 不依�
 | pr-review-toolkit | `claude-plugins-official` | PR review agents（code-reviewer、silent-failure-hunter 等） |
 | pyright-lsp | `claude-plugins-official` | Python type checking LSP |
 | jdtls-lsp | `claude-plugins-official` | Java LSP（Eclipse JDT.LS），需 JDK 21+，透過 wrapper 自動選擇 JDK |
-| learning-output-style | `claude-plugins-official` | 互動式學習 + 教育性解說輸出模式 |
+| explanatory-output-style | `claude-plugins-official` | 教育性 ★ Insight 解說輸出模式(取代 learning-output-style) |
 | claude-code-setup | `claude-plugins-official` | 分析 codebase 推薦 automations |
 | episodic-memory | `superpowers-marketplace` | 跨 session 對話記憶 |
 | elements-of-style | `superpowers-marketplace` | Strunk 寫作風格改善 |

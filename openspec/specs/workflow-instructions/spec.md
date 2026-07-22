@@ -1,3 +1,10 @@
+# workflow-instructions Specification
+
+## Purpose
+規範 dev-workflow 核心流程指令:確認流程、推進模式、worktree 要求、大小型流程、code review、git 整合、文件語言、bug 進入點與 tasks.md 切片慣例。
+
+## Requirements
+
 ### Requirement: 確認流程
 收到實作任務時，Claude SHALL 一次詢問兩個項目：流程選擇（OpenSpec 小型 / OpenSpec 大型 / 不使用）與推進模式（逐步確認 / 自動推進）。推進模式僅適用於 OpenSpec 流程。
 

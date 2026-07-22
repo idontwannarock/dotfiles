@@ -1,4 +1,9 @@
-## ADDED Requirements
+# statusline-native-data Specification
+
+## Purpose
+規範 statusline 改用原生資料來源呈現 context 百分比、5 小時/7 天 rate limit、session 成本與時長、worktree 資訊與第二行佈局。
+
+## Requirements
 
 ### Requirement: Use native context window percentage
 The statusline SHALL use `context_window.used_percentage` from JSON stdin instead of manually calculating from token counts. When `used_percentage` is null, the statusline SHALL fall back to 0.

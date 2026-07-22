@@ -1,4 +1,9 @@
-## ADDED Requirements
+# shell-config Specification
+
+## Purpose
+規範跨 shell 共用設定(`shell_common`)與平台專屬部份:`.bashrc` 的 WSL 設定、`.zshrc` 的 macOS 設定、shell 啟動時的自動 fetch 提示。
+
+## Requirements
 
 ### Requirement: shell_common 提供跨 shell 共用設定
 `dot_shell_common` SHALL 包含所有 bash 與 zsh 共用的設定，以 POSIX sh 相容語法撰寫，可被 `.bashrc` 與 `.zshrc` 共同 source。

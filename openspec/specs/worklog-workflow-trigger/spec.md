@@ -1,3 +1,10 @@
+# worklog-workflow-trigger Specification
+
+## Purpose
+規範 worklog 觸發行為:`createnewlog` 觸發 GitHub workflow(非本地操作)、不依賴環境變數/CWD、repo 名稱 hardcode、失敗即報錯退出、跨平台一致。
+
+## Requirements
+
 ### Requirement: createnewlog 觸發 GitHub workflow 而非本地操作
 `createnewlog` SHALL 在 PowerShell 與 POSIX shell（bash/zsh）下皆以**函式**形式定義（不是 alias），行為為觸發遠端 `create-daily.yml` GitHub Actions workflow 並等待其完成，不執行任何本地 git 操作。
 
