@@ -42,8 +42,9 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 `openspec/changes/<change>/` 的 design.md / proposal.md / spec deltas。
 （歷史脈絡:舊流程用 superpowers `brainstorming`/`writing-plans`,需要把
 design doc 改道到 `~/.local/share/superpowers/<repo>/`;該機制已隨
-rework-dev-workflow-skills change 退役。superpowers plugin 目前仍安裝但
-不再接進 dev-workflow,移除待 episodic-memory 獨立性驗證後另案處理。）
+rework-dev-workflow-skills change 退役。superpowers plugin 已於
+remove-superpowers-plugin change 移除 —— 已驗證 episodic-memory 不依賴它
+(自帶 hooks、來自不同 marketplace),流程紀律全改由 `~/.claude/skills/` 自家 skills 提供。)
 
 ### 前置需求
 
@@ -55,7 +56,6 @@ rework-dev-workflow-skills change 退役。superpowers plugin 目前仍安裝但
 
 | 名稱 | 來源 | 說明 |
 |------|------|------|
-| superpowers | `claude-plugins-official` | 已從 dev-workflow 解除接線（流程紀律改由自家 skills 提供）；暫留因 episodic-memory 的 archive/sync 依賴 `~/.config/superpowers/`，驗證獨立性後另案移除 |
 | claude-md-management | `claude-plugins-official` | 審計與改善 CLAUDE.md |
 | context7 | `claude-plugins-official` | MCP server — 即時查詢 library 文件 |
 | code-simplifier | `claude-plugins-official` | 程式碼簡化 agent |
