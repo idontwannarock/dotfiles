@@ -1,7 +1,8 @@
 # project-context-doc Specification
 
 ## Purpose
-TBD - created by archiving change add-project-context-doc. Update Purpose after archive.
+定義 `openspec/project.md` 這份長青、人可讀、model-agnostic 的專案 context 文件:它的目的與讀者、內容邊界(specs=WHAT / design.md=一次性 / project.md=domain+詞彙+反覆適用原則)與晉升閘門。
+
 ## Requirements
 ### Requirement: project.md 為長青專案 context
 `openspec/project.md` SHALL 作為長青、人可讀、model-agnostic 的專案 context 文件,供「未來需求分析」進入狀況使用。其關注點 SHALL 有別於 `CLAUDE.md`/`AGENTS.md`:後者是給 AI 工具每 session 固定載入的操作性指令;`project.md` 是需求/domain 知識,於需要時查閱。
