@@ -6,11 +6,16 @@
 
 | 項目 | 部署目標 | 說明 |
 |------|----------|------|
-| Global config | `~/.codex/config.toml` | model、profiles、project doc fallback、輕量指令 |
+| Global config | `~/.codex/config.toml` | 預設 model/effort、profiles、project doc fallback、輕量指令 |
+| Project config | repo `.codex/config.toml` | 此 repo 的專案層級覆寫 |
 | Personal skill | `~/.codex/skills/codex-claude-parity/SKILL.md` | 將 Claude workflow 轉成 Codex 的 skill |
 | Project instructions | repo `AGENTS.md` | 專案層級記憶與工作規則 |
 
 ## 這套配置做了什麼
+
+預設使用 `gpt-5.6-sol`，reasoning effort 為 `high`。這個 dotfiles repo 透過
+`.codex/config.toml` 將 effort 覆寫為 `medium`；project config 只會在信任此 repo
+時載入。
 
 ### 1. 保留 Codex 原生行為
 
