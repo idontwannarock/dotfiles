@@ -219,10 +219,52 @@ method fails. No corp credentials are leaked to unrelated servers.
 | Auth succeeds manually but cron/harness still fails | Harness env doesn't share gpg-agent | gpg-agent runs as a per-user daemon; any process as same uid can talk to it via `~/.gnupg/S.gpg-agent`. Make sure cron isn't using a different uid or chrooted env |
 | Host listed in `hosts.yaml` but helper declines | Entry is ssh alias, not HostName | Regenerate using the `ssh -G` recipe in step 4 |
 | Passphrase-protected SSH key no longer works | `SSH_ASKPASS_REQUIRE=force` intercepts passphrase prompt too | Use unencrypted keys, OR `SSH_ASKPASS_REQUIRE=never ssh host` per session |
+| `Too many authentication failures` (disconnect before any credential is accepted) | (a) ssh offers agent/default pubkeys to a password+OTP host and exhausts server `MaxAuthTries`, or (b) a wrong/stale credential — usually an expired AD password — is retried every round | See ["Too many authentication failures"](#too-many-authentication-failures) below |
+
+### "Too many authentication failures"
+
+This one message has two unrelated causes. `ssh -v <host>` tells them apart —
+and the fix is completely different for each.
+
+**Cause A — ssh offers public keys the host never wanted.** Corp hosts use
+password+OTP (`keyboard-interactive`), but if the ssh config host block lacks
+`PubkeyAuthentication no`, ssh first offers every identity it has — ssh-agent
+keys, gpg-agent SSH keys, *and* the default `~/.ssh/id_*` files. Each offer
+counts against the server's `MaxAuthTries` (default 6), so once enough keys are
+loaded (e.g. after unlocking gpg-agent) the budget is spent **before** the
+password prompt is ever reached. In `ssh -v` you'll see multiple
+`Offering public key:` lines.
+
+Fix — the corp host block in `~/.ssh/config` must disable pubkey auth. This
+file is **machine-local, not in the dotfiles repo**, so the directive has to be
+set on every machine:
+
+```
+Host devkws* dev-livekit devlivekit01
+  PubkeyAuthentication no          # password+OTP only — don't offer agent keys
+  ControlMaster auto
+  ControlPath ~/.ssh/cm/%C
+  ControlPersist 8h
+```
+
+Verify: `ssh -G <host> | grep pubkeyauthentication` must print `false`.
+
+**Cause B — a wrong credential is retried every round.** If pubkey is already
+off but the error persists, `ssh -v` shows repeated
+`read_passphrase: requested to askpass` followed by
+`Authentications that can continue`, with **no** `corp-ssh-askpass: pass failed`
+line. That means the helper *did* return a credential and the server *rejected*
+it every keyboard-interactive round — again burning the attempt budget. The
+usual cause is an **expired AD password** (see next section); the tell is that
+`~/.password-store/corp/password.gpg` is ~90 days old. Rule out a wrong OTP
+first by confirming the clock: `date -u` vs any network time source — TOTP
+breaks past ~30s skew; a 0s drift points squarely at the password.
 
 ### When the password is rotated
 
-When the corp AD password expires:
+An expired AD password usually surfaces as `Too many authentication failures`
+(Cause B above), not a clean "password expired" message, because the rejected
+credential is retried until `MaxAuthTries` is hit. When it happens:
 
 1. Complete the password-change flow manually (bypass this automation — call
    `/usr/bin/ssh <corp-host>` directly and follow server prompts, or use a
