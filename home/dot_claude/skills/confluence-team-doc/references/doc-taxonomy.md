@@ -32,11 +32,27 @@ Two rules that stop drift:
 ```
 
 - **TYPE** — closed controlled vocabulary below, **ALL-CAPS**. To add a type, edit this file first.
-- **[Project]** — product/project name. **Omit** when the doc is cross-project / general
-  (general KB, team-wide GUIDELINE / SCHEDULE).
+  Pre-existing mixed-case prefixes in the space (`[Postmortem]`, `[Guideline]`, `[Schedule]`) are
+  migration debt — normalise to ALL-CAPS (`[POSTMORTEM]` …) when you next touch the page.
+- **[Project]** — product/project name (Customer Chat, Group Chat, Support Chat, CDN Media, Chat
+  Setting, Chat File, LiveKit, Zoom Sales, Category Classification, …). A finer **sub-system or
+  environment** scope may occupy this slot when it aids grouping: `[ARCH][LiveKit Prod]`,
+  `[RUNBOOK][LiveKit Webhook Relay]`, `[RUNBOOK][LiveKit TLS]`. **Omit** when the doc is
+  cross-project / general (team-wide GUIDELINE / SCHEDULE).
 - **Subject** — zh-tw; keep technical terms in English.
+- **Project-level umbrella doc** — the top ARCH/RUNBOOK for a whole project uses the project name
+  AS the subject with no bracket: `[ARCH] Customer Chat`, `[RUNBOOK] Support Chat`. Sub-topic docs
+  keep the bracket: `[ARCH][Customer Chat] Profanity Filter`. This is the one case where a
+  project-scoped type legitimately carries no `[Project]` bracket.
+- **[KB] topic scope** — KB omits *our* project, but MAY carry a `[Topic]` bracket naming the
+  **third-party technology or domain** the knowledge is about: `[KB][LiveKit] ICE/STUN 機制`. The
+  bracket is a grouping tag for the technology, not our service — the KB litmus (reusable by any
+  team) must still hold. General KB with no natural topic stays `[KB] Subject`.
 - **Project Hub** — always `[PROJECT] <Name>` (e.g. `[PROJECT] Customer Chat`). The older
   `<Name> (Project Hub)` suffix is deprecated; migrate when touched.
+- **Legacy pages** — the space has many pre-convention pages with no prefix ("Customer API Design",
+  "Customer Chat - Permissions"). Don't mass-rename; but when you **substantively edit** one, rename
+  it to the grammar as part of that edit.
 
 ## Controlled vocabulary (closed set)
 
@@ -61,3 +77,7 @@ Notes:
   frozen once written; ARCH is the *living* current-state doc, updated when code changes.
 - **[REPORT]** records live in 07 as project working records; if a run yields a *reusable*
   conclusion, distil that into a `[KB]` and leave the record in 07.
+- **Dated reports** — a report tied to a specific run carries the run date as a trailing
+  `(YYYYMMDD)` token so recurring runs stay title-unique: `[REPORT][Customer Chat] Production
+  Stress Test (20240125)`. (Legacy pages lead with `(YYYYMMDD) …`; migrate to the trailing form
+  when touched.)
