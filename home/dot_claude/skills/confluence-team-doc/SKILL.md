@@ -7,7 +7,7 @@ description: Use when the user asks to record technical findings, architecture/d
 
 Orchestrate Confluence page creation in the `shoalteritbev` team space — placement, title convention, ARCH/RUNBOOK split, cross-linking, project-hub indexing, and memory recording, in the correct order.
 
-Conventions (title prefix, page uniqueness, doc layering) are stored as `feedback-*` / `reference-*` memory files. This skill orchestrates the **order of operations** that uses those conventions correctly — especially the step every fresh agent forgets: **updating the project hub index**.
+The canonical **document-classification and naming standard** (the closed type vocabulary, the ARCH/KB/Hub decision rule, the `[TYPE][Project] Subject` grammar) lives locally in `references/doc-taxonomy.md` — apply it directly, never fetch Confluence to look it up. Per-project page-ID registries and any project-specific overrides are stored as `reference-*` / `feedback-*` memory files. This skill orchestrates the **order of operations** that uses those conventions correctly — especially the step every fresh agent forgets: **updating the project hub index**.
 
 ## When to use
 
@@ -51,10 +51,12 @@ Customer Chat sub-folders / hub / templates (currently the only fully-wired proj
 |---|---|
 | `5730795637` | Customer Chat (under 01 - Architecture) |
 | `5731713084` | Customer Chat (Runbooks) (under 03 - Runbooks) |
-| `5731549244` | Customer Chat (Project Hub) (under 07 - Projects) |
+| `5731549244` | Customer Chat (Project Hub) (under 07 - Projects) † |
 | `5730042127` | Template - Architecture documentation (under 99 - Template) |
 | `5731090541` | Template - Runbook (under 99 - Template) |
 | `5732237314` | Template - Project hub (under 99 - Template) |
+
+† Title uses the deprecated `<Name> (Project Hub)` suffix. Per `doc-taxonomy.md` the current grammar is `[PROJECT] <Name>` (e.g. `[PROJECT] Customer Chat`) — migrate when next touched.
 
 For other projects (Support Chat / Cashback / etc.), confirm with user where to place; the sub-folder pattern may not yet exist.
 
@@ -62,7 +64,7 @@ For other projects (Support Chat / Cashback / etc.), confirm with user where to 
 
 ```
 1. Read project memory       — load all reference-* and feedback-* files
-2. Classify doc type         — ARCH / RUNBOOK / API / KB; decide PAIR vs single
+2. Classify doc type         — apply doc-taxonomy.md (2-question rule + closed vocab); decide PAIR vs single
 3. Search for collisions     — CQL against shoalteritbev (uniqueness rule)
 4. Confirm with user         — title + content depth via AskUserQuestion
 5. Create page(s)            — use template page (see table above) as starting structure
@@ -77,6 +79,7 @@ For other projects (Support Chat / Cashback / etc.), confirm with user where to 
 
 | Phase | Read first |
 |---|---|
+| Steps 2 & 4 (classify + title) — closed type vocabulary, ARCH/KB/Hub decision rule, naming grammar | `references/doc-taxonomy.md` |
 | Step 5 (page creation) — ARCH/RUNBOOK section structure & Confluence HTML quirks | `references/page-anatomy.md` |
 | Steps 6-7 (cross-link + hub) — bidirectional and hub-update checklist | `references/workflow.md` §6-7 |
 
@@ -86,7 +89,8 @@ For other projects (Support Chat / Cashback / etc.), confirm with user where to 
 |---|---|---|
 | Forgetting to update project hub | Hub lives in a separate category folder; easy to miss after "page created" notification | Step 7 is non-skippable. Open the hub page and verify the new doc is listed before declaring done. |
 | Bundling ARCH+RUNBOOK into one page | Feels economical | Re-read `page-anatomy.md` §1 for the layering rationale; almost always two pages is correct. |
-| Using bare category prefix `[ARCH] X` | Works on single-project spaces, fails on team spaces | Always include project: `[ARCH][Customer Chat] X`. |
+| Omitting the project on a project-scoped doc (`[ARCH] X`) | Works on single-project spaces, fails on team spaces | Project-scoped types (ARCH/API/RUNBOOK/DESIGN/POC/ROADMAP/REPORT/POSTMORTEM) MUST include project: `[ARCH][Customer Chat] X`. General types (KB/GUIDELINE/SCHEDULE) OMIT it — see doc-taxonomy.md. |
+| Inventing a prefix or mixing case (`[Postmortem]`, `[Report]`) | No canonical list in view | Vocabulary is closed & ALL-CAPS; pick from doc-taxonomy.md. Add a new type by editing that file first. |
 | Creating page then discovering title collision | Skipped step 3 | Always CQL-search before AskUserQuestion. |
 | Treating hub update as conditional ("if it exists") | Baseline agents phrase this defensively | Hub exists if memory says it exists. If memory says it exists, update it — full stop. |
 

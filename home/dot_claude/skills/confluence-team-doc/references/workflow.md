@@ -8,7 +8,7 @@ Space coordinates (cloudId / spaceId / folder IDs / template IDs) are hardcoded 
 
 But conventions vary per project, so read every `reference-*.md` and `feedback-*.md` in the project memory directory before doing anything else. Expected files:
 
-- `feedback-confluence-title-prefix` — title format `[CATEGORY][Project] Subject`
+- `feedback-confluence-title-prefix` — title format `[TYPE][Project] Subject`
 - `feedback-confluence-page-uniqueness` — parenthetical disambiguation for duplicate names
 - `feedback-doc-layering` — ARCH and RUNBOOK as separate pages
 - `feedback-project-hub-update` — hub MUST be updated; not optional
@@ -18,6 +18,8 @@ But conventions vary per project, so read every `reference-*.md` and `feedback-*
 If the project memory is missing these, the conventions still apply (they're the team's standing rules) — just be aware you don't have a per-project page-ID registry to consult yet.
 
 ## Step 2 — Classify the doc
+
+**Canonical rule: `references/doc-taxonomy.md`** — the 2-question decision rule (content vs index; project-specific vs general) and the closed type vocabulary. The table below is a quick audience-based shortcut; when it's ambiguous, the two litmus questions in doc-taxonomy.md decide.
 
 Look at what the user wants to record. Categorize:
 
@@ -59,7 +61,7 @@ Document the result before moving on.
 
 This is the LAST checkpoint before creating. Ask the user two questions in a single AskUserQuestion call:
 
-1. **Title** — present 2-3 well-formed candidates following `[CATEGORY][Project] Subject` convention. Recommended option first, marked `(Recommended)`.
+1. **Title** — present 2-3 well-formed candidates following the `[TYPE][Project] Subject` grammar in `doc-taxonomy.md`: TYPE is ALL-CAPS from the closed vocabulary; `[Project]` is included for project-scoped types and OMITTED for general types (KB/GUIDELINE/SCHEDULE); Subject in zh-tw with English technical terms. Recommended option first, marked `(Recommended)`.
 2. **Content depth** — typical options:
    - 完整版（含程式碼片段 + Mermaid 流程圖）
    - 中等版（架構說明 + 表格，不貼程式碼）
@@ -73,11 +75,11 @@ For PAIR creation: ask depth ONCE; the ARCH and RUNBOOK have different structure
 
 For each page in the planned set (1 for single, 2 for ARCH+RUNBOOK pair):
 
-1. Read the matching template from Confluence (template IDs from memory). Use it as the structural starting point.
+1. Read the matching template from Confluence (template IDs are in the SKILL.md hardcoded table for wired projects; otherwise from memory). Use it as the structural starting point.
 2. Construct HTML body following `page-anatomy.md` §3 (ARCH) or §4 (RUNBOOK).
 3. Call `mcp__atlassian__createConfluencePage` with:
-   - `cloudId`, `spaceId` from memory
-   - `parentId` from memory (the project sub-folder under the relevant category)
+   - `cloudId`, `spaceId` from the SKILL.md hardcoded coordinates table
+   - `parentId` — the project sub-folder under the relevant category; from the SKILL.md table if wired (e.g. Customer Chat), otherwise from the `reference-<project>-docs` memory
    - `title` from step 4
    - `contentFormat: "html"`
    - `body` — the constructed HTML
@@ -104,7 +106,12 @@ The cross-link pattern (per `feedback-doc-layering`):
 This is the step that's easy to forget. Skipping it means the new docs are effectively invisible.
 
 1. Read the project hub page (page ID from memory).
-2. Identify the relevant section: "## Architecture", "## Runbooks (Operations)", "## APIs & Interfaces Spec", or "## Knowledge Base / Notes".
+2. Identify the relevant section by the doc's TYPE (see `doc-taxonomy.md`):
+   - `[ARCH]` / `[DESIGN]` → "## Architecture"
+   - `[RUNBOOK]` → "## Runbooks (Operations)"
+   - `[API]` → "## APIs & Interfaces Spec"
+   - `[KB]` → "## Knowledge Base / Notes"
+   - `[REPORT]` / `[POC]` / `[ROADMAP]` / `[POSTMORTEM]` → the project's working-records section (e.g. "## Reports & Records", "## Roadmap", "## Incidents"); if the hub has no matching section yet, **add one** rather than dropping the entry.
 3. Add the new page(s) as nested bullets under the parent folder bullet (match existing indentation — usually 2-space).
 4. Update via `mcp__atlassian__updateConfluencePage` with `contentFormat: "markdown"` (hubs are typically markdown-edited) and a clear `versionMessage`.
 
