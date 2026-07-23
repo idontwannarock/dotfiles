@@ -123,7 +123,7 @@ References — ARCH link, sibling RUNBOOKs, code paths
 
 ## §5 — Starting from Confluence templates
 
-Confluence templates in the space provide a baseline structure. Locate them via memory (e.g. `Template - Architecture documentation` page ID `5730042127`, `Template - Runbook` page ID `5731090541` in shoalteritbev).
+Confluence templates in the space provide a baseline structure. Locate them via the SKILL.md hardcoded coordinates table (e.g. `Template - Architecture documentation` page ID `5730042127`, `Template - Runbook` page ID `5731090541` in shoalteritbev).
 
 Read the template page body, copy the structure, replace placeholders. Don't blindly preserve template comments or "fill me in" placeholders in the published page — they look unfinished.
 
