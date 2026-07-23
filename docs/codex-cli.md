@@ -50,6 +50,18 @@
 ["model-with-reasoning", "current-dir", "git-branch", "context-used", "five-hour-limit", "thread-title"]
 ```
 
+### 6. 自動安裝 Slack plugin
+
+`chezmoi apply` 會在 Codex CLI 與 `~/.codex/config.toml` 就緒後，檢查
+`codex plugin list --json`。如果 `slack@openai-curated` 尚未安裝或目前停用，會執行：
+
+```bash
+codex plugin add slack@openai-curated --json
+```
+
+安裝與啟用狀態由 chezmoi 自動維護；Slack OAuth、憑證及 workspace/admin 核准仍是
+每台機器各自進行的互動式設定，不會同步進 dotfiles。
+
 ## 使用方式
 
 ```bash
@@ -71,7 +83,7 @@ codex -p research
 以下能力不建議直接一比一照搬：
 
 - Claude slash commands：改用 Codex skills / review mode / subagents
-- Claude plugins：改用 Codex MCP
+- Claude plugins：依能力改用 Codex 原生 plugins 或 MCP，不直接搬用 Claude plugin 設定
 - Claude 全域 prompt 覆寫：改用 `instructions` + `AGENTS.md` + skills
 
 這樣的好處是比較貼近 Codex 官方設計，也比較不容易在版本升級後失效。

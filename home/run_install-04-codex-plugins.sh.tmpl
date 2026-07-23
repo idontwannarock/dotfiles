@@ -1,0 +1,39 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_ script -- Codex plugins (Unix/macOS/WSL)
+# Requires codex from install-02-npm-tools and config.toml from the file-write phase.
+
+set -euo pipefail
+
+{{ template "scripts/load-nvm" }}
+
+echo "=== Codex Plugin Setup ==="
+
+if ! command -v codex &>/dev/null; then
+    echo "[codex-plugins] codex not found, skipping."
+    exit 0
+fi
+if ! command -v jq &>/dev/null; then
+    echo "[codex-plugins] ERROR: jq is required to inspect Codex plugins." >&2
+    exit 1
+fi
+
+plugins_json="$(codex plugin list --json)"
+if jq -e 'any(.installed[]?;
+    .pluginId == "slack@openai-curated" and
+    .installed == true and
+    .enabled == true
+)' >/dev/null <<<"$plugins_json"; then
+    echo "[codex-plugins] slack@openai-curated already installed and enabled, skipping."
+else
+    jq_status=$?
+    if [ "$jq_status" -ne 1 ]; then
+        echo "[codex-plugins] ERROR: could not parse codex plugin list JSON." >&2
+        exit "$jq_status"
+    fi
+    echo "[codex-plugins] Installing slack@openai-curated..."
+    codex plugin add slack@openai-curated --json
+fi
+
+echo "=== Codex plugin setup complete. ==="
+{{ end -}}
