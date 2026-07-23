@@ -149,20 +149,31 @@ done
 
 Paste the output into the `password_otp_hosts:` section.
 
-### 5. Add ControlMaster to `~/.ssh/config`
+### 5. ControlMaster drop-in (chezmoi-managed) + Include
 
-`~/.ssh/config` is intentionally **not** managed by chezmoi — it is considered
-environment-specific. Append the block below to your existing config:
+`~/.ssh/config` itself stays **machine-local** — it holds corp FQDNs/IPs that must
+not enter the repo. The generic multiplex + no-pubkey policy, which carries no
+secrets, *is* reproduced: chezmoi deploys it as a drop-in at
+`~/.ssh/config.d/corp-multiplex` (source `home/private_dot_ssh/private_config.d/private_corp-multiplex`,
+WSL/Linux/macOS only — Win32-OpenSSH has no ControlMaster):
 
 ```
 # ──── Corp hosts with password+OTP — enable connection multiplexing ─────────
-Host <corp-host-pattern-1> <corp-host-pattern-2> ...
+Host devkws* dev-livekit devlivekit01
+  PubkeyAuthentication no          # password+OTP only — don't offer agent keys (avoids MaxAuthTries)
   ControlMaster auto
   ControlPath ~/.ssh/cm/%C
   ControlPersist 8h
 ```
 
-Scope `Host` to the specific corp host aliases (e.g., `Host corpprefix* other-host`).
+For the drop-in to take effect, the machine-local `~/.ssh/config` needs **one line**
+(the only manual step per machine — add it near the top):
+
+```
+Include ~/.ssh/config.d/*
+```
+
+Adjust the `Host` patterns in the drop-in to your corp aliases if they differ.
 Avoid `Host *` — it enables multiplexing for every connection, which may not
 be desired for short-lived connections like git-over-ssh.
 
@@ -235,9 +246,11 @@ loaded (e.g. after unlocking gpg-agent) the budget is spent **before** the
 password prompt is ever reached. In `ssh -v` you'll see multiple
 `Offering public key:` lines.
 
-Fix — the corp host block in `~/.ssh/config` must disable pubkey auth. This
-file is **machine-local, not in the dotfiles repo**, so the directive has to be
-set on every machine:
+Fix — the corp host block must disable pubkey auth. It lives in the
+chezmoi-managed drop-in `~/.ssh/config.d/corp-multiplex` (see
+[section 5](#5-controlmaster-drop-in-chezmoi-managed--include)), so `chezmoi apply`
+plus the one-line `Include ~/.ssh/config.d/*` in the machine-local `~/.ssh/config`
+reproduces it on every machine:
 
 ```
 Host devkws* dev-livekit devlivekit01

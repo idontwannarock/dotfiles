@@ -39,6 +39,13 @@ Documents
 .local/bin/corp-ssh-askpass.cmd
 {{- end }}
 
+# ── corp SSH multiplex drop-in: WSL/Linux/macOS only ──────────────────
+# Win32-OpenSSH has no ControlMaster; `PubkeyAuthentication no` could break
+# Windows corp ssh. Machine-local ~/.ssh/config Includes this. See corp-ssh-setup.md.
+{{- if eq .chezmoi.os "windows" }}
+.ssh/config.d/corp-multiplex
+{{- end }}
+
 # ── switch-pwsh-to-msi: Windows-only helper (Store/MSIX pwsh -> official MSI) ──
 {{- if ne .chezmoi.os "windows" }}
 .local/bin/switch-pwsh-to-msi.ps1

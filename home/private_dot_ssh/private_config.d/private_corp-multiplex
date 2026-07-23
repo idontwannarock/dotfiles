@@ -1,0 +1,10 @@
+# ──── Corp hosts with password+OTP — enable connection multiplexing ────────
+# Managed by chezmoi (dotfiles: home/private_dot_ssh/config.d/corp-multiplex).
+# FQDN/IP host blocks stay machine-local in ~/.ssh/config; only this generic
+# multiplex + no-pubkey policy is reproduced. WSL/Linux/macOS only (Win32-OpenSSH
+# has no ControlMaster). See docs/corp-ssh-setup.md Cause A.
+Host devkws* dev-livekit devlivekit01
+  PubkeyAuthentication no          # password+OTP only — don't offer agent keys (avoids MaxAuthTries)
+  ControlMaster auto
+  ControlPath ~/.ssh/cm/%C
+  ControlPersist 8h
