@@ -45,7 +45,7 @@ Folder taxonomy (under homepage, all `type=folder`):
 | `5554667686` | 09 - 👨‍💻 Onboarding |
 | `5554405442` | 99 - 📄 Template |
 
-Customer Chat sub-folders / hub / templates (currently the only fully-wired project):
+Customer Chat sub-folders / hub / templates (the reference example, page IDs hardcoded below). Group Chat, LiveKit and Zoom Sales also have the full ARCH/RUNBOOK/Hub triad in the space, but their page IDs aren't enumerated here — pull them from `reference-<project>-docs` memory or a CQL search:
 
 | Page ID | Page |
 |---|---|
@@ -58,7 +58,7 @@ Customer Chat sub-folders / hub / templates (currently the only fully-wired proj
 
 † Title uses the deprecated `<Name> (Project Hub)` suffix. Per `doc-taxonomy.md` the current grammar is `[PROJECT] <Name>` (e.g. `[PROJECT] Customer Chat`) — migrate when next touched.
 
-For other projects (Support Chat / Cashback / etc.), confirm with user where to place; the sub-folder pattern may not yet exist.
+Most existing projects (Support Chat, Group Chat, CDN Media, Chat Setting, Chat File, LiveKit, Zoom Sales, Category Classification) already have a hub and sub-folders — find them via memory or CQL rather than assuming they're absent. Only for a genuinely new project (no pages in the space yet) confirm with the user where to place and create the sub-folder pattern.
 
 ## The orchestration
 
@@ -89,7 +89,7 @@ For other projects (Support Chat / Cashback / etc.), confirm with user where to 
 |---|---|---|
 | Forgetting to update project hub | Hub lives in a separate category folder; easy to miss after "page created" notification | Step 7 is non-skippable. Open the hub page and verify the new doc is listed before declaring done. |
 | Bundling ARCH+RUNBOOK into one page | Feels economical | Re-read `page-anatomy.md` §1 for the layering rationale; almost always two pages is correct. |
-| Omitting the project on a project-scoped doc (`[ARCH] X`) | Works on single-project spaces, fails on team spaces | Project-scoped types (ARCH/API/RUNBOOK/DESIGN/POC/ROADMAP/REPORT/POSTMORTEM) MUST include project: `[ARCH][Customer Chat] X`. General types (KB/GUIDELINE/SCHEDULE) OMIT it — see doc-taxonomy.md. |
+| Omitting the project on a project-scoped sub-topic doc (`[ARCH] Profanity Filter`) | Works on single-project spaces, fails on team spaces | Project-scoped types (ARCH/API/RUNBOOK/DESIGN/POC/ROADMAP/REPORT/POSTMORTEM) MUST include project: `[ARCH][Customer Chat] Profanity Filter`. Exception: the project-level umbrella doc, where the subject IS the project (`[ARCH] Customer Chat`). General types (KB/GUIDELINE/SCHEDULE) OMIT project — see doc-taxonomy.md. |
 | Inventing a prefix or mixing case (`[Postmortem]`, `[Report]`) | No canonical list in view | Vocabulary is closed & ALL-CAPS; pick from doc-taxonomy.md. Add a new type by editing that file first. |
 | Creating page then discovering title collision | Skipped step 3 | Always CQL-search before AskUserQuestion. |
 | Treating hub update as conditional ("if it exists") | Baseline agents phrase this defensively | Hub exists if memory says it exists. If memory says it exists, update it — full stop. |
