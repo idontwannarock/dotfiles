@@ -2,20 +2,23 @@
 
 Read this in full before executing step 1. The steps are ordered for a reason; don't reorder.
 
-## Step 1 — Load conventions from project memory
+## Step 1 — Load the conventions (+ any page-ID cache)
 
 Space coordinates (cloudId / spaceId / folder IDs / template IDs) are hardcoded in `SKILL.md` for `shoalteritbev` — no discovery needed.
 
-But conventions vary per project, so read every `reference-*.md` and `feedback-*.md` in the project memory directory before doing anything else. Expected files:
+**The conventions themselves are bundled in this skill** — you don't read memory to learn them:
 
-- `feedback-confluence-title-prefix` — title format `[TYPE][Project] Subject`
-- `feedback-confluence-page-uniqueness` — parenthetical disambiguation for duplicate names
-- `feedback-doc-layering` — ARCH and RUNBOOK as separate pages
-- `feedback-project-hub-update` — hub MUST be updated; not optional
+- Title grammar `[TYPE][Project] Subject` + closed vocab + ARCH/KB/Hub rule → `references/doc-taxonomy.md`
+- ARCH/RUNBOOK split, cross-link pattern, section anatomy → `references/page-anatomy.md`
+- Page uniqueness + hub-update-is-mandatory → this file, steps 3 & 7
+
+What memory (if present) adds is only a **per-project page-ID cache and any project overrides** from prior work — a convenience, not a prerequisite. Read every `reference-*.md` / `feedback-*.md` in the project memory directory if it exists; expected files:
+
 - `reference-bev-projects` — project portfolio (Customer Chat / Support Chat / Cashback / etc.)
 - `reference-<project>-docs` — per-project page ID registry from prior work in this space
+- `feedback-*` — any project-specific override to the bundled conventions
 
-If the project memory is missing these, the conventions still apply (they're the team's standing rules) — just be aware you don't have a per-project page-ID registry to consult yet.
+If memory is missing or empty, proceed anyway: the conventions above still apply, and any page ID you'd have cached is discoverable at runtime via CQL (step 3).
 
 ## Step 2 — Classify the doc
 
@@ -75,11 +78,11 @@ For PAIR creation: ask depth ONCE; the ARCH and RUNBOOK have different structure
 
 For each page in the planned set (1 for single, 2 for ARCH+RUNBOOK pair):
 
-1. Read the matching template from Confluence (template IDs are in the SKILL.md hardcoded table for wired projects; otherwise from memory). Use it as the structural starting point.
+1. Read the matching template from Confluence (template IDs are in the SKILL.md hardcoded table; the space-wide templates under folder 99 apply to every project). Use it as the structural starting point.
 2. Construct HTML body following `page-anatomy.md` §3 (ARCH) or §4 (RUNBOOK).
 3. Call `mcp__atlassian__createConfluencePage` with:
    - `cloudId`, `spaceId` from the SKILL.md hardcoded coordinates table
-   - `parentId` — the project sub-folder under the relevant category; from the SKILL.md table if wired (e.g. Customer Chat), otherwise from the `reference-<project>-docs` memory
+   - `parentId` — the project sub-folder under the relevant category; from the SKILL.md table if wired (e.g. Customer Chat), else the `reference-<project>-docs` memory, else CQL discovery (step 3)
    - `title` from step 4
    - `contentFormat: "html"`
    - `body` — the constructed HTML
@@ -105,7 +108,7 @@ The cross-link pattern (per `feedback-doc-layering`):
 
 This is the step that's easy to forget. Skipping it means the new docs are effectively invisible.
 
-1. Read the project hub page (page ID from memory).
+1. Read the project hub page (page ID from memory if cached, else the SKILL.md table, else CQL from step 3).
 2. Identify the relevant section by the doc's TYPE (see `doc-taxonomy.md`):
    - `[ARCH]` / `[DESIGN]` → "## Architecture"
    - `[RUNBOOK]` → "## Runbooks (Operations)"

@@ -63,7 +63,7 @@ Most existing projects (Support Chat, Group Chat, CDN Media, Chat Setting, Chat 
 ## The orchestration
 
 ```
-1. Read project memory       — load all reference-* and feedback-* files
+1. Load conventions          — bundled in doc-taxonomy/page-anatomy/workflow (+ optional memory page-ID cache)
 2. Classify doc type         — apply doc-taxonomy.md (2-question rule + closed vocab); decide PAIR vs single
 3. Search for collisions     — CQL against shoalteritbev (uniqueness rule)
 4. Confirm with user         — title + content depth via AskUserQuestion
