@@ -50,20 +50,18 @@
 ["model-with-reasoning", "current-dir", "git-branch", "context-used", "five-hour-limit", "thread-title"]
 ```
 
-### 6. 自動註冊 Slack MCP server
+### 6. Slack MCP server
 
-`chezmoi apply` 會在 Codex CLI 與 `~/.codex/config.toml` 就緒後，檢查
-`codex mcp get slack`。如果尚未註冊，會執行：
+Slack 直接列在同步的 MCP servers 中（見 `dot_codex/modify_config.toml` 與其
+Windows 對應 `run_after_modify-codex-config.ps1.tmpl`）：
 
-```bash
-codex mcp add slack --url https://mcp.slack.com/mcp
+```toml
+[mcp_servers.slack]
+url = "https://mcp.slack.com/mcp"
 ```
 
-`codex mcp add` 寫入設定後會自動嘗試 OAuth，但該步驟在非互動情境下無法完成，
-腳本會容忍其非零退出碼，改以 `codex mcp get slack` 確認條目確實寫入。
-
-server 條目由 chezmoi 自動維護；Slack OAuth 登入請自行進入 Codex CLI 完成，
-屬每台機器各自的互動式設定，不會同步進 dotfiles。
+server 條目由 chezmoi 隨 config 一併維護；Slack OAuth 登入請自行進入 Codex CLI
+完成，屬每台機器各自的互動式設定，不會同步進 dotfiles。
 
 ## 使用方式
 
