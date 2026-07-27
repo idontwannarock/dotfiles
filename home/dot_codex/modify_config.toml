@@ -53,14 +53,11 @@ model_verbosity = "medium"
 web_search = "live"
 GLOBAL
 
-# ── 保留本機 per-machine 區塊：[projects.*] 與 [plugins.*] ────────────────────
-# [projects.*]：per-project 設定。
-# [plugins.*]：codex plugin add 寫入的 plugin 註冊；不保留就會被本次整份重寫洗掉，
-#              使用者手動安裝的 plugin 每次 apply 都得重裝。
+# ── 保留本機 per-machine 區塊：[projects.*]（per-project 設定）────────────────
 if [ -n "$existing" ]; then
     echo ""
     echo "$existing" | awk '
-        /^\[(projects|plugins)\./ { in_keep=1; print; next }
+        /^\[projects\./ { in_keep=1; print; next }
         /^\[/ { in_keep=0 }
         in_keep { print }
     '
@@ -79,4 +76,8 @@ args = ["-y", "@upstash/context7-mcp"]
 [mcp_servers."codegraph"]
 command = "codegraph"
 args = ["serve", "--mcp"]
+
+# Slack OAuth 登入請自行進入 Codex CLI 完成（per-machine，不同步）。
+[mcp_servers.slack]
+url = "https://mcp.slack.com/mcp"
 MCP

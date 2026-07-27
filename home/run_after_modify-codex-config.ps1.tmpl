@@ -14,16 +14,14 @@ if (-not (Test-Path $configDir)) {
     New-Item -ItemType Directory -Path $configDir -Force | Out-Null
 }
 
-# 從現有檔案中提取需保留的 per-machine 區塊：[projects.*]（per-project 設定）
-# 與 [plugins.*]（codex plugin add 寫入的 plugin 註冊；不保留就會被本次整份重寫洗掉，
-# 使用者手動安裝的 plugin 每次 apply 都得重裝）。
+# 從現有檔案中提取需保留的 per-machine 區塊：[projects.*]（per-project 設定）。
 $keptSections = ""
 if (Test-Path $configPath) {
     $lines = Get-Content $configPath -Encoding UTF8
     $inKeep = $false
     $sections = @()
     foreach ($line in $lines) {
-        if ($line -match '^\[(projects|plugins)\.') {
+        if ($line -match '^\[projects\.') {
             $inKeep = $true
             $sections += $line
         } elseif ($line -match '^\[' -and $inKeep) {
@@ -86,6 +84,10 @@ args = ["/c", "npx", "-y", "@upstash/context7-mcp"]
 [mcp_servers."codegraph"]
 command = "codegraph"
 args = ["serve", "--mcp"]
+
+# Slack OAuth 登入請自行進入 Codex CLI 完成（per-machine，不同步）。
+[mcp_servers.slack]
+url = "https://mcp.slack.com/mcp"
 '@
 
 $result = $globalConfig + $keptSections + $mcpConfig
