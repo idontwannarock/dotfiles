@@ -50,17 +50,20 @@
 ["model-with-reasoning", "current-dir", "git-branch", "context-used", "five-hour-limit", "thread-title"]
 ```
 
-### 6. 自動安裝 Slack plugin
+### 6. 自動註冊 Slack MCP server
 
 `chezmoi apply` 會在 Codex CLI 與 `~/.codex/config.toml` 就緒後，檢查
-`codex plugin list --json`。如果 `slack@openai-curated` 尚未安裝或目前停用，會執行：
+`codex mcp get slack`。如果尚未註冊，會執行：
 
 ```bash
-codex plugin add slack@openai-curated --json
+codex mcp add slack --url https://mcp.slack.com/mcp
 ```
 
-安裝與啟用狀態由 chezmoi 自動維護；Slack OAuth、憑證及 workspace/admin 核准仍是
-每台機器各自進行的互動式設定，不會同步進 dotfiles。
+`codex mcp add` 寫入設定後會自動嘗試 OAuth，但該步驟在非互動情境下無法完成，
+腳本會容忍其非零退出碼，改以 `codex mcp get slack` 確認條目確實寫入。
+
+server 條目由 chezmoi 自動維護；Slack OAuth 登入請自行進入 Codex CLI 完成，
+屬每台機器各自的互動式設定，不會同步進 dotfiles。
 
 ## 使用方式
 

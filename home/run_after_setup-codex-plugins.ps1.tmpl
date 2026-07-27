@@ -1,34 +1,31 @@
 {{- if eq .chezmoi.os "windows" -}}
-# chezmoi run_after_ script -- Codex plugins (Windows)
+# chezmoi run_after_ script -- Codex MCP servers (Windows)
 # Runs after run_after_modify-codex-config and requires codex from install-02-npm-tools.
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== Codex Plugin Setup ===" -ForegroundColor Cyan
+Write-Host "=== Codex MCP Setup ===" -ForegroundColor Cyan
 
 if (-not (Get-Command "codex" -ErrorAction SilentlyContinue)) {
-    Write-Host "[codex-plugins] codex not found, skipping." -ForegroundColor Yellow
+    Write-Host "[codex-mcp] codex not found, skipping." -ForegroundColor Yellow
     exit 0
 }
 
-$plugins = codex plugin list --json | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0) {
-    throw "codex plugin list failed (exit $LASTEXITCODE)"
-}
-
-$slackEnabled = $plugins.installed | Where-Object {
-    $_.pluginId -eq "slack@openai-curated" -and $_.installed -and $_.enabled
-}
-
-if ($slackEnabled) {
-    Write-Host "[codex-plugins] slack@openai-curated already installed and enabled, skipping." -ForegroundColor Gray
+codex mcp get slack *> $null
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "[codex-mcp] slack already registered, skipping." -ForegroundColor Gray
 } else {
-    Write-Host "[codex-plugins] Installing slack@openai-curated..." -ForegroundColor Yellow
-    codex plugin add slack@openai-curated --json | Out-Host
+    Write-Host "[codex-mcp] Registering slack MCP server..." -ForegroundColor Yellow
+    # `codex mcp add` writes the entry, then auto-starts an OAuth flow that
+    # cannot complete non-interactively, so it exits non-zero even though the
+    # registration succeeded. Verify the entry landed instead of the exit code.
+    codex mcp add slack --url https://mcp.slack.com/mcp *> $null
+    codex mcp get slack *> $null
     if ($LASTEXITCODE -ne 0) {
-        throw "codex plugin add failed (exit $LASTEXITCODE)"
+        throw "codex mcp add slack failed to register"
     }
+    Write-Host "[codex-mcp] slack registered. Log in from the Codex CLI to authenticate (per-machine)." -ForegroundColor Green
 }
 
-Write-Host "=== Codex plugin setup complete. ===" -ForegroundColor Cyan
+Write-Host "=== Codex MCP setup complete. ===" -ForegroundColor Cyan
 {{ end -}}
