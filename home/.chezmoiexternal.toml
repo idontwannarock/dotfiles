@@ -95,7 +95,7 @@
 # 6 chezmoi-managed CLI tools migrated from Scoop to chezmoi-external.
 # Bump versions below and rerun `chezmoi apply` to upgrade.
 # renovate: datasource=github-releases depName=kubernetes/kubernetes extractVersion=^v(?<version>.+)$
-{{- $kubectlVersion      := "1.36.2" }}
+{{- $kubectlVersion      := "1.36.3" }}
 # renovate: datasource=github-releases depName=int128/kubelogin
 {{- $kubeloginVersion    := "1.36.3" }}
 # renovate: datasource=github-releases depName=yt-dlp/yt-dlp versioning=loose
