@@ -51,7 +51,7 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 
 ### 前置需求
 
-- **OpenSpec CLI** (`@fission-ai/openspec`) — 透過 `/ensure-openspec` skill 按需安裝
+- **OpenSpec CLI** (`@fission-ai/openspec`) — 由 `dev-workflow` 開場執行 `~/.agent/bin/ensure-openspec.sh` 按需安裝
 
 ## Plugins
 
@@ -77,7 +77,7 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 
 | 名稱 | 觸發方式 | 說明 |
 |------|----------|------|
-| OpenSpec | `/ensure-openspec` skill | 結構化變更管理，按需安裝 CLI 並初始化專案 |
+| OpenSpec | `dev-workflow` 開場步驟 | 結構化變更管理，按需安裝 CLI 並初始化專案 |
 | OPSX Commands | `/opsx:*` commands | OpenSpec 工作流程指令（openspec CLI 產生） |
 | Git Commands | `/git:*` commands | Git 操作簡寫 |
 | Code Commands | `/code:*` commands | Code Review 指令 |
@@ -206,9 +206,10 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 
 安裝腳本 `run_onchange_install-03-claude-config` 已包含 episodic-memory 安裝，新機器會自動裝；cache 損壞時手動重裝即可。
 
-## /ensure-openspec Skill
+## ensure-openspec 腳本
 
-全域 user-invocable skill，用於按需安裝 OpenSpec CLI 並初始化當前專案。
+按需安裝 OpenSpec CLI 並初始化當前專案。正典位置 `~/.agent/bin/ensure-openspec.sh`，
+由 `dev-workflow` skill 的開場步驟以絕對路徑呼叫。
 
 ### 依賴
 
@@ -220,11 +221,17 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 
 1. 檢查 OpenSpec CLI 是否已安裝，沒有則透過 npm 安裝
 2. 檢查當前專案是否已 `openspec init`，沒有則執行初始化
-3. 已初始化的專案會執行 `openspec update`
+3. 已初始化的專案會執行 `openspec update`，並以 `--tools claude,codex,antigravity` 補齊工具
 
 ### 使用方式
 
-在 Claude Code 中輸入 `/ensure-openspec`，Claude 會自動執行腳本並回報結果。
+`dev-workflow` 會自動執行，一般不需手動觸發。要手動跑就用絕對路徑
+`~/.agent/bin/ensure-openspec.sh`。
+
+> 曾有 `/ensure-openspec` command 包裝它，已於 prune-ensure-openspec-orphans change
+> 移除：該 command 以 bare 名稱呼叫，在 WSL 下會被 PATH interop 導到 `~/.local/bin`
+> 底下的過時副本（`init --tools claude`，會砍掉 codex/antigravity surface）。
+> 腳本互相呼叫一律用絕對路徑。
 
 ## RTK — Token-reducing CLI proxy
 

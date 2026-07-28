@@ -58,6 +58,7 @@
 - **`run_*` 腳本的副作用要顯式反轉。** chezmoi 的宣告式收斂只涵蓋它 declare 的檔案;腳本裝出來的東西(套件、plugin 註冊、外部 CLI 設定)不在其中。退役時刪掉那行 install 只會停止新機器安裝,已套用過的機器永久漂移——必須補一段冪等的反安裝,或在 `.chezmoiremove` 宣告目標路徑。同理,任何「本機手動跑一次」的收尾都不會傳播。
 - **盡量跨平台。** 目標是 Windows/macOS/Linux 皆可用;平台差異用 per-platform 片段拆分,而非整份分叉。
 - **跨工具 parity = shared body + 薄指標。** 權威 body 一份在 `~/.agent` / `.chezmoitemplates`,每工具一個 name-map wrapper。目標工具 = **Claude + Codex**(未來或加 Antigravity CLI);**Gemini CLI 已放棄,不要去檢查它。**
+- **WSL 下呼叫腳本一律用絕對路徑。** PATH interop 把 Windows 家目錄的 `~/.local/bin` 併進 WSL 的 PATH,所以 bare 名稱可能命中另一台機器、另一個年代的同名腳本。腳本正典搬家後,舊位置的副本要用 `.chezmoiremove` 點名清掉 —— 留著它就是留一條會靜默跑到舊碼的路徑。
 - **Codex frontmatter 要嚴格 YAML。** skill `description:` 若含 `:`/`#`/開頭 `[`{` 必須加引號;Claude 容忍、Codex 會報錯。用真的 YAML parser 驗,不要只 grep。
 - **憑證只留本機、不上雲。** corp-ssh、local-files 的祕密都在本機磁碟或使用者腦中;雲端密碼管理器(cloud Bitwarden)明確排除,因為情境是單機、無跨機同步需求。
 - **文件要 model-agnostic、人可讀。** reference body 放 tool-neutral 位置;專案文件描述意圖,不綁單一工具的實作。

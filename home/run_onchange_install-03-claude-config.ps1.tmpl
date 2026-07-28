@@ -13,11 +13,14 @@ if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
 }
 
 # ── Plugins ──────────────────────────────────────────────────────────────
+# Continue for the whole section: `2>&1` turns native stderr into ErrorRecords,
+# which are terminating under Stop. A plugin CLI warning would otherwise abort
+# the script here, skipping cache cleanup, hook repair and MCP registration --
+# and run_onchange_ records no state on failure, so it would retry every apply.
+$ErrorActionPreference = "Continue"
 
 Write-Host "[plugins] Adding superpowers marketplace..." -ForegroundColor Yellow
-$ErrorActionPreference = "Continue"
 claude plugin marketplace add obra/superpowers-marketplace 2>&1 | Out-Null
-$ErrorActionPreference = "Stop"
 
 Write-Host "[plugins] Installing slack..." -ForegroundColor Yellow
 claude plugin install slack 2>&1 | Out-Null
@@ -49,12 +52,10 @@ if ($installedPlugins -match "learning-output-style@claude-plugins-official") {
 # by hand.
 if ($installedPlugins -match "superpowers@claude-plugins-official") {
     Write-Host "[plugins] Removing superpowers (retired, replaced by in-house discipline skills)..." -ForegroundColor Yellow
-    # 2>&1 turns native stderr into ErrorRecords, which terminate under Stop.
-    # Same guard as the marketplace add above; this is the one run that matters.
-    $ErrorActionPreference = "Continue"
     claude plugin uninstall superpowers@claude-plugins-official 2>&1 | Out-Null
-    $ErrorActionPreference = "Stop"
 }
+
+$ErrorActionPreference = "Stop"
 
 # ── jdtls（Java LSP 依賴）───────────────────────────────────────────────
 # jdtls moved OFF scoop in Wave 11 (2026-06-18): now provided by
