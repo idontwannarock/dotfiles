@@ -76,7 +76,12 @@ fi
 # ── Plugin cache cleanup ─────────────────────────────────────────────────
 echo "[cleanup] Removing stale plugin caches..."
 PLUGIN_CACHE="$HOME/.claude/plugins/cache"
-rm -rf "$PLUGIN_CACHE/superpowers-marketplace/superpowers" 2>/dev/null && echo "  Removed marketplace superpowers" || true
+# rm -rf exits 0 on a missing path, so guard on existence -- otherwise the
+# message prints on every apply and the output stops meaning anything.
+if [ -d "$PLUGIN_CACHE/superpowers-marketplace/superpowers" ]; then
+    rm -rf "$PLUGIN_CACHE/superpowers-marketplace/superpowers"
+    echo "  Removed marketplace superpowers"
+fi
 # uninstall clears installed_plugins.json + enabledPlugins but leaves the cache behind
 if [ -d "$PLUGIN_CACHE/claude-plugins-official/superpowers" ]; then
     rm -rf "$PLUGIN_CACHE/claude-plugins-official/superpowers"

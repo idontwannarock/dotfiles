@@ -56,3 +56,13 @@
 # Superseded by the dev-workflow skill. Never in source, so the non-exact
 # .claude/commands/ dir never pruned it; it still referenced superpowers:* skills.
 .claude/commands/opsx/workflow.md
+
+# ensure-openspec orphans. Canonical script is .agent/bin/ensure-openspec.sh;
+# the .local/bin copy predates that move and still runs `init --tools claude`,
+# which drops the codex + antigravity skill surface. It stays reachable because
+# WSL's PATH interop puts the Windows ~/.local/bin ahead of anything else, so a
+# bare `ensure-openspec.sh` from WSL hits that stale copy. The command file is
+# the only thing that calls it bare -- dev-workflow uses the absolute path --
+# and it is redundant with dev-workflow's own first step, so both go.
+.local/bin/ensure-openspec.sh
+.claude/commands/ensure-openspec.md
