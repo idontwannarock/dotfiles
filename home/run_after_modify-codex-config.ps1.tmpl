@@ -6,37 +6,49 @@
 # 兩邊的全域設定（model、profiles、instructions）和 MCP servers 必須同步。
 # 修改其中一邊時，務必同時更新另一邊。
 
-$configDir = Join-Path $env:USERPROFILE ".codex"
-$configPath = Join-Path $configDir "config.toml"
+{{ template "scripts/log.ps1" }}
 
-# 確保目錄存在
-if (-not (Test-Path $configDir)) {
-    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
-}
+Log-Begin "codex config merge"
+try {
+    $configDir = Join-Path $env:USERPROFILE ".codex"
+    $configPath = Join-Path $configDir "config.toml"
 
-# 從現有檔案中提取需保留的 per-machine 區塊：[projects.*]（per-project 設定）。
-$keptSections = ""
-if (Test-Path $configPath) {
-    $lines = Get-Content $configPath -Encoding UTF8
-    $inKeep = $false
-    $sections = @()
-    foreach ($line in $lines) {
-        if ($line -match '^\[projects\.') {
-            $inKeep = $true
-            $sections += $line
-        } elseif ($line -match '^\[' -and $inKeep) {
-            $inKeep = $false
-        } elseif ($inKeep) {
-            $sections += $line
+    Log-Section "ensure ~/.codex exists"
+    if (-not (Test-Path $configDir)) {
+        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+        Log-Step "[codex] created $configDir"
+    } else {
+        Log-Skip "[codex] $configDir already exists"
+    }
+
+    Log-Section "salvage the machine-local [projects.*] blocks — a plain overwrite would lose per-project settings"
+    $keptSections = ""
+    if (Test-Path $configPath) {
+        $lines = Get-Content $configPath -Encoding UTF8
+        $inKeep = $false
+        $sections = @()
+        foreach ($line in $lines) {
+            if ($line -match '^\[projects\.') {
+                $inKeep = $true
+                $sections += $line
+            } elseif ($line -match '^\[' -and $inKeep) {
+                $inKeep = $false
+            } elseif ($inKeep) {
+                $sections += $line
+            }
         }
+        if ($sections.Count -gt 0) {
+            $keptSections = "`n" + ($sections -join "`n")
+            Log-Step "[codex] preserving $($sections.Count) line(s) of [projects.*] config"
+        } else {
+            Log-Skip "[codex] no [projects.*] blocks to preserve"
+        }
+    } else {
+        Log-Skip "[codex] no existing config.toml"
     }
-    if ($sections.Count -gt 0) {
-        $keptSections = "`n" + ($sections -join "`n")
-    }
-}
 
-# 寫入合併後的設定
-$globalConfig = @'
+    Log-Section "compose the global settings block — must stay in sync with dot_codex/modify_config.toml (Unix)"
+    $globalConfig = @'
 #:schema https://developers.openai.com/codex/config-schema.json
 
 model = "gpt-5.6-sol"
@@ -71,8 +83,8 @@ model_verbosity = "medium"
 web_search = "live"
 '@
 
-# Windows 上 npx 是 .cmd，需透過 cmd /c 包裝才能被 spawn。
-$mcpConfig = @'
+    Log-Section "compose the MCP server block — on Windows npx is a .cmd, so it needs a cmd /c wrapper to spawn"
+    $mcpConfig = @'
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
@@ -90,7 +102,14 @@ args = ["serve", "--mcp"]
 url = "https://mcp.slack.com/mcp"
 '@
 
-$result = $globalConfig + $keptSections + $mcpConfig
-# 使用 .NET 方法寫入，避免 PowerShell 5.x 的 BOM 問題
-[System.IO.File]::WriteAllText($configPath, $result + "`n", [System.Text.UTF8Encoding]::new($false))
+    Log-Section "write config.toml without a BOM — PowerShell 5.x would otherwise emit one and Codex rejects it"
+    $result = $globalConfig + $keptSections + $mcpConfig
+    [System.IO.File]::WriteAllText($configPath, $result + "`n", [System.Text.UTF8Encoding]::new($false))
+    Log-Step "[codex] wrote $configPath"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
 {{ end -}}

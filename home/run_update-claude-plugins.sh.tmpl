@@ -6,35 +6,38 @@
 
 set -euo pipefail
 
+{{ template "scripts/log.sh" }}
 {{ template "scripts/load-nvm" }}
 
+log_begin "Claude Code plugin update"
+
+log_section "check claude CLI is available"
 if ! command -v claude &>/dev/null; then
-    echo "[claude-plugins] claude CLI not found, skipping update."
+    log_warn "[claude-plugins] claude CLI not found; skipping update"
     exit 0
 fi
 
-echo "=== Claude Code Plugins Update ==="
-
-echo "[marketplaces] Refreshing all marketplaces..."
+log_section "refresh all marketplaces so plugin version data is current"
+log_step "[marketplaces] refreshing"
 claude plugin marketplace update 2>&1 || true
 
+log_section "read the enabled plugin list out of settings.json"
 SETTINGS="$HOME/.claude/settings.json"
 if [ ! -f "$SETTINGS" ] || ! command -v jq &>/dev/null; then
-    echo "[plugins] settings.json or jq missing, skipping per-plugin update."
+    log_warn "[plugins] settings.json or jq missing; skipping per-plugin update"
     exit 0
 fi
 
 ENABLED="$(jq -r '.enabledPlugins // {} | to_entries[] | select(.value==true) | .key' "$SETTINGS")"
 if [ -z "$ENABLED" ]; then
-    echo "[plugins] No enabled plugins found."
+    log_skip "[plugins] no enabled plugins found"
     exit 0
 fi
 
-echo "[plugins] Updating enabled plugins..."
+log_section "update each enabled plugin — restart Claude Code afterwards to pick up new versions"
 while IFS= read -r plugin; do
     [ -z "$plugin" ] && continue
-    claude plugin update "$plugin" 2>&1 | sed 's/^/  /' || true
+    log_step "[plugins] updating $plugin"
+    claude plugin update "$plugin" 2>&1 | sed 's/^/        /' || true
 done <<< "$ENABLED"
-
-echo "=== Plugin update complete. Restart Claude Code to activate new versions. ==="
 {{ end -}}

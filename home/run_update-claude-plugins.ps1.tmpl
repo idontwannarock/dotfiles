@@ -5,57 +5,64 @@
 
 $ErrorActionPreference = "Continue"
 
-if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
-    Write-Host "[claude-plugins] claude CLI not found, skipping update." -ForegroundColor Yellow
-    exit 0
-}
+{{ template "scripts/log.ps1" }}
+
+Log-Begin "Claude Code plugin update"
 
 # Workaround for anthropics/claude-code#50320 / #42135:
 # Node.js child_process.spawn rejects git.exe as "unsafe location" when cwd
 # is an ancestor of the git installation path. Switching to a drive root
-# avoids the heuristic. Restored in finally block.
+# avoids the heuristic. Restored in the finally block -- which is also why every
+# early exit below uses `return`, not `exit`: `exit` would skip the restore.
 $originalLocation = Get-Location
 Set-Location $env:SystemDrive\
 try {
+    Log-Section "check claude CLI is available"
+    if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
+        Log-Warn "[claude-plugins] claude CLI not found; skipping update"
+        return
+    }
 
-Write-Host "=== Claude Code Plugins Update ===" -ForegroundColor Cyan
+    Log-Section "refresh all marketplaces so plugin version data is current"
+    Log-Step "[marketplaces] refreshing"
+    claude plugin marketplace update 2>&1 | ForEach-Object { "        $_" }
 
-Write-Host "[marketplaces] Refreshing all marketplaces..." -ForegroundColor Yellow
-claude plugin marketplace update 2>&1 | ForEach-Object { "  $_" }
+    Log-Section "read the enabled plugin list out of settings.json"
+    $settings = Join-Path $env:USERPROFILE ".claude\settings.json"
+    if (-not (Test-Path $settings)) {
+        Log-Warn "[plugins] settings.json missing; skipping per-plugin update"
+        return
+    }
 
-$settings = Join-Path $env:USERPROFILE ".claude\settings.json"
-if (-not (Test-Path $settings)) {
-    Write-Host "[plugins] settings.json missing, skipping per-plugin update." -ForegroundColor Yellow
-    exit 0
-}
+    try {
+        $config = Get-Content $settings -Raw | ConvertFrom-Json
+    } catch {
+        Log-Warn "[plugins] failed to parse settings.json; skipping"
+        return
+    }
 
-try {
-    $config = Get-Content $settings -Raw | ConvertFrom-Json
+    $enabled = @()
+    if ($config.PSObject.Properties.Name -contains 'enabledPlugins') {
+        $enabled = $config.enabledPlugins.PSObject.Properties |
+            Where-Object { $_.Value -eq $true } |
+            ForEach-Object { $_.Name }
+    }
+
+    if ($enabled.Count -eq 0) {
+        Log-Skip "[plugins] no enabled plugins found"
+        return
+    }
+
+    Log-Section "update each enabled plugin — restart Claude Code afterwards to pick up new versions"
+    foreach ($plugin in $enabled) {
+        Log-Step "[plugins] updating $plugin"
+        claude plugin update $plugin 2>&1 | ForEach-Object { "        $_" }
+    }
 } catch {
-    Write-Host "[plugins] Failed to parse settings.json, skipping." -ForegroundColor Yellow
-    exit 0
-}
-
-$enabled = @()
-if ($config.PSObject.Properties.Name -contains 'enabledPlugins') {
-    $enabled = $config.enabledPlugins.PSObject.Properties |
-        Where-Object { $_.Value -eq $true } |
-        ForEach-Object { $_.Name }
-}
-
-if ($enabled.Count -eq 0) {
-    Write-Host "[plugins] No enabled plugins found." -ForegroundColor Yellow
-    exit 0
-}
-
-Write-Host "[plugins] Updating $($enabled.Count) enabled plugin(s)..." -ForegroundColor Yellow
-foreach ($plugin in $enabled) {
-    claude plugin update $plugin 2>&1 | ForEach-Object { "  $_" }
-}
-
-Write-Host "=== Plugin update complete. Restart Claude Code to activate new versions. ===" -ForegroundColor Cyan
-
+    Log-End -ErrorRecord $_
+    throw
 } finally {
     Set-Location $originalLocation
+    Log-End
 }
 {{ end -}}

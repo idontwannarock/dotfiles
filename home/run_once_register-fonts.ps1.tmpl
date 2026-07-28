@@ -25,32 +25,19 @@
 
 $ErrorActionPreference = "Continue"
 
+{{ template "scripts/log.ps1" }}
+
 $fontInstallDir = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
 $registryKey    = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
 
-Write-Host "=== Wave 12b: per-user font registration ===" -ForegroundColor Cyan
-
-# Ensure the per-user font dir exists and carries the AppContainer ACL that lets
-# sandboxed apps read the fonts. SIDs: S-1-15-2-1 = ALL APPLICATION PACKAGES,
-# S-1-15-2-2 = ALL RESTRICTED APPLICATION PACKAGES (scoop-nerd-fonts#198).
-New-Item -ItemType Directory -Force $fontInstallDir | Out-Null
-$acl = Get-Acl $fontInstallDir
-foreach ($sid in @("S-1-15-2-1", "S-1-15-2-2")) {
-    $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-        [System.Security.Principal.SecurityIdentifier]::new($sid),
-        "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")
-    $acl.SetAccessRule($rule)
-}
-Set-Acl -AclObject $acl $fontInstallDir
-
 function Register-UserFonts($sourceDir, $filter, $label) {
     if (-not (Test-Path $sourceDir)) {
-        Write-Warning "[$label] $sourceDir not found -- .chezmoiexternal.toml has not extracted the font zip yet. Skipping; rerun 'chezmoi apply'."
+        Log-Warn "[$label] $sourceDir not found -- .chezmoiexternal.toml has not extracted the font zip yet; rerun 'chezmoi apply'"
         return
     }
     $ttf = @(Get-ChildItem $sourceDir -Filter $filter -ErrorAction SilentlyContinue)
     if ($ttf.Count -eq 0) {
-        Write-Warning "[$label] no fonts matching '$filter' in $sourceDir. Skipping."
+        Log-Warn "[$label] no fonts matching '$filter' in $sourceDir"
         return
     }
     foreach ($f in $ttf) {
@@ -65,15 +52,36 @@ function Register-UserFonts($sourceDir, $filter, $label) {
             Copy-Item -LiteralPath $f.FullName -Destination $dest -Force
         }
     }
-    Write-Host "[$label] registered $($ttf.Count) fonts." -ForegroundColor Green
+    Log-Step "[$label] registered $($ttf.Count) fonts"
 }
 
-$share = Join-Path $env:USERPROFILE ".local\share\fonts"
-# cascadia: the external already kept only the Mono faces; the *NerdFontMono-*
-# filter matches scoop's manifest. jetbrains: all *.ttf (the external kept only
-# fonts/ttf/, excluding the variable fonts scoop also skips).
-Register-UserFonts (Join-Path $share "cascadiacode-nf-mono") "*NerdFontMono-*" "cascadiacode-nf-mono"
-Register-UserFonts (Join-Path $share "jetbrains-mono") "*.ttf" "jetbrains-mono"
+Log-Begin "per-user font registration"
+try {
+    Log-Section "prepare the per-user font dir with the AppContainer ACL — sandboxed UWP apps cannot read it otherwise"
+    # SIDs: S-1-15-2-1 = ALL APPLICATION PACKAGES,
+    # S-1-15-2-2 = ALL RESTRICTED APPLICATION PACKAGES (scoop-nerd-fonts#198).
+    New-Item -ItemType Directory -Force $fontInstallDir | Out-Null
+    $acl = Get-Acl $fontInstallDir
+    foreach ($sid in @("S-1-15-2-1", "S-1-15-2-2")) {
+        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            [System.Security.Principal.SecurityIdentifier]::new($sid),
+            "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow")
+        $acl.SetAccessRule($rule)
+    }
+    Set-Acl -AclObject $acl $fontInstallDir
+    Log-Step "[fonts] ACL applied to $fontInstallDir"
 
-Write-Host "=== Wave 12b font registration complete. ===" -ForegroundColor Cyan
+    Log-Section "copy and register each face under HKCU — this replaces what scoop's font install used to do"
+    $share = Join-Path $env:USERPROFILE ".local\share\fonts"
+    # cascadia: the external already kept only the Mono faces; the *NerdFontMono-*
+    # filter matches scoop's manifest. jetbrains: all *.ttf (the external kept only
+    # fonts/ttf/, excluding the variable fonts scoop also skips).
+    Register-UserFonts (Join-Path $share "cascadiacode-nf-mono") "*NerdFontMono-*" "cascadiacode-nf-mono"
+    Register-UserFonts (Join-Path $share "jetbrains-mono") "*.ttf" "jetbrains-mono"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
 {{ end -}}

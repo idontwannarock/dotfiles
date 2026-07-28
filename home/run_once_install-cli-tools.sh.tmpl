@@ -2,105 +2,89 @@
 #!/usr/bin/env bash
 # chezmoi run_once_ script — CLI 工具安裝（Unix/macOS/WSL）
 # macOS: brew, Linux/WSL: apt
+#
+# pkg_install 的 apt/brew 分派在 render 期決定（見 scripts/pkg-install.sh），
+# 所以部署下來的腳本只含本機真正會走的那一支。
 
 set -euo pipefail
 
-echo "=== CLI Tools Setup ==="
+{{ template "scripts/log.sh" }}
+{{ template "scripts/pkg-install.sh" . }}
+
+log_begin "CLI tools"
 
 {{- if eq .chezmoi.os "darwin" }}
 
+log_section "check Homebrew is available — every install below goes through it"
 if ! command -v brew &>/dev/null; then
-    echo "[cli-tools] Homebrew not found. Skipping."
+    log_warn "[cli-tools] Homebrew not found; skipping"
     exit 0
 fi
 
-brew_install() {
-    local cmd="$1"
-    local pkg="${2:-$1}"
-    if command -v "$cmd" &>/dev/null; then
-        echo "[$cmd] already installed, skipping."
-    else
-        echo "[$pkg] Installing via brew..."
-        brew install "$pkg"
-    fi
-}
+log_section "install general-purpose CLI tools via brew"
+pkg_install 7z p7zip
+pkg_install curl
+pkg_install wget
+pkg_install tree
+pkg_install ffmpeg
+pkg_install hugo
+pkg_install nexttrace
+pkg_install yt-dlp
+pkg_install golangci-lint
 
-brew_install 7z p7zip
-brew_install curl
-brew_install wget
-brew_install tree
-brew_install ffmpeg
-brew_install hugo
-brew_install nexttrace
-brew_install yt-dlp
-brew_install golangci-lint
-
-# PostgreSQL client only (libpq is keg-only — force link to expose psql)
+log_section "install the PostgreSQL client — libpq is keg-only, so force-link to expose psql"
 if command -v psql &>/dev/null; then
-    echo "[psql] already installed, skipping."
+    log_skip "[psql] already installed"
 else
-    echo "[libpq] Installing PostgreSQL client via brew..."
+    log_step "[libpq] installing PostgreSQL client via brew"
     brew install libpq
     brew link --force libpq
 fi
 
 {{- else }}
-# Linux/WSL
 
-apt_install() {
-    local cmd="$1"
-    local pkg="${2:-$1}"
-    if command -v "$cmd" &>/dev/null; then
-        echo "[$cmd] already installed, skipping."
-    else
-        echo "[$pkg] Installing via apt..."
-        sudo apt-get install -y "$pkg"
-    fi
-}
+log_section "install general-purpose CLI tools via apt"
+pkg_install 7z p7zip-full
+pkg_install curl
+pkg_install wget
+pkg_install tree
+pkg_install ffmpeg
+pkg_install psql postgresql-client
 
-apt_install 7z p7zip-full
-apt_install curl
-apt_install wget
-apt_install tree
-apt_install ffmpeg
-apt_install psql postgresql-client
-
-# golangci-lint (not in apt — use official installer → ~/.local/bin)
+log_section "install golangci-lint — not in apt, so use the official installer into ~/.local/bin"
 if command -v golangci-lint &>/dev/null; then
-    echo "[golangci-lint] already installed, skipping."
+    log_skip "[golangci-lint] already installed"
 else
-    echo "[golangci-lint] Installing via official installer..."
+    log_step "[golangci-lint] installing via official installer"
     mkdir -p "$HOME/.local/bin"
     curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
         | sh -s -- -b "$HOME/.local/bin" \
-        || echo "[golangci-lint] install failed. See https://golangci-lint.run/welcome/install/"
+        || log_warn "[golangci-lint] install failed. See https://golangci-lint.run/welcome/install/"
 fi
 
-# Hugo
+log_section "install hugo — apt coverage varies by release, so fall back to a manual pointer"
 if command -v hugo &>/dev/null; then
-    echo "[hugo] already installed, skipping."
+    log_skip "[hugo] already installed"
 else
-    echo "[hugo] Installing via apt..."
-    sudo apt-get install -y hugo 2>/dev/null || echo "[hugo] Not available in apt. Install from https://gohugo.io/installation/"
+    log_step "[hugo] installing via apt"
+    sudo apt-get install -y hugo 2>/dev/null || log_warn "[hugo] not available in apt. Install from https://gohugo.io/installation/"
 fi
 
-# nexttrace
+log_section "install nexttrace — not packaged in apt, use the upstream script"
 if command -v nexttrace &>/dev/null; then
-    echo "[nexttrace] already installed, skipping."
+    log_skip "[nexttrace] already installed"
 else
-    echo "[nexttrace] Installing via official script..."
-    curl -fsSL nxtrace.org/nt | bash 2>/dev/null || echo "[nexttrace] Install manually: https://github.com/nxtrace/NTrace-core"
+    log_step "[nexttrace] installing via official script"
+    curl -fsSL nxtrace.org/nt | bash 2>/dev/null || log_warn "[nexttrace] install manually: https://github.com/nxtrace/NTrace-core"
 fi
 
-# yt-dlp
+log_section "install yt-dlp — apt coverage varies, fall back to a pip pointer"
 if command -v yt-dlp &>/dev/null; then
-    echo "[yt-dlp] already installed, skipping."
+    log_skip "[yt-dlp] already installed"
 else
-    echo "[yt-dlp] Installing via apt..."
-    sudo apt-get install -y yt-dlp 2>/dev/null || echo "[yt-dlp] Not in apt. Install via pip: pip install yt-dlp"
+    log_step "[yt-dlp] installing via apt"
+    sudo apt-get install -y yt-dlp 2>/dev/null || log_warn "[yt-dlp] not in apt. Install via pip: pip install yt-dlp"
 fi
 
 {{- end }}
-
-echo "=== CLI tools setup complete. ==="
 {{ end -}}

@@ -13,18 +13,29 @@
 
 $ErrorActionPreference = "Stop"
 
-$expected = "tcp://127.0.0.1:2375"
-$current  = [Environment]::GetEnvironmentVariable("DOCKER_HOST", "User")
+{{ template "scripts/log.ps1" }}
 
-if ($current -eq $expected) {
-    Write-Host "[docker-host] DOCKER_HOST already set to $expected, skipping." -ForegroundColor Gray
-} else {
-    if ([string]::IsNullOrEmpty($current)) {
-        Write-Host "[docker-host] DOCKER_HOST not set; writing $expected to User env." -ForegroundColor Cyan
+Log-Begin "DOCKER_HOST"
+try {
+    Log-Section "pin User DOCKER_HOST at the WSL-local endpoint — the daemon lives in WSL Ubuntu, the CLI on Windows"
+    $expected = "tcp://127.0.0.1:2375"
+    $current  = [Environment]::GetEnvironmentVariable("DOCKER_HOST", "User")
+
+    if ($current -eq $expected) {
+        Log-Skip "[docker-host] already set to $expected"
     } else {
-        Write-Warning "[docker-host] DOCKER_HOST was '$current'; overwriting with $expected (Wave 5 design pins WSL-local endpoint)."
+        if ([string]::IsNullOrEmpty($current)) {
+            Log-Step "[docker-host] not set; writing $expected to User env"
+        } else {
+            Log-Warn "[docker-host] was '$current'; overwriting with $expected (Wave 5 design pins the WSL-local endpoint)"
+        }
+        [Environment]::SetEnvironmentVariable("DOCKER_HOST", $expected, "User")
+        Log-Warn "[docker-host] restart your terminal/SSH session for the change to apply"
     }
-    [Environment]::SetEnvironmentVariable("DOCKER_HOST", $expected, "User")
-    Write-Warning "[docker-host] restart your terminal/SSH session for DOCKER_HOST change to apply."
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
 }
 {{ end -}}

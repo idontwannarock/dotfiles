@@ -1,54 +1,48 @@
 {{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_once_ script — CLI 工具安裝（Windows）
-
-$ErrorActionPreference = "Stop"
-
-Write-Host "=== CLI Tools Setup ===" -ForegroundColor Cyan
-
+#
 # This script no longer installs anything -- all of its former packages have been
 # moved off scoop. Kept as a historical record of where each landed.
-
+#
+# Scoop uninstall for every package below is handled by the single
+# run_once_after_migrate-scoop-cleanup.ps1.tmpl (which merged the former
+# per-wave migrate scripts), except where noted.
+#
 # ── Archive ──────────────────────────────────────────────────────────────
 # 7z moved to .chezmoiexternal.toml in Wave 12b (2026-06-18). The source is an
 # MSI (chezmoi-external cannot extract MSI), so the external only downloads the
 # pinned MSI; run_once_after_migrate-scoop-wave12b.ps1.tmpl does `msiexec /a` to
 # lay it out under ~/.local/opt/7zip, registers the COM shell-extension (right-
 # click menu), and uninstalls scoop's 7zip. The 7z.cmd wrapper puts it on PATH.
-
+#
 # ── Network ──────────────────────────────────────────────────────────────
 # curl moved out of scoop in Wave 3 (2026-05-20). Win10 build 17063+ ships
 # curl.exe in C:\Windows\System32\, and Git for Windows bundles a copy in
-# <git>\mingw64\bin\. The migration script run_once_after_migrate-scoop-wave3.ps1.tmpl
-# handles scoop uninstall on existing machines.
+# <git>\mingw64\bin\.
 #
 # wget removed from Windows in Wave 3 (2026-05-20). No PowerShell or Git Bash
 # script in this repo calls wget on Windows; the curl||wget fallback in
 # run_onchange_install-03-claude-config.sh.tmpl is .sh.tmpl (Linux/macOS only).
-
+#
 # ── Media ────────────────────────────────────────────────────────────────
 # ffmpeg moved to .chezmoiexternal.toml in Wave 6 (2026-05-25). Three archive-file
 # entries (ffmpeg.exe + ffprobe.exe + ffplay.exe) share a single BtbN/FFmpeg-Builds
-# zip, pinned to a dated autobuild tag for reproducibility. The migration script
-# run_once_after_migrate-scoop-wave6.ps1.tmpl handles scoop uninstall on existing
-# machines.
-
+# zip, pinned to a dated autobuild tag for reproducibility.
+#
 # ── Shell enhancement ────────────────────────────────────────────────────
 # clink removed from dotfiles install in Wave 4 (2026-05-21). dotfiles never
 # invoked `clink autorun install`, and starship already provides prompt
-# enhancement across PowerShell / Git Bash / zsh. The migration script
-# run_once_after_migrate-scoop-wave4.ps1.tmpl handles scoop uninstall on
-# existing machines.
-
+# enhancement across PowerShell / Git Bash / zsh.
+#
 # ── WiX toolset ──────────────────────────────────────────────────────────
 # dark removed from dotfiles install in Wave 4 (2026-05-21). Verified unused
 # across the repo and not declared as a dependency by any installed scoop
 # manifest. Soft unmanage: existing installs are left untouched.
-
+#
 # ── Static site / Network diagnostics / Video download ─────────────────
 # hugo (extended), nexttrace, yt-dlp moved to .chezmoiexternal.toml in Wave 2
-# (2026-05-20). The migration script run_once_after_migrate-scoop-wave2.ps1.tmpl
-# handles scoop uninstall on existing machines.
-
+# (2026-05-20).
+#
 # ── Vim tutor ────────────────────────────────────────────────────────────
 # vimtutor removed from dotfiles install in Wave 4 (2026-05-21). Interactive
 # tutorial, no scripted dependency. Soft unmanage: existing installs are left
@@ -58,12 +52,10 @@ Write-Host "=== CLI Tools Setup ===" -ForegroundColor Cyan
 # entry extracts the full vim distribution to ~/.local/share/vim/vim92/, and 15
 # .cmd wrappers under ~/.local/bin/ mirror scoop vim.json bin[] aliases
 # (vim/vi/ex/view/rvim/rview/vimdiff/gvim/gview/evim/eview/rgvim/rgview/gvimdiff/xxd).
-# The migration script run_once_after_migrate-scoop-wave7.ps1.tmpl handles
-# scoop uninstall on existing machines.
-
+#
 # ── Go tooling ───────────────────────────────────────────────────────────
 # golangci-lint moved to .chezmoiexternal.toml in Wave 2 (2026-05-20).
-
+#
 # ── Windows package managers ─────────────────────────────────────────────
 # winget removed from dotfiles install in Wave 4 (2026-05-21). Win10 1809+ and
 # Win11 ship winget.exe OS-bundled at
@@ -75,9 +67,6 @@ Write-Host "=== CLI Tools Setup ===" -ForegroundColor Cyan
 # uses the separate PowerToys Microsoft.WinGet.CommandNotFound module, which
 # is independent of winget-ps.
 #
-# The migration script run_once_after_migrate-scoop-wave4.ps1.tmpl handles
-# scoop uninstall on existing machines (winget + winget-ps).
-
 # ── GPG + password store for corp-ssh-askpass (Phase 2) ─────────────────
 # gpg moved OFF scoop in Wave 8 (2026-06-10): scoop's manifest dropped an empty
 # bin\gpgconf.ctl that forced GnuPG into portable mode (empty homedir, GNUPGHOME
@@ -86,5 +75,18 @@ Write-Host "=== CLI Tools Setup ===" -ForegroundColor Cyan
 # no gpgconf.ctl), with scoop uninstall in run_once_after_migrate-scoop-wave8-gpg.
 # gopass moved to .chezmoiexternal.toml in Wave 3 (2026-05-20).
 
-Write-Host "=== CLI tools setup complete (nothing to install). ===" -ForegroundColor Cyan
+$ErrorActionPreference = "Stop"
+
+{{ template "scripts/log.ps1" }}
+
+Log-Begin "Windows CLI tools"
+try {
+    Log-Section "no-op — every former package now comes from chezmoi-external, the OS, or is unmanaged"
+    Log-Skip "[cli-tools] nothing to install here; see this file's header for where each landed"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
 {{ end -}}

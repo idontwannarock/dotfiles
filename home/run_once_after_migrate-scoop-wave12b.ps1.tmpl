@@ -4,16 +4,16 @@
 # Runs after .chezmoiexternal.toml downloads the pinned 7-Zip MSI to
 # ~/.local/share/7zip/7zip-x64.msi. 7z is an app bundle whose source is an MSI,
 # which chezmoi-external cannot extract -- so this script does the extraction and
-# the install-time registration scoop would otherwise do. Steps (all idempotent,
-# gated on desired-state):
-#   (1) `msiexec /a` extract the MSI + flatten Files\7-Zip\* into ~/.local/opt/7zip.
-#   (2) scoop uninstall 7zip.
-#   (3) Register the COM shell-extension (right-click menu) pointing at our DLL.
+# the install-time registration scoop would otherwise do.
 #
-# ORDERING IS LOAD-BEARING (step 2 BEFORE step 3): scoop's 7zip uninstaller runs
-# `reg import uninstall-context.reg`, which DELETES the HKCU shell-extension keys.
-# If we wrote our keys first, scoop would wipe them. So: extract -> uninstall ->
-# register, in that order.
+# Kept separate from run_once_after_migrate-scoop-cleanup.ps1.tmpl: the uninstall
+# is sandwiched between an MSI extraction and a COM registration, and the order
+# cannot change (see below).
+#
+# ORDERING IS LOAD-BEARING (uninstall BEFORE register): scoop's 7zip uninstaller
+# runs `reg import uninstall-context.reg`, which DELETES the HKCU shell-extension
+# keys. If we wrote our keys first, scoop would wipe them. So: extract ->
+# uninstall -> register, in that order.
 #
 # The 7z.cmd wrapper at ~/.local/bin/7z.cmd (static, committed) puts 7z on PATH;
 # ~/.local/bin is already Wave 1's first PATH entry, so this script does not touch
@@ -22,105 +22,113 @@
 
 $ErrorActionPreference = "Continue"
 
+{{ template "scripts/log.ps1" }}
+
 $msi      = Join-Path $env:USERPROFILE ".local\share\7zip\7zip-x64.msi"
 $optDir   = Join-Path $env:USERPROFILE ".local\opt\7zip"
 $exe      = Join-Path $optDir "7z.exe"
 $shellDll = Join-Path $optDir "7-zip.dll"
 $clsid    = "{23170F69-40C1-278A-1000-000100020000}"
 
-Write-Host "=== Wave 12b: Scoop -> chezmoi-external migration (7z) ===" -ForegroundColor Cyan
-
-# --- (0) Guard: external must have downloaded the MSI first ------------------
-if (-not (Test-Path $msi)) {
-    Write-Warning "[7z] $msi not found -- .chezmoiexternal.toml has not downloaded the 7-Zip MSI yet. Skipping; rerun 'chezmoi apply'."
-    return
-}
-
-# --- (1) Extract MSI + flatten to ~/.local/opt/7zip -------------------------
-# `msiexec /a` is an administrative install: it lays the payload out under
-# <TARGETDIR>\Files\7-Zip\ with NO system registration -- exactly what we want for
-# a chezmoi-managed app bundle. Gate on 7z.exe so a re-apply is a no-op.
-if (Test-Path $exe) {
-    Write-Host "[7z] $exe already present, skipping extraction." -ForegroundColor Gray
-} else {
-    $tmp = Join-Path $env:TEMP ("7z-msi-" + [System.Guid]::NewGuid().ToString("N"))
-    New-Item -ItemType Directory -Force $tmp | Out-Null
-    Write-Host "[7z] extracting MSI via 'msiexec /a'..." -ForegroundColor Yellow
-    $proc = Start-Process msiexec.exe -ArgumentList "/a `"$msi`" /qn TARGETDIR=`"$tmp`"" -Wait -PassThru
-    $src = Join-Path $tmp "Files\7-Zip"
-    if ($proc.ExitCode -ne 0 -or -not (Test-Path (Join-Path $src "7z.exe"))) {
-        Write-Warning "[7z] msiexec /a failed (exit $($proc.ExitCode)) or payload missing at $src. Leaving scoop 7z in place; rerun 'chezmoi apply'."
-        Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+Log-Begin "Wave 12b: scoop -> chezmoi-external (7z)"
+try {
+    Log-Section "guard on the external having downloaded the MSI — everything below unpacks it"
+    if (-not (Test-Path $msi)) {
+        Log-Warn "[7z] $msi not found -- .chezmoiexternal.toml has not downloaded the 7-Zip MSI yet"
+        Log-Warn "[7z] skipping; rerun 'chezmoi apply'"
         return
     }
-    New-Item -ItemType Directory -Force $optDir | Out-Null
-    Copy-Item -Path (Join-Path $src "*") -Destination $optDir -Recurse -Force
-    Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
-    Write-Host "[7z] extracted to $optDir" -ForegroundColor Green
-}
 
-# --- (2) Scoop uninstall 7zip (BEFORE step 3 -- see header) ------------------
-if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
-    $installed = $false
-    try {
-        $listOutput = scoop list 7zip 2>$null | Out-String
-        if ($listOutput -match "(?im)^\s*7zip\b") { $installed = $true }
-    } catch {}
-    if ($installed) {
-        Write-Host "[7z] uninstalling from scoop..." -ForegroundColor Yellow
-        scoop uninstall 7zip 2>&1 | Out-Null
-        $scoopDir = Join-Path $env:USERPROFILE "scoop\apps\7zip"
-        if (Test-Path $scoopDir) {
-            Write-Warning "[7z] scoop uninstall did NOT remove $scoopDir (an open 7zFM/7zG window can block it). Close 7-Zip and run 'scoop uninstall 7zip' manually."
+    Log-Section "extract the MSI with 'msiexec /a' — an administrative install lays out the payload with no system registration"
+    # Gate on 7z.exe so a re-apply is a no-op.
+    if (Test-Path $exe) {
+        Log-Skip "[7z] $exe already present; skipping extraction"
+    } else {
+        $tmp = Join-Path $env:TEMP ("7z-msi-" + [System.Guid]::NewGuid().ToString("N"))
+        New-Item -ItemType Directory -Force $tmp | Out-Null
+        Log-Step "[7z] extracting MSI via 'msiexec /a'"
+        $proc = Start-Process msiexec.exe -ArgumentList "/a `"$msi`" /qn TARGETDIR=`"$tmp`"" -Wait -PassThru
+        $src = Join-Path $tmp "Files\7-Zip"
+        if ($proc.ExitCode -ne 0 -or -not (Test-Path (Join-Path $src "7z.exe"))) {
+            Log-Warn "[7z] msiexec /a failed (exit $($proc.ExitCode)) or payload missing at $src"
+            Log-Warn "[7z] leaving scoop 7z in place; rerun 'chezmoi apply'"
+            Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+            return
+        }
+        New-Item -ItemType Directory -Force $optDir | Out-Null
+        Copy-Item -Path (Join-Path $src "*") -Destination $optDir -Recurse -Force
+        Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+        Log-Step "[7z] extracted to $optDir"
+    }
+
+    Log-Section "uninstall scoop 7zip BEFORE registering — its uninstaller deletes the HKCU shell-extension keys"
+    if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
+        $installed = $false
+        try {
+            $listOutput = scoop list 7zip 2>$null | Out-String
+            if ($listOutput -match "(?im)^\s*7zip\b") { $installed = $true }
+        } catch {}
+        if ($installed) {
+            Log-Step "[7z] uninstalling from scoop"
+            scoop uninstall 7zip 2>&1 | Out-Null
+            $scoopDir = Join-Path $env:USERPROFILE "scoop\apps\7zip"
+            if (Test-Path $scoopDir) {
+                Log-Warn "[7z] scoop uninstall did NOT remove $scoopDir (an open 7zFM/7zG window can block it)"
+                Log-Warn "[7z] close 7-Zip and run 'scoop uninstall 7zip' manually"
+            } else {
+                Log-Step "[7z] scoop 7zip removed"
+            }
         } else {
-            Write-Host "[7z] scoop 7zip removed." -ForegroundColor Green
+            Log-Skip "[7z] not installed via scoop"
         }
     } else {
-        Write-Host "[7z] not installed via scoop, skipping uninstall." -ForegroundColor Gray
+        Log-Skip "scoop not found; skipping uninstall"
     }
-} else {
-    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
+
+    Log-Section "register the COM shell extension so the right-click menu points at our flattened DLL"
+    # Mirrors scoop's install-context.reg but points InprocServer32 at our flattened
+    # DLL. Written natively via the .NET registry API (not `reg import`) so it is
+    # idempotent and needs no .reg placeholder substitution; the API also treats the
+    # `*` key name literally (the PS registry provider would read it as a wildcard).
+    # InprocServer32 keeps the surrounding quotes scoop stored (verified live).
+    $hkcu = [Microsoft.Win32.Registry]::CurrentUser
+    function Set-Default($subkey, $value) {
+        $k = $hkcu.CreateSubKey($subkey)
+        $k.SetValue("", $value)
+        $k.Close()
+    }
+
+    # Cascaded submenu + icons (scoop's HKCU\Software\7-Zip\Options).
+    $optKey = $hkcu.CreateSubKey("Software\7-Zip\Options")
+    $optKey.SetValue("CascadedMenu", 1, [Microsoft.Win32.RegistryValueKind]::DWord)
+    $optKey.SetValue("MenuIcons", 1, [Microsoft.Win32.RegistryValueKind]::DWord)
+    $optKey.Close()
+
+    # ContextMenuHandlers (files / directories / folders) + DragDropHandlers
+    # (directories / drives), all -> the one CLSID.
+    foreach ($sk in @(
+        "Software\Classes\*\shellex\ContextMenuHandlers\7-Zip",
+        "Software\Classes\Directory\shellex\ContextMenuHandlers\7-Zip",
+        "Software\Classes\Folder\shellex\ContextMenuHandlers\7-Zip",
+        "Software\Classes\Directory\shellex\DragDropHandlers\7-Zip",
+        "Software\Classes\Drive\shellex\DragDropHandlers\7-Zip"
+    )) {
+        Set-Default $sk $clsid
+    }
+
+    # CLSID -> in-proc COM server (our flattened 7-zip.dll).
+    Set-Default "Software\Classes\CLSID\$clsid" "7-Zip Shell Extension"
+    $ip = $hkcu.CreateSubKey("Software\Classes\CLSID\$clsid\InprocServer32")
+    $ip.SetValue("", "`"$shellDll`"")
+    $ip.SetValue("ThreadingModel", "Apartment")
+    $ip.Close()
+
+    Log-Step "[7z] shell-extension registered -> $shellDll"
+    Log-Step "[7z] restart explorer.exe or sign out/in for the right-click menu to refresh"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
 }
-
-# --- (3) Register the COM shell-extension (right-click menu) -----------------
-# Mirrors scoop's install-context.reg but points InprocServer32 at our flattened
-# DLL. Written natively via the .NET registry API (not `reg import`) so it is
-# idempotent and needs no .reg placeholder substitution; the API also treats the
-# `*` key name literally (the PS registry provider would read it as a wildcard).
-# InprocServer32 keeps the surrounding quotes scoop stored (verified live).
-$hkcu = [Microsoft.Win32.Registry]::CurrentUser
-function Set-Default($subkey, $value) {
-    $k = $hkcu.CreateSubKey($subkey)
-    $k.SetValue("", $value)
-    $k.Close()
-}
-
-# Cascaded submenu + icons (scoop's HKCU\Software\7-Zip\Options).
-$optKey = $hkcu.CreateSubKey("Software\7-Zip\Options")
-$optKey.SetValue("CascadedMenu", 1, [Microsoft.Win32.RegistryValueKind]::DWord)
-$optKey.SetValue("MenuIcons", 1, [Microsoft.Win32.RegistryValueKind]::DWord)
-$optKey.Close()
-
-# ContextMenuHandlers (files / directories / folders) + DragDropHandlers
-# (directories / drives), all -> the one CLSID.
-foreach ($sk in @(
-    "Software\Classes\*\shellex\ContextMenuHandlers\7-Zip",
-    "Software\Classes\Directory\shellex\ContextMenuHandlers\7-Zip",
-    "Software\Classes\Folder\shellex\ContextMenuHandlers\7-Zip",
-    "Software\Classes\Directory\shellex\DragDropHandlers\7-Zip",
-    "Software\Classes\Drive\shellex\DragDropHandlers\7-Zip"
-)) {
-    Set-Default $sk $clsid
-}
-
-# CLSID -> in-proc COM server (our flattened 7-zip.dll).
-Set-Default "Software\Classes\CLSID\$clsid" "7-Zip Shell Extension"
-$ip = $hkcu.CreateSubKey("Software\Classes\CLSID\$clsid\InprocServer32")
-$ip.SetValue("", "`"$shellDll`"")
-$ip.SetValue("ThreadingModel", "Apartment")
-$ip.Close()
-
-Write-Host "[7z] shell-extension registered -> $shellDll" -ForegroundColor Green
-Write-Host "    (restart explorer.exe or sign out/in for the right-click menu to refresh.)" -ForegroundColor Gray
-Write-Host "=== Wave 12b migration (7z) complete. ===" -ForegroundColor Cyan
 {{ end -}}

@@ -21,62 +21,74 @@
 $ErrorActionPreference = "Stop"
 $ProgressPreference    = "SilentlyContinue"
 
-$localBin = Join-Path $env:USERPROFILE ".local\bin"
-$jqExe    = Join-Path $localBin "jq.exe"
+{{ template "scripts/log.ps1" }}
 
-# Version pinned in sync with .chezmoiexternal.toml. If they drift, chezmoi's
-# step-4 external refresh will overwrite this download on the next apply —
-# annoying but not fatal. Keep both updated together.
-$jqVersion = "1.8.1"
-$jqUrl     = "https://github.com/jqlang/jq/releases/download/jq-$jqVersion/jq-windows-amd64.exe"
+Log-Begin "fresh-VM PATH bootstrap"
+try {
+    $localBin = Join-Path $env:USERPROFILE ".local\bin"
+    $jqExe    = Join-Path $localBin "jq.exe"
 
-# (1) ~/.local/bin directory ----------------------------------------------------
-if (-not (Test-Path $localBin)) {
-    New-Item -ItemType Directory -Path $localBin -Force | Out-Null
-    Write-Host "[setup-paths] created $localBin" -ForegroundColor Yellow
-}
+    # Version pinned in sync with .chezmoiexternal.toml. If they drift, chezmoi's
+    # step-4 external refresh will overwrite this download on the next apply —
+    # annoying but not fatal. Keep both updated together.
+    $jqVersion = "1.8.1"
+    $jqUrl     = "https://github.com/jqlang/jq/releases/download/jq-$jqVersion/jq-windows-amd64.exe"
 
-# (2) jq.exe binary -------------------------------------------------------------
-if (-not (Test-Path $jqExe)) {
-    Write-Host "[setup-paths] downloading jq v$jqVersion -> $jqExe" -ForegroundColor Cyan
-    Invoke-WebRequest -Uri $jqUrl -OutFile $jqExe -UseBasicParsing
-    if (-not (Test-Path $jqExe) -or (Get-Item $jqExe).Length -eq 0) {
-        throw "[setup-paths] jq.exe download failed (file missing or empty)"
+    Log-Section "create ~/.local/bin — the download and PATH entry below both need it to exist"
+    if (-not (Test-Path $localBin)) {
+        New-Item -ItemType Directory -Path $localBin -Force | Out-Null
+        Log-Step "[setup-paths] created $localBin"
+    } else {
+        Log-Skip "[setup-paths] $localBin already exists"
     }
-    # Reject truncated downloads or HTML error pages: a real jq binary returns
-    # version info on stdout. wrong-arch / corrupted .exe fails with a Windows
-    # subsystem error, which `& ... 2>$null` swallows but exit code reveals.
-    & $jqExe --version 2>$null | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        Remove-Item $jqExe -Force -ErrorAction SilentlyContinue
-        throw "[setup-paths] jq.exe failed --version check (exit $LASTEXITCODE); deleted corrupted file"
+
+    Log-Section "download jq.exe here rather than via external — externals land after modify_settings.json needs jq"
+    if (-not (Test-Path $jqExe)) {
+        Log-Step "[setup-paths] downloading jq v$jqVersion -> $jqExe"
+        Invoke-WebRequest -Uri $jqUrl -OutFile $jqExe -UseBasicParsing
+        if (-not (Test-Path $jqExe) -or (Get-Item $jqExe).Length -eq 0) {
+            throw "[setup-paths] jq.exe download failed (file missing or empty)"
+        }
+        # Reject truncated downloads or HTML error pages: a real jq binary returns
+        # version info on stdout. wrong-arch / corrupted .exe fails with a Windows
+        # subsystem error, which `& ... 2>$null` swallows but exit code reveals.
+        & $jqExe --version 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Remove-Item $jqExe -Force -ErrorAction SilentlyContinue
+            throw "[setup-paths] jq.exe failed --version check (exit $LASTEXITCODE); deleted corrupted file"
+        }
+        Log-Step "[setup-paths] jq.exe downloaded ($((Get-Item $jqExe).Length) bytes)"
+    } else {
+        Log-Skip "[setup-paths] jq.exe already present"
     }
-    Write-Host "[setup-paths] jq.exe downloaded ($((Get-Item $jqExe).Length) bytes)" -ForegroundColor Yellow
-} else {
-    Write-Host "[setup-paths] jq.exe already present, skipping download" -ForegroundColor Gray
-}
 
-# (3) User PATH (persistent for future shell sessions) -------------------------
-$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-$entries  = if ($userPath) { @($userPath.Split(';') | Where-Object { $_ -ne '' }) } else { @() }
+    Log-Section "prepend ~/.local/bin to User PATH so future shells resolve chezmoi-managed binaries first"
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $entries  = if ($userPath) { @($userPath.Split(';') | Where-Object { $_ -ne '' }) } else { @() }
 
-$alreadyOnPath = $false
-$localBinNorm  = $localBin.TrimEnd('\')
-foreach ($entry in $entries) {
-    $expanded = [Environment]::ExpandEnvironmentVariables($entry).TrimEnd('\')
-    if ($expanded -ieq $localBinNorm) {
-        $alreadyOnPath = $true
-        break
+    $alreadyOnPath = $false
+    $localBinNorm  = $localBin.TrimEnd('\')
+    foreach ($entry in $entries) {
+        $expanded = [Environment]::ExpandEnvironmentVariables($entry).TrimEnd('\')
+        if ($expanded -ieq $localBinNorm) {
+            $alreadyOnPath = $true
+            break
+        }
     }
-}
 
-if ($alreadyOnPath) {
-    Write-Host "[setup-paths] User PATH already contains ~/.local/bin, no change" -ForegroundColor Gray
-} else {
-    $newEntries = @($localBin) + $entries
-    $newPath    = $newEntries -join ';'
-    [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-    Write-Host "[setup-paths] prepended ~/.local/bin to User PATH" -ForegroundColor Yellow
-    Write-Warning "[setup-paths] restart your terminal/SSH session for User PATH change to apply"
+    if ($alreadyOnPath) {
+        Log-Skip "[setup-paths] User PATH already contains ~/.local/bin"
+    } else {
+        $newEntries = @($localBin) + $entries
+        $newPath    = $newEntries -join ';'
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+        Log-Step "[setup-paths] prepended ~/.local/bin to User PATH"
+        Log-Warn "[setup-paths] restart your terminal/SSH session for the User PATH change to apply"
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
 }
 {{ end -}}

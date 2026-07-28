@@ -6,42 +6,45 @@
 
 set -euo pipefail
 
+{{ template "scripts/log.sh" }}
 {{ template "scripts/load-nvm" }}
 
-echo "=== Claude Code Config Setup ==="
+log_begin "Claude Code config"
 
+log_section "check claude CLI is available — every step below drives it"
 if ! command -v claude &>/dev/null; then
-    echo "WARNING: claude command not found. Skipping Claude config setup." >&2
+    log_warn "claude command not found; skipping Claude config setup"
     exit 0
 fi
 
-# ── Plugins ──────────────────────────────────────────────────────────────
-
-echo "[plugins] Adding superpowers marketplace..."
+log_section "register the superpowers plugin marketplace"
+log_step "[plugins] adding obra/superpowers-marketplace"
 claude plugin marketplace add obra/superpowers-marketplace 2>&1 || true
 
-echo "[plugins] Installing slack..."
+log_section "install Claude Code plugins"
+log_step "[plugins] installing slack"
 claude plugin install slack 2>&1 || true
 
-echo "[plugins] Installing episodic-memory..."
+log_step "[plugins] installing episodic-memory"
 claude plugin install episodic-memory@superpowers-marketplace 2>&1 || true
 
-echo "[plugins] Installing elements-of-style..."
+log_step "[plugins] installing elements-of-style"
 claude plugin install elements-of-style@superpowers-marketplace 2>&1 || true
 
-# ── Output style plugin: explanatory (insight-only, replaces learning) ──
-# Learning 會要求 scaffold + 留 5-10 行給使用者寫；explanatory 只留 ★ Insight 解說。
+log_section "swap output style to explanatory — learning demands scaffolding, explanatory only adds insight notes"
 INSTALLED_PLUGINS="$(claude plugin list 2>/dev/null || true)"
 if ! echo "$INSTALLED_PLUGINS" | grep -q "explanatory-output-style@claude-plugins-official"; then
-    echo "[plugins] Installing explanatory-output-style..."
+    log_step "[plugins] installing explanatory-output-style"
     claude plugin install explanatory-output-style@claude-plugins-official 2>&1 || true
+else
+    log_skip "[plugins] explanatory-output-style already installed"
 fi
 if echo "$INSTALLED_PLUGINS" | grep -q "learning-output-style@claude-plugins-official"; then
-    echo "[plugins] Removing learning-output-style (superseded by explanatory)..."
+    log_step "[plugins] removing learning-output-style (superseded by explanatory)"
     claude plugin uninstall learning-output-style@claude-plugins-official 2>&1 || true
 fi
 
-# ── Retired plugin: superpowers ─────────────────────────────────────────
+log_section "uninstall the retired superpowers plugin so its removal converges on every machine"
 # Workflow skills replaced by the in-house discipline skills in ~/.claude/skills/.
 # remove-superpowers-plugin only dropped the install line, so machines that had
 # already applied it kept the plugin -- and run_update-claude-plugins, which
@@ -49,46 +52,45 @@ fi
 # the removal converges on every machine, not just the one where it was run
 # by hand.
 if echo "$INSTALLED_PLUGINS" | grep -q "superpowers@claude-plugins-official"; then
-    echo "[plugins] Removing superpowers (retired, replaced by in-house discipline skills)..."
+    log_step "[plugins] removing superpowers (retired, replaced by in-house discipline skills)"
     claude plugin uninstall superpowers@claude-plugins-official 2>&1 || true
+else
+    log_skip "[plugins] superpowers not installed"
 fi
 
-# ── jdtls（Java LSP 依賴）───────────────────────────────────────────────
-# ⚠ 版本同步：Windows 版用 scoop rolling release，這裡用 pinned tarball
-echo "[jdtls] Checking..."
+log_section "install jdtls — the Java LSP; pinned tarball here, scoop rolling release on Windows"
 JDTLS_DIR="$HOME/.local/share/jdtls"
 if ! command -v jdtls &>/dev/null && [ ! -f "$JDTLS_DIR/bin/jdtls" ]; then
     JDTLS_VERSION="1.58.0-202602271700"
     JDTLS_URL="https://download.eclipse.org/jdtls/snapshots/jdt-language-server-${JDTLS_VERSION}.tar.gz"
-    echo "[jdtls] Downloading ${JDTLS_VERSION}..."
+    log_step "[jdtls] downloading ${JDTLS_VERSION}"
     mkdir -p "$JDTLS_DIR"
     if command -v curl &>/dev/null; then
         curl -fsSL "$JDTLS_URL" | tar xz -C "$JDTLS_DIR"
     elif command -v wget &>/dev/null; then
         wget -qO- "$JDTLS_URL" | tar xz -C "$JDTLS_DIR"
     else
-        echo "[jdtls] WARNING: curl/wget not found." >&2
+        log_warn "[jdtls] neither curl nor wget found; cannot download"
     fi
 else
-    echo "[jdtls] already installed, skipping."
+    log_skip "[jdtls] already installed"
 fi
 
-# ── Plugin cache cleanup ─────────────────────────────────────────────────
-echo "[cleanup] Removing stale plugin caches..."
+log_section "drop the stale superpowers plugin cache left by the retired plugin"
 PLUGIN_CACHE="$HOME/.claude/plugins/cache"
 # rm -rf exits 0 on a missing path, so guard on existence -- otherwise the
 # message prints on every apply and the output stops meaning anything.
 if [ -d "$PLUGIN_CACHE/superpowers-marketplace/superpowers" ]; then
     rm -rf "$PLUGIN_CACHE/superpowers-marketplace/superpowers"
-    echo "  Removed marketplace superpowers"
+    log_step "[cleanup] removed marketplace superpowers cache"
 fi
 # uninstall clears installed_plugins.json + enabledPlugins but leaves the cache behind
 if [ -d "$PLUGIN_CACHE/claude-plugins-official/superpowers" ]; then
     rm -rf "$PLUGIN_CACHE/claude-plugins-official/superpowers"
-    echo "  Removed official superpowers cache"
+    log_step "[cleanup] removed official superpowers cache"
 fi
 
-# ── episodic-memory dep repair (onnxruntime-common hoist) ────────────────
+log_section "repair episodic-memory deps — its lockfile hides onnxruntime-common from a bare import"
 # The published episodic-memory lockfile nests onnxruntime-common only under
 # onnxruntime-node/-web, but @huggingface/transformers does a bare
 # `import 'onnxruntime-common'` that needs it at the package root -> its
@@ -108,40 +110,44 @@ if [ -d "$em_base" ]; then
             "$nm/onnxruntime-web/node_modules/onnxruntime-common"; do
             if [ -d "$nested" ]; then
                 cp -R "$nested" "$top"
-                echo "  Repaired episodic-memory deps (onnxruntime-common): $(basename "${ver_dir%/}")"
+                log_step "[deps] repaired onnxruntime-common for $(basename "${ver_dir%/}")"
                 break
             fi
         done
     done
+else
+    log_skip "[deps] episodic-memory not present; nothing to repair"
 fi
 
-# ── MCP Servers ──────────────────────────────────────────────────────────
-echo "[mcp] Setting up MCP servers..."
-
+log_section "register user-scope MCP servers"
 mcp_add_if_missing() {
     local name="$1"; shift
     if claude mcp list 2>/dev/null | grep -q "^${name}:"; then
-        echo "[mcp] ${name} already registered, skipping."
+        log_skip "[mcp] ${name} already registered"
     else
-        claude mcp add --scope user "$name" -- "$@" && echo "[mcp] ${name} registered."
+        claude mcp add --scope user "$name" -- "$@" && log_step "[mcp] ${name} registered"
     fi
 }
 
 if command -v codegraph &>/dev/null; then
     mcp_add_if_missing "codegraph" codegraph "serve" "--mcp"
 else
-    echo "[mcp] codegraph not found, skipping."
+    log_skip "[mcp] codegraph binary not found"
 fi
 
-# ── User-level preferences in ~/.claude.json ────────────────────────────
+log_section "set user preferences in ~/.claude.json"
 CLAUDE_JSON="$HOME/.claude.json"
 if [ -f "$CLAUDE_JSON" ] && command -v jq &>/dev/null; then
     if [ "$(jq -r '.copyOnSelect // "unset"' "$CLAUDE_JSON")" != "false" ]; then
         tmp=$(mktemp)
         jq '.copyOnSelect = false' "$CLAUDE_JSON" > "$tmp" && mv "$tmp" "$CLAUDE_JSON"
-        echo "[config] Set copyOnSelect=false in ~/.claude.json"
+        log_step "[config] set copyOnSelect=false"
+    else
+        log_skip "[config] copyOnSelect already false"
     fi
+else
+    log_skip "[config] ~/.claude.json or jq missing"
 fi
 
-echo "=== Claude config setup complete. Restart Claude Code to activate. ==="
+log_step "restart Claude Code to activate the changes above"
 {{ end -}}

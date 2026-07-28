@@ -5,35 +5,31 @@
 
 set -euo pipefail
 
-echo "=== Font Setup ==="
+{{ template "scripts/log.sh" }}
+{{- if eq .chezmoi.os "darwin" }}
+{{ template "scripts/brew-cask-install.sh" }}
+{{- end }}
+
+log_begin "fonts"
 
 {{- if eq .chezmoi.os "darwin" }}
 
+log_section "check Homebrew is available — casks are the only install path here"
 if ! command -v brew &>/dev/null; then
-    echo "[fonts] Homebrew not found. Skipping."
+    log_warn "[fonts] Homebrew not found; skipping"
     exit 0
 fi
 
-brew_install_cask() {
-    local name="$1"
-    local cask="${2:-$1}"
-    if brew list --cask "$cask" &>/dev/null 2>&1; then
-        echo "[$cask] already installed, skipping."
-    else
-        echo "[$cask] Installing via brew cask..."
-        brew install --cask "$cask"
-    fi
-}
-
-brew_install_cask "font-caskaydia-cove-nerd-font"
-brew_install_cask "font-jetbrains-mono"
+log_section "install the terminal fonts referenced by the Windows Terminal / shell config"
+brew_install_cask font-caskaydia-cove-nerd-font
+brew_install_cask font-jetbrains-mono
 
 {{- else }}
-# Linux/WSL: 字型由 terminal emulator 所在的 host OS 管理
-echo "[fonts] Linux/WSL — fonts are managed by the host OS terminal."
-echo "  CaskaydiaCove Nerd Font: https://www.nerdfonts.com/font-downloads"
-echo "  JetBrains Mono: https://www.jetbrains.com/lp/mono/"
-{{- end }}
 
-echo "=== Font setup complete. ==="
+log_section "report font sources — on Linux/WSL the host OS terminal owns fonts, not this shell"
+log_skip "[fonts] managed by the host OS terminal emulator"
+log_step "CaskaydiaCove Nerd Font: https://www.nerdfonts.com/font-downloads"
+log_step "JetBrains Mono: https://www.jetbrains.com/lp/mono/"
+
+{{- end }}
 {{ end -}}

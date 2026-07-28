@@ -3,62 +3,64 @@
 #
 # run_onchange_install-gnupg.ps1.tmpl (earlier phase) installs vanilla GnuPG to
 # ~/.local/opt/gnupg. This one-time script removes the old Scoop gpg and the
-# stale state it left behind, so nothing recreates the portable-mode bug:
-#   - scoop uninstall gpg
-#   - remove orphaned gpg/gpg2 shims (the scoop gpg shim was hijacked to git gpg)
-#   - kill leftover scoop gpg-agent/scdaemon, wipe stale ~/.gnupg/S.gpg-agent*
-#     sockets (a dead scoop-portable agent socket makes gpg report "No secret key")
-#   - remove the orphaned clink cmd.exe AutoRun left by Wave 4 (clink was
-#     uninstalled but HKCU\...\Command Processor\AutoRun still pointed at the
-#     deleted clink.bat -> every cmd.exe printed "The system cannot find the path
-#     specified.", which broke the corp-ssh-askpass.cmd handoff to ssh)
+# stale state it left behind, so nothing recreates the portable-mode bug.
+#
+# Kept separate from run_once_after_migrate-scoop-cleanup.ps1.tmpl: beyond the
+# uninstall it kills daemons, wipes agent sockets and repairs a cmd.exe AutoRun.
 #
 # Idempotent: each step is a no-op when its target is already gone.
 
 $ErrorActionPreference = "Continue"
-Write-Host "=== Wave 8: GnuPG off Scoop ===" -ForegroundColor Cyan
 
-# 1. Kill leftover scoop gpg daemons, then uninstall scoop gpg.
-Get-Process gpg-agent,scdaemon,keyboxd,dirmngr -ErrorAction SilentlyContinue |
-    Where-Object { $_.Path -like '*\scoop\apps\gpg\*' } |
-    Stop-Process -Force -ErrorAction SilentlyContinue
+{{ template "scripts/log.ps1" }}
+{{ template "scripts/scoop-uninstall.ps1" }}
 
-if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
-    $installed = $false
-    try { if ((scoop list gpg 2>$null | Out-String) -match '(?im)^\s*gpg\b') { $installed = $true } } catch {}
-    if ($installed) {
-        Write-Host "[gpg] uninstalling from scoop..." -ForegroundColor Yellow
-        scoop uninstall gpg 2>&1 | Out-Null
+Log-Begin "Wave 8: GnuPG off scoop"
+try {
+    Log-Section "kill leftover scoop gpg daemons — they hold files the uninstall needs to delete"
+    Get-Process gpg-agent,scdaemon,keyboxd,dirmngr -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -like '*\scoop\apps\gpg\*' } |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+
+    if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
+        Remove-ScoopPackage -Name "gpg" -Reason "scoop's manifest drops an empty gpgconf.ctl that forces portable mode, so GNUPGHOME is ignored"
     } else {
-        Write-Host "[gpg] not installed via scoop, skipping." -ForegroundColor Gray
+        Log-Skip "scoop not found; skipping uninstall"
     }
-} else {
-    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
-}
 
-# 2. Remove orphaned shims left behind by the uninstall.
-$shimDir = Join-Path $env:USERPROFILE "scoop\shims"
-foreach ($f in 'gpg.exe','gpg.shim','gpg2.exe','gpg2.shim') {
-    $p = Join-Path $shimDir $f
-    if (Test-Path $p) { Remove-Item $p -Force -ErrorAction SilentlyContinue; Write-Host "[shim] removed $f" -ForegroundColor Yellow }
-}
-
-# 3. Wipe stale gpg-agent socket nonce files in ~/.gnupg (written by the dead
-#    scoop-portable agent). The owned agent recreates fresh ones on next use.
-Get-ChildItem (Join-Path $env:USERPROFILE ".gnupg\S.gpg-agent*") -Force -ErrorAction SilentlyContinue |
-    Remove-Item -Force -ErrorAction SilentlyContinue
-
-# 4. Remove the orphaned clink cmd.exe AutoRun (Wave 4 gap). Only if it points at
-#    a clink.bat that no longer exists -- never touch a working AutoRun.
-$cp = 'HKCU:\Software\Microsoft\Command Processor'
-$autorun = (Get-ItemProperty -Path $cp -Name AutoRun -ErrorAction SilentlyContinue).AutoRun
-if ($autorun -match 'clink') {
-    $batPath = if ($autorun -match '"([^"]+\.bat)"') { $Matches[1] } else { $null }
-    if ($batPath -and -not (Test-Path $batPath)) {
-        Remove-ItemProperty -Path $cp -Name AutoRun -ErrorAction SilentlyContinue
-        Write-Host "[clink] removed orphaned cmd.exe AutoRun -> $batPath (missing)" -ForegroundColor Yellow
+    Log-Section "remove orphaned gpg/gpg2 shims — the scoop gpg shim was hijacked to git's gpg"
+    $shimDir = Join-Path $env:USERPROFILE "scoop\shims"
+    foreach ($f in 'gpg.exe','gpg.shim','gpg2.exe','gpg2.shim') {
+        $p = Join-Path $shimDir $f
+        if (Test-Path $p) {
+            Remove-Item $p -Force -ErrorAction SilentlyContinue
+            Log-Step "[shim] removed $f"
+        }
     }
-}
 
-Write-Host "=== Migration complete. ===" -ForegroundColor Cyan
+    Log-Section "wipe stale gpg-agent sockets — a dead scoop-portable agent socket makes gpg report 'No secret key'"
+    Get-ChildItem (Join-Path $env:USERPROFILE ".gnupg\S.gpg-agent*") -Force -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+
+    Log-Section "drop the orphaned clink cmd.exe AutoRun — it broke the corp-ssh-askpass handoff (Wave 4 gap)"
+    # Only if it points at a clink.bat that no longer exists -- never touch a working AutoRun.
+    $cp = 'HKCU:\Software\Microsoft\Command Processor'
+    $autorun = (Get-ItemProperty -Path $cp -Name AutoRun -ErrorAction SilentlyContinue).AutoRun
+    if ($autorun -match 'clink') {
+        $batPath = if ($autorun -match '"([^"]+\.bat)"') { $Matches[1] } else { $null }
+        if ($batPath -and -not (Test-Path $batPath)) {
+            Remove-ItemProperty -Path $cp -Name AutoRun -ErrorAction SilentlyContinue
+            Log-Step "[clink] removed orphaned cmd.exe AutoRun -> $batPath (missing)"
+        } else {
+            Log-Skip "[clink] AutoRun still points at an existing script; left alone"
+        }
+    } else {
+        Log-Skip "[clink] no clink AutoRun present"
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
 {{ end -}}

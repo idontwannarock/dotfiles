@@ -5,21 +5,30 @@
 
 $ErrorActionPreference = "Continue"
 
-# rustup-init runs with --no-modify-path, so add ~/.cargo/bin for this session.
-$cargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
-if (Test-Path $cargoBin) { $env:PATH = "$cargoBin;$env:PATH" }
+{{ template "scripts/log.ps1" }}
 
-if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
-    Write-Host "[rust] rustup not found, skipping toolchain update." -ForegroundColor Yellow
-    exit 0
-}
+Log-Begin "Rust toolchain update"
+try {
+    Log-Section "put ~/.cargo/bin on PATH for this session — rustup-init ran with --no-modify-path"
+    $cargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
+    if (Test-Path $cargoBin) { $env:PATH = "$cargoBin;$env:PATH" }
 
-Write-Host "=== Rust toolchain update (stable) ===" -ForegroundColor Cyan
-# best-effort：離線/網路錯誤時印 warning 但不中斷整體 apply
-rustup update stable 2>&1 | ForEach-Object { "  $_" }
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "=== Rust stable is up to date. ===" -ForegroundColor Cyan
-} else {
-    Write-Warning "[rust] 'rustup update stable' failed (offline?), continuing."
+    if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+        Log-Warn "[rust] rustup not found; skipping toolchain update"
+        return
+    }
+
+    Log-Section "update the stable toolchain — best effort, an offline machine must not fail the whole apply"
+    rustup update stable 2>&1 | ForEach-Object { "        $_" }
+    if ($LASTEXITCODE -eq 0) {
+        Log-Step "[rust] stable is up to date"
+    } else {
+        Log-Warn "[rust] 'rustup update stable' failed (offline?); continuing"
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
 }
 {{ end -}}

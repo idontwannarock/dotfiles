@@ -9,41 +9,39 @@
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "=== npm Global Tools Setup ===" -ForegroundColor Cyan
+{{ template "scripts/log.ps1" }}
+{{ template "scripts/npm-install.ps1" }}
 
-if (-not (Get-Command "npm" -ErrorAction SilentlyContinue)) {
-    Write-Host "[npm-tools] npm not found, skipping all npm installs." -ForegroundColor Yellow
-    exit 0
-}
-
-function Install-NpmPackage {
-    param([string]$Command, [string]$Package)
-    if (Get-Command $Command -ErrorAction SilentlyContinue) {
-        Write-Host "[$Command] already installed, skipping." -ForegroundColor Gray
-    } else {
-        Write-Host "[$Command] Installing $Package..." -ForegroundColor Yellow
-        npm install -g $Package
+Log-Begin "npm global tools"
+try {
+    Log-Section "check npm is available — every install below needs it"
+    if (-not (Get-Command "npm" -ErrorAction SilentlyContinue)) {
+        Log-Warn "[npm-tools] npm not found; skipping all npm installs"
+        return
     }
+
+    Log-Section "install Claude Code CLI"
+    Install-NpmPackage -Command "claude" -Package "@anthropic-ai/claude-code"
+
+    Log-Section "install Codex CLI"
+    Install-NpmPackage -Command "codex" -Package "@openai/codex"
+
+    Log-Section "install codegraph — semantic code graph MCP server"
+    Install-NpmPackage -Command "codegraph" -Package "@colbymchenry/codegraph"
+
+    Log-Section "install OpenSpec CLI — spec/change tracking used by dev-workflow"
+    if (Get-Command "openspec" -ErrorAction SilentlyContinue) {
+        Log-Skip "[openspec] already installed"
+    } else {
+        Log-Step "[openspec] installing @fission-ai/openspec"
+        npm install -g @fission-ai/openspec
+        Log-Step "[openspec] setting delivery=skills (no slash commands)"
+        openspec config set delivery skills
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
 }
-
-# ── Claude Code ──────────────────────────────────────────────────────────
-Install-NpmPackage "claude" "@anthropic-ai/claude-code"
-
-# ── Codex CLI ────────────────────────────────────────────────────────────
-Install-NpmPackage "codex" "@openai/codex"
-
-# ── codegraph (semantic code graph MCP) ──────────────────────────────────
-Install-NpmPackage "codegraph" "@colbymchenry/codegraph"
-
-# ── OpenSpec CLI ─────────────────────────────────────────────────────────
-if (Get-Command "openspec" -ErrorAction SilentlyContinue) {
-    Write-Host "[openspec] already installed, skipping." -ForegroundColor Gray
-} else {
-    Write-Host "[openspec] Installing..." -ForegroundColor Yellow
-    npm install -g @fission-ai/openspec
-    openspec config set delivery skills
-    Write-Host "[openspec] Configured (delivery=skills)." -ForegroundColor Green
-}
-
-Write-Host "=== npm tools setup complete. ===" -ForegroundColor Cyan
 {{ end -}}

@@ -5,98 +5,70 @@
 
 set -euo pipefail
 
-echo "=== Container & Cloud Tools Setup ==="
+{{ template "scripts/log.sh" }}
+{{ template "scripts/pkg-install.sh" . }}
+{{- if eq .chezmoi.os "darwin" }}
+{{ template "scripts/brew-cask-install.sh" }}
+{{- end }}
+
+log_begin "container & cloud tools"
 
 {{- if eq .chezmoi.os "darwin" }}
 
+log_section "check Homebrew is available — every install below goes through it"
 if ! command -v brew &>/dev/null; then
-    echo "[containers] Homebrew not found. Skipping."
+    log_warn "[containers] Homebrew not found; skipping"
     exit 0
 fi
 
-brew_install() {
-    local cmd="$1"
-    local pkg="${2:-$1}"
-    if command -v "$cmd" &>/dev/null; then
-        echo "[$cmd] already installed, skipping."
-    else
-        echo "[$pkg] Installing via brew..."
-        brew install "$pkg"
-    fi
-}
+log_section "install Docker Desktop — ships both the docker CLI and compose"
+brew_install_cask docker
 
-brew_install_cask() {
-    local name="$1"
-    local cask="${2:-$1}"
-    if brew list --cask "$cask" &>/dev/null 2>&1; then
-        echo "[$cask] already installed, skipping."
-    else
-        echo "[$cask] Installing via brew cask..."
-        brew install --cask "$cask"
-    fi
-}
+log_section "install Kubernetes CLI tooling"
+pkg_install kubectl
+pkg_install kubelogin
 
-# Docker Desktop (includes docker + compose)
-brew_install_cask "docker"
-
-# Kubernetes
-brew_install kubectl
-brew_install kubelogin
-
-# Lens
-brew_install_cask "lens"
+log_section "install Lens — the Kubernetes GUI"
+brew_install_cask lens
 
 {{- else }}
-# Linux/WSL
 
-apt_install() {
-    local cmd="$1"
-    local pkg="${2:-$1}"
-    if command -v "$cmd" &>/dev/null; then
-        echo "[$cmd] already installed, skipping."
-    else
-        echo "[$pkg] Installing via apt..."
-        sudo apt-get install -y "$pkg"
-    fi
-}
-
-# Docker
+log_section "install Docker Engine via the upstream convenience script"
 if command -v docker &>/dev/null; then
-    echo "[docker] already installed, skipping."
+    log_skip "[docker] already installed"
 else
-    echo "[docker] Installing via official script..."
+    log_step "[docker] installing via official script"
     curl -fsSL https://get.docker.com | sh
 fi
 
-# Docker Compose plugin
+log_section "install the docker compose plugin"
 if docker compose version &>/dev/null 2>&1; then
-    echo "[docker-compose] already installed, skipping."
+    log_skip "[docker-compose] already installed"
 else
-    echo "[docker-compose] Installing plugin..."
-    sudo apt-get install -y docker-compose-plugin 2>/dev/null || echo "[docker-compose] Install manually if Docker was not installed via apt."
+    log_step "[docker-compose] installing plugin via apt"
+    sudo apt-get install -y docker-compose-plugin 2>/dev/null \
+        || log_warn "[docker-compose] install manually if Docker was not installed via apt"
 fi
 
-# kubectl
+log_section "install kubectl from the upstream Kubernetes apt repo"
 if command -v kubectl &>/dev/null; then
-    echo "[kubectl] already installed, skipping."
+    log_skip "[kubectl] already installed"
 else
-    echo "[kubectl] Installing via apt..."
+    log_step "[kubectl] adding the pkgs.k8s.io repo and installing"
     curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.32/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg 2>/dev/null || true
     echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.32/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
     sudo apt-get update -q && sudo apt-get install -y kubectl
 fi
 
-# kubelogin
+log_section "check kubelogin — no apt package, so this only reports"
 if command -v kubelogin &>/dev/null; then
-    echo "[kubelogin] already installed, skipping."
+    log_skip "[kubelogin] already installed"
 else
-    echo "[kubelogin] Install manually: https://github.com/Azure/kubelogin"
+    log_warn "[kubelogin] install manually: https://github.com/Azure/kubelogin"
 fi
 
-# Lens — GUI app, skip on Linux/WSL
-echo "[lens] GUI app — install manually on Linux/WSL if needed."
+log_section "skip Lens — GUI app, belongs to the host OS on Linux/WSL"
+log_skip "[lens] GUI app; install manually on Linux/WSL if needed"
 
 {{- end }}
-
-echo "=== Container tools setup complete. ==="
 {{ end -}}

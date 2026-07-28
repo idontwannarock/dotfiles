@@ -1,11 +1,9 @@
 {{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_once_ script — 字型安裝（Windows）
-
-Write-Host "=== Font Setup ===" -ForegroundColor Cyan
-
+#
 # This script no longer installs anything -- both fonts moved off scoop in Wave 12b.
 # Kept as a historical record.
-
+#
 # ── Nerd Fonts (CaskaydiaCove Mono + JetBrains Mono) ────────────────────────
 # cascadiacode-nf-mono and jetbrains-mono moved to .chezmoiexternal.toml in Wave
 # 12b (2026-06-18): the externals fetch the upstream zips and
@@ -15,5 +13,16 @@ Write-Host "=== Font Setup ===" -ForegroundColor Cyan
 # scoop's font install COPIES the .ttf, so its uninstaller would delete the real
 # installed fonts. Matches the clink/dark/vimtutor precedent.
 
-Write-Host "=== Font setup complete (nothing to install). ===" -ForegroundColor Cyan
+{{ template "scripts/log.ps1" }}
+
+Log-Begin "Windows fonts"
+try {
+    Log-Section "no-op — fonts arrive via chezmoi-external and are registered by run_once_register-fonts"
+    Log-Skip "[fonts] nothing to install here; existing scoop font installs are left untouched by design"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
 {{ end -}}
