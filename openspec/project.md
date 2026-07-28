@@ -55,6 +55,7 @@
 
 - **Repo 是 source of truth,不是 live config。** 兩邊不自動互通。
 - **先在機器上測,再回寫 source。** 固定四步:改機器上實際設定 → 確認運作 → 回寫 chezmoi source → 更新文件。(尚在「local-test-only」的項目都卡在這條沒走完。)
+- **`run_*` 腳本的副作用要顯式反轉。** chezmoi 的宣告式收斂只涵蓋它 declare 的檔案;腳本裝出來的東西(套件、plugin 註冊、外部 CLI 設定)不在其中。退役時刪掉那行 install 只會停止新機器安裝,已套用過的機器永久漂移——必須補一段冪等的反安裝,或在 `.chezmoiremove` 宣告目標路徑。同理,任何「本機手動跑一次」的收尾都不會傳播。
 - **盡量跨平台。** 目標是 Windows/macOS/Linux 皆可用;平台差異用 per-platform 片段拆分,而非整份分叉。
 - **跨工具 parity = shared body + 薄指標。** 權威 body 一份在 `~/.agent` / `.chezmoitemplates`,每工具一個 name-map wrapper。目標工具 = **Claude + Codex**(未來或加 Antigravity CLI);**Gemini CLI 已放棄,不要去檢查它。**
 - **Codex frontmatter 要嚴格 YAML。** skill `description:` 若含 `:`/`#`/開頭 `[`{` 必須加引號;Claude 容忍、Codex 會報錯。用真的 YAML parser 驗,不要只 grep。

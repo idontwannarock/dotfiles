@@ -1,22 +1,4 @@
-# claude-config Specification
-
-## Purpose
-規範 Claude Code 設定如何由 chezmoi 部署:`~/.claude/` 以 `exact_` 目錄管理、plugin 安裝走 `run_onchange_` 腳本、Windows hook 修復由 PowerShell 腳本處理。
-## Requirements
-### Requirement: Claude Code 設定透過 chezmoi exact_ 目錄部署
-`~/.claude/` 下的 CLAUDE.md、commands、agents SHALL 由 chezmoi 以 `exact_` 目錄管理，確保 repo 中移除的檔案在 apply 後自動從系統清除。
-
-#### Scenario: 新增 command 後自動部署
-- **WHEN** repo 中新增 `dot_claude/exact_commands/exact_opsx/new-cmd.md` 並執行 chezmoi apply
-- **THEN** `~/.claude/commands/opsx/new-cmd.md` 出現在系統
-
-#### Scenario: 移除 command 後自動清除
-- **WHEN** repo 中刪除 `dot_claude/exact_commands/exact_sp/old-cmd.md` 並執行 chezmoi apply
-- **THEN** `~/.claude/commands/sp/old-cmd.md` 從系統移除
-
-#### Scenario: 移除 agent 後自動清除
-- **WHEN** repo 中刪除 `dot_claude/exact_agents/engineering/old-agent.md` 並執行 chezmoi apply
-- **THEN** `~/.claude/agents/engineering/old-agent.md` 從系統移除
+## MODIFIED Requirements
 
 ### Requirement: Claude plugin 安裝透過 run_onchange_ 腳本
 superpowers marketplace 與所需 plugins 的安裝 SHALL 由 chezmoi `run_onchange_` 腳本處理，腳本內容改變時自動重新執行。所需 plugins 為 episodic-memory 與 elements-of-style（均來自 `obra/superpowers-marketplace`），以及 official marketplace 的必要 plugins。
@@ -53,16 +35,7 @@ superpowers marketplace 與所需 plugins 的安裝 SHALL 由 chezmoi `run_oncha
 - **WHEN** superpowers plugin 已移除後執行 chezmoi apply，`run_update-claude-plugins` 依 `enabledPlugins` 逐一更新
 - **THEN** 更新清單中不含 superpowers，apply 輸出不再出現其更新訊息
 
-### Requirement: Windows hook 修復腳本由 chezmoi 管理
-Windows 特有的 hook 路徑修復（cygpath workaround）與 BOM 清除 SHALL 由 chezmoi `run_onchange_` PowerShell 腳本處理，僅在 Windows 環境執行。
-
-#### Scenario: Windows 環境自動執行 hook 修復
-- **WHEN** chezmoi apply 在 Windows 執行，且修復腳本內容有變更
-- **THEN** hook 路徑修復與 BOM 清除腳本執行
-
-#### Scenario: 非 Windows 環境跳過修復腳本
-- **WHEN** chezmoi apply 在 macOS 或 Linux 執行
-- **THEN** Windows hook 修復腳本不執行（由 .chezmoiignore 或 template OS 判斷排除）
+## ADDED Requirements
 
 ### Requirement: 退役的 Claude command 由 .chezmoiremove 跨機器修剪
 `~/.claude/commands/` 為非 `exact_` 目錄，source 中不存在的檔案不會被自動修剪。已退役且未受 chezmoi 管理的 command 檔案 SHALL 於 `home/.chezmoiremove` 中點名，使其在所有機器 apply 時一併移除。
@@ -74,4 +47,3 @@ Windows 特有的 hook 路徑修復（cygpath workaround）與 BOM 清除 SHALL 
 #### Scenario: 已移除的機器重跑不報錯
 - **WHEN** 該路徑在機器上不存在且再次執行 chezmoi apply
 - **THEN** apply 正常完成，不因缺少該路徑而失敗
-

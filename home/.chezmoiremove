@@ -52,3 +52,7 @@
 # Stale unmanaged copy of dev-workflow-isolation.md (canonical: ~/.agent/reference/);
 # still carried the old superpowers skill name. Prune across machines.
 .claude/skills/dev-workflow/references
+
+# Superseded by the dev-workflow skill. Never in source, so the non-exact
+# .claude/commands/ dir never pruned it; it still referenced superpowers:* skills.
+.claude/commands/opsx/workflow.md
