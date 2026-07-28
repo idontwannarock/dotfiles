@@ -40,6 +40,22 @@ if ($installedPlugins -match "learning-output-style@claude-plugins-official") {
     claude plugin uninstall learning-output-style@claude-plugins-official 2>&1 | Out-Null
 }
 
+# ── Retired plugin: superpowers ─────────────────────────────────────────
+# Workflow skills replaced by the in-house discipline skills in ~/.claude/skills/.
+# remove-superpowers-plugin only dropped the install line, so machines that had
+# already applied it kept the plugin -- and run_update-claude-plugins, which
+# iterates enabledPlugins, kept updating it on every apply. Uninstall here so
+# the removal converges on every machine, not just the one where it was run
+# by hand.
+if ($installedPlugins -match "superpowers@claude-plugins-official") {
+    Write-Host "[plugins] Removing superpowers (retired, replaced by in-house discipline skills)..." -ForegroundColor Yellow
+    # 2>&1 turns native stderr into ErrorRecords, which terminate under Stop.
+    # Same guard as the marketplace add above; this is the one run that matters.
+    $ErrorActionPreference = "Continue"
+    claude plugin uninstall superpowers@claude-plugins-official 2>&1 | Out-Null
+    $ErrorActionPreference = "Stop"
+}
+
 # ── jdtls（Java LSP 依賴）───────────────────────────────────────────────
 # jdtls moved OFF scoop in Wave 11 (2026-06-18): now provided by
 # .chezmoiexternal.toml at ~/.local/opt/jdtls, launched via ~/.local/bin/jdtls(.cmd).
@@ -51,6 +67,11 @@ $pluginCache = "$env:USERPROFILE\.claude\plugins\cache"
 if (Test-Path "$pluginCache\superpowers-marketplace\superpowers") {
     Remove-Item -Recurse -Force "$pluginCache\superpowers-marketplace\superpowers"
     Write-Host "  Removed marketplace superpowers" -ForegroundColor Green
+}
+# uninstall clears installed_plugins.json + enabledPlugins but leaves the cache behind
+if (Test-Path "$pluginCache\claude-plugins-official\superpowers") {
+    Remove-Item -Recurse -Force "$pluginCache\claude-plugins-official\superpowers"
+    Write-Host "  Removed official superpowers cache" -ForegroundColor Green
 }
 
 # ── episodic-memory dep repair (onnxruntime-common hoist) ────────────────

@@ -44,7 +44,10 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 design doc 改道到 `~/.local/share/superpowers/<repo>/`;該機制已隨
 rework-dev-workflow-skills change 退役。superpowers plugin 已於
 remove-superpowers-plugin change 移除 —— 已驗證 episodic-memory 不依賴它
-(自帶 hooks、來自不同 marketplace),流程紀律全改由 `~/.claude/skills/` 自家 skills 提供。)
+(自帶 hooks、來自不同 marketplace),流程紀律全改由 `~/.claude/skills/` 自家 skills 提供。
+該次移除只停止安裝、uninstall 靠手動,已套用過的機器因此留著 plugin;
+retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
+主動 uninstall 並清 cache,移除才隨 apply 收斂到每台機器。)
 
 ### 前置需求
 
