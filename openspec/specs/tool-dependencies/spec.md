@@ -226,23 +226,6 @@ Windows 上 golangci-lint SHALL 由 `.chezmoiexternal.toml` 下載 GitHub Releas
 - **WHEN** 在 Windows 上的 `run_once_install-cli-tools.ps1.tmpl` 執行
 - **THEN** 該腳本 SHALL NOT 呼叫 `Install-ScoopPackage "golangci-lint"`
 
-### Requirement: Wave 2 一次性遷移腳本
-`run_once_after_migrate-scoop-wave2.ps1.tmpl` SHALL 在 Windows 上執行一次性遷移：卸載已存在的 scoop kubectl/kubelogin/yt-dlp/hugo/hugo-extended/nexttrace/golangci-lint。腳本 SHALL 為冪等：scoop 未安裝對應套件時視為 no-op。
-
-腳本 SHALL NOT 動 User PATH（Wave 1 的 `run_once_after_migrate-scoop-to-external.ps1.tmpl` 已把 `~/.local/bin` 排在 `~/scoop/shims` 之前）。
-
-#### Scenario: 已安裝 scoop 套件被卸載
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報已安裝
-- **THEN** 腳本執行 `scoop uninstall <pkg>`，scoop apps 目錄該套件被移除
-
-#### Scenario: scoop 套件未安裝時 no-op
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報未安裝
-- **THEN** 腳本不執行 `scoop uninstall`，繼續處理下一個
-
-#### Scenario: User PATH 不被本腳本修改
-- **WHEN** Wave 2 migration 腳本執行
-- **THEN** User PATH 環境變數值維持不變（PATH 排序為 Wave 1 migration 腳本的責任）
-
 ### Requirement: SSH workaround 檔案於 Wave 1 後移除
 `Documents/exact__shared-profile.d/35-scoop-ssh-shims.ps1` SHALL 在 Wave 1 完成後從 chezmoi source 移除；同時 `90-prompt.ps1` 中 starship 的 shim-bypass 邏輯 SHALL 簡化為標準的 `starship init powershell` 呼叫。
 
@@ -290,27 +273,6 @@ Windows 上 dotfiles SHALL NOT 透過 scoop 安裝 wget。Windows PowerShell / G
 #### Scenario: Linux/macOS wget 安裝不受影響
 - **WHEN** 在 Linux 或 macOS 上的 `run_once_install-cli-tools.sh.tmpl` 執行
 - **THEN** 該腳本仍可使用 apt/brew 安裝 wget（本 requirement 限定 Windows scope）
-
-### Requirement: Wave 3 一次性遷移腳本
-`run_once_after_migrate-scoop-wave3.ps1.tmpl` SHALL 在 Windows 上執行一次性遷移：卸載 3 個 scoop 套件：`gopass`、`curl`、`wget`（無論是 dotfiles 安裝還是使用者手動安裝皆會卸載）。腳本 SHALL 為冪等：scoop 未安裝對應套件時視為 no-op；scoop 未安裝時整支 skip。
-
-腳本 SHALL NOT 動 User PATH（Wave 1 的 `run_once_after_migrate-scoop-to-external.ps1.tmpl` 已把 `~/.local/bin` 排在 `~/scoop/shims` 之前）。
-
-#### Scenario: 已安裝 scoop 套件被卸載
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報已安裝
-- **THEN** 腳本執行 `scoop uninstall <pkg>`，scoop apps 目錄該套件被移除
-
-#### Scenario: scoop 套件未安裝時 no-op
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報未安裝
-- **THEN** 腳本不執行 `scoop uninstall`，繼續處理下一個
-
-#### Scenario: scoop 未安裝時 no-op
-- **WHEN** chezmoi apply 在 Windows 執行，且 `Get-Command scoop` 回 not found
-- **THEN** 腳本印警告訊息並 return，不嘗試任何 scoop 命令
-
-#### Scenario: User PATH 不被本腳本修改
-- **WHEN** Wave 3 migration 腳本執行
-- **THEN** User PATH 環境變數值維持不變（PATH 排序為 Wave 1 migration 腳本的責任）
 
 ### Requirement: clink 不再由 dotfiles 安裝
 Windows 上 dotfiles SHALL NOT 透過 scoop 安裝 `clink`。dotfiles 內無任何流程呼叫 `clink autorun install`，且 starship 已透過 PowerShell/Git Bash/zsh init 取代 cmd.exe 命令列增強需求。
@@ -362,33 +324,6 @@ Windows 上 dotfiles SHALL NOT 透過 scoop 安裝 `winget-ps`（`Microsoft.WinG
 #### Scenario: PowerToys CommandNotFound 模組不受影響
 - **WHEN** 使用者啟動 PowerShell 且已安裝 PowerToys CommandNotFound 模組
 - **THEN** `Microsoft.WinGet.CommandNotFound` 仍可正常載入（該模組獨立於 `Microsoft.WinGet.Client`/winget-ps）並透過 OS-bundled winget 提供建議
-
-### Requirement: Wave 4 一次性遷移腳本
-`run_once_after_migrate-scoop-wave4.ps1.tmpl` SHALL 在 Windows 上執行一次性遷移：卸載 3 個 scoop 套件 `clink`、`winget`、`winget-ps`。腳本 SHALL 為冪等：scoop 未安裝對應套件時視為 no-op；scoop 未安裝時整支 skip。
-
-腳本 SHALL NOT 卸載 `dark` 與 `vimtutor`（軟脫管項目）。
-
-腳本 SHALL NOT 動 User PATH（Wave 1 的 `run_once_after_migrate-scoop-to-external.ps1.tmpl` 已把 `~/.local/bin` 排在 `~/scoop/shims` 之前）。
-
-#### Scenario: 已安裝 scoop 硬清套件被卸載
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報已安裝（pkg ∈ {clink, winget, winget-ps}）
-- **THEN** 腳本執行 `scoop uninstall <pkg>`，scoop apps 目錄該套件被移除
-
-#### Scenario: 軟脫管套件不被卸載
-- **WHEN** chezmoi apply 在 Windows 執行
-- **THEN** 腳本 SHALL NOT 嘗試 `scoop uninstall dark` 或 `scoop uninstall vimtutor`，無論其安裝狀態
-
-#### Scenario: scoop 硬清套件未安裝時 no-op
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報未安裝
-- **THEN** 腳本不執行 `scoop uninstall`，繼續處理下一個
-
-#### Scenario: scoop 未安裝時 no-op
-- **WHEN** chezmoi apply 在 Windows 執行，且 `Get-Command scoop` 回 not found
-- **THEN** 腳本印警告訊息並 return，不嘗試任何 scoop 命令
-
-#### Scenario: User PATH 不被本腳本修改
-- **WHEN** Wave 4 migration 腳本執行
-- **THEN** User PATH 環境變數值維持不變（PATH 排序為 Wave 1 migration 腳本的責任）
 
 ### Requirement: PowerShell command-not-found 前置條件明示
 所有 `Documents/{Windows,}PowerShell/profile.d/99-command-not-found.ps1` 檔案 SHALL 在檔案頂部包含 header comment 明示前置條件。實際命令邏輯不變。
@@ -458,33 +393,6 @@ Windows 上 SHALL 存在 `run_onchange_before_set-docker-host.ps1.tmpl`，在 ch
 - **WHEN** Windows 機器上 User env var `DOCKER_HOST` 被使用者改為其他值（例如 `tcp://remote-host:2375`），chezmoi apply 執行
 - **THEN** 腳本將 `DOCKER_HOST` 覆寫回 `tcp://127.0.0.1:2375`，印出 warning 註明值被回正
 
-### Requirement: Wave 5 一次性遷移腳本
-`run_once_after_migrate-scoop-wave5.ps1.tmpl` SHALL 在 Windows 上執行一次性遷移：卸載 2 個 scoop 套件 `docker`、`docker-compose`。腳本 SHALL 為冪等：scoop 未安裝對應套件時視為 no-op；scoop 未安裝時整支 skip。
-
-腳本 SHALL NOT 卸載 `lazydocker`（依 user 指示保持 scoop 安裝，不受 chezmoi 控管）。
-
-腳本 SHALL NOT 動 User PATH（Wave 1 的 `run_once_after_migrate-scoop-to-external.ps1.tmpl` 已把 `~/.local/bin` 排在 `~/scoop/shims` 之前）。
-
-#### Scenario: 已安裝 scoop 硬清套件被卸載
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報已安裝（pkg ∈ {docker, docker-compose}）
-- **THEN** 腳本執行 `scoop uninstall <pkg>`，scoop apps 目錄該套件被移除
-
-#### Scenario: lazydocker 不被卸載
-- **WHEN** chezmoi apply 在 Windows 執行且 `scoop list lazydocker` 回報已安裝
-- **THEN** Wave 5 migration 腳本 SHALL NOT 執行 `scoop uninstall lazydocker`
-
-#### Scenario: scoop 硬清套件未安裝時 no-op
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報未安裝
-- **THEN** 腳本不執行 `scoop uninstall`，繼續處理下一個
-
-#### Scenario: scoop 未安裝時 no-op
-- **WHEN** chezmoi apply 在 Windows 執行，且 `Get-Command scoop` 回 not found
-- **THEN** 腳本印警告訊息並 return，不嘗試任何 scoop 命令
-
-#### Scenario: User PATH 不被本腳本修改
-- **WHEN** Wave 5 migration 腳本執行
-- **THEN** User PATH 環境變數值維持不變（PATH 排序為 Wave 1 migration 腳本的責任）
-
 ### Requirement: ffmpeg 套件在 Windows 上由 chezmoi-external 安裝
 Windows 上 ffmpeg 套件（`ffmpeg.exe` + `ffprobe.exe` + `ffplay.exe` 三隻 binary）SHALL 由 `.chezmoiexternal.toml` 從 `BtbN/FFmpeg-Builds` GitHub Release 下載 `n8.1` stable channel static GPL build 的 zip，以 `type = "archive-file"` × 3 entries 共用同一 URL，分別以 `path` 過濾抽出三隻 binary 至 `~/.local/bin/`，並設為 executable。
 
@@ -503,27 +411,6 @@ URL pattern 與 Wave 1~3 的 GitHub release 雷同（同樣 github.com/<repo>/re
 #### Scenario: Windows 上 ffmpeg 不再經由 Scoop
 - **WHEN** 在 Windows 上的 `run_once_install-cli-tools.ps1.tmpl`（或其他 install 腳本）執行
 - **THEN** 該腳本 SHALL NOT 呼叫 `Install-ScoopPackage "ffmpeg"`
-
-### Requirement: Wave 6 一次性遷移腳本
-`run_once_after_migrate-scoop-wave6.ps1.tmpl` SHALL 在 Windows 上執行一次性遷移：卸載 1 個 scoop 套件 `ffmpeg`。腳本 SHALL 為冪等：scoop 未安裝對應套件時視為 no-op；scoop 未安裝時整支 skip。
-
-腳本 SHALL NOT 動 User PATH（Wave 1 的 `run_once_after_migrate-scoop-to-external.ps1.tmpl` 已把 `~/.local/bin` 排在 `~/scoop/shims` 之前）。
-
-#### Scenario: 已安裝 scoop ffmpeg 被卸載
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list ffmpeg` 回報已安裝
-- **THEN** 腳本執行 `scoop uninstall ffmpeg`，scoop apps 目錄該套件被移除
-
-#### Scenario: scoop ffmpeg 未安裝時 no-op
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list ffmpeg` 回報未安裝
-- **THEN** 腳本不執行 `scoop uninstall`，繼續結束
-
-#### Scenario: scoop 未安裝時整支 skip
-- **WHEN** chezmoi apply 在 Windows 執行，且 `Get-Command scoop` 回 not found
-- **THEN** 腳本印警告訊息並 return，不嘗試任何 scoop 命令
-
-#### Scenario: User PATH 不被本腳本修改
-- **WHEN** Wave 6 migration 腳本執行
-- **THEN** User PATH 環境變數值維持不變（PATH 排序為 Wave 1 migration 腳本的責任）
 
 ### Requirement: vim 套件本體在 Windows 上由 chezmoi-external 整包安裝
 Windows 上 vim 套件（vim distribution + 4 個依賴 DLL + 完整 runtime/ 子目錄）SHALL 由 `.chezmoiexternal.toml` 從 `vim/vim-win32-installer` GitHub Release 下載 `gvim_<version>_x64.zip`（unsigned 變體），以 `type = "archive"` + `stripComponents = 1` 整包解壓至 `~/.local/share/vim/`，產生 `~/.local/share/vim/vim92/` 子樹（含 `vim.exe`、`gvim.exe`、`xxd.exe`、`vim64.dll`、`libiconv-2.dll`、`libintl-8.dll`、`libsodium.dll` 與 `autoload/`、`syntax/`、`doc/`、`tutor/` 等 runtime 子目錄）。
@@ -574,35 +461,11 @@ Flag 對應表：
 - **THEN** `~/.local/bin/evim.cmd` 被呼叫，wrapper 執行 `gvim.exe -y foo.txt`，gvim 進入 easy mode
 
 ### Requirement: Windows 上 vim 不再經由 Scoop
-`run_once_install-cli-tools.ps1.tmpl`（或其他 install 腳本）SHALL NOT 呼叫 `Install-ScoopPackage "vim"`。腳本可保留註解標明 vim 已遷至 `.chezmoiexternal.toml`，指引讀者去看 `run_once_after_migrate-scoop-wave7.ps1.tmpl`。
+`run_once_install-cli-tools.ps1.tmpl`（或其他 install 腳本）SHALL NOT 呼叫 `Install-ScoopPackage "vim"`。腳本可保留註解標明 vim 已遷至 `.chezmoiexternal.toml`，指引讀者去看 `run_once_after_migrate-scoop-cleanup.ps1.tmpl`（原 Wave 7 腳本已併入該支）。
 
 #### Scenario: install script 不主動安裝 scoop vim
 - **WHEN** 在乾淨 Windows 上首次 `chezmoi apply`
 - **THEN** `run_once_install-cli-tools.ps1.tmpl` 不執行 `scoop install vim`；vim 由 `.chezmoiexternal.toml` 提供
-
-### Requirement: Wave 7 一次性遷移腳本
-`run_once_after_migrate-scoop-wave7.ps1.tmpl` SHALL 在 Windows 上執行一次性遷移：卸載 1 個 scoop 套件 `vim`。腳本 SHALL 為冪等：scoop 未安裝 vim 時視為 no-op；scoop 未安裝時整支 skip。
-
-腳本 SHALL NOT 動 User PATH（Wave 1 的 `run_once_after_migrate-scoop-to-external.ps1.tmpl` 已把 `~/.local/bin` 排在 `~/scoop/shims` 之前）。
-
-腳本 SHALL NOT 主動清理 gvim 右鍵選單 registry 項目（屬於 Windows shell 整合層而非本 wave 範圍；使用者需要時可手動）。
-
-#### Scenario: 已安裝 scoop vim 被卸載
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list vim` 回報已安裝
-- **THEN** 腳本執行 `scoop uninstall vim`，scoop apps 目錄該套件被移除
-
-#### Scenario: scoop vim 未安裝時 no-op
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list vim` 回報未安裝
-- **THEN** 腳本不執行 `scoop uninstall`，繼續結束
-
-#### Scenario: scoop 未安裝時整支 skip
-- **WHEN** chezmoi apply 在 Windows 執行，且 `Get-Command scoop` 回 not found
-- **THEN** 腳本印警告訊息並 return，不嘗試任何 scoop 命令
-
-#### Scenario: User PATH 不被本腳本修改
-- **WHEN** Wave 7 migration 腳本執行
-- **THEN** User PATH 環境變數值維持不變（PATH 排序為 Wave 1 migration 腳本的責任）
-
 
 ### Requirement: jdtls 套件本體在 Windows 上由 chezmoi-external 整包安裝
 Windows 上 jdtls（Eclipse JDT Language Server：`bin/` launcher + `plugins/` OSGi jars + `config_win/` / `config_ss_win/` / `features/` 等）SHALL 由 `.chezmoiexternal.toml` 從 Eclipse 下載 `jdt-language-server-<version>.tar.gz`，以 `type = "archive"` 整包解壓至 `~/.local/opt/jdtls/`，產生扁平結構（`bin/jdtls`、`bin/jdtls.py`、`plugins/org.eclipse.equinox.launcher_*.jar` 等）。tarball 無版本頂層子目錄，故 **SHALL NOT** 使用 `stripComponents`。
@@ -657,21 +520,6 @@ Windows 上 jdtls（Eclipse JDT Language Server：`bin/` launcher + `plugins/` O
 - **WHEN** 在乾淨 Windows 上首次 `chezmoi apply`
 - **THEN** 無腳本執行 `scoop install jdtls`；jdtls 由 `.chezmoiexternal.toml` 提供
 
-### Requirement: Wave 11 一次性遷移腳本
-`run_once_after_migrate-scoop-wave11-jdtls.ps1.tmpl` SHALL 在 Windows 上執行一次性遷移：卸載 scoop 套件 `jdtls`，並清除卸載後殘留於 `~/scoop/shims` 的 jdtls shim（`jdtls`、`jdtls.exe`、`jdtls.cmd`、`jdtls.shim`、`jdtls.ps1`），以免過期 shim 與 `~/.local/bin/jdtls.cmd` 競爭。腳本 SHALL 為冪等：scoop 未安裝 jdtls 時跳過 uninstall 但仍清 shim；scoop 整個未安裝時印警告並 skip。腳本 SHALL NOT 動 User PATH，且 SHALL NOT 觸及 `~/.local/bin`。
-
-#### Scenario: 已安裝 scoop jdtls 被卸載並清除殘留 shim
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list jdtls` 回報已安裝
-- **THEN** 腳本執行 `scoop uninstall jdtls`，並移除 `~/scoop/shims` 下殘留的 jdtls shim；`~/.local/bin/jdtls.cmd` 不受影響
-
-#### Scenario: scoop jdtls 未安裝時仍清殘留 shim（冪等）
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list jdtls` 回報未安裝
-- **THEN** 腳本不執行 `scoop uninstall`，但仍移除任何殘留的 `~/scoop/shims/jdtls*` shim，再結束
-
-#### Scenario: scoop 未安裝時整支 skip
-- **WHEN** chezmoi apply 在 Windows 執行，且 `Get-Command scoop` 回 not found
-- **THEN** 腳本印警告訊息並 return，不嘗試任何 scoop 命令
-
 ### Requirement: dos2unix 在 Windows 上由 chezmoi-external 單檔提供
 Windows 上 `dos2unix.exe` SHALL 由 `.chezmoiexternal.toml` 以 `type = "archive-file"` 自 `https://waterlander.net/dos2unix/files/dos2unix-<version>-win64.zip` 取出 `bin/dos2unix.exe` 至 `~/.local/bin/dos2unix.exe`（單檔 standalone，無 DLL 依賴）。版本以 chezmoi template 變數 pinning。其他三個 binary（mac2unix/unix2dos/unix2mac）非本 repo 所需，不提取。
 
@@ -700,21 +548,6 @@ Windows 上 `dos2unix.exe` SHALL 由 `.chezmoiexternal.toml` 以 `type = "archiv
 #### Scenario: 既有 lens 安裝不被移除
 - **WHEN** 機器上已由 scoop 安裝 lens
 - **THEN** 本變更不執行 `scoop uninstall lens`；lens 維持現狀
-
-### Requirement: Wave 12a 一次性遷移腳本
-`run_once_after_migrate-scoop-wave12a.ps1.tmpl` SHALL 在 Windows 上卸載 scoop 套件 `dos2unix`。腳本 SHALL 為冪等：未安裝時 no-op；scoop 整個未安裝時印警告並 skip。腳本 SHALL NOT 動 User PATH，且 SHALL NOT 觸及 lens（soft-unmanage）。
-
-#### Scenario: 已安裝 scoop dos2unix 被卸載
-- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list dos2unix` 回報已安裝
-- **THEN** 腳本執行 `scoop uninstall dos2unix`
-
-#### Scenario: scoop dos2unix 未安裝時 no-op
-- **WHEN** `scoop list dos2unix` 回報未安裝
-- **THEN** 腳本不執行 uninstall，繼續結束
-
-#### Scenario: scoop 未安裝時整支 skip
-- **WHEN** `Get-Command scoop` 回 not found
-- **THEN** 腳本印警告並 return
 
 ### Requirement: 7z 在 Windows 上由 chezmoi-external 提供 MSI 並由 migrate 腳本解壓
 Windows 上 7z 的來源是 MSI（非單檔 binary），chezmoi-external 無法解 MSI。故 `.chezmoiexternal.toml` SHALL 以 `type = "file"` 自 `https://github.com/ip7z/7zip/releases/download/<version>/7z<v>-x64.msi` 下載 pinned MSI 至 `~/.local/share/7zip/7zip-x64.msi`（穩定檔名，與 URL 版本字串解耦）。版本以 chezmoi template 變數 pinning。
@@ -794,3 +627,55 @@ Windows 上 7z 的來源是 MSI（非單檔 binary），chezmoi-external 無法�
 #### Scenario: scoop 不再是 chezmoi 安裝任何工具的依賴
 - **WHEN** grep runtime 安裝腳本（`run_once_install-*.ps1.tmpl`）
 - **THEN** 無任何未註解的 `Install-ScoopPackage` 呼叫（所有工具改由 `.chezmoiexternal.toml` 或官方安裝方式提供）
+
+### Requirement: Scoop 清理腳本（合併 Wave 2–7、11、12a）
+
+`run_once_after_migrate-scoop-cleanup.ps1.tmpl` SHALL 在 Windows 上以單一「套件 → 移除理由」資料表驅動，卸載下列已改由 `.chezmoiexternal.toml` 或 OS 內建取代的 scoop 套件：
+
+`kubectl`、`kubelogin`、`yt-dlp`、`hugo`、`hugo-extended`、`nexttrace`、`golangci-lint`、`gopass`、`curl`、`wget`、`clink`、`winget`、`winget-ps`、`docker`、`docker-compose`、`ffmpeg`、`vim`、`jdtls`、`dos2unix`。
+
+卸載 SHALL 不論該套件原先是 dotfiles 安裝或使用者手動安裝。
+
+腳本 SHALL 為冪等：某套件未由 scoop 安裝時該項視為 no-op；`Get-Command scoop` 回 not found 時印警告並整支 return。
+
+腳本 SHALL NOT 卸載下列 soft-unmanaged 套件，無論其安裝狀態：`dark`、`vimtutor`、`lazydocker`、`lens`。
+
+腳本 SHALL NOT 修改 User PATH（PATH 排序為 `run_once_after_migrate-scoop-to-external.ps1.tmpl` 的責任），且 SHALL NOT 觸及 `~/.local/bin`。
+
+腳本 SHALL NOT 主動清理 gvim 右鍵選單 registry 項目。
+
+僅 `jdtls` 一項 SHALL 額外清除殘留於 `~/scoop/shims` 的 shim（`jdtls`、`jdtls.exe`、`jdtls.cmd`、`jdtls.shim`、`jdtls.ps1`），且該清除 SHALL 於 scoop 未安裝 jdtls 時仍執行，以免過期 shim 與 `~/.local/bin/jdtls.cmd` 競爭。其餘套件 SHALL NOT 觸碰 `~/scoop/shims`。
+
+資料表中每項的移除理由 SHALL 於執行時印出為該段落的目的。
+
+#### Scenario: 已安裝的表列套件被卸載
+- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報已安裝（pkg 屬於上列清單）
+- **THEN** 腳本執行 `scoop uninstall <pkg>`，scoop apps 目錄該套件被移除
+
+#### Scenario: 表列套件未安裝時 no-op
+- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list <pkg>` 回報未安裝
+- **THEN** 腳本不執行 `scoop uninstall`，繼續處理下一項
+
+#### Scenario: scoop 未安裝時整支 skip
+- **WHEN** chezmoi apply 在 Windows 執行，且 `Get-Command scoop` 回 not found
+- **THEN** 腳本印警告訊息並 return，不嘗試任何 scoop 命令，且仍印出結束 banner
+
+#### Scenario: soft-unmanaged 套件不被卸載
+- **WHEN** chezmoi apply 在 Windows 執行，且 `dark`、`vimtutor`、`lazydocker`、`lens` 任一已由 scoop 安裝
+- **THEN** 腳本 SHALL NOT 對其執行 `scoop uninstall`
+
+#### Scenario: jdtls 殘留 shim 被清除（含未安裝情境）
+- **WHEN** chezmoi apply 在 Windows 執行，且 `scoop list jdtls` 回報未安裝，但 `~/scoop/shims/jdtls.cmd` 存在
+- **THEN** 腳本不執行 `scoop uninstall`，但仍移除該殘留 shim；`~/.local/bin/jdtls.cmd` 不受影響
+
+#### Scenario: 非 jdtls 套件不觸碰 scoop shims
+- **WHEN** 腳本處理 `vim`（已卸載完成）
+- **THEN** 腳本 SHALL NOT 刪除 `~/scoop/shims` 下任何檔案
+
+#### Scenario: User PATH 不被本腳本修改
+- **WHEN** 清理腳本執行
+- **THEN** User PATH 環境變數值維持不變
+
+#### Scenario: 移除理由於 apply 輸出可見
+- **WHEN** 腳本處理 `docker`
+- **THEN** 輸出含一行說明其移除理由（CLI 已改由 chezmoi-external 於 `~/.local/bin/docker.exe` 提供）的段落目的

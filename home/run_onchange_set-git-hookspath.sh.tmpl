@@ -5,17 +5,23 @@
 # never clobbers an existing non-target value.
 set -eu
 
+{{ template "scripts/log.sh" }}
+
+log_begin "global git hooksPath"
+
+log_section "point core.hooksPath at the dispatcher so local-files restore covers every repo"
 target="{{ .chezmoi.homeDir }}/.config/git/hooks"
 current=$(git config --global --get core.hooksPath || true)
 
 if [ "$current" = "$target" ]; then
+    log_skip "[git] core.hooksPath already points at the dispatcher"
     exit 0
 elif [ -n "$current" ]; then
-    echo "core.hooksPath already set to '$current' (not '$target'); leaving as-is." >&2
-    echo "To enable global local-files restore, set it to '$target' manually." >&2
+    log_warn "[git] core.hooksPath is '$current', not '$target'; leaving as-is"
+    log_warn "[git] to enable global local-files restore, set it to '$target' manually"
     exit 0
 fi
 
+log_step "[git] setting global core.hooksPath -> $target"
 git config --global core.hooksPath "$target"
-echo "Set global core.hooksPath -> $target"
 {{ end -}}

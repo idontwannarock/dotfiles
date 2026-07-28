@@ -4,16 +4,21 @@
 #
 # jq: modify_settings.json.sh.tmpl 用來 patch Claude Code settings.json
 
+{{ template "scripts/log.sh" }}
+
+log_begin "apply prereqs"
+
+log_section "ensure jq — modify_settings.json.sh.tmpl needs it to patch Claude Code settings"
 if command -v jq &>/dev/null; then
+    log_skip "[jq] already installed"
     exit 0
 fi
 
-echo "Installing jq (required for modify_ scripts)..."
-
 {{- if eq .chezmoi.os "darwin" }}
+log_step "[jq] installing via brew"
 brew install jq
 {{- else }}
-# Linux (WSL/Ubuntu)
+log_step "[jq] installing via apt (Linux/WSL)"
 sudo apt-get update -q && sudo apt-get install -y jq
 {{- end }}
 {{ end -}}

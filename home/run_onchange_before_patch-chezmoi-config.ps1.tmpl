@@ -23,82 +23,94 @@
 
 $ErrorActionPreference = "Stop"
 
-$configPath = Join-Path $env:USERPROFILE ".config\chezmoi\chezmoi.toml"
+{{ template "scripts/log.ps1" }}
 
-# Detect git-bash: ordered candidate Git-for-Windows roots, first whose
-# bin\bash.exe exists wins. Non-scoop first (new installs win), scoop last
-# (back-compat). NEVER a PATH `where bash` -- that picks WSL System32 bash or the
-# wrong usr\bin variant. The official/winget installer registers its dir at
-# HKLM/HKCU\SOFTWARE\GitForWindows\InstallPath, so probe that too (catches a
-# non-default install dir; PortableGit + scoop don't write that key). This
-# mirrors the static list in .chezmoi.toml.tmpl, plus the registry probe that a
-# Go template can't do -- so this self-heal is what fixes a non-default install.
-$gitRoots = [System.Collections.Generic.List[string]]::new()
-$gitRoots.Add((Join-Path $env:USERPROFILE ".local\opt\git"))
-$gitRoots.Add("C:\Program Files\Git")
-foreach ($hive in @("HKLM:\SOFTWARE\GitForWindows", "HKCU:\SOFTWARE\GitForWindows")) {
-    try {
-        $ip = (Get-ItemProperty -Path $hive -Name InstallPath -ErrorAction Stop).InstallPath
-        if ($ip -and -not $gitRoots.Contains($ip)) { $gitRoots.Add($ip) }
-    } catch {}
-}
-$gitRoots.Add((Join-Path $env:USERPROFILE "scoop\apps\git\current"))  # scoop -- last, back-compat
+Log-Begin "chezmoi.toml sh-interpreter self-heal"
+try {
+    $configPath = Join-Path $env:USERPROFILE ".config\chezmoi\chezmoi.toml"
 
-$expectedCommand = $null
-foreach ($root in $gitRoots) {
-    $cand = Join-Path $root "bin\bash.exe"
-    if (Test-Path $cand) { $expectedCommand = $cand; break }
-}
+    Log-Section "locate git-bash by ordered candidate roots — a PATH lookup would pick WSL's System32 bash"
+    # Detect git-bash: ordered candidate Git-for-Windows roots, first whose
+    # bin\bash.exe exists wins. Non-scoop first (new installs win), scoop last
+    # (back-compat). NEVER a PATH `where bash` -- that picks WSL System32 bash or the
+    # wrong usr\bin variant. The official/winget installer registers its dir at
+    # HKLM/HKCU\SOFTWARE\GitForWindows\InstallPath, so probe that too (catches a
+    # non-default install dir; PortableGit + scoop don't write that key). This
+    # mirrors the static list in .chezmoi.toml.tmpl, plus the registry probe that a
+    # Go template can't do -- so this self-heal is what fixes a non-default install.
+    $gitRoots = [System.Collections.Generic.List[string]]::new()
+    $gitRoots.Add((Join-Path $env:USERPROFILE ".local\opt\git"))
+    $gitRoots.Add("C:\Program Files\Git")
+    foreach ($hive in @("HKLM:\SOFTWARE\GitForWindows", "HKCU:\SOFTWARE\GitForWindows")) {
+        try {
+            $ip = (Get-ItemProperty -Path $hive -Name InstallPath -ErrorAction Stop).InstallPath
+            if ($ip -and -not $gitRoots.Contains($ip)) { $gitRoots.Add($ip) }
+        } catch {}
+    }
+    $gitRoots.Add((Join-Path $env:USERPROFILE "scoop\apps\git\current"))  # scoop -- last, back-compat
 
-if (-not (Test-Path $configPath)) {
-    # No local config means chezmoi has never been init'd here. The script
-    # that normally creates it (chezmoi init) renders the template with the
-    # correct interpreter block already, so there's nothing for us to patch.
-    return
-}
+    $expectedCommand = $null
+    foreach ($root in $gitRoots) {
+        $cand = Join-Path $root "bin\bash.exe"
+        if (Test-Path $cand) { $expectedCommand = $cand; break }
+    }
 
-if (-not $expectedCommand) {
-    Write-Warning "No Git Bash (bin\bash.exe) found under any known Git-for-Windows root."
-    Write-Warning "Install git via winget (winget install Git.Git) so chezmoi can exec .sh scripts."
-    return
-}
+    if (-not (Test-Path $configPath)) {
+        # No local config means chezmoi has never been init'd here. The script
+        # that normally creates it (chezmoi init) renders the template with the
+        # correct interpreter block already, so there's nothing for us to patch.
+        Log-Skip "[chezmoi.toml] no local config; chezmoi init renders the block correctly"
+        return
+    }
 
-$content = Get-Content $configPath -Raw
+    if (-not $expectedCommand) {
+        Log-Warn "no Git Bash (bin\bash.exe) found under any known Git-for-Windows root"
+        Log-Warn "install git via winget (winget install Git.Git) so chezmoi can exec .sh scripts"
+        return
+    }
 
-# Detect an existing [interpreters.sh] block and its current command value.
-$blockRegex = '(?ms)^\[interpreters\.sh\][^\[]*?command\s*=\s*"([^"]*)"'
-$match      = [regex]::Match($content, $blockRegex)
+    Log-Section "rewrite [interpreters.sh] only when it disagrees with the detected git-bash"
+    $content = Get-Content $configPath -Raw
 
-# The config stores the path TOML-escaped ("C:\\Users\\..."); un-escape the
-# captured value before comparing to the raw $expectedCommand, else the block is
-# rewritten on every run (and the write below would emit invalid single-backslash
-# TOML, where e.g. \b is a backspace escape).
-$currentCmd = if ($match.Success) { $match.Groups[1].Value.Replace('\\', '\') } else { $null }
-if ($currentCmd -eq $expectedCommand) {
-    # Already correct; nothing to do.
-    return
-}
+    # Detect an existing [interpreters.sh] block and its current command value.
+    $blockRegex = '(?ms)^\[interpreters\.sh\][^\[]*?command\s*=\s*"([^"]*)"'
+    $match      = [regex]::Match($content, $blockRegex)
 
-# Remove any existing [interpreters.sh] block (matches until next section or EOF),
-# then append a fresh block. This handles both "block missing" and "block present
-# but wrong" in one code path.
-$stripRegex = '(?ms)\r?\n?^\[interpreters\.sh\].*?(?=^\[|\z)'
-$cleaned    = [regex]::Replace($content, $stripRegex, '').TrimEnd()
+    # The config stores the path TOML-escaped ("C:\\Users\\..."); un-escape the
+    # captured value before comparing to the raw $expectedCommand, else the block is
+    # rewritten on every run (and the write below would emit invalid single-backslash
+    # TOML, where e.g. \b is a backspace escape).
+    $currentCmd = if ($match.Success) { $match.Groups[1].Value.Replace('\\', '\') } else { $null }
+    if ($currentCmd -eq $expectedCommand) {
+        Log-Skip "[chezmoi.toml] interpreter already points at $expectedCommand"
+        return
+    }
 
-$escapedCommand = $expectedCommand.Replace('\', '\\')
-$freshBlock = @"
+    # Remove any existing [interpreters.sh] block (matches until next section or EOF),
+    # then append a fresh block. This handles both "block missing" and "block present
+    # but wrong" in one code path.
+    $stripRegex = '(?ms)\r?\n?^\[interpreters\.sh\].*?(?=^\[|\z)'
+    $cleaned    = [regex]::Replace($content, $stripRegex, '').TrimEnd()
+
+    $escapedCommand = $expectedCommand.Replace('\', '\\')
+    $freshBlock = @"
 [interpreters.sh]
     command = "$escapedCommand"
 "@
 
-$newContent = $cleaned + "`n`n" + $freshBlock + "`n"
+    $newContent = $cleaned + "`n`n" + $freshBlock + "`n"
 
-$utf8NoBom = New-Object System.Text.UTF8Encoding $false
-[System.IO.File]::WriteAllText($configPath, $newContent, $utf8NoBom)
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($configPath, $newContent, $utf8NoBom)
 
-Write-Host "Patched [interpreters.sh] in $configPath" -ForegroundColor Yellow
-Write-Host "  command = `"$expectedCommand`"" -ForegroundColor Gray
-Write-Host "If this apply run now fails on a modify_*.sh with 'not a valid Win32" -ForegroundColor Yellow
-Write-Host "application', re-run 'chezmoi apply' (or 'chezmoi update --force') once" -ForegroundColor Yellow
-Write-Host "more — the patched interpreter will be picked up on the next invocation." -ForegroundColor Yellow
+    Log-Step "[chezmoi.toml] patched [interpreters.sh] in $configPath"
+    Log-Step "[chezmoi.toml] command = `"$expectedCommand`""
+    Log-Warn "if THIS apply now fails on a modify_*.sh with 'not a valid Win32 application',"
+    Log-Warn "re-run 'chezmoi apply' once more — the patched interpreter is read at startup"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
 {{ end -}}

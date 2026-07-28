@@ -2,17 +2,30 @@
 # chezmoi run_onchange_ — point git at the global hooks dispatcher (Windows).
 # git hooks run under git-bash, so the POSIX dispatcher in ~/.config/git/hooks
 # works here too. Idempotent; never clobbers an existing non-target value.
-$target = "$env:USERPROFILE/.config/git/hooks"
-$current = (git config --global --get core.hooksPath 2>$null)
 
-if ($current -eq $target) {
-    exit 0
-} elseif ($current) {
-    Write-Warning "core.hooksPath already set to '$current' (not '$target'); leaving as-is."
-    Write-Host "To enable global local-files restore, set it to '$target' manually."
-    exit 0
+{{ template "scripts/log.ps1" }}
+
+Log-Begin "global git hooksPath"
+try {
+    Log-Section "point core.hooksPath at the dispatcher so local-files restore covers every repo"
+    $target = "$env:USERPROFILE/.config/git/hooks"
+    $current = (git config --global --get core.hooksPath 2>$null)
+
+    if ($current -eq $target) {
+        Log-Skip "[git] core.hooksPath already points at the dispatcher"
+        return
+    } elseif ($current) {
+        Log-Warn "[git] core.hooksPath is '$current', not '$target'; leaving as-is"
+        Log-Warn "[git] to enable global local-files restore, set it to '$target' manually"
+        return
+    }
+
+    git config --global core.hooksPath "$target"
+    Log-Step "[git] set global core.hooksPath -> $target"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
 }
-
-git config --global core.hooksPath "$target"
-Write-Host "Set global core.hooksPath -> $target"
 {{ end -}}

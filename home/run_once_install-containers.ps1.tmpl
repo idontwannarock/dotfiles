@@ -1,23 +1,32 @@
 {{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_once_ script — 容器與雲端工具安裝（Windows）
-
-Write-Host "=== Container & Cloud Tools Setup ===" -ForegroundColor Cyan
-
+#
 # This script no longer installs anything -- all of its former packages have been
 # moved off scoop or unmanaged. Kept as a historical record of where each landed.
-
+#
 # ── Docker ───────────────────────────────────────────────────────────────
 # docker and docker-compose moved to .chezmoiexternal.toml in Wave 5 (2026-05-25).
 # Engine runs in WSL2 Ubuntu; Windows side is CLI-only via tcp://127.0.0.1:2375.
 # lazydocker (TUI) intentionally stays on scoop (not chezmoi-managed).
-
+#
 # ── Kubernetes ───────────────────────────────────────────────────────────
 # kubectl and kubelogin moved to .chezmoiexternal.toml in Wave 2 (2026-05-20).
-
+#
 # ── Lens (K8s GUI) ──────────────────────────────────────────────────────
 # lens unmanaged in Wave 12a (2026-06-18): a GUI app the user now manages by hand.
 # Soft unmanage -- existing scoop installs are left untouched (no scoop uninstall),
 # matching the clink/dark/vimtutor precedent.
 
-Write-Host "=== Container tools setup complete (nothing to install). ===" -ForegroundColor Cyan
+{{ template "scripts/log.ps1" }}
+
+Log-Begin "Windows container & cloud tools"
+try {
+    Log-Section "no-op — docker/kubectl/kubelogin come from chezmoi-external; lens is unmanaged"
+    Log-Skip "[containers] nothing to install here; see this file's header for where each landed"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
 {{ end -}}

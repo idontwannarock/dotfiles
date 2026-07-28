@@ -18,6 +18,8 @@
 
 set -euo pipefail
 
+{{ template "scripts/log.sh" }}
+
 # ── pinned JDK versions (sdkman) — REVIEW EVERY 6 MONTHS ────────────────
 JDK_VERSIONS=(
     "8.0.442-tem"
@@ -27,55 +29,54 @@ JDK_VERSIONS=(
     "25.0.1-tem"
 )
 
-echo "=== Runtime & Language Setup ==="
+log_begin "runtimes & languages"
 
-# ── NVM ──────────────────────────────────────────────────────────────────
+log_section "install nvm — the Node version manager everything else on Node depends on"
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
-    echo "[nvm] already installed, skipping."
+    log_skip "[nvm] already installed"
 else
-    echo "[nvm] Installing..."
+    log_step "[nvm] installing v0.40.4 via official installer"
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
 fi
 
 {{ template "scripts/load-nvm" }}
 
-# ── Node.js (via nvm) ───────────────────────────────────────────────────
+log_section "install Node.js LTS via nvm"
 if command -v node &>/dev/null; then
-    echo "[node] already installed ($(node -v)), skipping."
+    log_skip "[node] already installed ($(node -v))"
 elif command -v nvm &>/dev/null || type nvm &>/dev/null; then
-    echo "[node] Installing latest LTS via nvm..."
+    log_step "[node] installing latest LTS via nvm"
     nvm install --lts
 else
-    echo "[node] nvm not available, skipping node install."
+    log_warn "[node] nvm not available in this session; skipping node install"
 fi
 
-# ── Vim ──────────────────────────────────────────────────────────────────
+log_section "install vim — the editor, configured by dot_vimrc"
 if command -v vim &>/dev/null; then
-    echo "[vim] already installed, skipping."
+    log_skip "[vim] already installed"
 else
 {{- if eq .chezmoi.os "darwin" }}
-    echo "[vim] Installing via brew..."
+    log_step "[vim] installing via brew"
     brew install vim
 {{- else }}
-    echo "[vim] Installing via apt..."
+    log_step "[vim] installing via apt"
     sudo apt-get install -y vim
 {{- end }}
 fi
 
-# ── Starship (shell prompt) ──────────────────────────────────────────────
+log_section "install starship — the shell prompt wired up by dot_shell_common"
 if command -v starship &>/dev/null; then
-    echo "[starship] already installed, skipping."
+    log_skip "[starship] already installed"
 else
 {{- if eq .chezmoi.os "darwin" }}
-    echo "[starship] Installing via brew..."
+    log_step "[starship] installing via brew"
     brew install starship
 {{- else }}
-    echo "[starship] Installing via official installer..."
+    log_step "[starship] installing via official installer"
     curl -sS https://starship.rs/install.sh | sh -s -- --yes
 {{- end }}
 fi
 
-# ── Go ───────────────────────────────────────────────────────────────────
 # Go 官方沒提供像 rustup / sdkman 的 version manager；Go 1.21+ 內建
 # GOTOOLCHAIN 可自動下載 go.mod 需求版本，所以 base 裝一份夠新的即可。
 # 守門：base 版本必須 ≥ GO_MIN_VERSION，否則 GOTOOLCHAIN 不可用。
@@ -103,38 +104,39 @@ install_go_linux_tarball() {
     case "$(uname -m)" in
         x86_64)  arch="amd64" ;;
         aarch64) arch="arm64" ;;
-        *) echo "[go] unsupported arch: $(uname -m)"; return 1 ;;
+        *) log_warn "[go] unsupported arch: $(uname -m)"; return 1 ;;
     esac
     local tarball="go${version}.linux-${arch}.tar.gz"
     local url="https://go.dev/dl/${tarball}"
     local tmp="/tmp/${tarball}"
 
-    echo "[go] Downloading ${url}..."
+    log_step "[go] downloading ${url}"
     curl -fsSL "$url" -o "$tmp"
 
     # apt-managed golang-go would shadow our install at /usr/bin/go; remove first.
     if dpkg -s golang-go >/dev/null 2>&1; then
-        echo "[go] Removing apt-managed golang-go..."
+        log_step "[go] removing apt-managed golang-go so it cannot shadow /usr/bin/go"
         sudo apt-get remove -y golang-go
     fi
 
-    echo "[go] Installing tarball to \$HOME/.local/go..."
+    log_step "[go] extracting tarball to \$HOME/.local/go"
     rm -rf "$HOME/.local/go"
     mkdir -p "$HOME/.local"
     tar -C "$HOME/.local" -xzf "$tmp"
     rm -f "$tmp"
 
     export PATH="$HOME/.local/go/bin:$PATH"
-    echo "[go] Installed: $(go version)"
+    log_step "[go] installed: $(go version)"
 }
 {{ end }}
+log_section "install Go ≥ ${GO_MIN_VERSION} — the base toolchain GOTOOLCHAIN bootstraps from"
 go_needs_install=true
 if command -v go >/dev/null 2>&1; then
     go_current_version="$(go version | awk '{print $3}' | sed 's/^go//')"
     if go_version_below_min "$go_current_version" "$GO_MIN_VERSION"; then
-        echo "[go] existing version ${go_current_version} < ${GO_MIN_VERSION} — replacing..."
+        log_step "[go] existing ${go_current_version} < ${GO_MIN_VERSION}; replacing"
     else
-        echo "[go] already installed (${go_current_version} ≥ ${GO_MIN_VERSION}), skipping."
+        log_skip "[go] already installed (${go_current_version} ≥ ${GO_MIN_VERSION})"
         go_needs_install=false
     fi
 fi
@@ -142,10 +144,10 @@ fi
 if [ "$go_needs_install" = true ]; then
 {{- if eq .chezmoi.os "darwin" }}
     if command -v go >/dev/null 2>&1; then
-        echo "[go] Upgrading via brew..."
+        log_step "[go] upgrading via brew"
         brew upgrade go
     else
-        echo "[go] Installing via brew..."
+        log_step "[go] installing via brew"
         brew install go
     fi
 {{- else }}
@@ -153,11 +155,11 @@ if [ "$go_needs_install" = true ]; then
 {{- end }}
 fi
 
-# ── Rust (rustup 官方 installer，兩平台) ────────────────────────────────
+log_section "install rustup — Rust toolchain manager (run_update-rust-toolchain keeps it current)"
 if command -v rustup &>/dev/null; then
-    echo "[rustup] already installed, skipping."
+    log_skip "[rustup] already installed"
 else
-    echo "[rustup] Installing via official installer..."
+    log_step "[rustup] installing via official installer"
     # --no-modify-path: 由我們自己在 shell rc 管 PATH（~/.cargo/bin 已在 $HOME/.local/bin 之後）
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
         | sh -s -- -y --default-toolchain stable --no-modify-path
@@ -166,15 +168,15 @@ fi
 # Make cargo bin available in this session
 [ -s "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
-# ── uv (Python package + version manager) ───────────────────────────────
+log_section "install uv — Python package + version manager (Python is managed entirely through it)"
 if command -v uv &>/dev/null; then
-    echo "[uv] already installed, skipping."
+    log_skip "[uv] already installed"
 else
 {{- if eq .chezmoi.os "darwin" }}
-    echo "[uv] Installing via brew..."
+    log_step "[uv] installing via brew"
     brew install uv
 {{- else }}
-    echo "[uv] Installing via official installer..."
+    log_step "[uv] installing via official installer"
     curl -LsSf https://astral.sh/uv/install.sh | sh
 {{- end }}
 fi
@@ -182,20 +184,20 @@ fi
 # uv 官方 installer 裝到 ~/.local/bin；確保本次 session 能找到
 export PATH="$HOME/.local/bin:$PATH"
 
-# ── Python (由 uv 管理) ─────────────────────────────────────────────────
+log_section "install Python 3.13 via uv"
 # uv python install 本身是冪等的：已安裝會 reuse。
 if command -v uv &>/dev/null; then
-    echo "[python] Ensuring 3.13 is installed via uv..."
+    log_step "[python] ensuring 3.13 is installed via uv"
     uv python install 3.13
 else
-    echo "[python] uv not available, skipping python install."
+    log_warn "[python] uv not available in this session; skipping python install"
 fi
 
-# ── SDKMAN (Java / JVM toolchain manager) ───────────────────────────────
+log_section "install sdkman — the JVM toolchain manager JDKs and Maven come from"
 if [ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
-    echo "[sdkman] already installed, skipping."
+    log_skip "[sdkman] already installed"
 else
-    echo "[sdkman] Installing via official installer (rcupdate=false)..."
+    log_step "[sdkman] installing via official installer (rcupdate=false)"
     # rcupdate=false: 避免 sdkman 自動改 .bashrc / .zshrc（chezmoi 管理中，改動會被覆蓋）
     curl -s "https://get.sdkman.io?rcupdate=false" | bash
 fi
@@ -218,31 +220,28 @@ if command -v sdk &>/dev/null; then
     # 和 nounset 不相容，所以在呼叫 sdk 前關掉 -u。
     set +u
 
-    # ── JDKs via sdkman (Temurin) ────────────────────────────────────────
+    log_section "install pinned Temurin JDKs via sdkman — identifiers drift upstream, review every 6 months"
     for ver in "${JDK_VERSIONS[@]}"; do
         if [ -d "$HOME/.sdkman/candidates/java/${ver}" ]; then
-            echo "[jdk ${ver}] already installed, skipping."
+            log_skip "[jdk ${ver}] already installed"
         else
-            echo "[jdk ${ver}] Installing via sdkman..."
+            log_step "[jdk ${ver}] installing via sdkman"
             if ! sdk install java "$ver"; then
-                echo "[jdk ${ver}] install failed — identifier may be stale."
-                echo "  Refresh with: sdk list java | grep tem"
+                log_warn "[jdk ${ver}] install failed — identifier may be stale; refresh with: sdk list java | grep tem"
             fi
         fi
     done
 
-    # ── Maven via sdkman ─────────────────────────────────────────────────
+    log_section "install Maven via sdkman"
     if [ -d "$HOME/.sdkman/candidates/maven/current" ]; then
-        echo "[maven] already installed, skipping."
+        log_skip "[maven] already installed"
     else
-        echo "[maven] Installing via sdkman..."
-        sdk install maven || echo "[maven] install failed."
+        log_step "[maven] installing via sdkman"
+        sdk install maven || log_warn "[maven] install failed"
     fi
 
     set -u
 else
-    echo "[sdkman] sdk command not available in this session — JDK/Maven skipped."
+    log_warn "[sdkman] sdk command not available in this session — JDK/Maven skipped"
 fi
-
-echo "=== Runtime setup complete. ==="
 {{ end -}}

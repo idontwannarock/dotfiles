@@ -6,93 +6,94 @@
 #   (2) Ensure User PATH puts ~/.local/bin before ~/scoop/shims so the
 #       chezmoi-managed binaries take precedence over any stale scoop shim
 #
+# Kept separate from run_once_after_migrate-scoop-cleanup.ps1.tmpl because of
+# step (2): the PATH reorder is one-off logic that belongs to no other wave.
+#
 # Idempotent: skips uninstall if scoop is unaware of the package, skips PATH
 # rewrite if the order is already correct.
 
 $ErrorActionPreference = "Continue"
-$pkgs = @("starship", "zellij", "uv", "jq", "ripgrep")
 
-Write-Host "=== Wave 1: Scoop -> chezmoi-external migration ===" -ForegroundColor Cyan
+{{ template "scripts/log.ps1" }}
+{{ template "scripts/scoop-uninstall.ps1" }}
 
-# --- (1) Scoop uninstall ----------------------------------------------------
-if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
-    foreach ($pkg in $pkgs) {
-        $installed = $false
-        try {
-            $listOutput = scoop list $pkg 2>$null | Out-String
-            $pattern = "(?im)^\s*$([regex]::Escape($pkg))\b"
-            if ($listOutput -match $pattern) { $installed = $true }
-        } catch {}
-        if ($installed) {
-            Write-Host "[$pkg] uninstalling from scoop..." -ForegroundColor Yellow
-            scoop uninstall $pkg 2>&1 | Out-Null
-            if ($LASTEXITCODE -ne 0) {
-                Write-Warning "[$pkg] scoop uninstall returned non-zero exit; continuing."
-            }
-        } else {
-            Write-Host "[$pkg] not installed via scoop, skipping." -ForegroundColor Gray
+$packages = @(
+    @{ Name = "starship"; Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "zellij";   Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "uv";       Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "jq";       Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "ripgrep";  Reason = "now a chezmoi-external binary in ~/.local/bin" }
+)
+
+Log-Begin "Wave 1: scoop -> chezmoi-external"
+try {
+    Log-Section "uninstall the five packages chezmoi-external now provides"
+    if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
+        foreach ($pkg in $packages) {
+            Remove-ScoopPackage -Name $pkg.Name -Reason $pkg.Reason
         }
+    } else {
+        Log-Skip "scoop not found; nothing to uninstall"
     }
-} else {
-    Write-Host "scoop not found, skipping uninstall phase." -ForegroundColor Gray
-}
 
-# --- (2) PATH reorder -------------------------------------------------------
-$localBin   = (Join-Path $env:USERPROFILE ".local\bin").TrimEnd('\')
-$scoopShims = (Join-Path $env:USERPROFILE "scoop\shims").TrimEnd('\')
-$userPath   = [Environment]::GetEnvironmentVariable("Path", "User")
+    Log-Section "put ~/.local/bin ahead of ~/scoop/shims on User PATH so chezmoi binaries beat stale shims"
+    $localBin   = (Join-Path $env:USERPROFILE ".local\bin").TrimEnd('\')
+    $scoopShims = (Join-Path $env:USERPROFILE "scoop\shims").TrimEnd('\')
+    $userPath   = [Environment]::GetEnvironmentVariable("Path", "User")
 
-if (-not $userPath) {
-    Write-Host "[PATH] User PATH is empty; prepending ~/.local/bin." -ForegroundColor Yellow
-    [Environment]::SetEnvironmentVariable("Path", $localBin, "User")
-    Write-Warning "User PATH updated. Restart your terminal/SSH session for changes to take effect."
-    Write-Host "=== Migration complete. ===" -ForegroundColor Cyan
-    return
-}
-
-$entries = @($userPath.Split(';') | Where-Object { $_ -ne '' })
-$localIdx = -1
-$shimIdx  = -1
-for ($i = 0; $i -lt $entries.Count; $i++) {
-    $expanded = [Environment]::ExpandEnvironmentVariables($entries[$i]).TrimEnd('\')
-    if ($localIdx -lt 0 -and $expanded -ieq $localBin)   { $localIdx = $i }
-    if ($shimIdx  -lt 0 -and $expanded -ieq $scoopShims) { $shimIdx  = $i }
-}
-
-$needsRewrite = $false
-if ($shimIdx -ge 0) {
-    if ($localIdx -lt 0 -or $localIdx -gt $shimIdx) { $needsRewrite = $true }
-} elseif ($localIdx -lt 0) {
-    $needsRewrite = $true
-}
-
-if (-not $needsRewrite) {
-    Write-Host "[PATH] order already correct, no change." -ForegroundColor Gray
-    Write-Host "=== Migration complete. ===" -ForegroundColor Cyan
-    return
-}
-
-Write-Host "[PATH] before: ~/.local/bin idx=$localIdx, ~/scoop/shims idx=$shimIdx" -ForegroundColor Gray
-
-$newEntries = New-Object System.Collections.Generic.List[string]
-$inserted   = $false
-foreach ($entry in $entries) {
-    $expanded = [Environment]::ExpandEnvironmentVariables($entry).TrimEnd('\')
-    if ($expanded -ieq $localBin) { continue }
-    if (-not $inserted -and $expanded -ieq $scoopShims) {
-        $newEntries.Add($localBin)
-        $inserted = $true
+    if (-not $userPath) {
+        Log-Step "[PATH] User PATH is empty; prepending ~/.local/bin"
+        [Environment]::SetEnvironmentVariable("Path", $localBin, "User")
+        Log-Warn "[PATH] restart your terminal/SSH session for the change to take effect"
+        return
     }
-    $newEntries.Add($entry)
-}
-if (-not $inserted) {
-    $newEntries.Insert(0, $localBin)
-}
 
-$newPath = $newEntries -join ';'
-[Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-Write-Host "[PATH] after:  ~/.local/bin moved before ~/scoop/shims (or prepended)" -ForegroundColor Yellow
-Write-Warning "User PATH updated. Restart your terminal/SSH session for changes to take effect."
+    $entries = @($userPath.Split(';') | Where-Object { $_ -ne '' })
+    $localIdx = -1
+    $shimIdx  = -1
+    for ($i = 0; $i -lt $entries.Count; $i++) {
+        $expanded = [Environment]::ExpandEnvironmentVariables($entries[$i]).TrimEnd('\')
+        if ($localIdx -lt 0 -and $expanded -ieq $localBin)   { $localIdx = $i }
+        if ($shimIdx  -lt 0 -and $expanded -ieq $scoopShims) { $shimIdx  = $i }
+    }
 
-Write-Host "=== Migration complete. ===" -ForegroundColor Cyan
+    $needsRewrite = $false
+    if ($shimIdx -ge 0) {
+        if ($localIdx -lt 0 -or $localIdx -gt $shimIdx) { $needsRewrite = $true }
+    } elseif ($localIdx -lt 0) {
+        $needsRewrite = $true
+    }
+
+    if (-not $needsRewrite) {
+        Log-Skip "[PATH] order already correct"
+        return
+    }
+
+    Log-Step "[PATH] before: ~/.local/bin idx=$localIdx, ~/scoop/shims idx=$shimIdx"
+
+    $newEntries = New-Object System.Collections.Generic.List[string]
+    $inserted   = $false
+    foreach ($entry in $entries) {
+        $expanded = [Environment]::ExpandEnvironmentVariables($entry).TrimEnd('\')
+        if ($expanded -ieq $localBin) { continue }
+        if (-not $inserted -and $expanded -ieq $scoopShims) {
+            $newEntries.Add($localBin)
+            $inserted = $true
+        }
+        $newEntries.Add($entry)
+    }
+    if (-not $inserted) {
+        $newEntries.Insert(0, $localBin)
+    }
+
+    $newPath = $newEntries -join ';'
+    [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+    Log-Step "[PATH] after: ~/.local/bin moved before ~/scoop/shims (or prepended)"
+    Log-Warn "[PATH] restart your terminal/SSH session for the change to take effect"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
 {{ end -}}

@@ -56,6 +56,7 @@
 - **Repo 是 source of truth,不是 live config。** 兩邊不自動互通。
 - **先在機器上測,再回寫 source。** 固定四步:改機器上實際設定 → 確認運作 → 回寫 chezmoi source → 更新文件。(尚在「local-test-only」的項目都卡在這條沒走完。)
 - **`run_*` 腳本的副作用要顯式反轉。** chezmoi 的宣告式收斂只涵蓋它 declare 的檔案;腳本裝出來的東西(套件、plugin 註冊、外部 CLI 設定)不在其中。退役時刪掉那行 install 只會停止新機器安裝,已套用過的機器永久漂移——必須補一段冪等的反安裝,或在 `.chezmoiremove` 宣告目標路徑。同理,任何「本機手動跑一次」的收尾都不會傳播。
+- **`run_*` 腳本要能從 apply 輸出被讀懂。** 每支有起訖 banner(結束的標題取自開始時記下的那一份,不另外手寫,否則必然漂移),每個段落印出**目的**而非代號,早退與失敗也要收尾。同一 interpreter 內重複兩次以上的邏輯抽到 `.chezmoitemplates/scripts/`;若多支腳本抽掉資料後控制流逐字相同,合併成一支資料表驅動的腳本。細節在 `chezmoi-author` skill。
 - **盡量跨平台。** 目標是 Windows/macOS/Linux 皆可用;平台差異用 per-platform 片段拆分,而非整份分叉。
 - **跨工具 parity = shared body + 薄指標。** 權威 body 一份在 `~/.agent` / `.chezmoitemplates`,每工具一個 name-map wrapper。目標工具 = **Claude + Codex**(未來或加 Antigravity CLI);**Gemini CLI 已放棄,不要去檢查它。**
 - **WSL 下呼叫腳本一律用絕對路徑。** PATH interop 把 Windows 家目錄的 `~/.local/bin` 併進 WSL 的 PATH,所以 bare 名稱可能命中另一台機器、另一個年代的同名腳本。腳本正典搬家後,舊位置的副本要用 `.chezmoiremove` 點名清掉 —— 留著它就是留一條會靜默跑到舊碼的路徑。

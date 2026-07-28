@@ -1,0 +1,74 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_after_ script -- consolidated Scoop cleanup (Windows)
+#
+# Merges the former per-wave migrate scripts (Wave 2, 3, 4, 5, 6, 7, 11, 12a),
+# which were byte-for-byte identical apart from their package list. The whole
+# difference now lives in the $packages table below, and each entry's Reason is
+# printed as that step's section purpose -- so "why is this being removed" shows
+# up in the apply output instead of hiding in a file-header comment.
+#
+# Runs after .chezmoiexternal.toml has deployed the replacement binaries.
+#
+# Idempotent: a package scoop does not know about is a no-op; if scoop itself is
+# absent the whole script skips.
+#
+# SHALL NOT touch User PATH -- ordering (~/.local/bin before ~/scoop/shims) is
+# run_once_after_migrate-scoop-to-external.ps1.tmpl's job. SHALL NOT touch
+# ~/.local/bin. Ordering against the other migrate scripts is not load-bearing:
+# uninstalling needs only scoop's own shims, not the reordered PATH.
+#
+# SOFT-UNMANAGED -- deliberately absent from the table, existing installs are
+# left alone: dark, vimtutor (Wave 4), lazydocker (Wave 5), lens (Wave 12a).
+# Adding any of them here would silently uninstall a tool the user still owns.
+
+$ErrorActionPreference = "Continue"
+
+{{ template "scripts/log.ps1" }}
+{{ template "scripts/scoop-uninstall.ps1" }}
+
+# Package -> why it is no longer scoop's job. Reason text is user-facing.
+$packages = @(
+    @{ Name = "kubectl";       Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "kubelogin";     Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "yt-dlp";        Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "hugo";          Reason = "replaced by the single extended hugo.exe from chezmoi-external" }
+    @{ Name = "hugo-extended"; Reason = "the other scoop hugo package; same single hugo.exe replaces it" }
+    @{ Name = "nexttrace";     Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "golangci-lint"; Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "gopass";        Reason = "now a chezmoi-external binary in ~/.local/bin" }
+    @{ Name = "curl";          Reason = "Win10 17063+ ships curl.exe in System32; Git for Windows bundles one too" }
+    @{ Name = "wget";          Reason = "no Windows script in this repo calls wget" }
+    @{ Name = "clink";         Reason = "never wired up; starship already handles prompt enhancement" }
+    @{ Name = "winget";        Reason = "OS-bundled at %LOCALAPPDATA%\Microsoft\WindowsApps, so the shim was duplication" }
+    @{ Name = "winget-ps";     Reason = "no dotfiles script imports it (command-not-found uses the PowerToys module)" }
+    @{ Name = "docker";        Reason = "CLI-only static binary now at ~/.local/bin/docker.exe; engine lives in WSL2" }
+    @{ Name = "docker-compose"; Reason = "standalone binary now at ~/.local/bin/docker-compose.exe" }
+    @{ Name = "ffmpeg";        Reason = "BtbN static build now supplies ffmpeg/ffprobe/ffplay via chezmoi-external" }
+    @{ Name = "vim";           Reason = "full distribution now at ~/.local/share/vim with .cmd wrappers in ~/.local/bin" }
+    @{ Name = "jdtls";         Reason = "now at ~/.local/opt/jdtls, launched by the ~/.local/bin/jdtls wrapper"; PruneShims = $true }
+    @{ Name = "dos2unix";      Reason = "single standalone binary now at ~/.local/bin/dos2unix.exe" }
+)
+
+Log-Begin "scoop cleanup (waves 2-7, 11, 12a)"
+try {
+    Log-Section "check scoop is installed — with no scoop there is nothing to uninstall"
+    if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
+        Log-Skip "scoop not found; skipping the entire cleanup"
+        return
+    }
+
+    foreach ($pkg in $packages) {
+        $params = @{ Name = $pkg.Name; Reason = $pkg.Reason }
+        # Only jdtls prunes shims, and it does so even when scoop reports the
+        # package absent: scoop's own state can be broken while a stale
+        # jdtls shim survives and shadows ~/.local/bin/jdtls.cmd.
+        if ($pkg.PruneShims) { $params.PruneShims = $true }
+        Remove-ScoopPackage @params
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
+{{ end -}}

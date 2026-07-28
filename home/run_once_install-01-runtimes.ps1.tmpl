@@ -19,5 +19,16 @@
 #                 Documents/exact__shared-profile.d/22-use-java.ps1). graalvm packages are removed, not migrated.
 #   starship   -> .chezmoiexternal.toml (Wave 1)
 
-Write-Host "=== Windows runtimes provisioned via chezmoi-external + Wave 10 migrate script (no-op here). ===" -ForegroundColor Cyan
+{{ template "scripts/log.ps1" }}
+
+Log-Begin "Windows runtimes"
+try {
+    Log-Section "no-op — the toolchain is provisioned by chezmoi-external plus the Wave 10 migrate script"
+    Log-Skip "[runtimes] nothing to install here; see the pointer map in this file's header"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
 {{ end -}}
