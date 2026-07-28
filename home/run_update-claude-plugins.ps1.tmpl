@@ -8,15 +8,17 @@ $ErrorActionPreference = "Continue"
 {{ template "scripts/log.ps1" }}
 
 Log-Begin "Claude Code plugin update"
-
-# Workaround for anthropics/claude-code#50320 / #42135:
-# Node.js child_process.spawn rejects git.exe as "unsafe location" when cwd
-# is an ancestor of the git installation path. Switching to a drive root
-# avoids the heuristic. Restored in the finally block -- which is also why every
-# early exit below uses `return`, not `exit`: `exit` would skip the restore.
-$originalLocation = Get-Location
-Set-Location $env:SystemDrive\
+$originalLocation = $null
 try {
+    # Workaround for anthropics/claude-code#50320 / #42135:
+    # Node.js child_process.spawn rejects git.exe as "unsafe location" when cwd
+    # is an ancestor of the git installation path. Switching to a drive root
+    # avoids the heuristic. Restored in the finally block -- which is also why every
+    # early exit below uses `return`, not `exit`: `exit` would skip the restore.
+    # Kept inside the try so a failure here still reaches Log-End.
+    $originalLocation = Get-Location
+    Set-Location $env:SystemDrive\
+
     Log-Section "check claude CLI is available"
     if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
         Log-Warn "[claude-plugins] claude CLI not found; skipping update"
@@ -62,7 +64,7 @@ try {
     Log-End -ErrorRecord $_
     throw
 } finally {
-    Set-Location $originalLocation
+    if ($originalLocation) { Set-Location $originalLocation }
     Log-End
 }
 {{ end -}}

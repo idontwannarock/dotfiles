@@ -6,10 +6,13 @@
 set -euo pipefail
 
 {{ template "scripts/log.sh" }}
-{{ template "scripts/pkg-install.sh" . }}
 {{- if eq .chezmoi.os "darwin" }}
+{{ template "scripts/pkg-install.sh" . }}
 {{ template "scripts/brew-cask-install.sh" }}
 {{- end }}
+{{- /* Linux/WSL pulls in neither: docker, compose, kubectl and kubelogin all
+       need bespoke logic below (upstream script, apt plugin, k8s repo, manual),
+       so a generic install guard would sit unused. */}}
 
 log_begin "container & cloud tools"
 
