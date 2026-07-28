@@ -21,7 +21,7 @@ existing="$(cat)"
 cat << 'GLOBAL'
 #:schema https://developers.openai.com/codex/config-schema.json
 
-model = "gpt-5.5"
+model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 model_verbosity = "medium"
 hide_agent_reasoning = true

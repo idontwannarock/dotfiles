@@ -1,0 +1,2 @@
+# Keep this repository on medium effort while the user-level default is high.
+model_reasoning_effort = "medium"
