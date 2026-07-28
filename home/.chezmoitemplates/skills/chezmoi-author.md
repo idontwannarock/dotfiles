@@ -42,7 +42,7 @@ If a script depends on another script's output, ensure it sorts later alphabetic
 - `.chezmoiignore.tmpl` patterns are **target paths** (e.g. `.bashrc`), not source filenames (`dot_bashrc.tmpl`). OS-conditional excludes live here (Windows skips `dot_codex/config.toml` for the ps1 shim; macOS skips `.bashrc`; non-macOS skips `.zshrc`).
 - **Retiring a deployed file** needs `.chezmoiremove`, not just deleting the source. Deleting a source file (or `git rm`) only stops chezmoi *managing* the target — the already-deployed copy lingers on every machine. List its **target path** in `.chezmoiremove` (e.g. `.claude/skills/foo`, no `dot_` prefix, no leading `~`) to prune it everywhere; directories are removed recursively. A target that was modified since chezmoi last wrote it prompts for confirmation, so use `chezmoi apply --force` in non-interactive shells.
 - Entry files (`dot_bashrc.tmpl`, etc.) compose platform fragments via `{{`{{ template "name" . }}`}}`. Do **not** use `include` — chezmoi's `include` takes one arg and reads from source root, so it cannot reach `.chezmoitemplates/`.
-- `.gitattributes` enforces `.sh.tmpl` → LF and `.ps1` → CRLF. Do not override.
+- `.gitattributes` enforces CRLF on standalone `.ps1` and LF on everything else that ships as a script — `.sh`, `.sh.tmpl`, `.ps1.tmpl`, and all of `.chezmoitemplates/`. `.ps1.tmpl` is LF, unlike `.ps1`, because it inlines LF fragments and CRLF would render mixed endings. Do not override.
 
 ## Script Logging Contract
 

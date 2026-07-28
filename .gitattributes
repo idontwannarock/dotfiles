@@ -15,6 +15,12 @@
 *.bat text eol=crlf
 *.cmd text eol=crlf
 
+# Chezmoi ps1 templates: LF, not CRLF like the .ps1 above. Each one inlines
+# .chezmoitemplates fragments, which the rule below forces to LF, so a CRLF
+# body would render mixed endings. pwsh 7 -- the configured .ps1 interpreter
+# -- reads LF fine.
+*.ps1.tmpl text eol=lf
+
 # Shell scripts without extension (wrappers in ~/.local/bin/)
 # Paths are under home/ since the chezmoi source root moved there (.chezmoiroot).
 home/dot_local/bin/* text eol=lf
