@@ -5,7 +5,7 @@ Claude Code 相關的個人設定檔案。
 ## 目錄結構
 
 ```
-claude/statusline/          # 自訂狀態列程式
+tools/statusline/           # 自訂狀態列程式
     statusline.go
 
 dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
@@ -320,13 +320,11 @@ ccusage 不需要預先安裝，`bunx ccusage` 會自動下載並執行。首次
 #### 2. 複製並編譯
 
 ```bash
-# 複製 statusline.go 到 ~/.claude/
-cp statusline/statusline.go ~/.claude/
-
-# 編譯
-cd ~/.claude
-go build -o statusline.exe statusline.go   # Windows
-go build -o statusline statusline.go       # macOS/Linux
+# 整包編譯：statusline.go 依賴 build-tag 分流的 count_unix.go / count_windows.go，
+# 單獨編譯 statusline.go 會 undefined: countClaudeProcesses。
+cd tools/statusline
+go build -o ~/.claude/statusline.exe .   # Windows
+go build -o ~/.claude/statusline .       # macOS/Linux
 ```
 
 #### 3. 設定 Claude Code
@@ -394,7 +392,7 @@ go build -o statusline statusline.go       # macOS/Linux
 |---|---|---|
 | Skill | `dot_claude/skills/handoff/`（+ `dot_codex/skills/handoff/`，共用 body 在 `.chezmoitemplates/skills/handoff.md`） | `/handoff`、「切 session」、reminder 後確認 |
 | 提醒 hook | `dot_claude/hooks/executable_handoff-reminder.sh` | UserPromptSubmit；context 達 40/70/90% 各提醒一次 |
-| Cache writer | `claude/statusline/statusline.go` 的 `writeContextWindowCache()` | 每次 statusline 渲染 |
+| Cache writer | `tools/statusline/statusline.go` 的 `writeContextWindowCache()` | 每次 statusline 渲染 |
 | 註冊 | `dot_claude/modify_settings.json.sh.tmpl` jq patch | chezmoi apply 時生效 |
 
 ### 資料流

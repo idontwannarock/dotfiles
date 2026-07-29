@@ -269,7 +269,7 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 | [SSH keys](docs/ssh.md) | 每台機器獨立，不應同步 |
 | [Git 憑證](docs/git-credentials.md) | 包含機器專屬 access token |
 | GUI 應用程式 | 各機器需求不同（清單維護於 [gist](https://gist.github.com/idontwannarock/cef42b856b878e718a2e402eb8e5d7e1)） |
-| NeoVim（`neovim/`） | 已棄用 |
+| NeoVim | 已棄用並自 repo 移除，改用 [Vim](docs/vim.md) 設定；舊設定可自 git history 取回 |
 
 ---
 
@@ -300,7 +300,7 @@ dotfiles/
 │   ├── dot_config/           # ~/.config/ 設定（starship 等）
 │   ├── dot_claude/           # ~/.claude/ 設定（exact_commands / exact_agents）
 │   ├── dot_codex/            # ~/.codex/ 設定（skills）
-│   ├── dot_local/bin/        # ~/.local/bin/ 腳本
+│   ├── dot_local/bin/        # ~/.local/bin/ 腳本（wrapper 與手動執行的輔助腳本）
 │   ├── dot_shell_common.tmpl # ~/.shell_common 入口（依 OS 載入 template 片段）
 │   ├── dot_bashrc.tmpl       # ~/.bashrc 入口（Windows Git Bash / Linux/WSL）
 │   ├── dot_zshrc.tmpl        # ~/.zshrc 入口（macOS）
@@ -310,13 +310,12 @@ dotfiles/
 │   ├── run_onchange_*.tmpl        # 設定更新腳本（變更時重跑）
 │   └── run_after_*.tmpl           # 後置腳本（Windows codex config 合併）
 │
-├── .github/workflows/        # GitHub Actions（statusline / passgen 自動編譯發佈）
-├── claude/statusline/        # statusline 原始碼（CI 編譯，不部署）
-├── passgen/                  # passgen 原始碼（CI 編譯，不部署）
-├── neovim/                   # NeoVim 設定（已棄用，不部署）
-├── scripts/                  # 輔助腳本（worklogs 設定、scoop 互動更新等，不部署）
+├── .github/workflows/        # GitHub Actions（工具編譯發佈、Pester 測試、externals 驗證）
+├── tools/                    # 自建工具原始碼（CI 編譯為 release，經 external 拉回，不部署）
+│   ├── statusline/           #   Go：Claude Code 狀態列
+│   └── passgen/              #   Rust：密碼產生器
 ├── docs/                     # 工具設定說明文件
-├── tests/                    # Pester 測試
+├── tests/                    # Pester 測試（CI 於 windows-latest 執行）
 └── openspec/                 # OpenSpec 變更追蹤
 ```
 
@@ -333,5 +332,5 @@ dotfiles/
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
 | [SSH](docs/ssh.md) | SSH key 設定教學 |
 | [Starship](docs/starship.md) | Starship prompt 設定 |
-| [User Scripts](docs/user-scripts.md) | 輔助腳本（worklogs、scoop 更新） |
+| [User Scripts](docs/user-scripts.md) | 手動執行的輔助腳本（scoop 更新、pwsh 換裝） |
 | [Vim](docs/vim.md) | Vim / IdeaVim 設定與快捷鍵 |

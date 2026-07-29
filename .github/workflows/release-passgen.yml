@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'passgen/**'
+      - 'tools/passgen/**'
       - '.github/workflows/release-passgen.yml'
   workflow_dispatch:
 
@@ -42,15 +42,15 @@ jobs:
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: passgen
+          workspaces: tools/passgen
 
       - name: Build
-        working-directory: passgen
+        working-directory: tools/passgen
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Stage artifact
         shell: bash
-        working-directory: passgen
+        working-directory: tools/passgen
         run: |
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             cp "target/${{ matrix.target }}/release/passgen.exe" "${{ matrix.artifact }}"
@@ -62,7 +62,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: passgen/${{ matrix.artifact }}
+          path: tools/passgen/${{ matrix.artifact }}
 
   release:
     name: Publish GitHub Release

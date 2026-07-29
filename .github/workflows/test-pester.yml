@@ -1,0 +1,38 @@
+name: Test PowerShell (Pester)
+
+# PR-only, like validate-externals.yml — the other pure-check workflow here. The
+# workflows that also fire on push to main are the ones that publish artifacts;
+# a test suite has nothing to publish, and everything lands via PR, so re-running
+# the same commit on main after a green PR buys nothing.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/**'
+      - 'home/dot_local/bin/**'
+      - '.github/workflows/test-pester.yml'
+  workflow_dispatch:
+
+jobs:
+  pester:
+    name: Run Pester tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The runner image ships Pester 3.4 with Windows PowerShell; pin an explicit
+      # Pester 5 so the test files' v5 syntax (Should -Be, BeforeAll scoping) resolves.
+      - name: Install Pester 5
+        shell: pwsh
+        run: |
+          Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+
+      # -CI turns a failed assertion into a non-zero exit code, which is what makes
+      # the job go red. Without it Invoke-Pester reports failures and exits 0.
+      # No Import-Module needed: autoloading resolves Invoke-Pester to the highest
+      # installed version, which is the 5.5+ from the step above.
+      - name: Run tests
+        shell: pwsh
+        run: Invoke-Pester -Path tests -CI

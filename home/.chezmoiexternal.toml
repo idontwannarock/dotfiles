@@ -17,7 +17,7 @@
     url = "https://github.com/idontwannarock/dotfiles/releases/download/statusline-latest/statusline-{{ .chezmoi.os }}-{{ .chezmoi.arch }}{{ $ext }}"
     refreshPeriod = "1h"
 
-# passgen binary — 個人密碼產生器，source 在 passgen/ 由 GitHub Actions 編譯
+# passgen binary — 個人密碼產生器，source 在 tools/passgen/ 由 GitHub Actions 編譯
 [".local/bin/passgen{{ $ext }}"]
     type = "file"
     executable = true

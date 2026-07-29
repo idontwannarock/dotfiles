@@ -20,7 +20,7 @@
 **chezmoi 模型**
 
 - **source of truth vs live config** — repo 是權威;機器上的設定是 render 產物。變更一律「先在機器上測 → 確認生效 → 才回寫 source」。
-- **`.chezmoiroot`** — 指定 `home/` 為 chezmoi source root;其餘(`openspec/`、`docs/`、`tests/`、CI)在 chezmoi 視野外。
+- **`.chezmoiroot`** — 指定 `home/` 為 chezmoi source root;其餘(`openspec/`、`docs/`、`tests/`、`tools/`、CI)在 chezmoi 視野外。這條分界是**雙向**的:要在使用者機器上執行的東西一律放 `home/` 之下,root 只放不部署的專案基礎建設。root 出現看似要被執行的腳本目錄,本身就是設計錯誤的徵兆——曾有一支 `scripts/scoop-interactive-update.ps1` 放在 root,alias 卻指向 `~/.local/bin/`,那個路徑永遠不會存在。
 - **檔名前綴(語意 load-bearing)** — `dot_`→`.`;`exact_` 目錄=內容精確鏡射(刪除會傳播);`run_`=每次 apply 都跑、`run_once_`=只跑一次、`run_onchange_`=內容變才跑;`run_after_`、`modify_`、`executable_`、`.tmpl`(Go 模板)。選錯前綴 = 行為錯(例:Rust toolchain 要每次更新必須用純 `run_`)。
 - **`.chezmoitemplates/`(shared body)** — 可重用的模板片段,依平台/檔名組織(如 `bashrc/linux`);也放 discipline skills 的共用 body(`skills/<name>.md`)。
 - **`.chezmoiexternal.toml`** — 宣告從 GitHub Releases / 官方 CDN 抓進 `~/.local/{bin,opt}` 的外部 binary。
@@ -45,7 +45,7 @@
 
 **承載物 / 自動化**
 
-- **statusline** — Go binary(`claude/statusline/statusline.go`),由 GitHub Actions 編為 `statusline-latest` release,各平台經 chezmoi external 拉取;顯示 git diff stats、context %、rate limit、cost、worktree。
+- **statusline** — Go binary(`tools/statusline/statusline.go`),由 GitHub Actions 編為 `statusline-latest` release,各平台經 chezmoi external 拉取;顯示 git diff stats、context %、rate limit、cost、worktree。
 - **external-version automation** — Renovate(custom regex manager)追蹤 `.chezmoiexternal.toml` 內以 `# renovate:` 註記的釘選版本,開 bump PR(人審 + `chezmoi apply` 才落地)。
 - **external-tool mirroring** — `mirror-externals.yml` 把 Renovate 追不動的上游工具(vim、jdtls、dos2unix)re-host 到本 repo 的 Releases。
 - **corp-ssh** — 離線的公司伺服器 SSH 憑證/askpass 系統(AD 密碼 + TOTP);WSL + Windows 已上,macOS 延後。SSH multiplex + `PubkeyAuthentication no` 政策以 chezmoi drop-in `~/.ssh/config.d/corp-multiplex` 重現(不含 FQDN,故可入 repo;WSL/Linux/macOS only);含 FQDN/IP 的 `~/.ssh/config` host block 仍留本機,靠一行 `Include ~/.ssh/config.d/*` 接上。

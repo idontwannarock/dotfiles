@@ -1,5 +1,9 @@
 # Compiled binaries
 *.exe
+# `go build` inside tools/statusline/ drops the binary next to its source.
+tools/statusline/statusline
+# Invoke-Pester -CI writes a JUnit report into the working directory.
+testResults.xml
 
 # Claude Code local settings
 .claude/settings.local.json

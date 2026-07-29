@@ -8,6 +8,8 @@
 ### Requirement: chezmoi source root 由 .chezmoiroot 指向 home/
 Repo root SHALL 包含 `.chezmoiroot`（內容為 `home`），將 `home/` 指定為 chezmoi source root。所有需要部署到 `$HOME` 的檔案 SHALL 置於 `home/` 之下並使用 chezmoi 檔名前綴慣例（`dot_`、`exact_`、`.tmpl` 等）。repo root 其餘項目（CI 原始碼、`docs/`、`tests/`、`openspec/` 等）位於 source root 之外，chezmoi 不會看到，因此無須以 `.chezmoiignore` 排除。
 
+此分界為雙向約束：位於 `home/` 之外的檔案 MUST NOT 被任何部署路徑（alias、wrapper、文件）當作「會出現在使用者機器上」來引用。需要在使用者機器上執行的腳本 SHALL 一律置於 `home/` 之下。
+
 #### Scenario: chezmoi 從 home/ 讀取 source state
 - **WHEN** chezmoi apply 或 chezmoi managed 執行
 - **THEN** chezmoi source-path 解析為 `<repo>/home`，僅 `home/` 內的檔案被視為 source state
@@ -23,6 +25,10 @@ Repo root SHALL 包含 `.chezmoiroot`（內容為 `home`），將 `home/` 指定
 #### Scenario: .tmpl 後綴觸發 template 渲染
 - **WHEN** chezmoi apply 處理 `.tmpl` 後綴的檔案
 - **THEN** 檔案內容經過 Go template 渲染後部署，目標檔案不含 `.tmpl` 後綴
+
+#### Scenario: 可執行腳本不置於 source root 之外
+- **WHEN** 檢視 repo root 的非部署項目
+- **THEN** 其中不含任何供使用者在自己機器上執行的腳本目錄；此類腳本一律位於 `home/dot_local/bin/`
 
 ### Requirement: .chezmoi.toml.tmpl 提供環境偵測
 chezmoi source root（`home/`）SHALL 包含 `.chezmoi.toml.tmpl`，在 `chezmoi init` 時產生機器專屬的 chezmoi config。
@@ -52,8 +58,7 @@ chezmoi source root（`home/`）SHALL 包含 `.chezmoiignore.tmpl`，依 OS 排�
 
 #### Scenario: Repo 基礎建設不被部署（位於 source root 之外）
 - **WHEN** chezmoi apply 在任何環境執行
-- **THEN** `.claude/`、`openspec/`、`docs/`、`README.md`、`neovim/`、`passgen/` 等位於 `home/` 之外，不在 chezmoi source state 中，故不被部署
-
+- **THEN** `.claude/`、`openspec/`、`docs/`、`tests/`、`tools/`、`README.md` 等位於 `home/` 之外，不在 chezmoi source state 中，故不被部署
 ### Requirement: .chezmoi.toml.tmpl 為所有 chezmoi-spawned scripts 注入 ~/.local/bin 到 PATH
 `.chezmoi.toml.tmpl` SHALL 包含 `[scriptEnv]` 區塊，將 `~/.local/bin` prepend 到 PATH 環境變數。此設定 SHALL 透過 chezmoi 套用到所有由 chezmoi 啟動的子程序，包含 `run_*` scripts、modify_ files 經 `[interpreters.sh]` 啟動的 bash 程序、以及 hooks。
 
