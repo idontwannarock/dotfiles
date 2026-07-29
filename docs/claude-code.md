@@ -320,13 +320,11 @@ ccusage 不需要預先安裝，`bunx ccusage` 會自動下載並執行。首次
 #### 2. 複製並編譯
 
 ```bash
-# 複製 statusline.go 到 ~/.claude/
-cp statusline/statusline.go ~/.claude/
-
-# 編譯
-cd ~/.claude
-go build -o statusline.exe statusline.go   # Windows
-go build -o statusline statusline.go       # macOS/Linux
+# 整包編譯：statusline.go 依賴 build-tag 分流的 count_unix.go / count_windows.go，
+# 單獨編譯 statusline.go 會 undefined: countClaudeProcesses。
+cd tools/statusline
+go build -o ~/.claude/statusline.exe .   # Windows
+go build -o ~/.claude/statusline .       # macOS/Linux
 ```
 
 #### 3. 設定 Claude Code

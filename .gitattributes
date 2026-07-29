@@ -21,7 +21,10 @@
 # -- reads LF fine.
 *.ps1.tmpl text eol=lf
 
-# Shell scripts without extension (wrappers in ~/.local/bin/)
+# Everything deployed to ~/.local/bin/ -- extensionless wrappers, .cmd shims, and
+# the .ps1 helpers alike. This rule sits after the extension rules above and last
+# match wins, so it deliberately overrides *.ps1 -> CRLF and *.cmd -> CRLF here.
+# pwsh 7 and cmd.exe both read LF fine.
 # Paths are under home/ since the chezmoi source root moved there (.chezmoiroot).
 home/dot_local/bin/* text eol=lf
 

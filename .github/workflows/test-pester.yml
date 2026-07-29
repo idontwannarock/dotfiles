@@ -1,14 +1,12 @@
 name: Test PowerShell (Pester)
 
+# PR-only, like validate-externals.yml — the other pure-check workflow here. The
+# workflows that also fire on push to main are the ones that publish artifacts;
+# a test suite has nothing to publish, and everything lands via PR, so re-running
+# the same commit on main after a green PR buys nothing.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'tests/**'
-      - 'home/dot_local/bin/**'
-      - '.github/workflows/test-pester.yml'
   pull_request:
+    branches: [main]
     paths:
       - 'tests/**'
       - 'home/dot_local/bin/**'
@@ -33,8 +31,8 @@ jobs:
 
       # -CI turns a failed assertion into a non-zero exit code, which is what makes
       # the job go red. Without it Invoke-Pester reports failures and exits 0.
+      # No Import-Module needed: autoloading resolves Invoke-Pester to the highest
+      # installed version, which is the 5.5+ from the step above.
       - name: Run tests
         shell: pwsh
-        run: |
-          Import-Module Pester -MinimumVersion 5.5.0
-          Invoke-Pester -Path tests -CI
+        run: Invoke-Pester -Path tests -CI

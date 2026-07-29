@@ -55,7 +55,9 @@ head -c 3 file.ps1 | xxd -p   # should print: efbbbf
 
 ## File Encodings
 
-`.gitattributes` enforces `.ps1` → CRLF (working tree) / LF (git index). EOL normalization is independent of BOM (BOM is at byte 0, before any newline) — the two coexist fine.
+`.gitattributes` enforces `.ps1` → CRLF (working tree) / LF (git index), **except** under `home/dot_local/bin/`, where a later `home/dot_local/bin/* text eol=lf` rule wins and makes every file there LF. The manual helpers that live there (`corp-ssh-askpass.ps1`, `switch-pwsh-to-msi.ps1`, `scoop-interactive-update.ps1`) are therefore LF; pwsh 7 reads LF fine.
+
+EOL normalization is independent of BOM (BOM is at byte 0, before any newline) — the two coexist fine. Ship `.ps1` without a BOM anyway; the repo strips them.
 
 ## Windows-Specific Checklist
 

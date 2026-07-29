@@ -4,21 +4,23 @@
 
 repo 中的 PowerShell 腳本測試（`tests/*.Tests.ps1`）SHALL 由 GitHub Actions workflow 在 `windows-latest` runner 上以 Pester 5 執行。測試失敗 SHALL 使 workflow 失敗。
 
-Workflow SHALL 在 push 到 main 與 pull request 時觸發，且 SHALL 以 `paths` filter 限定於「測試本身」與「被測腳本所在目錄」的變動，避免與測試無關的 dotfile 變更觸發 Windows runner。
+Workflow SHALL 在針對 `main` 的 pull request 時觸發，且 SHALL 以 `paths` filter 限定於「測試本身」與「被測腳本所在目錄」的變動，避免與測試無關的 dotfile 變更觸發 Windows runner。
+
+Workflow MUST NOT 掛在 `push` to `main` 上。純檢查型 workflow 的既有慣例（`validate-externals.yml`）是 PR-only；掛 `push` 的皆為發佈 artifact 的 workflow。所有變更均經 PR 進入 `main`，PR 已驗過的 commit 在 main 重跑不產生新資訊。
 
 #### Scenario: 測試檔變更時觸發
 
-- **WHEN** 包含 `tests/` 下變更的 commit push 到 main 或開啟 pull request
+- **WHEN** 開啟針對 `main` 的 pull request，其中含 `tests/` 下的變更
 - **THEN** Pester workflow 觸發，在 `windows-latest` 上執行 `tests/` 內所有 `*.Tests.ps1`
 
 #### Scenario: 被測腳本變更時觸發
 
-- **WHEN** 包含 `home/dot_local/bin/` 下變更的 commit push 到 main 或開啟 pull request
+- **WHEN** 開啟針對 `main` 的 pull request，其中含 `home/dot_local/bin/` 下的變更
 - **THEN** Pester workflow 觸發
 
 #### Scenario: 無關變更不觸發
 
-- **WHEN** push 的 commit 只含 `docs/`、`openspec/` 或 `home/` 其他子目錄的變更
+- **WHEN** pull request 只含 `docs/`、`openspec/` 或 `home/` 其他子目錄的變更
 - **THEN** Pester workflow 不觸發
 
 #### Scenario: 測試失敗使 workflow 失敗

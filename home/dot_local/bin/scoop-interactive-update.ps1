@@ -1,4 +1,4 @@
-﻿# 更新 scoop 自身
+# 更新 scoop 自身
 scoop update
 
 # 取得 scoop status 的結果（已是 ScoopStatus 物件陣列）
