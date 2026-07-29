@@ -72,7 +72,17 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 |------|------|------|
 | code-review | `claude-plugins-official` | `/code-review` 指令與 review agents |
 
-**已退役**：`superpowers` plugin 已於 2026-07 移除，腳本會在每台機器上主動 `plugin uninstall` 並清除殘留 cache，使移除收斂。`superpowers-marketplace` 本身保留，因為 `episodic-memory` 與 `elements-of-style` 仍由它提供。
+**已退役**（腳本以 `$retiredPlugins` 資料表驅動，在每台機器上主動 `plugin uninstall` 並清除殘留 cache，使移除收斂）：
+
+| Plugin | 退役理由 |
+|--------|----------|
+| superpowers | workflow skills 已由 `~/.claude/skills/` 自家 discipline skills 取代 |
+| claude-md-management、context7、playwright、commit-commands、security-guidance、pyright-lsp、jdtls-lsp、claude-code-setup | 未使用 |
+| code-simplifier、pr-review-toolkit | 未使用；同名的 `code-simplifier` / `code-reviewer` **agent** 來自 repo 的 `exact_agents/code-review/`，與這兩個 plugin 無關，退役後仍可用 |
+
+> 退役一個 plugin＝往那張表加一列，**不是**把安裝那行刪掉。只刪安裝行的話，已經 apply 過的機器會永遠留著它，而 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，每次 apply 還會繼續更新它。
+
+`superpowers-marketplace` 本身保留，因為 `episodic-memory` 與 `elements-of-style` 仍由它提供。
 
 ### On-demand 工具
 

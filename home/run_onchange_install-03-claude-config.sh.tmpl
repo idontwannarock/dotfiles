@@ -44,19 +44,39 @@ if echo "$INSTALLED_PLUGINS" | grep -q "learning-output-style@claude-plugins-off
     claude plugin uninstall learning-output-style@claude-plugins-official 2>&1 || true
 fi
 
-log_section "uninstall the retired superpowers plugin so its removal converges on every machine"
-# Workflow skills replaced by the in-house discipline skills in ~/.claude/skills/.
-# remove-superpowers-plugin only dropped the install line, so machines that had
-# already applied it kept the plugin -- and run_update-claude-plugins, which
-# iterates enabledPlugins, kept updating it on every apply. Uninstall here so
-# the removal converges on every machine, not just the one where it was run
-# by hand.
-if echo "$INSTALLED_PLUGINS" | grep -q "superpowers@claude-plugins-official"; then
-    log_step "[plugins] removing superpowers (retired, replaced by in-house discipline skills)"
-    claude plugin uninstall superpowers@claude-plugins-official 2>&1 || true
-else
-    log_skip "[plugins] superpowers not installed"
-fi
+# Retired plugins. Dropping the install line is NOT enough: machines that already
+# applied it keep the plugin, and run_update-claude-plugins iterates enabledPlugins
+# and keeps updating it every apply. Uninstall here so removal converges everywhere,
+# not just on the machine where the decision was made.
+#
+# Adding a retirement = adding a row here. Reason text is user-facing.
+# Keep this list identical to the PowerShell twin in the .ps1.tmpl.
+RETIRED_PLUGINS="
+superpowers@claude-plugins-official|workflow skills replaced by the in-house discipline skills in ~/.claude/skills/
+claude-md-management@claude-plugins-official|unused
+context7@claude-plugins-official|unused
+code-simplifier@claude-plugins-official|unused; the same-named agent comes from exact_agents/code-review/, not this plugin
+playwright@claude-plugins-official|unused
+commit-commands@claude-plugins-official|unused
+security-guidance@claude-plugins-official|unused
+pr-review-toolkit@claude-plugins-official|unused; code-reviewer and friends come from exact_agents/
+pyright-lsp@claude-plugins-official|unused
+jdtls-lsp@claude-plugins-official|unused
+claude-code-setup@claude-plugins-official|unused
+"
+
+log_section "uninstall retired plugins so their removal converges on every machine"
+echo "$RETIRED_PLUGINS" | while IFS='|' read -r id reason; do
+    [ -n "$id" ] || continue
+    # Check first: uninstalling something absent writes to stderr, and 11 of those
+    # every apply would bury the real output.
+    if echo "$INSTALLED_PLUGINS" | grep -qF "$id"; then
+        log_step "[plugins] removing ${id} — ${reason}"
+        claude plugin uninstall "$id" 2>&1 || true
+    else
+        log_skip "[plugins] ${id} not installed"
+    fi
+done
 
 log_section "install jdtls — the Java LSP; pinned tarball here, scoop rolling release on Windows"
 JDTLS_DIR="$HOME/.local/share/jdtls"
@@ -76,18 +96,28 @@ else
     log_skip "[jdtls] already installed"
 fi
 
-log_section "drop the stale superpowers plugin cache left by the retired plugin"
+log_section "drop the stale caches the retired plugins leave behind"
 PLUGIN_CACHE="$HOME/.claude/plugins/cache"
+# Unconditional, NOT gated on "did we just uninstall": uninstall clears
+# installed_plugins.json + enabledPlugins but leaves the cache dir. A machine where
+# the plugin was removed by hand still has the cache to clean.
+#
 # rm -rf exits 0 on a missing path, so guard on existence -- otherwise the
 # message prints on every apply and the output stops meaning anything.
+echo "$RETIRED_PLUGINS" | while IFS='|' read -r id _reason; do
+    [ -n "$id" ] || continue
+    plugin_id="${id%@*}"
+    marketplace="${id#*@}"
+    if [ -d "$PLUGIN_CACHE/$marketplace/$plugin_id" ]; then
+        rm -rf "$PLUGIN_CACHE/$marketplace/$plugin_id"
+        log_step "[cleanup] removed ${marketplace}/${plugin_id} cache"
+    fi
+done
+# Defensive, and not derivable from the table above: superpowers once shipped from
+# superpowers-marketplace, so its cache can sit under that marketplace too.
 if [ -d "$PLUGIN_CACHE/superpowers-marketplace/superpowers" ]; then
     rm -rf "$PLUGIN_CACHE/superpowers-marketplace/superpowers"
     log_step "[cleanup] removed marketplace superpowers cache"
-fi
-# uninstall clears installed_plugins.json + enabledPlugins but leaves the cache behind
-if [ -d "$PLUGIN_CACHE/claude-plugins-official/superpowers" ]; then
-    rm -rf "$PLUGIN_CACHE/claude-plugins-official/superpowers"
-    log_step "[cleanup] removed official superpowers cache"
 fi
 
 log_section "repair episodic-memory deps — its lockfile hides onnxruntime-common from a bare import"

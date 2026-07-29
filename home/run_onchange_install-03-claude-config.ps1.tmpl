@@ -50,18 +50,36 @@ try {
         claude plugin uninstall learning-output-style@claude-plugins-official 2>&1 | Out-Null
     }
 
-    Log-Section "uninstall the retired superpowers plugin so its removal converges on every machine"
-    # Workflow skills replaced by the in-house discipline skills in ~/.claude/skills/.
-    # remove-superpowers-plugin only dropped the install line, so machines that had
-    # already applied it kept the plugin -- and run_update-claude-plugins, which
-    # iterates enabledPlugins, kept updating it on every apply. Uninstall here so
-    # the removal converges on every machine, not just the one where it was run
-    # by hand.
-    if ($installedPlugins -match "superpowers@claude-plugins-official") {
-        Log-Step "[plugins] removing superpowers (retired, replaced by in-house discipline skills)"
-        claude plugin uninstall superpowers@claude-plugins-official 2>&1 | Out-Null
-    } else {
-        Log-Skip "[plugins] superpowers not installed"
+    # Retired plugins. Dropping the install line is NOT enough: machines that already
+    # applied it keep the plugin, and run_update-claude-plugins iterates enabledPlugins
+    # and keeps updating it every apply. Uninstall here so removal converges everywhere,
+    # not just on the machine where the decision was made.
+    #
+    # Adding a retirement = adding a row here. Reason text is user-facing.
+    $retiredPlugins = @(
+        @{ Id = "superpowers@claude-plugins-official";           Reason = "workflow skills replaced by the in-house discipline skills in ~/.claude/skills/" }
+        @{ Id = "claude-md-management@claude-plugins-official";  Reason = "unused" }
+        @{ Id = "context7@claude-plugins-official";              Reason = "unused" }
+        @{ Id = "code-simplifier@claude-plugins-official";       Reason = "unused; the same-named agent comes from exact_agents/code-review/, not this plugin" }
+        @{ Id = "playwright@claude-plugins-official";            Reason = "unused" }
+        @{ Id = "commit-commands@claude-plugins-official";       Reason = "unused" }
+        @{ Id = "security-guidance@claude-plugins-official";     Reason = "unused" }
+        @{ Id = "pr-review-toolkit@claude-plugins-official";     Reason = "unused; code-reviewer and friends come from exact_agents/" }
+        @{ Id = "pyright-lsp@claude-plugins-official";           Reason = "unused" }
+        @{ Id = "jdtls-lsp@claude-plugins-official";             Reason = "unused" }
+        @{ Id = "claude-code-setup@claude-plugins-official";     Reason = "unused" }
+    )
+
+    Log-Section "uninstall retired plugins so their removal converges on every machine"
+    foreach ($p in $retiredPlugins) {
+        # Check first: uninstalling something absent writes to stderr, and 11 of those
+        # every apply would bury the real output.
+        if ($installedPlugins -match [regex]::Escape($p.Id)) {
+            Log-Step "[plugins] removing $($p.Id) — $($p.Reason)"
+            claude plugin uninstall $p.Id 2>&1 | Out-Null
+        } else {
+            Log-Skip "[plugins] $($p.Id) not installed"
+        }
     }
 
     $ErrorActionPreference = "Stop"
@@ -72,19 +90,27 @@ try {
 
     $pluginCache = Join-Path $env:USERPROFILE ".claude\plugins\cache"
 
-    Log-Section "drop the stale superpowers plugin caches left by the retired plugin"
+    Log-Section "drop the stale caches the retired plugins leave behind"
+    # Unconditional, NOT gated on "did we just uninstall": uninstall clears
+    # installed_plugins.json + enabledPlugins but leaves the cache dir. A machine
+    # where the plugin was removed by hand still has the cache to clean.
+    foreach ($p in $retiredPlugins) {
+        $id, $marketplace = $p.Id -split "@", 2
+        $dir = Join-Path $pluginCache (Join-Path $marketplace $id)
+        if (Test-Path $dir) {
+            Remove-Item -Recurse -Force $dir
+            Log-Step "[cleanup] removed $marketplace/$id cache"
+        } else {
+            Log-Skip "[cleanup] no stale $marketplace/$id cache"
+        }
+    }
+    # Defensive, and not derivable from the table above: superpowers once shipped from
+    # superpowers-marketplace, so its cache can sit under that marketplace too.
     if (Test-Path "$pluginCache\superpowers-marketplace\superpowers") {
         Remove-Item -Recurse -Force "$pluginCache\superpowers-marketplace\superpowers"
         Log-Step "[cleanup] removed marketplace superpowers cache"
     } else {
         Log-Skip "[cleanup] no stale marketplace superpowers cache"
-    }
-    # uninstall clears installed_plugins.json + enabledPlugins but leaves the cache behind
-    if (Test-Path "$pluginCache\claude-plugins-official\superpowers") {
-        Remove-Item -Recurse -Force "$pluginCache\claude-plugins-official\superpowers"
-        Log-Step "[cleanup] removed official superpowers cache"
-    } else {
-        Log-Skip "[cleanup] no stale official superpowers cache"
     }
 
     Log-Section "repair episodic-memory deps — its lockfile hides onnxruntime-common from a bare import"
