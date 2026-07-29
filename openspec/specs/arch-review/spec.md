@@ -69,6 +69,10 @@
 - **WHEN** 體檢無候選、`## Suggested skills` 段無內容可列
 - **THEN** SHALL 以非 bullet 的句子表達(如 `No skills needed -- this review produced no candidates.`),SHALL NOT 寫成 `- None` —— bullet 形式與真實 skill 條目無法區分,`pickup` 會嘗試呼叫它
 
+#### Scenario: 不得列出會提前動工的 skill
+- **WHEN** 撰寫 `## Suggested skills` 段
+- **THEN** SHALL NOT 列出 `dev-workflow` 或其他會對候選動工的 skill —— `pickup` 會在讀 `## Next steps` 之前無確認地呼叫該段所有項目,等同在使用者選定候選前就啟動 change 生命週期
+
 ### Requirement: 只提候選不動手
 `arch-review` SHALL 僅產出排序過的重構候選,每項 SHALL 包含問題陳述、證據(檔案路徑加具體事證)、影響範圍與建議動作。`arch-review` SHALL NOT 修改任何原始碼,亦 SHALL NOT 自動建立 OpenSpec change。
 

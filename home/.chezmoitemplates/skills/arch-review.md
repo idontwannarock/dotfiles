@@ -35,7 +35,9 @@ Build a structural picture cheaply. Aim for signals, not understanding:
 
 If the user passed a path argument (`/arch-review src/payment`), scope every phase to it.
 
-Use cheap tools -- `git ls-files`, `wc -l`, `rg -l` for import lines, directory listings. Do not open files to read logic in this phase.
+Use cheap tools only: file enumeration (`git ls-files`), per-directory line counts, and pattern counts for import lines (`rg -l` / `rg --count-matches`). Do not open files to read logic in this phase.
+
+Pick the counting tool from what the platform actually has -- `wc -l` on Linux/macOS, `Measure-Object -Line` on Windows PowerShell, or `rg --stats` anywhere `rg` is available. Never assume POSIX coreutils: this skill is deployed to Windows machines where `git` and `rg` exist but `wc` does not.
 
 ## Phase 2 -- deep dive (at most 5 zones)
 
@@ -55,7 +57,10 @@ If Phase 1 surfaced more than 5 candidate zones, say so in the report and name t
 
 Write to `~/.agent/handoffs/<repo-slug>/<ID>.md`. This is the same location and convention `handoff` uses, so `pickup` can resume it.
 
-- **Repo slug**: the absolute repo path (`git rev-parse --show-toplevel`, falling back to `$PWD`) with every `:`, `\`, `/`, and `.` replaced by `-`. Example: `/home/user/work/api` becomes `-home-user-work-api`.
+- **Repo slug**: identical derivation to `handoff` -- the absolute repo path (`git rev-parse --show-toplevel`, falling back to `$PWD`) with every `:`, `\`, `/`, and `.` replaced by `-`:
+  - `/home/user/work/api` becomes `-home-user-work-api`
+  - `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`
+  - `\\wsl.localhost\Ubuntu\home\me\proj` becomes `--wsl-localhost-Ubuntu-home-me-proj`
 - **ID**: `YYYY-MM-DD-HHMM__arch-review`, user's local time.
 - Create the directory if missing. Never write inside a tool-specific dotdir (`.claude/`, `.codex/`) or into the repo.
 
@@ -94,18 +99,14 @@ Rank candidates by expected payoff over effort -- highest first.
 
 ## Suggested skills
 
-- `dev-workflow` -- to turn a chosen candidate into a tracked change
-- <other skills the candidates call for>
-
-<!-- If there are no candidates, keep this heading but write an unbulleted sentence
-     such as "No skills needed -- this review produced no candidates." A bulleted
-     "- None" is shaped exactly like a skill entry and pickup will try to invoke it. -->
+<only skills that are safe to fire before a candidate has been chosen; usually none>
 
 ## Next steps
 
-1. Pick a candidate to pursue (nothing here is committed to yet)
-2. <candidate-specific first move>
-3. <if any evergreen vocabulary surfaced: propose promoting it into project.md at the next sync/archive>
+1. Pick a candidate to pursue -- nothing here is committed to yet
+2. Run `dev-workflow` on the chosen candidate to turn it into a tracked change
+3. <candidate-specific first move>
+4. <if any evergreen vocabulary surfaced: propose promoting it into project.md at the next sync/archive>
 
 ---
 
@@ -113,6 +114,13 @@ To resume in any future session, run:
 
     /pickup <ID>
 ```
+
+### On the `## Suggested skills` section
+
+`pickup` invokes everything listed there **immediately and without confirmation**, before it reads `## Next steps`. That makes the section a loaded gun:
+
+- Do **not** list `dev-workflow` (or anything else that starts work on a candidate). It would launch the change lifecycle before the user has picked which candidate it is for -- exactly the decision this skill refuses to make on their behalf. It belongs in `## Next steps`, which pickup treats as instructions to follow, not as skills to fire.
+- If nothing is safe to list, keep the heading and write a plain sentence: `No skills needed -- this review produced no candidates.` A bulleted `- None` is shaped exactly like a real entry and pickup will try to invoke it.
 
 ## Report to the user
 
@@ -134,4 +142,5 @@ Do not print the whole report back -- it is on disk.
 - **Don't** write to `openspec/project.md`, ever.
 - **Don't** re-run the whole scan when the user only asked about one module -- honour the path argument.
 - **Don't** pad the candidate list. Three real findings beat ten padded ones; if the codebase is healthy, say so and stop.
+- **Don't** put `dev-workflow` -- or anything that acts on a candidate -- under `## Suggested skills`. `pickup` fires that section without confirmation, ahead of `## Next steps`, so listing it there starts the change lifecycle before the user has chosen a candidate.
 - **Don't** write `- None` as a bullet under `## Suggested skills`. It is indistinguishable from a real entry, and `pickup` invokes whatever is listed there. Use a plain sentence instead.
