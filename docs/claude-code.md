@@ -10,11 +10,17 @@ tools/statusline/           # 自訂狀態列程式
 
 dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 ├── CLAUDE.md               # 全域指令
-├── exact_commands/         # Commands（exact_：自動清理移除的檔案）
+├── commands/               # Commands（非 exact_）
 │   ├── git/                # Git 操作簡寫指令
 │   └── code/               # Code Review 指令
-└── exact_agents/           # Agents
+├── skills/                 # 自家 discipline skills（非 exact_）
+├── hooks/                  # Hook 腳本
+└── exact_agents/           # Agents（exact_：自動清理移除的檔案）
 ```
+
+`commands/` 與 `skills/` 刻意**不用** `exact_` 前綴。`exact_` 宣告「此目錄完全屬於 chezmoi」，apply 時會刪掉目錄中所有未被管理的檔案——而這兩個目錄天生會有 plugin 寫入的、機器專屬的、或實驗中的檔案（本機實測即有 3 個未受管理的 command）。`exact_agents/` 則是 chezmoi 獨佔，用 `exact_` 才對。
+
+代價是退役的 command/skill **不會**隨 apply 自動消失：只刪掉 source 檔，已 apply 過的機器會永久保留它。退役時必須在 `home/.chezmoiremove` 點名該路徑，移除才會傳播到每台機器。
 
 ## Global Instructions (CLAUDE.md)
 
