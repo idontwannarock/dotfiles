@@ -1,0 +1,6 @@
+---
+name: arch-review
+description: "Use when the user asks for a whole-repo architecture checkup — 架構體檢, 「掃一遍架構」, 「有沒有重複實作」, or after several changes have accumulated and the design feels scattered. Runs a cheap structural inventory, then deep-dives at most 5 suspicious zones, and writes a ranked list of refactor candidates with evidence to a pickup-compatible report under ~/.agent/handoffs/. Diagnoses only: never edits source. Accepts an optional path argument to narrow the scope."
+---
+
+{{ template "skills/arch-review.md" . -}}

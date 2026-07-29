@@ -40,6 +40,7 @@
 **跨工具部署**
 
 - **cross-tool parity / name-map wrapper** — 同一份 skill/reference body 部署到多個 AI 工具(Claude + Codex),做法是 chezmoi shared body + 每工具一個薄的 name-map wrapper。
+- **pickup 契約** — `~/.agent/handoffs/<repo-slug>/<ID>.md` 下的文檔只要含 `## Suggested skills` 與 `## Next steps` 兩段,就能被 `/pickup` 接手;`pickup` 的檔案解析是格式無關的(依檔名 glob),其餘內容形狀自由。這使該目錄不只承載 session state —— `arch-review` 的體檢報告即靠此共用同一套基礎建設,不必發明第二種產物格式。註:`## Suggested skills` 若無內容,要寫成非 bullet 的句子;`- None` 與真實條目無法區分,pickup 會去呼叫它。
 - **`~/.agent` shared body** — 中性、tool-agnostic 位置(`~/.agent/reference/`),由 `dot_agent/` 部署;各工具 prompt 用絕對路徑指過來,改一次全工具生效。也放 `workflow-registry.md` 與 `workflows/<slug>/active_workflows.md`。
 - **auto-memory / path-slug** — Claude auto-memory 統一在 `~/.claude/memory/<id>`,其中 `<id> = slug(dirname(realpath(git-common-dir)))`(絕對路徑、`/`→`-`);由 `claude-memory-seed`(SessionStart hook + 全域 post-checkout 分派)播種,含自動遷移。local-files store 共用同一把 key。
 
@@ -58,6 +59,7 @@
 - **`run_*` 腳本的副作用要顯式反轉。** chezmoi 的宣告式收斂只涵蓋它 declare 的檔案;腳本裝出來的東西(套件、plugin 註冊、外部 CLI 設定)不在其中。退役時刪掉那行 install 只會停止新機器安裝,已套用過的機器永久漂移——必須補一段冪等的反安裝,或在 `.chezmoiremove` 宣告目標路徑。同理,任何「本機手動跑一次」的收尾都不會傳播。
 - **`run_*` 腳本要能從 apply 輸出被讀懂。** 每支有起訖 banner(結束的標題取自開始時記下的那一份,不另外手寫,否則必然漂移),每個段落印出**目的**而非代號,早退與失敗也要收尾。同一 interpreter 內重複兩次以上的邏輯抽到 `.chezmoitemplates/scripts/`;若多支腳本抽掉資料後控制流逐字相同,合併成一支資料表驅動的腳本。細節在 `chezmoi-author` skill。
 - **盡量跨平台。** 目標是 Windows/macOS/Linux 皆可用;平台差異用 per-platform 片段拆分,而非整份分叉。
+- **能力的部署形狀由觸發模式決定。** 純手動觸發(使用者自己打 `/name`)的能力走 Claude command + `disable-model-invocation: true`,Codex 端因無 command 概念包成 skill;要讓模型自行判斷時機的才兩邊都做成 skill。前者的理由不只是省 system prompt budget —— 成本高或有副作用的操作(整庫掃描、寫檔)不該由模型在使用者沒開口時自行啟動。既有實作已在遵循這條分界(`handoff`/`pickup`/`arch-review` vs 六個 discipline skills)。
 - **跨工具 parity = shared body + 薄指標。** 權威 body 一份在 `~/.agent` / `.chezmoitemplates`,每工具一個 name-map wrapper。目標工具 = **Claude + Codex**(未來或加 Antigravity CLI);**Gemini CLI 已放棄,不要去檢查它。**
 - **WSL 下呼叫腳本一律用絕對路徑。** PATH interop 把 Windows 家目錄的 `~/.local/bin` 併進 WSL 的 PATH,所以 bare 名稱可能命中另一台機器、另一個年代的同名腳本。腳本正典搬家後,舊位置的副本要用 `.chezmoiremove` 點名清掉 —— 留著它就是留一條會靜默跑到舊碼的路徑。
 - **Codex frontmatter 要嚴格 YAML。** skill `description:` 若含 `:`/`#`/開頭 `[`{` 必須加引號;Claude 容忍、Codex 會報錯。用真的 YAML parser 驗,不要只 grep。
@@ -76,7 +78,7 @@
 - **Provisioning / toolchain** — `tool-dependencies`、`windows-toolchain-provisioning`、`rust-toolchain-management`、`jdk-version-switching`、`gpg-provisioning`、`pwsh-msi-provisioning`
 - **外部版本 / 鏡射** — `external-version-automation`、`external-tool-mirroring`
 - **statusline** — `statusline-release`、`statusline-native-data`、`statusline-git-diff-stats`
-- **開發流程** — `discipline-skills`、`workflow-instructions`、`workflow-concurrency`、`worklog-workflow-trigger`
+- **開發流程** — `discipline-skills`、`workflow-instructions`、`workflow-concurrency`、`worklog-workflow-trigger`、`arch-review`
 - **記憶 / 本機檔案** — `claude-memory-seed`、`local-files-store`
 - **上手** — `bootstrap-docs`
 
