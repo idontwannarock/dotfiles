@@ -405,7 +405,8 @@ go build -o ~/.claude/statusline .       # macOS/Linux
 
 | 角色 | 檔案 | 觸發 |
 |---|---|---|
-| Skill | `dot_claude/skills/handoff/`（+ `dot_codex/skills/handoff/`，共用 body 在 `.chezmoitemplates/skills/handoff.md`） | `/handoff`、「切 session」、reminder 後確認 |
+| Command / Skill | `dot_claude/commands/handoff.md.tmpl`（Claude 走 command + `disable-model-invocation`）＋ `dot_codex/skills/handoff/`（Codex 無 command 概念，包成 skill）；共用 body 在 `.chezmoitemplates/skills/handoff.md` | `/handoff`、「切 session」、reminder 後確認 |
+| 復原端 | `dot_claude/commands/pickup.md.tmpl` ＋ `dot_codex/skills/pickup/`；共用 body 在 `.chezmoitemplates/skills/pickup.md` | `/pickup <id>`；無參數則取最新一份 |
 | 提醒 hook | `dot_claude/hooks/executable_handoff-reminder.sh` | UserPromptSubmit；context 達 40/70/90% 各提醒一次 |
 | Cache writer | `tools/statusline/statusline.go` 的 `writeContextWindowCache()` | 每次 statusline 渲染 |
 | 註冊 | `dot_claude/modify_settings.json.sh.tmpl` jq patch | chezmoi apply 時生效 |
@@ -429,18 +430,79 @@ Reminder hook 解析當前 context 使用率的順序：
 
 Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：檔案僅 7B、以 session-id 命名永不撞號，留著無害；過去的 SessionEnd 清理 hook 因 SessionEnd 觸發不可靠（terminal 直接關、crash 都不跑）本就會洩漏，已移除。
 
-### 產出
+### 產出與共用約定
 
-`/handoff` skill 的輸出：
+`/handoff` 的輸出：
 
-- `<repo>/.claude/handoffs/<YYYY-MM-DD-HHMM>__<slug>.md` — 簡短 checkpoint（以 references 為主）
-- Resumption prompt 複製到 clipboard（xclip/wl-copy/pbcopy/clip.exe 自動偵測）
-- Skill 會自動將 `.claude/handoffs/` 加進該 repo 的 `.gitignore`
+- `~/.agent/handoffs/<repo-slug>/<YYYY-MM-DD-HHMM>__<slug>.md` — 簡短 checkpoint（≤50 行，以 references 為主，不重述既有 artifact）
+- 印出該檔絕對路徑，以及可直接複製的 `/pickup <id>` 指令
+
+落點刻意在 `~/.agent/` 而非 repo 內或工具專屬 dotdir，理由有二：**跨工具**（Claude 寫的 Codex 能撿）與**跨機器邊界**（OS 暫存目錄跨不了 WSL/Windows，也活不過重開機）。副作用是不需要動 `.gitignore` — 檔案本來就不在 repo 裡。
+
+`repo-slug` 為 repo 絕對路徑把 `:`、`\`、`/`、`.` 全換成 `-`，與 `~/.claude/projects/<slug>/` 的既有慣例對齊。
+
+**這個目錄不只放 session state。** `pickup` 的檔案解析是格式無關的（依檔名 glob），它只對兩個段落有行為依賴：`## Suggested skills`（逐一呼叫）與 `## Next steps`（接續執行）。任何產物只要帶這兩段就能被 `/pickup` 接手 —— `/arch-review` 的體檢報告正是靠這條約定共用同一套基礎建設（見下節）。
+
+### 舊路徑
+
+`pickup` 仍會回退查找兩個 legacy 位置：`~/.local/state/handoffs/<repo-slug>/`（`~/.agent` 之前）與 `<repo>/.claude/handoffs/`（2026-05-26 之前）。新產出一律寫 `~/.agent/handoffs/`。
 
 ### 設定需求
 
 - `jq` 必須安裝（hooks 依賴）
 - `CLAUDE_HANDOFF_CONTEXT_WINDOW` env var **不要**放進 settings.json — 會破壞 cache-first 的動態性（每次都走 env 就不會讀 cache）
+
+## Arch Review（`/arch-review`）
+
+整庫架構體檢。補的是既有品質關卡的盲區：`code/review-*` 看 branch diff、`verify-done` 跑測試，**全部以 diff 為輸入**；但架構熵增是跨 change 累積的現象，每個 diff 單看都合理，退一步才看得見。
+
+| 面向 | `code/review-*` | `/arch-review` |
+|---|---|---|
+| 輸入 | branch diff / uncommitted 變更 | 整個 codebase |
+| 頻率 | 每條 branch | 里程碑、或數個 change 累積後 |
+| 產出 | 對話中的 review 意見 | pickup 相容的體檢報告檔 |
+
+### 組件
+
+| 角色 | 檔案 |
+|---|---|
+| Claude command | `dot_claude/commands/arch-review.md.tmpl`（`disable-model-invocation: true`） |
+| Codex skill | `dot_codex/skills/arch-review/SKILL.md.tmpl` |
+| 共用 body | `.chezmoitemplates/skills/arch-review.md` |
+
+標 `disable-model-invocation` 是刻意的：整庫掃描成本高，不該由模型在你沒開口時自行啟動。
+
+### 兩階段掃描
+
+1. **盤點（不讀檔案內容）** — 目錄樹與質量分布、大小離群檔、依賴方向（cycle / 反向 import）、跨目錄名稱重複。用 `git ls-files`、`wc -l`、`rg -l` 這類廉價工具。
+2. **深挖（至多 5 區）** — 依可疑度排序後只開前 3-5 區的內容。上限是硬的；若盤點出更多可疑區，報告必須列出**沒看的是哪些**，靜默截斷會被讀成「全都掃過了」。
+
+可傳路徑縮限：`/arch-review src/payment`。
+
+### 判準來源分層
+
+模組邊界的判斷需要一套 domain 詞彙，來源依可用資訊降級，且降級必須寫在報告裡：
+
+| 情境 | 判準 | 報告標示 |
+|---|---|---|
+| 有 `openspec/project.md` | 其詞彙表 | 權威 |
+| 沒有 | 從目錄結構、型別名、導出介面推斷 | **明示為推斷，非權威** |
+
+讀者無從評價一份沒說明立論基礎的架構判斷 —— 所以這個標示是硬要求，不是禮貌。`/arch-review` 永遠不寫 `openspec/project.md`（該檔只在 sync/archive 寫入）。
+
+### 邊界
+
+**只診斷，不動刀。** 不改任何原始碼、不開 branch、不自動建立 OpenSpec change。每項候選必須附具體檔案路徑作為證據 —— 沒有證據的架構評斷是雜訊。若 codebase 是健康的，就說健康然後停，不湊數。
+
+產出寫到 `~/.agent/handoffs/<repo-slug>/<YYYY-MM-DD-HHMM>__arch-review.md`，用 `/pickup <id>` 接手選中的候選。
+
+### 何時該跑
+
+刻意**不掛進 dev-workflow 或 finish-branch**。體檢的正確頻率是里程碑、或數個 change 累積之後；掛成每條 branch 都跳的關卡只會變成雜訊，而被學會忽略的 gate 比沒有 gate 更糟 —— 它同時消耗注意力又給出虛假的安全感。
+
+**預期會有很多次「沒有候選」。** 首次實跑（`chat_setting_api`，194 檔）就是這個結果：`domain/` 完全沒 import `spring.*`、最大檔 163 行、無同名 class；唯一的訊號是 `sensitiveword` 與 `whitelistdomain` 兩條垂直線的 package 結構 1:1 對稱，但把 domain 名詞正規化後對角比對，139 行的檔案仍有 109 行不同 —— 是兩個真正不同的模型（一個以 `(scope, category)` 為粒度，一個是 default + per-BU），硬抽共用抽象反而會逼簡單的那邊揹上不需要的維度。
+
+這正是預期行為，不是白跑：**對稱的是 package 形狀，不是邏輯**，而前者是優點。一份誠實的「無候選」報告，價值在於它排除了你的疑慮；會硬湊候選的體檢工具，跑第二次就沒人信了。
 
 ### 維護備註
 

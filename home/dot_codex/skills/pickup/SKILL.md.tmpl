@@ -1,6 +1,6 @@
 ---
 name: pickup
-description: Use when the user wants to continue a prior session by loading a handoff file from .claude/handoffs/. Triggered by /pickup, "pickup <id>", "繼續 <id>", or a bare instruction to resume from a handoff. Accepts a handoff ID, slug, or date prefix; bare invocation picks the most recent handoff.
+description: Use when the user wants to continue a prior session by loading a handoff file from ~/.agent/handoffs/. Triggered by /pickup, "pickup <id>", "繼續 <id>", or a bare instruction to resume from a handoff. Accepts a handoff ID, slug, or date prefix; bare invocation picks the most recent handoff.
 ---
 
 {{ template "skills/pickup.md" . -}}
