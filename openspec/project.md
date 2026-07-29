@@ -45,7 +45,7 @@
 
 **承載物 / 自動化**
 
-- **statusline** — Go binary(`claude/statusline/statusline.go`),由 GitHub Actions 編為 `statusline-latest` release,各平台經 chezmoi external 拉取;顯示 git diff stats、context %、rate limit、cost、worktree。
+- **statusline** — Go binary(`tools/statusline/statusline.go`),由 GitHub Actions 編為 `statusline-latest` release,各平台經 chezmoi external 拉取;顯示 git diff stats、context %、rate limit、cost、worktree。
 - **external-version automation** — Renovate(custom regex manager)追蹤 `.chezmoiexternal.toml` 內以 `# renovate:` 註記的釘選版本,開 bump PR(人審 + `chezmoi apply` 才落地)。
 - **external-tool mirroring** — `mirror-externals.yml` 把 Renovate 追不動的上游工具(vim、jdtls、dos2unix)re-host 到本 repo 的 Releases。
 - **corp-ssh** — 離線的公司伺服器 SSH 憑證/askpass 系統(AD 密碼 + TOTP);WSL + Windows 已上,macOS 延後。SSH multiplex + `PubkeyAuthentication no` 政策以 chezmoi drop-in `~/.ssh/config.d/corp-multiplex` 重現(不含 FQDN,故可入 repo;WSL/Linux/macOS only);含 FQDN/IP 的 `~/.ssh/config` host block 仍留本機,靠一行 `Include ~/.ssh/config.d/*` 接上。

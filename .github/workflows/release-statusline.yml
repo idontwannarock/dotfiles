@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'claude/statusline/**'
+      - 'tools/statusline/**'
   workflow_dispatch:
 
 jobs:
@@ -41,7 +41,7 @@ jobs:
           go-version: 'stable'
 
       - name: Build
-        working-directory: claude/statusline
+        working-directory: tools/statusline
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: claude/statusline/${{ matrix.artifact }}
+          path: tools/statusline/${{ matrix.artifact }}
 
   release:
     name: Publish GitHub Release

@@ -1,4 +1,4 @@
-# 註：repo 基礎建設（README.md、docs/、passgen/、claude/statusline 等）已移出 source
+# 註：repo 基礎建設（README.md、docs/、tests/、tools/ 等）已移出 source
 # root（見 ../.chezmoiroot，source 改從 home/ 讀取），chezmoi 看不到它們，故不再需要
 # ignore 規則。新增的非部署檔只要放在 repo root（home/ 之外）即可，無須在此排除。
 
@@ -46,9 +46,12 @@ Documents
 .ssh/config.d/corp-multiplex
 {{- end }}
 
-# ── switch-pwsh-to-msi: Windows-only helper (Store/MSIX pwsh -> official MSI) ──
+# ── Windows-only manual helpers (see docs/user-scripts.md) ────────────
+# switch-pwsh-to-msi: Store/MSIX pwsh -> official MSI.
+# scoop-interactive-update: reached via the `scoopupdate` alias; scoop is Windows-only.
 {{- if ne .chezmoi.os "windows" }}
 .local/bin/switch-pwsh-to-msi.ps1
+.local/bin/scoop-interactive-update.ps1
 {{- end }}
 
 # ── PowerShell profile fragment 30-ssh-askpass: Windows only ───────────

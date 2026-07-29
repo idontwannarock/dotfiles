@@ -5,7 +5,7 @@ Claude Code 相關的個人設定檔案。
 ## 目錄結構
 
 ```
-claude/statusline/          # 自訂狀態列程式
+tools/statusline/           # 自訂狀態列程式
     statusline.go
 
 dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
@@ -394,7 +394,7 @@ go build -o statusline statusline.go       # macOS/Linux
 |---|---|---|
 | Skill | `dot_claude/skills/handoff/`（+ `dot_codex/skills/handoff/`，共用 body 在 `.chezmoitemplates/skills/handoff.md`） | `/handoff`、「切 session」、reminder 後確認 |
 | 提醒 hook | `dot_claude/hooks/executable_handoff-reminder.sh` | UserPromptSubmit；context 達 40/70/90% 各提醒一次 |
-| Cache writer | `claude/statusline/statusline.go` 的 `writeContextWindowCache()` | 每次 statusline 渲染 |
+| Cache writer | `tools/statusline/statusline.go` 的 `writeContextWindowCache()` | 每次 statusline 渲染 |
 | 註冊 | `dot_claude/modify_settings.json.sh.tmpl` jq patch | chezmoi apply 時生效 |
 
 ### 資料流
