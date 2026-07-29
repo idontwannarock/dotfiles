@@ -57,21 +57,22 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 
 ### Plugin 清單
 
+由 `run_onchange_install-03-claude-config` 自動安裝：
+
 | 名稱 | 來源 | 說明 |
 |------|------|------|
-| claude-md-management | `claude-plugins-official` | 審計與改善 CLAUDE.md |
-| context7 | `claude-plugins-official` | MCP server — 即時查詢 library 文件 |
-| code-simplifier | `claude-plugins-official` | 程式碼簡化 agent |
-| playwright | `claude-plugins-official` | MCP server — headless 瀏覽器自動化 |
-| commit-commands | `claude-plugins-official` | Git commit/push/clean_gone skills |
-| security-guidance | `claude-plugins-official` | 安全性指引（背景生效） |
-| pr-review-toolkit | `claude-plugins-official` | PR review agents（code-reviewer、silent-failure-hunter 等） |
-| pyright-lsp | `claude-plugins-official` | Python type checking LSP |
-| jdtls-lsp | `claude-plugins-official` | Java LSP（Eclipse JDT.LS），需 JDK 21+，透過 wrapper 自動選擇 JDK |
-| explanatory-output-style | `claude-plugins-official` | 教育性 ★ Insight 解說輸出模式(取代 learning-output-style) |
-| claude-code-setup | `claude-plugins-official` | 分析 codebase 推薦 automations |
+| slack | `claude-plugins-official` | Slack 讀寫、搜尋、Block Kit |
+| explanatory-output-style | `claude-plugins-official` | 教育性 ★ Insight 解說輸出模式（腳本同時取消安裝 `learning-output-style`） |
 | episodic-memory | `superpowers-marketplace` | 跨 session 對話記憶 |
 | elements-of-style | `superpowers-marketplace` | Strunk 寫作風格改善 |
+
+手動安裝、未納入腳本（換機時需自行補裝）：
+
+| 名稱 | 來源 | 說明 |
+|------|------|------|
+| code-review | `claude-plugins-official` | `/code-review` 指令與 review agents |
+
+**已退役**：`superpowers` plugin 已於 2026-07 移除，腳本會在每台機器上主動 `plugin uninstall` 並清除殘留 cache，使移除收斂。`superpowers-marketplace` 本身保留，因為 `episodic-memory` 與 `elements-of-style` 仍由它提供。
 
 ### On-demand 工具
 
@@ -87,15 +88,15 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 | 名稱 | 來源 | 說明 |
 |------|------|------|
 | claude-plugins-official | `anthropics/claude-plugins-official` | 內建預設 marketplace |
-| superpowers-marketplace | `obra/superpowers-marketplace` | superpowers 系列插件 |
+| superpowers-marketplace | `obra/superpowers-marketplace` | 提供 `episodic-memory` 與 `elements-of-style`；同名的 `superpowers` plugin 本身已退役 |
 
 ### 依賴
 
 | 依賴 | 用途 | 備註 |
 |------|------|------|
 | [Claude Code](https://claude.com/claude-code) | `claude plugin` 指令 | 必須先安裝 |
-| [jq](https://jqlang.github.io/jq/) | plugin hook 腳本 | Windows: `scoop install jq` |
-| [dos2unix](https://dos2unix.sourceforge.io/) | 修復 hook CRLF (Windows) | Windows: `scoop install dos2unix` |
+| [jq](https://jqlang.github.io/jq/) | plugin hook 腳本 | Windows: `.chezmoiexternal.toml` 自動下載至 `~/.local/bin/jq.exe`；Unix: brew / apt |
+| [dos2unix](https://dos2unix.sourceforge.io/) | 修復 hook CRLF (Windows) | Windows: `.chezmoiexternal.toml` 自動下載至 `~/.local/bin` |
 | [jdtls](https://github.com/eclipse-jdtls/eclipse.jdt.ls) | Java LSP server | Windows: `.chezmoiexternal.toml` 自動下載至 `~/.local/opt/jdtls`（Wave 11）；Linux: 同步腳本自動下載 |
 | JDK 21+ | jdtls 執行環境 | wrapper (`~/.local/bin/jdtls`) 從 `JAVA_HOME` / `~/.local/opt/jdk-N` 選擇（Windows 經 uv-managed python 啟動 launcher） |
 
@@ -184,8 +185,8 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 安裝腳本 `run_onchange_install-claude-plugins` 已包含自動修復步驟。如果 plugin 更新後問題復發，重新執行安裝腳本即可。
 
 **前置需求：**
-- `jq` — hook 腳本用來解析 JSON（`scoop install jq`）
-- `dos2unix` — 轉換換行符（`scoop install dos2unix`）
+- `jq` — hook 腳本用來解析 JSON（Windows 由 `.chezmoiexternal.toml` 提供，無須手動安裝）
+- `dos2unix` — 轉換換行符（Windows 由 `.chezmoiexternal.toml` 提供，無須手動安裝）
 
 **追蹤 Issues：**
 - [#21878](https://github.com/anthropics/claude-code/issues/21878) — Hook scripts fail on Windows: backslash paths
@@ -276,26 +277,30 @@ MCP: ✓ context7, atlassian, playwright, chrome-devtools │ ✗ github
 
 | 依賴 | 用途 | 備註 |
 |------|------|------|
-| [Go](https://go.dev/) 1.18+ | 編譯 statusline binary | |
 | [Bun](https://bun.sh/) | 執行 ccusage | |
 | [ccusage](https://github.com/ryoppippi/ccusage) | 費用統計 | 透過 `bunx ccusage` 自動下載執行 |
 | [Claude Code](https://claude.com/claude-code) | MCP 狀態檢查 | `claude mcp list` |
+| [Go](https://go.dev/) 1.18+ | **僅本地開發 statusline 時需要** | 一般使用不需要，見下方說明 |
 
 ### 安裝
 
-#### 1. 安裝依賴
+> **一般使用不需要手動編譯。** `.chezmoiexternal.toml` 會依平台自動從 `statusline-latest` release
+> 下載對應的 binary 到 `~/.local/bin/statusline`，`chezmoi apply` 即完成。以下步驟只在你要改
+> `tools/statusline/` 的程式碼、想在本機驗證時才用得到。
 
-**Go（編譯 statusline 用）：**
+#### 1. 安裝依賴（僅本地開發）
+
+**Go：**
 
 ```bash
-# Ubuntu/Debian
+# Ubuntu/Debian —— 注意 apt 版本太舊不支援 GOTOOLCHAIN，
+# 本 repo 的安裝腳本改用官方 tarball 裝到 ~/.local/go
 sudo apt install -y golang-go
 
 # macOS
 brew install go
 
-# Windows (Scoop)
-scoop install go
+# Windows —— 由 .chezmoiexternal.toml 提供，安裝到 ~/.local/opt/go，無須手動安裝
 ```
 
 **Bun（執行 ccusage 用）：**

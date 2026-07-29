@@ -1,11 +1,12 @@
 # Chezmoi Author — Windows Reference
 
-Read this when editing `.ps1`/`.ps1.tmpl`, `Documents/`, `scoop/`, `bashrc/windows`, `run_after_modify-codex-config.ps1.tmpl`, or anything else that touches Scoop / Git Bash on Windows. Cross-platform conventions live in the main `SKILL.md`.
+Read this when editing `.ps1`/`.ps1.tmpl`, `Documents/`, `bashrc/windows`, `run_after_modify-codex-config.ps1.tmpl`, or anything else that touches Windows provisioning / Git Bash. Cross-platform conventions live in the main `SKILL.md`.
 
 ## Install Scripts
 
 - File extension: `.ps1.tmpl`
-- Tool source: Scoop (`scoop install <pkg>`)
+- **Tool source: `.chezmoiexternal.toml`, NOT Scoop.** Waves 1–12 moved every managed tool off Scoop onto GitHub Releases / official CDNs, landing in `~/.local/bin` (single binaries) or `~/.local/opt` (stateful app bundles). Adding a new tool means adding an external entry plus a `# renovate:` annotation — not a `scoop install`.
+- `Install-ScoopPackage` and bare `scoop install` MUST NOT appear in any `run_*` script. Several install scripts are now deliberate no-ops (`install-cli-tools`, `install-containers`, `install-fonts` on Windows, and `install-01-runtimes` which is a pointer map); do not "restore" them.
 - The **GUI app** list is maintained in an external [gist](https://gist.github.com/idontwannarock/cef42b856b878e718a2e402eb8e5d7e1), not in this repo. Scoop's only residual role here is the interactive update helper `home/dot_local/bin/scoop-interactive-update.ps1`; do not add a scoop app list or `scoop import` back into the repo.
 
 ## sh Interpreter (git-bash detection — Wave 13)

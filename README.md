@@ -199,7 +199,15 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 
 ### 自動安裝的工具
 
-`chezmoi apply` 時會自動安裝以下工具（若尚未安裝）。Windows 用 scoop，macOS 用 brew，Linux/WSL 一般工具用 apt、版本管理工具（JDK、Python）用 sdkman / uv，Go 在 Linux 用官方 tarball 裝到 `~/.local/go`（apt 版太舊不支援 GOTOOLCHAIN）。
+`chezmoi apply` 時會自動安裝以下工具（若尚未安裝）。各平台的來源已不相同：
+
+| 平台 | 來源 |
+|------|------|
+| Windows | **`.chezmoiexternal.toml`**（GitHub Releases / 官方 CDN → `~/.local/bin`、`~/.local/opt`）。Scoop 已於 Wave 1–12 全面退場，安裝腳本不再呼叫它 |
+| macOS | brew；JVM 工具鏈用 sdkman、Python 用 uv |
+| Linux/WSL | 一般工具用 apt；JVM 工具鏈用 sdkman、Python 用 uv；Go 用官方 tarball 裝到 `~/.local/go`（apt 版太舊不支援 GOTOOLCHAIN） |
+
+> Scoop 在本 repo 只剩兩個角色：使用者手動執行的 `scoopupdate`，以及維護於外部 gist 的 GUI app 清單。**沒有任何安裝腳本依賴它**。
 
 **基礎設施（before phase）：**
 
@@ -209,58 +217,74 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 
 **開發語言 / Runtime（install-01-runtimes）：**
 
-| 工具 | 說明 |
-|------|------|
-| NVM + Node.js | npm 的來源（Unix: curl installer, Windows: scoop） |
-| Vim | 編輯器 |
-| Go | Base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本）。Linux 用官方 tarball 裝到 `~/.local/go`；macOS brew；Windows scoop `go124`。 |
-| Python 3.11, 3.13 | |
-| uv | Python 套件管理 |
-| Rustup | Rust 工具鏈（安裝後，每次 `chezmoi apply` 由 `run_update-rust-toolchain` 自動 `rustup update stable` 追蹤最新版） |
-| Maven 3 | Java 建置 |
-| Temurin JDK 8, 11, 17, 21, 25 | Adoptium OpenJDK |
-| Starship | Shell prompt |
+Windows 端此腳本已是**指標對照表，不安裝任何東西**——Wave 10 之後整條 toolchain 都由 `.chezmoiexternal.toml` 提供。
+
+| 工具 | Unix 來源 | Windows 來源 |
+|------|-----------|--------------|
+| NVM + Node.js | 官方 curl installer | external（nvm-windows zip → `~/.local/opt/nvm`）+ Wave 9 migrate script |
+| Vim | apt / brew | external → `~/.local/opt/vim` + `dot_local/bin/*.cmd` wrappers |
+| Go | Linux 官方 tarball → `~/.local/go`；macOS brew | external（go.dev zip）→ `~/.local/opt/go` |
+| Python | uv（3.13） | uv（3.11 + 3.13），由 Wave 10 migrate script 觸發 |
+| uv | 官方 installer | external |
+| Rustup | 官方 rustup-init | 官方 rustup-init（Wave 10 migrate script） |
+| Maven 3 | sdkman | external → `~/.local/opt/maven` |
+| Temurin JDK 8, 11, 17, 21, 25 | sdkman | external → `~/.local/opt/jdk-N` + `java{8,11,17,21,25}.cmd` |
+| Starship | 官方 installer | external |
+
+Go 的 base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本）。Rustup 安裝後，每次 `chezmoi apply` 由 `run_update-rust-toolchain` 自動 `rustup update stable` 追蹤最新版。
 
 **npm 全域工具（install-02-npm-tools）：**
 
 | 工具 | 說明 |
 |------|------|
-| Claude Code | AI CLI |
-| Codex CLI | AI CLI |
-| OpenSpec | 結構化開發流程 |
+| Claude Code | AI CLI（`@anthropic-ai/claude-code`） |
+| Codex CLI | AI CLI（`@openai/codex`） |
+| codegraph | 程式碼知識圖譜（`@colbymchenry/codegraph`），同時是下方註冊的 MCP server |
+| OpenSpec | 結構化開發流程（`@fission-ai/openspec`） |
 
 **Claude Code 設定（install-03-claude-config）：**
 
-| 工具 | 說明 |
+| 項目 | 說明 |
 |------|------|
-| superpowers / code-review / slack plugins | Claude Code plugins |
-| jdtls | Java LSP |
-| agent-browser / chrome-devtools MCP | Claude Code MCP servers |
+| slack plugin | Claude Code plugin |
+| episodic-memory / elements-of-style plugins | 來自 `obra/superpowers-marketplace` |
+| explanatory-output-style plugin | 來自 `claude-plugins-official`，並取消安裝 `learning-output-style` |
+| codegraph MCP | 唯一由此腳本註冊的 user-scope MCP server（偵測到 `codegraph` binary 才註冊） |
+| 清理 | 取消安裝已退役的 `superpowers` plugin 並清掉其殘留 cache，使移除在每台機器上收斂 |
+
+> jdtls（Java LSP）已於 Wave 11 移出此腳本，改由 `.chezmoiexternal.toml` 提供（`~/.local/opt/jdtls` + `~/.local/bin/jdtls`）。
 
 **容器 / 雲（install-containers）：**
 
-| 工具 | 說明 |
-|------|------|
-| Docker, Docker Compose | 容器 |
-| kubectl, kubelogin | Kubernetes CLI |
-| Lens | K8s GUI（Windows/macOS） |
+Windows 端為 no-op：docker / kubectl / kubelogin 皆由 external 提供，Lens 不納管。
+
+| 工具 | Unix 來源 |
+|------|-----------|
+| Docker, Docker Compose | apt / brew |
+| kubectl, kubelogin | apt / brew（Windows 走 external） |
+| Lens | 不納管（手動安裝） |
 
 **CLI 工具（install-cli-tools）：**
 
-| 工具 | 說明 |
-|------|------|
-| 7zip, curl, ffmpeg | 基礎工具 |
-| Hugo | 靜態網站 |
-| nexttrace | 路由追蹤 |
-| yt-dlp | 影片下載 |
-| clink, dark, vimtutor, winget, winget-ps | Windows 專屬 |
+Windows 端為 no-op：每個舊有套件現在不是來自 external、就是來自 OS 內建，或不再納管。
+
+| 工具 | Unix 來源 |
+|------|-----------|
+| 一般 CLI 工具 | brew（macOS）/ apt（Linux） |
+| libpq（psql） | brew，keg-only 故 force-link |
+| golangci-lint | 官方 installer → `~/.local/bin`（不在 apt） |
+| Hugo | apt，缺套件時退回官方安裝指引 |
+| nexttrace | 官方腳本（不在 apt） |
+| yt-dlp | apt，缺套件時退回 pip 指引 |
 
 **字型（install-fonts）：**
 
-| 工具 | 說明 |
+| 字型 | 說明 |
 |------|------|
 | CaskaydiaCove Nerd Font Mono | Terminal 字型 |
 | JetBrains Mono | 程式字型 |
+
+來源依平台不同：macOS 走 brew cask；Windows 由 external 下載、`run_once_register-fonts` 註冊（install-fonts 本身為 no-op）；Linux/WSL 的字型由主機端終端機負責，不在此管理。
 
 ### 不納入 chezmoi（手動管理）
 
@@ -327,9 +351,14 @@ dotfiles/
 |------|------|
 | [Bash](docs/bash.md) | Bash 設定、worklogs、Windows Terminal 整合 |
 | [Claude Code](docs/claude-code.md) | Claude Code 設定、statusline、plugins |
+| [claude-zai wrapper](docs/claude-zai-wrapper.md) | 切換 Claude Code 後端的 wrapper |
 | [Codex CLI](docs/codex-cli.md) | Codex CLI 設定、skills、Claude workflow 對齊 |
+| [Corp SSH（Linux/WSL）](docs/corp-ssh-setup.md) | 公司 SSH 密碼 + OTP 自動化 |
+| [Corp SSH（Windows）](docs/corp-ssh-setup-windows.md) | 同上的 Windows 版 |
 | [Git 憑證管理](docs/git-credentials.md) | Git 遠端認證（GCM、SSH、WSL） |
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
+| [Renovate](docs/renovate.md) | external 工具版本自動追蹤與 auto-merge |
+| [RTK](docs/rtk.md) | Token-reducing CLI proxy |
 | [SSH](docs/ssh.md) | SSH key 設定教學 |
 | [Starship](docs/starship.md) | Starship prompt 設定 |
 | [User Scripts](docs/user-scripts.md) | 手動執行的輔助腳本（scoop 更新、pwsh 換裝） |
