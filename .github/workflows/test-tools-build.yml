@@ -1,0 +1,74 @@
+name: Test tools build
+
+# PR-only, like test-pester.yml and validate-externals.yml. The release-* workflows
+# already compile these on push to main — the point here is to catch the error
+# BEFORE it lands, not to build the same commit twice.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/**'
+      - '.github/workflows/test-tools-build.yml'
+  workflow_dispatch:
+
+jobs:
+  go:
+    name: statusline (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ubuntu-latest
+
+    # Same four combinations release-statusline.yml publishes. Cross-compiling all
+    # of them on one runner is what makes this check worth having: statusline.go
+    # splits by build tag, so GOOS=linux compiles [count_unix.go statusline.go] and
+    # never sees count_windows.go. A single-platform check would miss every error
+    # in that file and let it explode after merge.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+          - goos: windows
+            goarch: amd64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Build and vet
+        working-directory: tools/statusline
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: |
+          go build -o /dev/null .
+          go vet ./...
+
+  rust:
+    name: passgen
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tools/passgen
+
+      # cargo test, not cargo check: src/main.rs carries a #[cfg(test)] module that
+      # no CI has ever run. Testing compiles too, so this is a strict superset.
+      # Host target only — the source has no platform-conditional compilation
+      # (its sole cfg is #[cfg(test)]), so one target covers every code path. Add
+      # cross-compilation here if a #[cfg(target_os = ...)] ever appears.
+      - name: Test
+        working-directory: tools/passgen
+        run: cargo test
