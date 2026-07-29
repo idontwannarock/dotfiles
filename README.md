@@ -322,7 +322,7 @@ dotfiles/
 │   │   ├── PowerShell/       #   PS7 專屬 profile
 │   │   └── WindowsPowerShell/ #   PS5 專屬 profile
 │   ├── dot_config/           # ~/.config/ 設定（starship 等）
-│   ├── dot_claude/           # ~/.claude/ 設定（exact_commands / exact_agents）
+│   ├── dot_claude/           # ~/.claude/ 設定（commands / skills / exact_agents）
 │   ├── dot_codex/            # ~/.codex/ 設定（skills）
 │   ├── dot_local/bin/        # ~/.local/bin/ 腳本（wrapper 與手動執行的輔助腳本）
 │   ├── dot_shell_common.tmpl # ~/.shell_common 入口（依 OS 載入 template 片段）
