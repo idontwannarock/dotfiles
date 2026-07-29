@@ -3,7 +3,7 @@
 ### Requirement: Claude Code 設定透過 chezmoi exact_ 目錄部署
 `~/.claude/agents/` SHALL 由 chezmoi 以 `exact_` 目錄(`dot_claude/exact_agents/`)管理,確保 repo 中移除的 agent 檔案在 apply 後自動從系統清除。
 
-`exact_` 的前提是**該目錄的內容完全屬於 chezmoi**;僅在此前提成立時才 SHALL 使用它。`~/.claude/commands/` 與 `~/.claude/skills/` 不滿足此前提(見「非 exact_ 目錄的判準與退役修剪」requirement),故 SHALL NOT 改為 `exact_`。
+`exact_` 的前提是**該目錄的內容完全屬於 chezmoi**;僅在此前提成立時才 SHALL 使用它。`~/.claude/commands/` 與 `~/.claude/skills/` 不滿足此前提(見「退役的 Claude command 由 .chezmoiremove 跨機器修剪」requirement),故 SHALL NOT 改為 `exact_`。
 
 #### Scenario: 新增 agent 後自動部署
 - **WHEN** repo 中新增 `dot_claude/exact_agents/engineering/new-agent.md` 並執行 chezmoi apply
