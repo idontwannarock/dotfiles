@@ -1,3 +1,9 @@
+---
+type: Playbook
+title: Bare + worktree — detecting & operating
+description: "Daily-use rules for a bare+worktree repo: how to detect the layout, branch/worktree/stash handling, and finishing a branch back into the base."
+---
+
 # Bare + worktree — detecting & operating
 
 Tool-agnostic. Daily-use rules for a repo organized as a bare git repo plus

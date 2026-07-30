@@ -1,3 +1,9 @@
+---
+type: Playbook
+title: Worktree isolation
+description: "When active_workflows.md has active or paused rows, isolate the new workflow in its own worktree instead of sharing the main repo."
+---
+
 # Worktree Isolation
 
 Read this when `active_workflows.md` has any active or paused rows.

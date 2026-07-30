@@ -64,6 +64,9 @@
 - **跨工具 parity = shared body + 薄指標。** 權威 body 一份在 `~/.agent` / `.chezmoitemplates`,每工具一個 name-map wrapper。目標工具 = **Claude + Codex**(未來或加 Antigravity CLI);**Gemini CLI 已放棄,不要去檢查它。**
 - **WSL 下呼叫腳本一律用絕對路徑。** PATH interop 把 Windows 家目錄的 `~/.local/bin` 併進 WSL 的 PATH,所以 bare 名稱可能命中另一台機器、另一個年代的同名腳本。腳本正典搬家後,舊位置的副本要用 `.chezmoiremove` 點名清掉 —— 留著它就是留一條會靜默跑到舊碼的路徑。
 - **Codex frontmatter 要嚴格 YAML。** skill `description:` 若含 `:`/`#`/開頭 `[`{` 必須加引號;Claude 容忍、Codex 會報錯。用真的 YAML parser 驗,不要只 grep。
+- **metadata 只表達「非預設狀態」。** 有預設值的欄位就省略;沒有預設值的欄位,「不存在」本身即明確語意(例:OKF 的 `status` 缺省即 `stable`,不必寫;`stale_after` 無預設值,不寫即代表長青)。全檔一律填同一個值等於把訊號稀釋成噪音 —— 日後真正的例外才會醒目。
+- **規範要寫成可機械套用的規則,不是個案判斷。** 「列出三個子目錄」、「四檔存在」、「僅含一句話摘要」這類斷言把當下的檔案樹凍結成需求,目錄一增減就 drift,而且遇到新案例時沒人知道該怎麼套。改寫成規則(「有 `index.md` 的目錄連目錄,沒有的連檔案」)才同時涵蓋現況與未來,且任何人都能得出同一個答案而不必問作者。**推論:修掉一個這類斷言時,要把同份 spec 全掃一遍** —— 同類實例不會因為只有一個被指出就只有一個存在。
+- **`index.md` 只放「這個目錄有什麼、何時讀哪個」,不放知識本身。** 任何一段內容若會被 agent 當答案引用,它就屬於一個具名檔案。這條界線讓 index 永遠可被自動生成或重建;OKF 更是把 `index.md` 列為 reserved filename,明文禁止當 concept 用。
 - **憑證只留本機、不上雲。** corp-ssh、local-files 的祕密都在本機磁碟或使用者腦中;雲端密碼管理器(cloud Bitwarden)明確排除,因為情境是單機、無跨機同步需求。
 - **文件要 model-agnostic、人可讀。** reference body 放 tool-neutral 位置;專案文件描述意圖,不綁單一工具的實作。
 - **Windows toolchain 脫離 Scoop。** Go/JDK/GnuPG 等從官方第一手來源經 `.chezmoiexternal.toml` / 官方安裝器 provision,搭配一次性 `run_once_after_migrate-scoop-*` 清理。

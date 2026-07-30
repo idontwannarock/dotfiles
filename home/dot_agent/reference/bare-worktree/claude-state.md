@@ -1,3 +1,9 @@
+---
+type: Reference
+title: Bare + worktree — Claude Code state
+description: "Claude-specific: how auto-memory, transcripts, per-repo settings and the workflow registry behave under a bare+worktree layout."
+---
+
 # Bare + worktree — Claude Code state
 
 **Claude-specific.** How Claude Code's state behaves under a bare+worktree
@@ -36,7 +42,7 @@ your tool needs equivalent handling). For the tool-agnostic git mechanics see
   checkout) is an edge case — verify once per machine.
 - **`.env` and other gitignored local files** are filled into a fresh worktree
   by the local-files restore mechanism (global `post-checkout` dispatcher) when
-  a copy exists in the global store — see `../local-files/index.md`. Everything
+  a copy exists in the global store — see `../local-files/store.md`. Everything
   else — `uv sync`, codegraph indexing — can be done on the fly. Only flag a
   missing `.env` when the global store has no copy either (run `localfiles
   backup` once in a worktree that has it to seed the store).
