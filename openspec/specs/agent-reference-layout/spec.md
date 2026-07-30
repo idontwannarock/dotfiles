@@ -10,7 +10,7 @@
 #### Scenario: bare-worktree reference 部署到 ~/.agent
 
 - **WHEN** `chezmoi apply` 執行
-- **THEN** `~/.agent/reference/bare-worktree/index.md`、`operating.md`、`setup.md`、`claude-state.md` 四檔存在
+- **THEN** `~/.agent/reference/bare-worktree/` 下的 reference 檔存在，至少包含 `index.md`、`operating.md`、`setup.md`、`claude-state.md`（此處不宣告完整清單，檔案組成隨拆分演進）
 - **AND** `~/.claude/bare-worktree-workflow.md` 與 `~/.codex/bare-worktree-workflow.md` 不再存在
 
 #### Scenario: 純靜態檔無 template 中轉
@@ -75,7 +75,7 @@ bare-worktree reference SHALL 拆分為多個聚焦檔案，以 `index.md` 作�
 
 ### Requirement: index.md 為 reserved filename，僅作目錄清單
 
-依 OKF §3.1，`index.md` 與 `log.md` SHALL NOT 用作 concept document。`~/.agent/reference/` 下任一 `index.md` SHALL 只包含兩種內容：該目錄涵蓋什麼範圍的一句話摘要（供讀者判斷要不要往下讀），以及有哪些內容、何時該讀哪一份的路由資訊。任何會被 agent 當作答案引用的知識 SHALL 置於具名的 concept 檔。
+依 OKF §3.1，`index.md` 與 `log.md` SHALL NOT 用作 concept document。`~/.agent/reference/` 下任一 `index.md` SHALL 只包含兩種內容：該目錄涵蓋什麼範圍的簡短摘要（供讀者判斷要不要往下讀），以及有哪些內容、何時該讀哪一份的路由資訊。摘要 SHALL NOT 複述已在 concept 檔內的判準；重複的敘述會各自漂移。任何會被 agent 當作答案引用的知識 SHALL 置於具名的 concept 檔。
 
 `index.md` 的連結 SHALL 依此規則產生：子目錄若有自己的 `index.md` 則連目錄，若無則直連其中的檔案。
 
@@ -98,6 +98,6 @@ bare-worktree reference SHALL 拆分為多個聚焦檔案，以 `index.md` 作�
 
 - **WHEN** 讀者開啟 `~/.agent/reference/bare-worktree/`
 - **THEN** `scope.md` 存在且帶 `type: Reference` frontmatter，內含此 reference 只涵蓋一種架構的判準：`basename "$(git rev-parse --git-common-dir)"` 的 `.git` vs `.bare` 分派、layout×discipline 的 2×2 空間、以及未填格子出現時的處置
-- **AND** `index.md` 僅含一句話範圍摘要與「When to read which file」路由表，該表包含 `scope.md` 一列
+- **AND** `index.md` 僅含簡短的範圍摘要與「When to read which file」路由表，該表包含 `scope.md` 一列
 - **AND** `index.md` 不含 dispatch 規則、2×2 分析或任何前瞻決定的內文
 

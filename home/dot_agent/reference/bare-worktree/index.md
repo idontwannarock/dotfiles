@@ -8,10 +8,8 @@ when cwd looks like a bare+worktree layout.
 This reference is **tool-agnostic** unless a file says otherwise.
 
 Scope: this directory covers the **deviation** of bare+worktree from the
-default repo layout — not a catalogue of every git architecture. If your repo
-has a primary checkout (`.git`), everything is written against that default
-already and you don't need this. See `scope.md` for the judgement behind that
-boundary.
+default repo layout — not a catalogue of every git architecture. `scope.md`
+holds the boundary rule and tells you whether your repo is in scope at all.
 
 ## When to read which file
 
