@@ -1,3 +1,9 @@
+---
+type: Playbook
+title: Bare + worktree — creating the layout
+description: "How to create a bare+worktree layout, either fresh on a new machine or by converting an existing flat repo."
+---
+
 # Bare + worktree — creating the layout
 
 Tool-agnostic. How to create a bare+worktree layout, either fresh on a new

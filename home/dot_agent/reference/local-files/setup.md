@@ -1,7 +1,13 @@
+---
+type: Playbook
+title: Local files install & setup
+description: "One-time install of the global core.hooksPath dispatcher and the localfiles helper via chezmoi, plus migration notes for older bare+worktree repos."
+---
+
 # Local files — install & setup
 
 How the local-files mechanism is installed. For the concept, store layout,
-and the agent read-fallback rule see `index.md`. Tool-agnostic.
+and the agent read-fallback rule see `store.md`. Tool-agnostic.
 
 ## What chezmoi installs
 

@@ -1,3 +1,9 @@
+---
+type: Principle
+title: Mock 邊界
+description: "Mock 只放在系統邊界（網路、時鐘、檔案系統、第三方 API），系統內部一律走真實介面。"
+---
+
 # Mock 邊界
 
 ## 原則
