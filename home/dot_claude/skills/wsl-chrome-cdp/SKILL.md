@@ -11,32 +11,54 @@ that requires the user's interactive login. The working path is: launch a **sepa
 Chrome on the Windows side with a debug port, forward that port into WSL, let the **user**
 log in, then drive it with `~/.local/bin/cdp.py`.
 
-Ask the user to run every PowerShell block themselves (via `!` in the prompt, or their own
-terminal). Two of the steps raise a UAC prompt; none of the credentials pass through the agent.
+Only steps 2 and 5b need the user: they raise a UAC prompt, and step 3 is the login itself.
+The non-elevated commands the agent can run itself through the Bash tool — `powershell.exe`
+is on `PATH` from WSL. No credentials pass through the agent either way.
+
+**`!` in the prompt runs bash, not PowerShell.** Pasting the blocks below verbatim gets
+`New-Item: command not found`. Every command has to go through `powershell.exe -NoProfile
+-Command <one string>`, and the quoting has exactly two shapes — get them wrong and the
+failure is silent, not loud:
+
+- **Contains `$`** (`$dir`, `$env:TEMP`, `$_`) → wrap in **bash single quotes** so bash
+  leaves them alone, and use double quotes inside PowerShell.
+- **Contains a literal single quote** (WQL `-Filter "Name='chrome.exe'"`, `-ArgumentList
+  'a','b'`) → wrap in **bash double quotes** with `\"` for the inner double quotes, and
+  escape any `$` as `\$`. Bash single quotes cannot contain a single quote at all.
+
+Avoid needing both at once: drop quotes where PowerShell doesn't require them
+(`-DisplayName WSL-CDP-9222` has no space, so it needs none).
 
 ## 1. Launch the CDP Chrome
 
-```powershell
-$dir = Join-Path $env:TEMP 'chrome-cdp'
-New-Item -ItemType Directory -Force -Path $dir | Out-Null
-Start-Process 'C:\Program Files\Google\Chrome\Application\chrome.exe' -ArgumentList @(
-  '--remote-debugging-port=9222', "--user-data-dir=$dir",
-  '--no-first-run','--no-default-browser-check','about:blank')
+```
+powershell.exe -NoProfile -Command '$dir = Join-Path $env:TEMP "chrome-cdp"; New-Item -ItemType Directory -Force -Path $dir | Out-Null; Start-Process "C:\Program Files\Google\Chrome\Application\chrome.exe" -ArgumentList @("--remote-debugging-port=9222", "--user-data-dir=$dir", "--no-first-run", "--no-default-browser-check", "about:blank")'
 ```
 
 `--user-data-dir` is what keeps this off the user's main browser. Use `Start-Process`;
-`cmd.exe /c start` swallows the arguments and Chrome dies silently.
+`cmd.exe /c start` swallows the arguments and Chrome dies silently. Confirm it actually
+came up before moving on — a silent death here looks identical to a port problem later:
+
+```
+powershell.exe -NoProfile -Command "(Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { \$_.CommandLine -like '*chrome-cdp*' }).Count"
+```
 
 ## 2. Forward the port into WSL (needs UAC)
 
 Chrome binds 127.0.0.1 only — current versions ignore `--remote-debugging-address=0.0.0.0`.
 WSL2 is NAT'd, so the Windows side must forward:
 
-```powershell
-netsh interface portproxy add v4tov4 listenport=9222 listenaddress=0.0.0.0 `
-  connectport=9222 connectaddress=127.0.0.1
-New-NetFirewallRule -DisplayName 'WSL-CDP-9222' -Direction Inbound `
-  -LocalPort 9222 -Protocol TCP -Action Allow -Profile Any
+Both commands need elevation, so they run in a second shell raised with `-Verb RunAs`:
+
+```
+powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','netsh interface portproxy add v4tov4 listenport=9222 listenaddress=0.0.0.0 connectport=9222 connectaddress=127.0.0.1; New-NetFirewallRule -DisplayName WSL-CDP-9222 -Direction Inbound -LocalPort 9222 -Protocol TCP -Action Allow -Profile Any'"
+```
+
+The elevated window closes instantly and its output never comes back — no news is good news.
+Verify from the WSL side instead:
+
+```
+curl -s -m 5 http://$(ip route show default | awk '{print $3}'):9222/json/version
 ```
 
 ## 3. Have the user log in
@@ -71,15 +93,17 @@ cdp.py eval '(async()=>{const u=[...]; const r=await Promise.all(u.map(x=>fetch(
 While the port is open, anything on the LAN can drive that Chrome. Close it as soon as
 the query is done.
 
-```powershell
-# kill only the CDP Chrome, never the user's main browser
-Get-CimInstance Win32_Process -Filter "Name='chrome.exe'" |
-  Where-Object { $_.CommandLine -like '*chrome-cdp*' } |
-  ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
-# needs UAC
-netsh interface portproxy delete v4tov4 listenport=9222 listenaddress=0.0.0.0
-Remove-NetFirewallRule -DisplayName 'WSL-CDP-9222'
-Remove-Item -Recurse -Force (Join-Path $env:TEMP 'chrome-cdp')
+**5a — no UAC, so run it yourself.** The filter kills only the CDP Chrome, never the user's
+main browser; the trailing count should print `0`:
+
+```
+powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { \$_.CommandLine -like '*chrome-cdp*' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }; Start-Sleep -Seconds 1; Remove-Item -Recurse -Force (Join-Path \$env:TEMP 'chrome-cdp') -ErrorAction SilentlyContinue; (Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | Where-Object { \$_.CommandLine -like '*chrome-cdp*' }).Count"
+```
+
+**5b — needs UAC, so hand it to the user.**
+
+```
+powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','netsh interface portproxy delete v4tov4 listenport=9222 listenaddress=0.0.0.0; Remove-NetFirewallRule -DisplayName WSL-CDP-9222'"
 ```
 
 ## Limitations (state these to the user, don't paper over them)
