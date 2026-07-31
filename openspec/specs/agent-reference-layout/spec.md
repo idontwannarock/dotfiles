@@ -69,6 +69,7 @@ bare-worktree reference SHALL 拆分為多個聚焦檔案，以 `index.md` 作�
 - **WHEN** 讀者開啟 `~/.agent/reference/local-files/`
 - **THEN** `store.md` 存在且帶 `type: Reference` frontmatter,內含 authority model(global store 為備份、in-folder copy 為來源)、store layout、managed files、`localfiles` helper 與 agent read-fallback rule
 - **AND** `index.md` 僅為指向 `store.md` 與 `setup.md` 的目錄清單,不帶 frontmatter
+- **AND** 無任何檔案連結指向已不存在的 `local-files/index.md` 內容段落
 
 #### Scenario: bare-worktree 的架構判準脫離 index.md
 

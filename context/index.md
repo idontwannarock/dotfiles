@@ -8,8 +8,6 @@ okf_version: "0.2"
 
 **範圍邊界**:這裡放專案的*為什麼存在、怎麼想這個 domain、有哪些反覆適用的原則*。「系統現在做什麼(WHAT、可驗收)」在 `openspec/specs/`;「某次 change 當下的方案選擇」在該 change 的 `design.md`。三者不重疊。
 
-寫入只發生在 `openspec-sync-specs`／archive 階段,以確保每一條都有已 ship 的實作背書。
-
 ## 何時讀哪一份
 
 * [專案概述](overview.md) - 這個 repo 解決什麼問題、承載哪些東西,以及最重要的心智模型(repo 是 source of truth,不是當前機器上生效的設定)。**第一次接觸本專案先讀這份。**
