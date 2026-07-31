@@ -163,3 +163,27 @@ Avoid raw images — they don't render in HTML format updates.
 | `panel-error` | Known broken behavior, do-not-do warnings |
 
 Avoid stacking 3+ panels in a row — they lose visual emphasis.
+
+## §9 — KB 索引頁 anatomy
+
+The KB index page (`🧠 Knowledge Base 索引`, page ID `5922357414`) is the hub for general `[KB]`.
+It is an **index, not content** — same rule as a project hub: delete it and no knowledge is lost.
+
+```
+Top panel-info — maintenance rules
+  何時登記（每建一頁通用 KB）、[Topic] 為分組鍵、~5 頁升級子資料夾的門檻
+
+<h2> per [Topic]        e.g. "LiveKit", "HTTP", "MySQL"
+  - link bullet per page, one line each
+  - a short trailing clause when the title alone doesn't say what's inside
+
+<h2> 未分類 / 待整理  (trailing panel-note)
+  Pages under folder 08 not yet classified or renamed to the grammar — the migration
+  backlog, visible rather than silently lost.
+```
+
+Notes:
+- One `<h2>` per `[Topic]` bracket, nothing else — the heading text matches the bracket verbatim
+  so the mapping stays mechanical (workflow step 7b relies on this).
+- Keep bullets to a link plus at most one clause. Anything longer belongs in the KB page itself.
+- Don't create a `<h2>` speculatively; add it when the first page of that topic lands.

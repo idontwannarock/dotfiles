@@ -7,7 +7,7 @@ description: Use when the user asks to record technical findings, architecture/d
 
 Orchestrate Confluence page creation in the `shoalteritbev` team space — placement, title convention, ARCH/RUNBOOK split, cross-linking, project-hub indexing, and memory recording, in the correct order.
 
-The canonical **document-classification and naming standard** (the closed type vocabulary, the ARCH/KB/Hub decision rule, the `[TYPE][Project] Subject` grammar) lives locally in `references/doc-taxonomy.md` — apply it directly, never fetch Confluence to look it up. Per-project page-ID registries and any project-specific overrides are stored as `reference-*` / `feedback-*` memory files. This skill orchestrates the **order of operations** that uses those conventions correctly — especially the step every fresh agent forgets: **updating the project hub index**.
+The canonical **document-classification and naming standard** (the closed type vocabulary, the ARCH/KB/Hub decision rule, the `[TYPE][Project] Subject` grammar) lives locally in `references/doc-taxonomy.md` — apply it directly, never fetch Confluence to look it up. Per-project page-ID registries and any project-specific overrides are stored as `reference-*` / `feedback-*` memory files. This skill orchestrates the **order of operations** that uses those conventions correctly — especially the step every fresh agent forgets: **updating the index** (the project hub for project docs, the KB index page for general KB).
 
 ## When to use
 
@@ -45,6 +45,8 @@ Folder taxonomy (under homepage, all `type=folder`):
 | `5554667686` | 09 - 👨‍💻 Onboarding |
 | `5554405442` | 99 - 📄 Template |
 
+**KB 索引頁**（folder 08 底下）：`5922357414` — `🧠 Knowledge Base 索引`。通用 KB 的 hub，作用等同專案 hub 之於專案文件：每建一頁通用 `[KB]` 就登記於此（見 workflow step 7）。專案專屬 KB 不進這裡，仍由其專案 hub（folder 07）索引。
+
 Customer Chat sub-folders / hub / templates (the reference example, page IDs hardcoded below). Group Chat, LiveKit and Zoom Sales also have the full ARCH/RUNBOOK/Hub triad in the space, but their page IDs aren't enumerated here — pull them from `reference-<project>-docs` memory or a CQL search:
 
 | Page ID | Page |
@@ -69,7 +71,7 @@ Most existing projects (Support Chat, Group Chat, CDN Media, Chat Setting, Chat 
 4. Confirm with user         — title + content depth via AskUserQuestion
 5. Create page(s)            — use template page (see table above) as starting structure
 6. Cross-link the pair       — ARCH ↔ RUNBOOK info panels (if pair)
-7. Update project hub index  — NON-SKIPPABLE. The recurring failure mode.
+7. Update the index          — project hub OR KB index. NON-SKIPPABLE. The recurring failure mode.
 8. Record in memory          — page IDs + URLs as a reference-* memory file
 ```
 
@@ -88,6 +90,7 @@ Most existing projects (Support Chat, Group Chat, CDN Media, Chat Setting, Chat 
 | Mistake | Why it happens | Fix |
 |---|---|---|
 | Forgetting to update project hub | Hub lives in a separate category folder; easy to miss after "page created" notification | Step 7 is non-skippable. Open the hub page and verify the new doc is listed before declaring done. |
+| Creating a general `[KB]` without registering it on the KB index | Step 7 reads as "project hub", and a general KB has no project — so the step gets silently skipped | The KB index page `5922357414` IS the hub for general KB. Add the link under the matching `[Topic]` `<h2>` (create the `<h2>` if absent), then re-read to verify. Not done until it's listed. |
 | Bundling ARCH+RUNBOOK into one page | Feels economical | Re-read `page-anatomy.md` §1 for the layering rationale; almost always two pages is correct. |
 | Omitting the project on a project-scoped sub-topic doc (`[ARCH] Profanity Filter`) | Works on single-project spaces, fails on team spaces | Project-scoped types (ARCH/API/RUNBOOK/DESIGN/POC/ROADMAP/REPORT/POSTMORTEM) MUST include project: `[ARCH][Customer Chat] Profanity Filter`. Exception: the project-level umbrella doc, where the subject IS the project (`[ARCH] Customer Chat`). General types (KB/GUIDELINE/SCHEDULE) OMIT project — see doc-taxonomy.md. |
 | Inventing a prefix or mixing case (`[Postmortem]`, `[Report]`) | No canonical list in view | Vocabulary is closed & ALL-CAPS; pick from doc-taxonomy.md. Add a new type by editing that file first. |

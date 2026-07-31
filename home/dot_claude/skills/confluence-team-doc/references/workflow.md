@@ -37,6 +37,8 @@ Look at what the user wants to record. Categorize:
 
 If the findings include BOTH technical content (how it works internally) AND operational content (how to maintain/change it), propose a PAIR — ARCH + RUNBOOK — via AskUserQuestion. Bundling them is the layering-violation failure mode.
 
+**General KB routes to a different index.** A `[KB]` that passes the KB litmus (reusable by any team, names no single project) is always a single page, and its step-7 index target is the **KB index page** `5922357414` — not a project hub. Decide this here, at classify time, so step 7 doesn't get skipped for want of a hub. A project-specific KB (title carries the project, or the knowledge only holds for that service) stays with its project hub.
+
 Edge case: pure technical reference with no maintenance procedure → ARCH only. (If maintenance procedure later arises, the RUNBOOK can be added without restructuring the ARCH.)
 
 ## Step 3 — CQL collision search
@@ -104,23 +106,42 @@ The cross-link pattern (per `feedback-doc-layering`):
 - ARCH page top panel: "**How to maintain:** see [RUNBOOK ...]"
 - RUNBOOK page top panel: "**Technical principles:** see [ARCH ...]"
 
-## Step 7 — Update project hub index (NON-SKIPPABLE)
+## Step 7 — Update the index: project hub OR KB index (NON-SKIPPABLE)
 
 This is the step that's easy to forget. Skipping it means the new docs are effectively invisible.
+
+**Which index?** Every page created lands in exactly one of these — there is no "no index applies" case:
+
+| Doc | Index target |
+|---|---|
+| Project doc (ARCH / RUNBOOK / API / DESIGN / POC / REPORT / ROADMAP / POSTMORTEM) or **project-specific KB** | That project's hub (folder 07) → §7a |
+| **General `[KB]`** (passes the KB litmus, names no single project) | KB index page `5922357414` (folder 08) → §7b |
+
+Both branches are equally non-skippable. A general KB with no project hub is NOT an excuse to skip — it has an index, just a different one.
+
+### §7a — Project hub
 
 1. Read the project hub page (page ID from memory if cached, else the SKILL.md table, else CQL from step 3).
 2. Identify the relevant section by the doc's TYPE (see `doc-taxonomy.md`):
    - `[ARCH]` / `[DESIGN]` → "## Architecture"
    - `[RUNBOOK]` → "## Runbooks (Operations)"
    - `[API]` → "## APIs & Interfaces Spec"
-   - `[KB]` → "## Knowledge Base / Notes"
+   - `[KB]` **that is project-specific** → "## Knowledge Base / Notes" (general KB does not come here — see §7b)
    - `[REPORT]` / `[POC]` / `[ROADMAP]` / `[POSTMORTEM]` → the project's working-records section (e.g. "## Reports & Records", "## Roadmap", "## Incidents"); if the hub has no matching section yet, **add one** rather than dropping the entry.
 3. Add the new page(s) as nested bullets under the parent folder bullet (match existing indentation — usually 2-space).
 4. Update via `mcp__atlassian__updateConfluencePage` with `contentFormat: "markdown"` (hubs are typically markdown-edited) and a clear `versionMessage`.
 
 For ARCH+RUNBOOK pair: add BOTH entries (ARCH under Architecture section, RUNBOOK under Runbooks section).
 
-After updating, re-read the hub to verify the entries are visible. Don't trust the update API silently — verify.
+### §7b — KB index page (general KB)
+
+1. Read the KB index page `5922357414` (`🧠 Knowledge Base 索引`).
+2. Find the `<h2>` matching the page's `[Topic]` bracket — the bracket IS the grouping key (see `doc-taxonomy.md`). `[KB][LiveKit] ICE/STUN 機制` goes under the `LiveKit` `<h2>`.
+3. If no `<h2>` for that `[Topic]` exists yet, **add one** — don't drop the entry into an unrelated section, and don't skip.
+4. Add the page as a link bullet under that `<h2>`. Layout per `page-anatomy.md` §9.
+5. Update via `mcp__atlassian__updateConfluencePage` with a clear `versionMessage`.
+
+After updating — either branch — re-read the index page to verify the entries are visible. Don't trust the update API silently — verify.
 
 ## Step 8 — Record in memory
 
@@ -145,7 +166,7 @@ Before reporting completion, verify:
 
 - [ ] Each created page is reachable via its URL
 - [ ] Cross-links between ARCH and RUNBOOK both render correctly (if pair)
-- [ ] Project hub now lists the new page(s) — open the hub URL and look
+- [ ] The index now lists the new page(s) — open the project hub URL (or, for general KB, the KB index page `5922357414`) and look
 - [ ] Memory file written and `MEMORY.md` updated
 - [ ] No `(待補)` placeholders in the new pages OR they're explicitly called out for follow-up
 

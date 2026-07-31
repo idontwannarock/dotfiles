@@ -48,6 +48,12 @@ Two rules that stop drift:
   **third-party technology or domain** the knowledge is about: `[KB][LiveKit] ICE/STUN 機制`. The
   bracket is a grouping tag for the technology, not our service — the KB litmus (reusable by any
   team) must still hold. General KB with no natural topic stays `[KB] Subject`.
+  General KB is **indexed on the KB index page** (`🧠 Knowledge Base 索引`, page ID `5922357414`,
+  under folder 08) — the hub for KB, the way folder 07 hubs index project docs. The `[Topic]`
+  bracket is the **grouping key**: it maps to an `<h2>` on that index page, so same-topic pages
+  cluster. Folder 08 itself stays a flat pile until one `[Topic]` accumulates ~5 pages; only then
+  promote that `[Topic]` to a sub-folder under 08. Lazily, never pre-emptively — an empty or
+  two-page folder is an orphan that makes things harder to find, not easier.
 - **Project Hub** — always `[PROJECT] <Name>` (e.g. `[PROJECT] Customer Chat`). The older
   `<Name> (Project Hub)` suffix is deprecated; migrate when touched.
 - **Legacy pages** — the space has many pre-convention pages with no prefix ("Customer API Design",
