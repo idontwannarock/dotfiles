@@ -18,10 +18,10 @@ Before scanning, resolve the vocabulary that defines module boundaries:
 
 | Condition | Basis | Label it as |
 |-----------|-------|-------------|
-| `openspec/project.md` exists | Its glossary and recurring-principles sections | **authoritative** (cite `openspec/project.md`) |
-| No `openspec/project.md` | Infer domain language from directory structure, type/class names, exported interfaces | **inferred, not authoritative** |
+| `context/` bundle exists | Its glossary and recurring-principles concept files | **authoritative** (cite `context/`) |
+| No `context/` bundle | Infer domain language from directory structure, type/class names, exported interfaces | **inferred, not authoritative** |
 
-Never write to `openspec/project.md`. That file is written only during sync/archive, and only for terms with shipped-implementation backing. If the checkup surfaces a term that looks evergreen, mention it under Next steps as something to promote later -- do not write it.
+Never write to `context/`. That bundle is written only during sync/archive, and only for terms with shipped-implementation backing. If the checkup surfaces a term that looks evergreen, mention it under Next steps as something to promote later -- do not write it.
 
 ## Phase 1 -- inventory (do NOT read file contents)
 
@@ -71,7 +71,7 @@ Rank candidates by expected payoff over effort -- highest first.
 
 - Repo: <absolute path>
 - Scope: <whole repo | the path argument>
-- Basis of judgement: <`openspec/project.md` glossary (authoritative) | inferred from codebase (NOT authoritative)>
+- Basis of judgement: <`context/` glossary (authoritative) | inferred from codebase (NOT authoritative)>
 
 ## Inventory summary
 
@@ -106,7 +106,7 @@ Rank candidates by expected payoff over effort -- highest first.
 1. Pick a candidate to pursue -- nothing here is committed to yet
 2. Run `dev-workflow` on the chosen candidate to turn it into a tracked change
 3. <candidate-specific first move>
-4. <if any evergreen vocabulary surfaced: propose promoting it into project.md at the next sync/archive>
+4. <if any evergreen vocabulary surfaced: propose promoting it into `context/` at the next sync/archive>
 
 ---
 
@@ -138,8 +138,8 @@ Do not print the whole report back -- it is on disk.
 - **Don't** report findings without a file path. Unevidenced architectural opinion is noise.
 - **Don't** deep-dive more than 5 zones, and don't hide the ones you skipped.
 - **Don't** read file contents in Phase 1 -- that defeats the cost control the two phases exist for.
-- **Don't** present inferred vocabulary as authoritative when there is no `openspec/project.md`.
-- **Don't** write to `openspec/project.md`, ever.
+- **Don't** present inferred vocabulary as authoritative when there is no `context/` bundle.
+- **Don't** write to `context/`, ever.
 - **Don't** re-run the whole scan when the user only asked about one module -- honour the path argument.
 - **Don't** pad the candidate list. Three real findings beat ten padded ones; if the codebase is healthy, say so and stop.
 - **Don't** put `dev-workflow` -- or anything that acts on a candidate -- under `## Suggested skills`. `pickup` fires that section without confirmation, ahead of `## Next steps`, so listing it there starts the change lifecycle before the user has chosen a candidate.

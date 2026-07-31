@@ -339,9 +339,12 @@ dotfiles/
 │   ├── statusline/           #   Go：Claude Code 狀態列
 │   └── passgen/              #   Rust：密碼產生器
 ├── docs/                     # 工具設定說明文件
+├── context/                  # 專案 context（做需求分析時的長青背景，非自動載入）
 ├── tests/                    # Pester 測試（CI 於 windows-latest 執行）
 └── openspec/                 # OpenSpec 變更追蹤
 ```
+
+需求分析或架構判斷前，先讀 [`context/`](context/index.md)：專案解決什麼問題、domain 詞彙表、反覆適用的原則與約束。它不會自動載入，需要時主動查閱。
 
 ---
 

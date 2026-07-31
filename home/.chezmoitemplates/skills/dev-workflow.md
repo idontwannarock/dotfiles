@@ -84,7 +84,7 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 {{ .n.ensureScript }}
 → {{ .n.sk }}openspec-new-change → {{ .n.sk }}openspec-continue-change (loop until artifacts ready)
 → {{ .n.sk }}openspec-apply-change → openspec validate
-→ [{{ .n.sk }}openspec-sync-specs — ask if implementation drifted from specs; promote design.md evergreen-candidates → openspec/project.md] → {{ .n.sk }}openspec-archive-change
+→ [{{ .n.sk }}openspec-sync-specs — ask if implementation drifted from specs; promote design.md evergreen-candidates → context/] → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewQuick }}
 → Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from {{ .n.sk }}openspec-new-change)
 → No fixes → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
@@ -100,15 +100,15 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 → {{ .n.sk }}openspec-apply-change   (tasks with a testable seam agreed in design → {{ .n.tdd }})
 → {{ .n.verifyDone }} (run tests / verify commands — hard evidence)
 → {{ .n.sk }}openspec-verify-change (three-dimension spec/code coherence report)
-→ openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → openspec/project.md) → {{ .n.sk }}openspec-archive-change
+→ openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → context/) → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewFull }}
 → Fixes needed? → Confirm scope, start a new change round
 → No fixes → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
 ```
 
-### project.md evergreen promotion (at sync/archive)
+### `context/` evergreen promotion (at sync/archive)
 
-`openspec/project.md` is the evergreen, human-readable project-context doc
+`context/` is the evergreen, human-readable project-context bundle
 consulted during requirement analysis (grill reads it; it is NOT auto-loaded
 like CLAUDE.md). It is written only here, at `openspec-sync-specs`/archive —
 never during grill, so every promoted line has shipped-implementation backing.
@@ -116,10 +116,10 @@ never during grill, so every promoted line has shipped-implementation backing.
 At sync/archive, scan `design.md` for `<!-- evergreen-candidate -->` markers.
 For each, check it against what was actually implemented, then apply the
 elevation gate: only **reusable, cross-change** principles and new domain
-terms/glossary get promoted into `project.md`. One-off decisions stay in the
-archived `design.md`. Content boundary: `specs/` = WHAT (behavior),
-`design.md` = one-off decisions, `project.md` = domain model + glossary +
-reusable principles.
+terms/glossary get promoted into `context/`, each into the concept file whose
+kind it matches. One-off decisions stay in the archived `design.md`. Content
+boundary: `specs/` = WHAT (behavior), `design.md` = one-off decisions,
+`context/` = domain model + glossary + reusable principles.
 
 ### tasks.md slicing conventions
 

@@ -491,10 +491,10 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 
 | 情境 | 判準 | 報告標示 |
 |---|---|---|
-| 有 `openspec/project.md` | 其詞彙表 | 權威 |
+| 有 `context/` bundle | 其詞彙 concept 檔 | 權威 |
 | 沒有 | 從目錄結構、型別名、導出介面推斷 | **明示為推斷，非權威** |
 
-讀者無從評價一份沒說明立論基礎的架構判斷 —— 所以這個標示是硬要求，不是禮貌。`/arch-review` 永遠不寫 `openspec/project.md`（該檔只在 sync/archive 寫入）。
+讀者無從評價一份沒說明立論基礎的架構判斷 —— 所以這個標示是硬要求，不是禮貌。`/arch-review` 永遠不寫 `context/`（該 bundle 只在 sync/archive 寫入）。
 
 ### 邊界
 
