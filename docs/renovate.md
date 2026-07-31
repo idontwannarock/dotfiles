@@ -2,9 +2,10 @@
 
 [Renovate](https://docs.renovatebot.com/) watches the upstream of each CLI tool
 pinned in [`home/.chezmoiexternal.toml`](../home/.chezmoiexternal.toml) and opens
-a pull request when a newer version is available. Merging a PR + running
-`chezmoi apply` is the only manual step — nothing auto-merges, nothing changes a
-machine until you apply.
+a pull request when a newer version is available. `patch`, `minor`, and `pin`
+bumps merge themselves once the `gate` check passes; `major` waits for you (see
+[Auto-merge](#auto-merge)). Either way nothing changes a machine until you run
+`chezmoi apply`.
 
 ## How it works
 
@@ -68,9 +69,10 @@ re-hosts and layout-normalizes them under this repo's own Releases:
 The workflow runs weekly (plus `workflow_dispatch`), publishes `mirror-<tool>-<version>`
 releases (notes record the upstream URL + version + sha256), and opens a one-per-tool
 pin-bump PR labelled `dependencies` — so these bumps arrive the same way Renovate's do,
-just from our own workflow. The three pins stay `# renovate: ignore`; nothing auto-merges,
-and `chezmoi apply` is still manual. Seed mode (`workflow_dispatch` with `publish_only=true`)
-creates the releases without opening PRs.
+just from our own workflow. The three pins stay `# renovate: ignore` so Renovate leaves
+them alone, but their PRs go through the same `gate` and the same auto-merge as everything
+else (see [Auto-merge](#auto-merge)); `chezmoi apply` is still manual. Seed mode
+(`workflow_dispatch` with `publish_only=true`) creates the releases without opening PRs.
 
 **ffmpeg is not mirrored.** GyanD publishes a clean-semver `.zip` (scoop's original
 source, one of the two builds endorsed on ffmpeg.org), so it is a normal Renovate pin
@@ -120,8 +122,8 @@ Mend's infra, uses no GitHub Actions minutes):
 1. Install the Renovate app on `idontwannarock/dotfiles` from the GitHub
    Marketplace.
 2. Merge its onboarding PR.
-3. Bump PRs then arrive on the weekly schedule; review + merge, then
-   `chezmoi apply`.
+3. Bump PRs then arrive on the weekly schedule. Low-risk ones land on their own;
+   `major` needs your review. Either way, `chezmoi apply` to pick them up.
 
 Validate config changes locally with:
 

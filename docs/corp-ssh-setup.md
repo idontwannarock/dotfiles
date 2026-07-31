@@ -5,7 +5,7 @@ interactive password + TOTP one-time-password authentication. Designed for
 WSL/Ubuntu; Windows and macOS support is future work.
 
 Design rationale and considered alternatives: see
-[`docs/superpowers/specs/2026-04-24-corp-ssh-redesign.md`](superpowers/specs/2026-04-24-corp-ssh-redesign.md).
+[`openspec/changes/archive/2026-04-24-corp-ssh-redesign/design.md`](../openspec/changes/archive/2026-04-24-corp-ssh-redesign/design.md).
 
 ## What this does
 
