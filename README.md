@@ -361,7 +361,6 @@ dotfiles/
 | [Git 憑證管理](docs/git-credentials.md) | Git 遠端認證（GCM、SSH、WSL） |
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
 | [Renovate](docs/renovate.md) | external 工具版本自動追蹤與 auto-merge |
-| [RTK](docs/rtk.md) | Token-reducing CLI proxy |
 | [SSH](docs/ssh.md) | SSH key 設定教學 |
 | [Starship](docs/starship.md) | Starship prompt 設定 |
 | [User Scripts](docs/user-scripts.md) | 手動執行的輔助腳本（scoop 更新、pwsh 換裝） |

@@ -66,3 +66,17 @@
 # and it is redundant with dev-workflow's own first step, so both go.
 .local/bin/ensure-openspec.sh
 .claude/commands/ensure-openspec.md
+
+# rtk 退役。它摘要 Bash tool 的輸出以省 token，但摘要會靜默扭曲結果——截斷過的
+# git status 讓 working tree 看起來乾淨、wc -l 對兩行檔案回傳 0——而看起來權威的
+# 錯誤輸出比沒有這個工具更糟。hook script、兩個 OS 的設定目錄、external 部署的
+# binary、以及 rtk 自己寫下的 runtime state 都要點名；跨 OS 路徑一律列出，該 OS
+# 上不存在時為 no-op。settings.json 的 PreToolUse 註冊另由 modify_ 腳本主動移除
+# （modify_ 是 patch 而非 render，停止寫入不會抹掉既有部署的舊值）。
+.claude/hooks/rtk-rewrite.sh
+.config/rtk
+AppData/Roaming/rtk
+AppData/Local/rtk
+.local/bin/rtk
+.local/bin/rtk.exe
+.cache/rtk-hook-version-ok

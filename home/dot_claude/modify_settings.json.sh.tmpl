@@ -11,7 +11,6 @@
 # - permissions.defaultMode = bypassPermissions
 # - permissions.allow 併入 "Skill(*)"（union + unique，不覆蓋現有 entries）
 # - statusLine（跨平台處理執行檔路徑）
-# - hooks.PreToolUse（註冊 rtk-rewrite.sh，Bash matcher）
 # - hooks.UserPromptSubmit（註冊 handoff-reminder.sh，context 用量階梯提醒）
 # - hooks.SessionStart（union-append claude-memory-seed；**不** hard-assign，
 #   以保留 herdr / agent-sessions 等工具於 runtime 註冊的 SessionStart entries）
@@ -22,6 +21,9 @@
 # - hooks.SessionEnd 只**外科式**移除 handoff-cleanup 那一條（該 hook 靠 SessionEnd
 #   做刪檔、會拖慢觸發 timeout，已退役）；保留其餘 SessionEnd entries，尤其
 #   agent-sessions 於 runtime 註冊的 `emit end`（本地 append，不會 timeout）。
+# - hooks.PreToolUse 只**外科式**移除 rtk-rewrite 那一條（rtk 已退役——它摘要 Bash
+#   輸出，會靜默扭曲 git status / wc -l 的結果）；保留其餘 PreToolUse entries，
+#   陣列清空後連 key 一併 del，不留空殼。
 #
 # 注意：CLAUDE_HANDOFF_CONTEXT_WINDOW 故意**不**設 — 讓 statusline 寫的
 # per-session cache 成為主要來源；這個 env var 只保留給 debug/override 用
@@ -81,17 +83,13 @@ echo "$input" | jq \
           ))
       )
     | if (.hooks.SessionEnd | length) == 0 then .hooks |= del(.SessionEnd) else . end
-    | .hooks.PreToolUse = [
-        {
-          matcher: "Bash",
-          hooks: [
-            {
-              type: "command",
-              command: "bash ~/.claude/hooks/rtk-rewrite.sh"
-            }
-          ]
-        }
-      ]
+    | .hooks.PreToolUse = (
+        (.hooks.PreToolUse // [])
+        | map(select(
+            ((.hooks // []) | map(.command // "") | any(test("rtk-rewrite"))) | not
+          ))
+      )
+    | if (.hooks.PreToolUse | length) == 0 then .hooks |= del(.PreToolUse) else . end
     | .hooks.UserPromptSubmit = [
         {
           hooks: [
