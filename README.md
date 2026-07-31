@@ -353,7 +353,7 @@ dotfiles/
 | 文件 | 說明 |
 |------|------|
 | [Bash](docs/bash.md) | Bash 設定、worklogs、Windows Terminal 整合 |
-| [Claude Code](docs/claude-code.md) | Claude Code 設定、statusline、plugins |
+| [Claude Code](docs/claude-code.md) | Claude Code 設定、statusline、plugins、現成可用的 MCP 清單 |
 | [claude-zai wrapper](docs/claude-zai-wrapper.md) | 切換 Claude Code 後端的 wrapper |
 | [Codex CLI](docs/codex-cli.md) | Codex CLI 設定、skills、Claude workflow 對齊 |
 | [Corp SSH（Linux/WSL）](docs/corp-ssh-setup.md) | 公司 SSH 密碼 + OTP 自動化 |

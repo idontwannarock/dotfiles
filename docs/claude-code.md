@@ -174,25 +174,40 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 符合；瀏覽器、codex、Jira 都只有特定工作才需要，不符合——把它們放 user scope 等於讓每個
 純後端 repo 的 session 都替用不到的東西付錢。
 
-**要用的 repo 自己 opt in：**
+#### 現成可用的 MCP 清單
+
+以下都已經由 chezmoi 準備好，任何 repo 隨時可以接上——**不需要再裝任何東西**，
+只差一行註冊指令。新 repo 想用什麼，先查這張表，不要自己 `npx` 或另外 `npm i -g`。
+
+| server | 做什麼 | 現成程度 | binary 來源 |
+|--------|--------|---------|------------|
+| `codegraph` | 跨檔查 symbol／caller／callee、影響範圍 | **已在 user scope，什麼都不用做** | install-02（`@colbymchenry/codegraph`） |
+| `chrome-devtools` | 驅動 Chrome：導航、抓 DOM／console／network、效能 trace | binary 已裝，待註冊 | install-02（`chrome-devtools-mcp`） |
+| `agent-browser` | 較輕量的瀏覽器自動化（點擊、填表、截圖） | binary 已裝，待註冊 | install-02（`agent-browser-mcp`） |
+| `codex` | 把 Codex CLI 當 MCP server，交叉詢問另一個模型 | binary 已裝，待註冊 | install-02（`@openai/codex`） |
+| `atlassian` | Jira／Confluence 讀寫 | 遠端 http，無需 binary，待註冊 | — |
+
+註冊指令（在該 repo 根目錄執行，選要的貼一行）：
 
 ```sh
-cd <repo>
 claude mcp add --scope project chrome-devtools \
   -e CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1 -- chrome-devtools-mcp
+claude mcp add --scope project agent-browser -- agent-browser-mcp
+claude mcp add --scope project codex -- codex mcp-server
+claude mcp add --scope project --transport http atlassian https://mcp.atlassian.com/v1/mcp
 ```
 
-`--scope project` 寫進 repo 根目錄的 `.mcp.json`，可 commit 給 team 共享；
-只想自己用就改 `--scope local`（寫進 `~/.claude.json` 的該專案區段，不進版控）。
-專案 scope 的 server 首次載入需要核准，記在 settings 的 `enabledMcpjsonServers`。
+幾個要知道的：
 
-其他 server 的 opt-in 指令：
+- `--scope project` 寫進 repo 根目錄的 `.mcp.json`，可 commit 給 team 共享；只想自己用就改
+  `--scope local`（寫進 `~/.claude.json` 的該專案區段，不進版控）。
+- 專案 scope 的 server 首次載入需要核准，記在 settings 的 `enabledMcpjsonServers`。
+- **一律指向全域 binary，不要寫 `npx -y <pkg>@latest`**——理由見上面的 process 數表。
+- `atlassian` 註冊後還要 `/mcp` 選它完成 OAuth 登入，指令本身代不了登入。
+- 換新機器時這些 binary 由 `chezmoi apply` 自動補齊；repo 裡的 `.mcp.json` 跟著 git 走，兩邊會合。
 
-| server | 指令 |
-|---|---|
-| `agent-browser` | `claude mcp add --scope project agent-browser -- agent-browser-mcp` |
-| `codex` | `claude mcp add --scope project codex -- codex mcp-server` |
-| `atlassian` | `claude mcp add --scope project --transport http atlassian https://mcp.atlassian.com/v1/mcp`（之後要 `/mcp` 完成 OAuth 登入） |
+清單要新增成員時，**同時改兩處**：`run_install-02-npm-tools.{sh,ps1}.tmpl` 加安裝、這張表加一列。
+只加安裝沒人知道它存在；只加表格則換機器就沒有。
 
 #### 例外：已經在 user scope、想在特定 repo 關掉
 
