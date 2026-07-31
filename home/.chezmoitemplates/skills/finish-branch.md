@@ -45,7 +45,12 @@ Present once: **Merge locally** / **Push + PR** / **Keep branch as is**
   cd <repo>/main && git merge --ff-only <branch>   # refused → stop, report (main moved?)
   # ── only continue once the merge above succeeded ──
   git --git-dir=<repo>/.bare worktree remove <branch>
-  git --git-dir=<repo>/.bare branch -d <branch>    # -d is safe after FF merge
+  git -C <repo>/main branch -d <branch>     # -d is safe after FF merge. NOT
+                                            # --git-dir=.bare: the bare repo's own
+                                            # HEAD is often a dangling symref (it
+                                            # points at whatever branch was last
+                                            # deleted), and -d needs HEAD to run its
+                                            # merged check.
   git --git-dir=<repo>/.bare worktree prune
   ```
   Alternative `git merge --no-ff <branch>` from `main/` when the branch

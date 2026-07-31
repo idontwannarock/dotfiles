@@ -42,8 +42,20 @@ Cross-check: `git rev-parse --git-common-dir` resolves to `.../.bare`, and
   records):
   ```bash
   git --git-dir=.bare worktree remove add-<name>
-  git --git-dir=.bare branch -d add-<name>     # if merged
+  # branch -d must run from a worktree, NOT with --git-dir=.bare: the bare
+  # repo's HEAD is often a dangling symref, and -d needs HEAD to run its
+  # "is it merged" check.
+  (cd main && git branch -d add-<name>)        # if merged
   ```
+- **`.bare/HEAD` goes dangling on its own.** Nothing maintains it in this
+  layout: it stays pinned to whatever branch it was left on, so the day that
+  branch is deleted it becomes a symref to nothing and every `--git-dir=.bare`
+  command needing HEAD fails with `Couldn't look up commit object for HEAD`.
+  Each successful finish raises the odds of the next one breaking. Repair:
+  ```bash
+  git --git-dir=.bare symbolic-ref HEAD refs/heads/main
+  ```
+  Safe — under worktrees the bare HEAD is only a default-branch pointer.
 - **Never open or operate at the parent container level.** It holds only
   `.bare/` — no source, no agent instructions, no context. Always be inside a
   worktree.
