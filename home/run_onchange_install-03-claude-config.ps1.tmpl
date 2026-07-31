@@ -197,23 +197,41 @@ try {
         }
     }
 
-    Log-Section "register user-scope MCP servers"
+    Log-Section "register user-scope MCP servers — every session spawns one process per stdio server"
+    # -RequiredBinary is the binary that must exist first ("" when the server
+    # needs none, i.e. http transport). -AddArgs is handed to `claude mcp add`
+    # verbatim, so a row can carry `-e KEY=VAL` or `--transport http` ahead of
+    # the `--` separator.
     function Add-McpIfMissing {
-        param([string]$Name, [string[]]$CommandArgs)
-        $existing = claude mcp list 2>$null | Select-String -Pattern "^${Name}:" -Quiet
-        if ($existing) {
+        param([string]$Name, [string]$RequiredBinary, [string[]]$AddArgs)
+        if ($RequiredBinary -and -not (Get-Command $RequiredBinary -ErrorAction SilentlyContinue)) {
+            Log-Skip "[mcp] ${Name}: ${RequiredBinary} not installed"
+        } elseif (claude mcp list 2>$null | Select-String -Pattern "^${Name}:" -Quiet) {
             Log-Skip "[mcp] ${Name} already registered"
         } else {
-            claude mcp add --scope user $Name -- @CommandArgs
+            claude mcp add --scope user $Name @AddArgs
             Log-Step "[mcp] ${Name} registered"
         }
     }
 
-    if (Get-Command "codegraph" -ErrorAction SilentlyContinue) {
-        Add-McpIfMissing -Name "codegraph" -CommandArgs @("codegraph", "serve", "--mcp")
-    } else {
-        Log-Skip "[mcp] codegraph binary not found"
-    }
+    # Every stdio row points at a globally installed binary rather than
+    # `npx -y <pkg>@latest`. npx adds an `npm exec` wrapper plus a `sh -c`
+    # layer, and the cost is per session, not per machine: measured 3
+    # processes vs 1. chrome-devtools additionally needs the telemetry
+    # watchdog switched off -- usageStatistics defaults to true and the
+    # watchdog is another process.
+    Add-McpIfMissing -Name "codegraph" -RequiredBinary "codegraph" `
+        -AddArgs @("--", "codegraph", "serve", "--mcp")
+    Add-McpIfMissing -Name "codex" -RequiredBinary "codex" `
+        -AddArgs @("--", "codex", "mcp-server")
+    Add-McpIfMissing -Name "agent-browser" -RequiredBinary "agent-browser-mcp" `
+        -AddArgs @("--", "agent-browser-mcp")
+    Add-McpIfMissing -Name "chrome-devtools" -RequiredBinary "chrome-devtools-mcp" `
+        -AddArgs @("-e", "CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1", "--", "chrome-devtools-mcp")
+    # HTTP transport, so no binary. The script registers it but cannot log in --
+    # run /mcp and select atlassian to finish the OAuth flow on a new machine.
+    Add-McpIfMissing -Name "atlassian" -RequiredBinary "" `
+        -AddArgs @("--transport", "http", "https://mcp.atlassian.com/v1/mcp")
 
     Log-Section "set user preferences in ~/.claude.json"
     $claudeJson = Join-Path $env:USERPROFILE ".claude.json"

@@ -29,6 +29,12 @@ try {
     Log-Section "install codegraph — semantic code graph MCP server"
     Install-NpmPackage -Command "codegraph" -Package "@colbymchenry/codegraph"
 
+    Log-Section "install chrome-devtools-mcp globally — npx would cost 2 extra processes per session"
+    Install-NpmPackage -Command "chrome-devtools-mcp" -Package "chrome-devtools-mcp"
+
+    Log-Section "install agent-browser-mcp globally — same reason as chrome-devtools-mcp"
+    Install-NpmPackage -Command "agent-browser-mcp" -Package "agent-browser-mcp"
+
     Log-Section "install OpenSpec CLI — spec/change tracking used by dev-workflow"
     if (Get-Command "openspec" -ErrorAction SilentlyContinue) {
         Log-Skip "[openspec] already installed"

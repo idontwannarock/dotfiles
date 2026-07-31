@@ -149,21 +149,35 @@ else
     log_skip "[deps] episodic-memory not present; nothing to repair"
 fi
 
-log_section "register user-scope MCP servers"
+log_section "register user-scope MCP servers — every session spawns one process per stdio server"
+# $1 name, $2 binary that must exist first ("" when the server needs none, i.e.
+# http transport). Everything after is handed to `claude mcp add` verbatim, so a
+# row can carry `-e KEY=VAL` or `--transport http` ahead of the `--` separator.
 mcp_add_if_missing() {
-    local name="$1"; shift
-    if claude mcp list 2>/dev/null | grep -q "^${name}:"; then
+    local name="$1" bin="$2"; shift 2
+    if [ -n "$bin" ] && ! command -v "$bin" &>/dev/null; then
+        log_skip "[mcp] ${name}: ${bin} not installed"
+    elif claude mcp list 2>/dev/null | grep -q "^${name}:"; then
         log_skip "[mcp] ${name} already registered"
     else
-        claude mcp add --scope user "$name" -- "$@" && log_step "[mcp] ${name} registered"
+        claude mcp add --scope user "$name" "$@" && log_step "[mcp] ${name} registered"
     fi
 }
 
-if command -v codegraph &>/dev/null; then
-    mcp_add_if_missing "codegraph" codegraph "serve" "--mcp"
-else
-    log_skip "[mcp] codegraph binary not found"
-fi
+# Every stdio row points at a globally installed binary rather than
+# `npx -y <pkg>@latest`. npx adds an `npm exec` wrapper plus a `sh -c` layer,
+# and the cost is per session, not per machine: measured 3 processes vs 1.
+# chrome-devtools additionally needs the telemetry watchdog switched off --
+# usageStatistics defaults to true and the watchdog is another process.
+mcp_add_if_missing codegraph       codegraph           -- codegraph serve --mcp
+mcp_add_if_missing codex           codex               -- codex mcp-server
+mcp_add_if_missing agent-browser   agent-browser-mcp   -- agent-browser-mcp
+mcp_add_if_missing chrome-devtools chrome-devtools-mcp \
+    -e CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1 -- chrome-devtools-mcp
+# HTTP transport, so no binary. The script registers it but cannot log in --
+# run /mcp and select atlassian to finish the OAuth flow on a new machine.
+mcp_add_if_missing atlassian       ""                  \
+    --transport http https://mcp.atlassian.com/v1/mcp
 
 log_section "set user preferences in ~/.claude.json"
 CLAUDE_JSON="$HOME/.claude.json"
