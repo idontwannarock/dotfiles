@@ -2,7 +2,7 @@
 
 ## Purpose
 
-定義 README / docs 的 bootstrap 文件需涵蓋的內容：各平台（macOS、Windows、WSL）安裝 git / pwsh / chezmoi 的最小前置步驟、三種 `chezmoi init` 情境、日常操作與工具管理範圍，讓新機器能正確完成初始化。
+定義新機器從零到可用的入口路徑，載體為 README 的 bootstrap 章：各平台（macOS、Windows、WSL）安裝 git / pwsh / chezmoi 的最小前置步驟、三種 `chezmoi init` 情境、日常操作與工具管理範圍。本 capability 不納管 `docs/` 目錄；`docs/powershell.md` 僅於 pwsh MSI 一條 requirement 中以一致性 rider 出現，防止它與 README 講不同的安裝方式。`docs/` 的內容邊界見 `project-context`。
 ## Requirements
 ### Requirement: README 包含各平台最小前置安裝說明
 README SHALL 在顯著位置提供各平台（macOS、Windows、WSL Ubuntu）安裝 git 與 chezmoi 的最小指令，格式清晰，類似 GitHub 新建 repo 頁面的快速開始說明。

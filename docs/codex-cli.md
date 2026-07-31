@@ -2,6 +2,8 @@
 
 這個 repo 也會管理 Codex CLI 的基礎設定，目標不是硬把 Claude Code 的概念照搬，而是用 Codex 原生能力達成接近的操作體驗。
 
+> 本文件記載 Codex 端的設定內容與操作方式。跨 change 反覆適用的判斷依據(為什麼這樣設計)在 [`context/`](../context/index.md);可驗收的行為契約在 `openspec/specs/`。
+
 ## 設定位置
 
 | 項目 | 部署目標 | 說明 |
@@ -31,11 +33,9 @@
 
 這對應你現在 `~/.claude/CLAUDE.md` 裡的做法，但改用 Codex 的語彙與能力表達。
 
-Claude 端是 command 的能力（`/handoff`、`/pickup`、`/arch-review`），在 Codex 沒有 command 概念，一律包成 skill 部署到 `~/.codex/skills/<name>/`，與 Claude 共用 `.chezmoitemplates/skills/<name>.md` 的同一份 body —— 行為相同，只有 frontmatter 依各工具慣例不同。
+Claude 端是 command 的能力（`/handoff`、`/pickup`、`/arch-review`）在 Codex 一律包成 skill，部署到 `~/.codex/skills/<name>/`，與 Claude 共用 `.chezmoitemplates/skills/<name>.md` 的同一份 body —— 行為相同，只有 frontmatter 依各工具慣例不同。
 
-其中 `arch-review` 是整庫架構體檢：兩階段掃描（廉價盤點 → 至多 5 區深挖）、判準來源分層（有 `context/` bundle 用其詞彙 concept 檔，否則標明為推斷）、只提出附證據的重構候選而不動刀，產出寫到 `~/.agent/handoffs/` 供 `pickup` 接手。完整說明見 [claude-code.md](claude-code.md) 的 Arch Review 章節（兩邊行為同源，不重複記載）。
-
-> Codex 的 skill frontmatter 需要**嚴格 YAML**：`description` 含 `:` 必須加引號，Claude 容忍但 Codex 會報錯。驗證要用真的 YAML parser，不要只 grep。
+其中 `arch-review` 的檔案方位與實跑經驗見 [claude-code.md](claude-code.md) 的 Arch Review 章節，行為契約見 [`openspec/specs/arch-review/spec.md`](../openspec/specs/arch-review/spec.md)。
 
 ### 3. 讓 Codex 能讀既有專案慣例
 
