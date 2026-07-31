@@ -33,6 +33,12 @@ Documents
 .local/bin/corp-ssh-askpass
 {{- end }}
 
+# ── wsl-chrome-cdp: WSL-only (netsh portproxy + Windows Chrome) ────────
+{{- if ne .chezmoi.os "linux" }}
+.claude/skills/wsl-chrome-cdp
+.local/bin/cdp.py
+{{- end }}
+
 # ── corp-ssh-askpass: PowerShell helper + .cmd shim deploy on Windows only ──
 {{- if ne .chezmoi.os "windows" }}
 .local/bin/corp-ssh-askpass.ps1
