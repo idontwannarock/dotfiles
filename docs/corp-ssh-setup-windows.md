@@ -5,7 +5,7 @@ architecture (Layer 1 ControlMaster + Layer 2 SSH_ASKPASS), Windows
 mechanisms (PowerShell helper, gopass.exe, Gpg4win).
 
 Design rationale and Phase 1/2 deltas:
-[`docs/superpowers/specs/2026-04-30-corp-ssh-windows-phase2-design.md`](superpowers/specs/2026-04-30-corp-ssh-windows-phase2-design.md).
+[`openspec/changes/archive/2026-04-30-corp-ssh-windows-phase2/design.md`](../openspec/changes/archive/2026-04-30-corp-ssh-windows-phase2/design.md).
 
 For the WSL/Linux side, see [`corp-ssh-setup.md`](corp-ssh-setup.md).
 

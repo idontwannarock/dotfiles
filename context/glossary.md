@@ -28,7 +28,7 @@ description: "本專案的 domain 詞彙:chezmoi 模型、Git 工作區、開發
 
 **跨工具部署**
 
-- **cross-tool parity / name-map wrapper** — 同一份 skill/reference body 部署到多個 AI 工具(Claude + Codex),做法是 chezmoi shared body + 每工具一個薄的 name-map wrapper。
+- **cross-tool parity / name-map wrapper** — 同一份 skill/reference body 部署到多個 AI 工具,做法是 chezmoi shared body + 每工具一個薄的 name-map wrapper。**目標工具是 Claude 與 Codex**(未來或加 Antigravity CLI);**Gemini CLI 已放棄,不要去檢查它。**
 - **pickup 契約** — `~/.agent/handoffs/<repo-slug>/<ID>.md` 下的文檔只要含 `## Suggested skills` 與 `## Next steps` 兩段,就能被 `/pickup` 接手;`pickup` 的檔案解析是格式無關的(依檔名 glob),其餘內容形狀自由。這使該目錄不只承載 session state —— `arch-review` 的體檢報告即靠此共用同一套基礎建設,不必發明第二種產物格式。註:`## Suggested skills` 若無內容,要寫成非 bullet 的句子;`- None` 與真實條目無法區分,pickup 會去呼叫它。
 - **`~/.agent` shared body** — 中性、tool-agnostic 位置(`~/.agent/reference/`),由 `dot_agent/` 部署;各工具 prompt 用絕對路徑指過來,改一次全工具生效。也放 `workflow-registry.md` 與 `workflows/<slug>/active_workflows.md`。
 - **兩層 context** — 知識依作用域分兩層,格式與載入時機相同(皆為 OKF bundle、皆非自動載入、需要時才讀),差別只在範圍。**machine-level** 在 `~/.agent/reference/`,跨 repo、經 chezmoi 部署到每台機器;**repo-level** 在本 repo 的 `context/`,只屬於這個 repo、不部署。判斷放哪一層:問「換一個專案還成立嗎」。
