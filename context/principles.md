@@ -12,7 +12,7 @@ description: "跨 change 反覆適用的長青判斷依據,分四組:source 與�
 - **先在機器上測,再回寫 source。** 固定四步:改機器上實際設定 → 確認運作 → 回寫 chezmoi source → 更新文件。(尚在「local-test-only」的項目都卡在這條沒走完。)
 - **有些機器狀態刻意不在 repo 裡。** 例:全域 `git core.hooksPath` 分派器、WSLENV 的 GitLab token、corp-ssh 金鑰的單一實體磁碟備份。這是「為什麼這個沒被重現」類驚訝的固定來源——需求分析時要記得 repo ≠ 機器全貌。
 - **移除不會自動傳播。** chezmoi 的宣告式收斂只涵蓋它 declare 的檔案:刪掉 source 檔只會停止新機器安裝,已 apply 過的機器永久保留。兩個常見形態 —— 腳本裝出來的東西(套件、plugin 註冊、外部 CLI 設定)本來就不在收斂內,退役時要補一段冪等的反安裝;非 `exact_` 目錄下的檔案不會被修剪,退役時要在 `.chezmoiremove` 點名路徑。同理,任何「本機手動跑一次」的收尾都不會傳播。
-- **`exact_` 只用於 chezmoi 獨佔的目錄。** 它宣告「此目錄的內容完全屬於 chezmoi」,apply 會刪除其中所有未被管理的檔案。凡是可能被 plugin、其他工具或使用者手動寫入的目錄(`~/.claude/commands/`、`~/.claude/skills/`),套用它就是靜默刪檔;這類目錄的退役修剪改以 `.chezmoiremove` 點名。判斷方式很直接:`comm -13 <(chezmoi managed 的清單) <(實際檔案清單)` 若非空,前提就不成立。
+- **`exact_` 只用於 chezmoi 獨佔的目錄。** 它宣告「此目錄的內容完全屬於 chezmoi」,apply 會刪除其中所有未被管理的檔案。凡是可能被 plugin、其他工具或使用者手動寫入的目錄(`~/.claude/commands/`、`~/.claude/skills/`),套用它就是靜默刪檔。判斷方式很直接:`comm -13 <(chezmoi managed 的清單) <(實際檔案清單)` 若非空,前提就不成立。
 - **`run_*` 腳本要能從 apply 輸出被讀懂。** 每支有起訖 banner(結束的標題取自開始時記下的那一份,不另外手寫,否則必然漂移),每個段落印出**目的**而非代號,早退與失敗也要收尾。同一 interpreter 內重複兩次以上的邏輯抽到 `.chezmoitemplates/scripts/`;若多支腳本抽掉資料後控制流逐字相同,合併成一支資料表驅動的腳本。細節在 `chezmoi-author` skill。
 
 ## 跨平台與跨工具部署
