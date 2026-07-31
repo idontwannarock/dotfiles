@@ -31,10 +31,16 @@ npm_install codex @openai/codex
 log_section "install codegraph — semantic code graph MCP server"
 npm_install codegraph @colbymchenry/codegraph
 
-log_section "install chrome-devtools-mcp globally — npx would cost 2 extra processes per session"
+# The two browser MCP servers are INSTALLED here but deliberately NOT
+# registered by install-03: user scope would spawn them in every session,
+# including the many that never touch a browser. A repo that needs one opts
+# in with `claude mcp add --scope project`. Installing globally rather than
+# leaving it to `npx -y <pkg>@latest` still matters -- npx adds an `npm exec`
+# wrapper plus a `sh -c` layer, 3 processes where a binary costs 1.
+log_section "install chrome-devtools-mcp — available for repos that opt in, not registered globally"
 npm_install chrome-devtools-mcp chrome-devtools-mcp
 
-log_section "install agent-browser-mcp globally — same reason as chrome-devtools-mcp"
+log_section "install agent-browser-mcp — same deal as chrome-devtools-mcp"
 npm_install agent-browser-mcp agent-browser-mcp
 
 log_section "install OpenSpec CLI — spec/change tracking used by dev-workflow"

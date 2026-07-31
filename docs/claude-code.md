@@ -164,10 +164,37 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 | 全域安裝的 binary | 1 | — |
 | `chrome-devtools-mcp` 未關 telemetry | 再 +1 | usageStatistics 預設 true，會另外 spawn watchdog |
 
-所以 `run_onchange_install-03-claude-config` 註冊的每個 stdio server 都指向全域安裝的 binary
-（由 `run_install-02-npm-tools` 裝），`chrome-devtools` 另外帶 `CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1`。
+#### 這個專案的分工：安裝歸 chezmoi，連線歸各 repo
 
-#### 讓某個 repo 不要載入特定 server
+**chezmoi 只負責基礎設施。** `run_install-02-npm-tools` 把 `chrome-devtools-mcp`、`agent-browser-mcp`
+全域裝好（不走 `npx`，理由見上表），讓任何 repo 想用的時候「已經在那裡」；但
+`run_onchange_install-03-claude-config` **只註冊 `codegraph` 一個 user-scope server**。
+
+判準是「**是不是每個 session 都真的會用到**」。codegraph 是跨檔查 symbol／caller 的通用工具，
+符合；瀏覽器、codex、Jira 都只有特定工作才需要，不符合——把它們放 user scope 等於讓每個
+純後端 repo 的 session 都替用不到的東西付錢。
+
+**要用的 repo 自己 opt in：**
+
+```sh
+cd <repo>
+claude mcp add --scope project chrome-devtools \
+  -e CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1 -- chrome-devtools-mcp
+```
+
+`--scope project` 寫進 repo 根目錄的 `.mcp.json`，可 commit 給 team 共享；
+只想自己用就改 `--scope local`（寫進 `~/.claude.json` 的該專案區段，不進版控）。
+專案 scope 的 server 首次載入需要核准，記在 settings 的 `enabledMcpjsonServers`。
+
+其他 server 的 opt-in 指令：
+
+| server | 指令 |
+|---|---|
+| `agent-browser` | `claude mcp add --scope project agent-browser -- agent-browser-mcp` |
+| `codex` | `claude mcp add --scope project codex -- codex mcp-server` |
+| `atlassian` | `claude mcp add --scope project --transport http atlassian https://mcp.atlassian.com/v1/mcp`（之後要 `/mcp` 完成 OAuth 登入） |
+
+#### 例外：已經在 user scope、想在特定 repo 關掉
 
 用 `deniedMcpServers`。它**真的會讓 server 不被 spawn**，不是只把 tools 藏起來（實測 probe session 內 0 個 process）。
 
@@ -181,8 +208,7 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 - **deny 從所有來源聯集，且優先於 allow，因此下層無法翻案。** 寫在 `~/.claude/settings.json`
   就是全機器生效，該 repo 再加 `allowedMcpServers` 放行也沒用（實測仍是 0 個 process）。
 
-因此 deny 要寫在**需要排除的那個 repo 的 `.claude/settings.json`**（可 commit 給 team），
-user-level 維持寬鬆——反過來做會讓你在任何 repo 都無法臨時用瀏覽器 server。
+所以 deny 是補救手段，不是設計手段：真正的解法是一開始就別把它加進 user scope。
 
 ### Skill Listing Budget（CC 2.x）
 
