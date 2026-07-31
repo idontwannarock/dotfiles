@@ -33,7 +33,7 @@
 
 Claude 端是 command 的能力（`/handoff`、`/pickup`、`/arch-review`），在 Codex 沒有 command 概念，一律包成 skill 部署到 `~/.codex/skills/<name>/`，與 Claude 共用 `.chezmoitemplates/skills/<name>.md` 的同一份 body —— 行為相同，只有 frontmatter 依各工具慣例不同。
 
-其中 `arch-review` 是整庫架構體檢：兩階段掃描（廉價盤點 → 至多 5 區深挖）、判準來源分層（有 `openspec/project.md` 用其詞彙表，否則標明為推斷）、只提出附證據的重構候選而不動刀，產出寫到 `~/.agent/handoffs/` 供 `pickup` 接手。完整說明見 [claude-code.md](claude-code.md) 的 Arch Review 章節（兩邊行為同源，不重複記載）。
+其中 `arch-review` 是整庫架構體檢：兩階段掃描（廉價盤點 → 至多 5 區深挖）、判準來源分層（有 `context/` bundle 用其詞彙 concept 檔，否則標明為推斷）、只提出附證據的重構候選而不動刀，產出寫到 `~/.agent/handoffs/` 供 `pickup` 接手。完整說明見 [claude-code.md](claude-code.md) 的 Arch Review 章節（兩邊行為同源，不重複記載）。
 
 > Codex 的 skill frontmatter 需要**嚴格 YAML**：`description` 含 `:` 必須加引號，Claude 容忍但 Codex 會報錯。驗證要用真的 YAML parser，不要只 grep。
 
