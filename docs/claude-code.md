@@ -326,16 +326,6 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 > 移除：該 command 以 bare 名稱呼叫，在 WSL 下命中了 `~/.local/bin` 底下的過時副本
 > （`init --tools claude`，會砍掉 codex/antigravity surface）。
 
-## RTK — Token-reducing CLI proxy
-
-攔截 `Bash` tool call，將 `git` / `npm` / `docker` / `kubectl` 等指令透過 `rtk` binary 壓縮輸出，目標 60-90% token savings。
-
-整合架構與黑名單配置細節見 [rtk.md](rtk.md)。重點：
-
-- Binary 由 `.chezmoiexternal.toml` 下載（pin `0.36.0`）
-- Hook 腳本 `dot_claude/hooks/executable_rtk-rewrite.sh` 為 RTK 官方 87 行模板
-- Blacklist 單一 source 在 `.chezmoitemplates/rtk-config.toml`，預設排除本機沒裝的 20 個工具
-
 ## Status Line
 
 自訂的 Claude Code 狀態列，使用 Go 編寫以獲得更好的效能。
