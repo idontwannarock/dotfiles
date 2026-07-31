@@ -4,6 +4,8 @@
 跑 GLM 系列 model 而不是 Anthropic 原生。設計成 wrapper 函式，**不污染** `claude` 主指令——
 平常工作維持 Anthropic，需要試 GLM 時打 `claude-zai`。
 
+> 本文件記載設定、使用方式與本案專屬的取捨。跨 change 反覆適用的判斷依據在 [`context/`](../context/index.md)。
+
 ## 目前狀態
 
 | 項目 | 狀態 |
@@ -166,7 +168,7 @@ Wrapper 本身在 chezmoi source，整個 z.ai 嘗試結束後若要連 wrapper 
 
 ### 為什麼 token 走 vault 而不是 env var
 
-`HKCU\Environment` 跟 `~/.bashrc` 內的 export 都是**明文**，任何能讀使用者環境的程式都看得到。Vault 用 GPG 加密、gpg-agent 短期 unlock，passphrase-protected。重大下行：gpg-agent 沒 warm 時要打 passphrase（一次性），跨機器要先把 entry encrypt blob 複製過去。
+明文環境變數與加密 vault 的取捨屬一般依據，見 [`context/`](../context/index.md) 的原則清單。落到本案的代價：gpg-agent 沒 warm 時要打一次 passphrase，跨機器要先把 entry 的 encrypted blob 複製過去。
 
 ### 為什麼 wrapper code 進 chezmoi 而不是 scratch
 

@@ -21,10 +21,13 @@ description: "跨 change 反覆適用的長青原則:source of truth 分界、ru
 - **規範要寫成可機械套用的規則,不是個案判斷。** 「列出三個子目錄」、「四檔存在」、「僅含一句話摘要」這類斷言把當下的檔案樹凍結成需求,目錄一增減就 drift,而且遇到新案例時沒人知道該怎麼套。改寫成規則(「有 `index.md` 的目錄連目錄,沒有的連檔案」)才同時涵蓋現況與未來,且任何人都能得出同一個答案而不必問作者。**推論:修掉一個這類斷言時,要把同份 spec 全掃一遍** —— 同類實例不會因為只有一個被指出就只有一個存在。
 - **`index.md` 只放「這個目錄有什麼、何時讀哪個」,不放知識本身。** 任何一段內容若會被 agent 當答案引用,它就屬於一個具名檔案。這條界線讓 index 永遠可被自動生成或重建;OKF 更是把 `index.md` 列為 reserved filename,明文禁止當 concept 用。
 - **長青文件只在 sync/archive 階段寫入。** `context/` 的每一條都要有已 ship 的實作背書,所以 grill、arch-review、實作階段一律只把候選標記進 `design.md`,由 sync/archive 對照實際做出來的東西再決定晉升。閘門管的是**證據等級**而非正確性 —— 一條還沒被實作驗證過的原則即使是對的,也先留在 `design.md`;否則這份文件會慢慢變成「我們覺得應該這樣」的清單,而它的價值恰恰在於每一行都指得出對應的實作。
-- **格式規則與內容規則分屬不同 capability。** 同一份載體格式被兩處以上使用時,格式抽成獨立 spec,內容 spec 引用它;內容 capability 的名字也不該編碼格式(`project-context` 而非 `project-context-bundle`)。判準是問「換掉格式時要改幾份 spec」——答案若大於一,邊界就切錯了。
+- **格式規則與內容規則分屬不同 capability。** 同一份載體格式被兩處以上使用時,格式抽成獨立 spec,內容 spec 引用它;內容 capability 的名字也不該編碼格式(`project-context` 而非 `project-context-bundle`)。判準是問「換掉格式時要改幾份 spec」——答案若大於一,邊界就切錯了。**同一條規則也不該寫進兩份 spec**:規則寫一處,別處只放單向指路。可發現性的問題用指路解決,或修正那句讓人找錯地方的描述,不用複製。
+- **spec 的 `## Purpose` 要精確描述實際涵蓋範圍。** 過寬的措辭會被讀成納管宣告,而 requirement 才是真正的邊界。判準:Purpose 提到的每個載體,requirement 裡都要有對應斷言;沒有的就不該出現在 Purpose。`bootstrap-docs` 的 Purpose 曾寫「README / docs」但 6 條 requirement 有 5 條只斷言 README,結果兩度被誤判成「管 `docs/` 的 spec」,連帶差點把規則寫錯地方。
 - **憑證只留本機、不上雲。** corp-ssh、local-files 的祕密都在本機磁碟或使用者腦中;雲端密碼管理器(cloud Bitwarden)明確排除,因為情境是單機、無跨機同步需求。
+- **祕密放加密 vault,不放明文環境變數。** 這與上一條是不同的軸 —— 上一條管「本機 vs 雲端」,這條管「明文 vs 加密」。`HKCU\Environment` 與 `~/.bashrc` 的 export 都是明文,任何能讀使用者環境的程式都看得到;vault 走 GPG 加密、gpg-agent 短期 unlock。代價是 agent 沒 warm 時要打一次 passphrase、跨機器要複製 encrypted blob。已套用於 corp-ssh(`pass`/`gopass`)與 claude-zai token。
+- **被學會忽略的 gate 比沒有 gate 更糟。** 它同時消耗注意力又給出虛假的安全感。所以關卡的頻率由訊號密度決定,不是「每次都跑最安全」——`arch-review` 因此刻意不掛進 `dev-workflow` 或 `finish-branch`,正確頻率是里程碑或數個 change 之後。同理,會硬湊結果的檢查工具跑第二次就沒人信;誠實的「無發現」報告價值在於它排除了疑慮。
 - **文件要 model-agnostic、人可讀。** reference body 放 tool-neutral 位置;專案文件描述意圖,不綁單一工具的實作。
 - **Windows toolchain 脫離 Scoop。** Go/JDK/GnuPG 等從官方第一手來源經 `.chezmoiexternal.toml` / 官方安裝器 provision,搭配一次性 `run_once_after_migrate-scoop-*` 清理。
 - **Windows PATH 要 SSH-safe。** Win32-OpenSSH 不展開 PATH 裡的 `%JAVA_HOME%`;用 wrapper `.cmd` shim,別把原始 JDK bin 放進 PATH。
-- **自動化工具一律 gate 在人審。** Renovate / mirror workflow 只開 PR;沒有人審 + 明確 `chezmoi apply` 不落地。
+- **自動化不在無把關的情況下落到機器上。** 把關形式可以是人審或自動驗證,但不得沒有 —— Renovate / mirror workflow 只開 PR,低風險更新由 CI gate 放行、`major` 仍需人審。無論哪一種,最後都還要一次明確的 `chezmoi apply` 才會改到機器。把關機制的細節屬各案文件,不寫在這裡。
 - **有些機器狀態刻意不在 repo 裡。** 例:全域 `git core.hooksPath` 分派器、WSLENV 的 GitLab token、corp-ssh 金鑰的單一實體磁碟備份。這是「為什麼這個沒被重現」類驚訝的固定來源——需求分析時要記得 repo ≠ 機器全貌。

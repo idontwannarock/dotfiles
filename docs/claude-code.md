@@ -2,6 +2,8 @@
 
 Claude Code 相關的個人設定檔案。
 
+> 本文件記載操作步驟、故障排除與各能力的檔案方位。跨 change 反覆適用的判斷依據(為什麼這樣設計)在 [`context/`](../context/index.md);可驗收的行為契約在 `openspec/specs/`。
+
 ## 目錄結構
 
 ```
@@ -18,9 +20,9 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 └── exact_agents/           # Agents（exact_：自動清理移除的檔案）
 ```
 
-`commands/` 與 `skills/` 刻意**不用** `exact_` 前綴。`exact_` 宣告「此目錄完全屬於 chezmoi」，apply 時會刪掉目錄中所有未被管理的檔案——而這兩個目錄天生會有 plugin 寫入的、機器專屬的、或實驗中的檔案（本機實測即有 3 個未受管理的 command）。`exact_agents/` 則是 chezmoi 獨佔，用 `exact_` 才對。
+`commands/` 與 `skills/` 刻意**不用** `exact_` 前綴——這兩個目錄天生會有 plugin 寫入的、機器專屬的、或實驗中的檔案（本機實測即有 3 個未受管理的 command）。`exact_agents/` 則是 chezmoi 獨佔，用 `exact_` 才對。
 
-代價是退役的 command/skill **不會**隨 apply 自動消失：只刪掉 source 檔，已 apply 過的機器會永久保留它。退役時必須在 `home/.chezmoiremove` 點名該路徑，移除才會傳播到每台機器。
+因此退役一個 command/skill 時，必須在 `home/.chezmoiremove` 點名該路徑，移除才會傳播到每台機器。
 
 ## Global Instructions (CLAUDE.md)
 
@@ -86,7 +88,7 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 | claude-md-management、context7、playwright、commit-commands、security-guidance、pyright-lsp、jdtls-lsp、claude-code-setup | 未使用 |
 | code-simplifier、pr-review-toolkit | 未使用；同名的 `code-simplifier` / `code-reviewer` **agent** 來自 repo 的 `exact_agents/code-review/`，與這兩個 plugin 無關，退役後仍可用 |
 
-> 退役一個 plugin＝往那張表加一列，**不是**把安裝那行刪掉。只刪安裝行的話，已經 apply 過的機器會永遠留著它，而 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，每次 apply 還會繼續更新它。
+> 退役一個 plugin＝往那張表加一列，**不是**把安裝那行刪掉。刪安裝行不會讓已 apply 過的機器移除它，而 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，每次 apply 還會繼續更新它。
 
 `superpowers-marketplace` 本身保留，因為 `episodic-memory` 與 `elements-of-style` 仍由它提供。
 
@@ -168,7 +170,7 @@ Claude Code 2.x 開始強制 `skillListingBudgetFraction`（預設 1%），超�
 #### 三種應對
 
 1. **砍重複/不用的 skill**：對於 wrapper skill（歷史例:曾有 `sp:tdd` 包 `superpowers:test-driven-development`,與現在的自家 `tdd` skill 無關）直接刪。對於 plugin 整包不用就 disable。
-2. **Skill → Command + `disable-model-invocation: true`**：適用「user 通常自己打 `/name`、不依賴 model 自動觸發」的 skill。例如 `/handoff`、`/worklog-daily`。轉換後 description 不再進 system prompt，直接從 budget 移除。
+2. **Skill → Command + `disable-model-invocation: true`**：轉換後 description 不再進 system prompt，直接從 budget 移除。例如 `/handoff`、`/worklog-daily`。這是 budget 的機制，不是選擇的理由——哪些能力該做成 command，依 `context/` 的判斷依據決定。
 3. **拉 budget**（兜底）：在 `dot_claude/modify_settings.json.sh.tmpl` 加 `.skillListingBudgetFraction = 0.02`（2%）。每 turn 多 ~5K input tokens，1M context 上完全無感。
 
 #### 跨工具共用（Codex）skill 轉 command 的 chezmoitemplate 拆分
@@ -246,9 +248,8 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 `~/.agent/bin/ensure-openspec.sh`。
 
 > 曾有 `/ensure-openspec` command 包裝它，已於 prune-ensure-openspec-orphans change
-> 移除：該 command 以 bare 名稱呼叫，在 WSL 下會被 PATH interop 導到 `~/.local/bin`
-> 底下的過時副本（`init --tools claude`，會砍掉 codex/antigravity surface）。
-> 腳本互相呼叫一律用絕對路徑。
+> 移除：該 command 以 bare 名稱呼叫，在 WSL 下命中了 `~/.local/bin` 底下的過時副本
+> （`init --tools claude`，會砍掉 codex/antigravity surface）。
 
 ## RTK — Token-reducing CLI proxy
 
@@ -411,7 +412,7 @@ go build -o ~/.claude/statusline .       # macOS/Linux
 
 | 角色 | 檔案 | 觸發 |
 |---|---|---|
-| Command / Skill | `dot_claude/commands/handoff.md.tmpl`（Claude 走 command + `disable-model-invocation`）＋ `dot_codex/skills/handoff/`（Codex 無 command 概念，包成 skill）；共用 body 在 `.chezmoitemplates/skills/handoff.md` | `/handoff`、「切 session」、reminder 後確認 |
+| Command / Skill | `dot_claude/commands/handoff.md.tmpl`（帶 `disable-model-invocation`）＋ `dot_codex/skills/handoff/`；共用 body 在 `.chezmoitemplates/skills/handoff.md` | `/handoff`、「切 session」、reminder 後確認 |
 | 復原端 | `dot_claude/commands/pickup.md.tmpl` ＋ `dot_codex/skills/pickup/`；共用 body 在 `.chezmoitemplates/skills/pickup.md` | `/pickup <id>`；無參數則取最新一份 |
 | 提醒 hook | `dot_claude/hooks/executable_handoff-reminder.sh` | UserPromptSubmit；context 達 40/70/90% 各提醒一次 |
 | Cache writer | `tools/statusline/statusline.go` 的 `writeContextWindowCache()` | 每次 statusline 渲染 |
@@ -443,11 +444,11 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 - `~/.agent/handoffs/<repo-slug>/<YYYY-MM-DD-HHMM>__<slug>.md` — 簡短 checkpoint（≤50 行，以 references 為主，不重述既有 artifact）
 - 印出該檔絕對路徑，以及可直接複製的 `/pickup <id>` 指令
 
-落點刻意在 `~/.agent/` 而非 repo 內或工具專屬 dotdir，理由有二：**跨工具**（Claude 寫的 Codex 能撿）與**跨機器邊界**（OS 暫存目錄跨不了 WSL/Windows，也活不過重開機）。副作用是不需要動 `.gitignore` — 檔案本來就不在 repo 裡。
+落點在 `~/.agent/` 而非 repo 內或工具專屬 dotdir。副作用是不需要動 `.gitignore` — 檔案本來就不在 repo 裡。
 
 `repo-slug` 為 repo 絕對路徑把 `:`、`\`、`/`、`.` 全換成 `-`，與 `~/.claude/projects/<slug>/` 的既有慣例對齊。
 
-**這個目錄不只放 session state。** `pickup` 的檔案解析是格式無關的（依檔名 glob），它只對兩個段落有行為依賴：`## Suggested skills`（逐一呼叫）與 `## Next steps`（接續執行）。任何產物只要帶這兩段就能被 `/pickup` 接手 —— `/arch-review` 的體檢報告正是靠這條約定共用同一套基礎建設（見下節）。
+這個目錄不只放 session state：`/arch-review` 的體檢報告也寫在這裡，靠同一套 `pickup` 契約被接手（見下節）。
 
 ### 舊路徑
 
@@ -460,13 +461,7 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 
 ## Arch Review（`/arch-review`）
 
-整庫架構體檢。補的是既有品質關卡的盲區：`code/review-*` 看 branch diff、`verify-done` 跑測試，**全部以 diff 為輸入**；但架構熵增是跨 change 累積的現象，每個 diff 單看都合理，退一步才看得見。
-
-| 面向 | `code/review-*` | `/arch-review` |
-|---|---|---|
-| 輸入 | branch diff / uncommitted 變更 | 整個 codebase |
-| 頻率 | 每條 branch | 里程碑、或數個 change 累積後 |
-| 產出 | 對話中的 review 意見 | pickup 相容的體檢報告檔 |
+整庫架構體檢。行為契約見 [`openspec/specs/arch-review/spec.md`](../openspec/specs/arch-review/spec.md)——它定義了跨工具部署形狀、兩階段掃描紀律、判準來源分層與降級可見性、pickup 相容的產出格式，以及「只診斷不動刀」的邊界。本節只記檔案方位與實跑經驗。
 
 ### 組件
 
@@ -476,39 +471,19 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 | Codex skill | `dot_codex/skills/arch-review/SKILL.md.tmpl` |
 | 共用 body | `.chezmoitemplates/skills/arch-review.md` |
 
-標 `disable-model-invocation` 是刻意的：整庫掃描成本高，不該由模型在你沒開口時自行啟動。
+### 使用方式
 
-### 兩階段掃描
-
-1. **盤點（不讀檔案內容）** — 目錄樹與質量分布、大小離群檔、依賴方向（cycle / 反向 import）、跨目錄名稱重複。用 `git ls-files`、`wc -l`、`rg -l` 這類廉價工具。
-2. **深挖（至多 5 區）** — 依可疑度排序後只開前 3-5 區的內容。上限是硬的；若盤點出更多可疑區，報告必須列出**沒看的是哪些**，靜默截斷會被讀成「全都掃過了」。
-
-可傳路徑縮限：`/arch-review src/payment`。
-
-### 判準來源分層
-
-模組邊界的判斷需要一套 domain 詞彙，來源依可用資訊降級，且降級必須寫在報告裡：
-
-| 情境 | 判準 | 報告標示 |
-|---|---|---|
-| 有 `context/` bundle | 其詞彙 concept 檔 | 權威 |
-| 沒有 | 從目錄結構、型別名、導出介面推斷 | **明示為推斷，非權威** |
-
-讀者無從評價一份沒說明立論基礎的架構判斷 —— 所以這個標示是硬要求，不是禮貌。`/arch-review` 永遠不寫 `context/`（該 bundle 只在 sync/archive 寫入）。
-
-### 邊界
-
-**只診斷，不動刀。** 不改任何原始碼、不開 branch、不自動建立 OpenSpec change。每項候選必須附具體檔案路徑作為證據 —— 沒有證據的架構評斷是雜訊。若 codebase 是健康的，就說健康然後停，不湊數。
+預設掃整庫，可傳路徑縮限：`/arch-review src/payment`。
 
 產出寫到 `~/.agent/handoffs/<repo-slug>/<YYYY-MM-DD-HHMM>__arch-review.md`，用 `/pickup <id>` 接手選中的候選。
 
 ### 何時該跑
 
-刻意**不掛進 dev-workflow 或 finish-branch**。體檢的正確頻率是里程碑、或數個 change 累積之後；掛成每條 branch 都跳的關卡只會變成雜訊，而被學會忽略的 gate 比沒有 gate 更糟 —— 它同時消耗注意力又給出虛假的安全感。
+刻意**不掛進 dev-workflow 或 finish-branch**。正確頻率是里程碑、或數個 change 累積之後。
 
 **預期會有很多次「沒有候選」。** 首次實跑（`chat_setting_api`，194 檔）就是這個結果：`domain/` 完全沒 import `spring.*`、最大檔 163 行、無同名 class；唯一的訊號是 `sensitiveword` 與 `whitelistdomain` 兩條垂直線的 package 結構 1:1 對稱，但把 domain 名詞正規化後對角比對，139 行的檔案仍有 109 行不同 —— 是兩個真正不同的模型（一個以 `(scope, category)` 為粒度，一個是 default + per-BU），硬抽共用抽象反而會逼簡單的那邊揹上不需要的維度。
 
-這正是預期行為，不是白跑：**對稱的是 package 形狀，不是邏輯**，而前者是優點。一份誠實的「無候選」報告，價值在於它排除了你的疑慮；會硬湊候選的體檢工具，跑第二次就沒人信了。
+這正是預期行為，不是白跑：**對稱的是 package 形狀，不是邏輯**，而前者是優點。
 
 ### 維護備註
 

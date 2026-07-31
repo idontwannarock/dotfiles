@@ -2,7 +2,7 @@
 
 供使用者手動執行的輔助腳本。原始碼位於 `home/dot_local/bin/`，經 chezmoi 部署到 `~/.local/bin/`。
 
-> 這些腳本必須放在 chezmoi source root（`home/`）之內才會被部署。放在 repo root 的話 chezmoi 看不到，指向 `~/.local/bin/` 的 alias 會失效。
+> 新增腳本一律放 `home/dot_local/bin/`。為什麼這條分界是雙向的、放錯會怎樣，見 [`context/`](../context/index.md) 的詞彙表 `.chezmoiroot` 條目。
 
 ## 腳本清單
 
