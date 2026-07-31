@@ -31,6 +31,6 @@
 
 ## 5. 收尾（blocked by #4）
 
-- [ ] 5.1 `openspec validate --change fix-codex-config-modify-idempotency` 通過
-- [ ] 5.2 依 `chezmoi-author` skill 的 Authoring Checklist 逐項複查（特別是第 2 項：`modify_*` 仍不含任何 log banner；第 6 項：平台對應檔已同步）
-- [ ] 5.3 `openspec-sync-specs`：評估 design.md 兩個 `<!-- evergreen-candidate -->`（接縫空白歸屬、不需手動清理即修對的檢驗）是否通過晉升閘門，通過則寫入 `context/`
+- [x] 5.1 `openspec validate fix-codex-config-modify-idempotency`（旗標為位置引數,非 `--change`） 通過
+- [x] 5.2 依 `chezmoi-author` skill 的 Authoring Checklist 逐項複查（特別是第 2 項：`modify_*` 仍不含任何 log banner；第 6 項：平台對應檔已同步）
+- [x] 5.3 `openspec-sync-specs`：評估 design.md 兩個 `<!-- evergreen-candidate -->`（接縫空白歸屬、不需手動清理即修對的檢驗）是否通過晉升閘門，通過則寫入 `context/`
