@@ -37,6 +37,18 @@ try {
                 $sections += $line
             }
         }
+        # 丟棄尾端空行。保留範圍到下一個 section header 為止，所以最後一個
+        # [projects.*] 與 [mcp_servers.*] 之間的空行也被收了進來；原樣保留會和
+        # $mcpConfig 開頭那個空行疊加。此腳本重寫的是自己上一輪的輸出，必須是
+        # 不動點，否則每次 apply 多一行。分隔一律由 $mcpConfig 單方提供。
+        #
+        # 用索引回退而非 $sections[0..($sections.Count - 2)]：Count 為 1 時範圍成為
+        # 0..-1，PowerShell 展開為 0, -1，而 -1 指最後一個元素——不是清空陣列，
+        # 而是複製出兩個元素，迴圈永不結束。
+        $lastIdx = $sections.Count - 1
+        while ($lastIdx -ge 0 -and $sections[$lastIdx] -match '^\s*$') { $lastIdx-- }
+        $sections = if ($lastIdx -ge 0) { @($sections[0..$lastIdx]) } else { @() }
+
         if ($sections.Count -gt 0) {
             $keptSections = "`n" + ($sections -join "`n")
             Log-Step "[codex] preserving $($sections.Count) line(s) of [projects.*] config"
@@ -61,7 +73,7 @@ project_doc_max_bytes = 65536
 instructions = """
 Prefer native Codex features over Claude-specific abstractions.
 If a repository contains .claude/CLAUDE.md, read it when project workflow matters.
-For non-trivial coding tasks, suggest using the $codex-claude-parity skill before implementation.
+For non-trivial coding tasks, suggest using the $dev-workflow skill before implementation.
 When a task ends with meaningful progress, ask whether it should be recorded in worklog.
 """
 
