@@ -168,7 +168,7 @@ Wrapper 本身在 chezmoi source，整個 z.ai 嘗試結束後若要連 wrapper 
 
 ### 為什麼 token 走 vault 而不是 env var
 
-一般依據見 [`context/`](../context/index.md) 的「祕密放加密 vault，不放明文環境變數」。落到本案的代價：gpg-agent 沒 warm 時要打一次 passphrase，跨機器要先把 entry 的 encrypted blob 複製過去。
+明文環境變數與加密 vault 的取捨屬一般依據，見 [`context/`](../context/index.md) 的原則清單。落到本案的代價：gpg-agent 沒 warm 時要打一次 passphrase，跨機器要先把 entry 的 encrypted blob 複製過去。
 
 ### 為什麼 wrapper code 進 chezmoi 而不是 scratch
 

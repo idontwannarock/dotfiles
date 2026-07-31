@@ -170,7 +170,7 @@ Claude Code 2.x 開始強制 `skillListingBudgetFraction`（預設 1%），超�
 #### 三種應對
 
 1. **砍重複/不用的 skill**：對於 wrapper skill（歷史例:曾有 `sp:tdd` 包 `superpowers:test-driven-development`,與現在的自家 `tdd` skill 無關）直接刪。對於 plugin 整包不用就 disable。
-2. **Skill → Command + `disable-model-invocation: true`**：轉換後 description 不再進 system prompt，直接從 budget 移除。例如 `/handoff`、`/worklog-daily`。哪些能力該走這條路由判斷依據決定，不是為了省 budget 而轉。
+2. **Skill → Command + `disable-model-invocation: true`**：轉換後 description 不再進 system prompt，直接從 budget 移除。例如 `/handoff`、`/worklog-daily`。這是 budget 的機制，不是選擇的理由——哪些能力該做成 command，依 `context/` 的判斷依據決定。
 3. **拉 budget**（兜底）：在 `dot_claude/modify_settings.json.sh.tmpl` 加 `.skillListingBudgetFraction = 0.02`（2%）。每 turn 多 ~5K input tokens，1M context 上完全無感。
 
 #### 跨工具共用（Codex）skill 轉 command 的 chezmoitemplate 拆分
