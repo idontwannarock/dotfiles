@@ -31,6 +31,12 @@ npm_install codex @openai/codex
 log_section "install codegraph — semantic code graph MCP server"
 npm_install codegraph @colbymchenry/codegraph
 
+log_section "install chrome-devtools-mcp globally — npx would cost 2 extra processes per session"
+npm_install chrome-devtools-mcp chrome-devtools-mcp
+
+log_section "install agent-browser-mcp globally — same reason as chrome-devtools-mcp"
+npm_install agent-browser-mcp agent-browser-mcp
+
 log_section "install OpenSpec CLI — spec/change tracking used by dev-workflow"
 if command -v openspec &>/dev/null; then
     log_skip "[openspec] already installed"

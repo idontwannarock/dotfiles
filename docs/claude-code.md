@@ -150,6 +150,40 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 
 參考：[Claude Code settings docs](https://code.claude.com/docs/en/settings.md)
 
+### MCP Server 的成本與 Scope 管理
+
+**MCP 的成本是「單份 × session 數」**，不是每台機器一份。stdio server 的語意就是一 client 一 process：
+每開一個 session，每個 user-scope stdio server 都會被 spawn 一次，包含那個 session 根本用不到的。
+常態同時開十幾個 session 時，這個乘數就是主要的記憶體來源。
+
+兩個把單份成本壓下來的手段（2026-07-31 實測，數字為單一 session 的 process 數）：
+
+| 寫法 | process 數 | 多出來的是什麼 |
+|------|-----------|---------------|
+| `npx -y <pkg>@latest` | 3 | `npm exec` wrapper + `sh -c` 各一層 |
+| 全域安裝的 binary | 1 | — |
+| `chrome-devtools-mcp` 未關 telemetry | 再 +1 | usageStatistics 預設 true，會另外 spawn watchdog |
+
+所以 `run_onchange_install-03-claude-config` 註冊的每個 stdio server 都指向全域安裝的 binary
+（由 `run_install-02-npm-tools` 裝），`chrome-devtools` 另外帶 `CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1`。
+
+#### 讓某個 repo 不要載入特定 server
+
+用 `deniedMcpServers`。它**真的會讓 server 不被 spawn**，不是只把 tools 藏起來（實測 probe session 內 0 個 process）。
+
+```json
+{ "deniedMcpServers": [ { "serverName": "chrome-devtools" } ] }
+```
+
+注意兩件事：
+
+- **它是物件陣列**（`{serverName}`／`{serverCommand}`／`{serverUrl}`），不是字串陣列。寫成字串會靜默失效。
+- **deny 從所有來源聯集，且優先於 allow，因此下層無法翻案。** 寫在 `~/.claude/settings.json`
+  就是全機器生效，該 repo 再加 `allowedMcpServers` 放行也沒用（實測仍是 0 個 process）。
+
+因此 deny 要寫在**需要排除的那個 repo 的 `.claude/settings.json`**（可 commit 給 team），
+user-level 維持寬鬆——反過來做會讓你在任何 repo 都無法臨時用瀏覽器 server。
+
 ### Skill Listing Budget（CC 2.x）
 
 Claude Code 2.x 開始強制 `skillListingBudgetFraction`（預設 1%），超過時 skill description 會被截斷，`/doctor` 顯示警告：
