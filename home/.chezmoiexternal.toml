@@ -321,7 +321,7 @@
     stripComponents = 1
 
 # renovate: datasource=github-releases depName=adoptium/temurin17-binaries extractVersion=^jdk-(?<version>.+)$
-{{- $jdk17Version := "17.0.19+10" }}
+{{- $jdk17Version := "17.0.20+8" }}
 {{- $jdk17Tag := $jdk17Version | replace "+" "%2B" }}
 {{- $jdk17Asset := $jdk17Version | replace "+" "_" }}
 [".local/opt/jdk-17"]
