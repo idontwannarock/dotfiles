@@ -1,0 +1,112 @@
+# Corp GitLab access (`glab`)
+
+`glab` against a corporate GitLab EE instance. chezmoi provides the binary and a
+shell wrapper; two pieces of state stay on the machine and are set once by hand.
+
+## What chezmoi provides
+
+| Piece | Where |
+|---|---|
+| `glab` binary | `.chezmoiexternal.toml` → `~/.local/bin/glab` (all three OSes, one pinned entry, Renovate-tracked) |
+| `glab` wrapper | `.chezmoitemplates/shell-common/base` (bash/zsh) and `Documents/exact__shared-profile.d/26-glab.ps1` (PowerShell) |
+
+The wrapper resolves the token **at call time** — vault first, `GITLAB_TOKEN`
+second — so no shell startup path decrypts anything and no gpg prompt appears
+when you open a terminal.
+
+## What stays on the machine
+
+**The token**, in the local vault. Secrets never enter this repo.
+
+**The instance FQDN**, in `HKCU\Environment`. This is deliberate and worth
+stating plainly: this repository is public and contains **no** corp hostnames.
+The same rule governs `~/.ssh/config` — see the note in
+`home/private_dot_ssh/config.d/corp-multiplex` — and `context/principles.md`
+lists this state among what is intentionally not reproduced. Every command below
+uses `gitlab.example.com` as a stand-in; substitute the real host.
+
+## One-time setup
+
+### 1. Store the token in the vault
+
+Create a personal access token in the GitLab UI (`api` scope), then:
+
+```bash
+# WSL / Linux / macOS
+printf '%s\n' '<token>' | pass insert -m gitlab/corp-token
+```
+
+```powershell
+# Windows
+gopass insert gitlab/corp-token
+```
+
+Encryption needs only the public key, so this step does not prompt for a
+passphrase — only reading it back does.
+
+### 2. Point `glab` at the instance
+
+```powershell
+# Windows, once
+[Environment]::SetEnvironmentVariable('GITLAB_HOST', 'gitlab.example.com', 'User')
+
+# propagate it into WSL
+$cur = [Environment]::GetEnvironmentVariable('WSLENV', 'User')
+$new = if ($cur) { "$cur:GITLAB_HOST/u" } else { 'GITLAB_HOST/u' }
+[Environment]::SetEnvironmentVariable('WSLENV', $new, 'User')
+```
+
+> **Trap — `WSLENV` changes need a full restart.** Opening a new tab is not
+> enough. Run `wsl --shutdown` *and* restart Windows Terminal, or the variable
+> will be missing and you will conclude the change did not work.
+
+On a Linux or macOS machine with no Windows side, export `GITLAB_HOST` from a
+machine-local file that is not chezmoi-managed.
+
+### 3. Verify
+
+```bash
+glab api version    # → {"version":"…-ee",…}
+```
+
+> **Trap — `glab auth status` lies.** It reports "not authenticated" because it
+> only inspects its own config store, which this setup deliberately does not
+> use. REST operations work regardless. Test with `glab api version`, never with
+> `auth status`.
+
+## Failure messages
+
+Both wrappers emit the same two strings, on purpose:
+
+| Message | Meaning |
+|---|---|
+| `GITLAB_HOST 未設定；…` | Step 2 is missing or the shell predates it. Without the guard `glab` would target gitlab.com and return `401`, which reads like a token problem and is not. |
+| `no token (vault entry gitlab/corp-token unreadable and GITLAB_TOKEN unset)` | Step 1 is missing, or the vault is locked and no fallback is exported. |
+
+To reach gitlab.com deliberately, bypass the wrapper: `command glab …` in bash,
+or `& (Get-Command glab -CommandType Application).Source …` in PowerShell.
+
+## Known limits
+
+- **Non-interactive callers see no wrapper.** A script run as `bash script.sh`,
+  a cron job, or a harness gets the bare binary. They work only if
+  `GITLAB_TOKEN` is exported in their environment. This is accepted rather than
+  solved — solving it means exporting a decrypted secret into every process,
+  which is what the vault move was undoing.
+- **`gopass` on Windows has an open upstream bug** (see
+  [`claude-zai-wrapper.md`](claude-zai-wrapper.md)); the `GITLAB_TOKEN` fallback
+  covers it there and here alike.
+
+## GitLab native MCP — probed, not adopted
+
+Probed 2026-08-03 against the corp instance at `19.2.0-ee`:
+
+| Path | GET | POST (`initialize`) |
+|---|---|---|
+| `/api/v4/mcp` | 404 | 404 |
+| `/api/v4/mcp/`, `/api/v4/mcp/sse`, `/api/v4/ai/mcp` | 404 | — |
+
+`/api/v4/features` returns 403 to a non-admin token, so whether the `mcp_server`
+feature flag is merely disabled cannot be determined from the client side. The
+client-visible answer is the same either way: there is nothing to connect to.
+Re-probe after an instance upgrade, not before.
