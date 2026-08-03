@@ -10,7 +10,7 @@ description: "跨 change 反覆適用的長青判斷依據,分四組:source 與�
 
 - **Repo 是 source of truth,不是 live config。** 兩邊不自動互通。
 - **先在機器上測,再回寫 source。** 固定四步:改機器上實際設定 → 確認運作 → 回寫 chezmoi source → 更新文件。(尚在「local-test-only」的項目都卡在這條沒走完。)
-- **有些機器狀態刻意不在 repo 裡。** 例:全域 `git core.hooksPath` 分派器、WSLENV 的 GitLab token、corp-ssh 金鑰的單一實體磁碟備份。這是「為什麼這個沒被重現」類驚訝的固定來源——需求分析時要記得 repo ≠ 機器全貌。
+- **有些機器狀態刻意不在 repo 裡。** 例:全域 `git core.hooksPath` 分派器、corp GitLab 實例的 FQDN(`HKCU\Environment` + WSLENV)、corp-ssh 金鑰的單一實體磁碟備份。這是「為什麼這個沒被重現」類驚訝的固定來源——需求分析時要記得 repo ≠ 機器全貌。
 - **移除不會自動傳播。** chezmoi 的宣告式收斂只涵蓋它 declare 的檔案:刪掉 source 檔只會停止新機器安裝,已 apply 過的機器永久保留。三個常見形態 —— 腳本裝出來的東西(套件、plugin 註冊、外部 CLI 設定)本來就不在收斂內,退役時要補一段冪等的反安裝;非 `exact_` 目錄下的檔案不會被修剪,退役時要在 `.chezmoiremove` 點名路徑;`modify_*` 寫進目標檔的欄位是 **patch 而非 render**,停止寫入只會讓舊值原地留存,退役時要主動 `del`,且刪除必須是外科式的(只濾掉目標那一條,不整體覆寫 key——同一個 key 常有其他工具在 runtime 寫入的條目)。同理,任何「本機手動跑一次」的收尾都不會傳播。
 
   三者可能同時發生在同一次退役上,漏掉任一個都會留下互相矛盾的殘骸:只刪 script 會留下指向不存在檔案的註冊,只刪註冊會留下孤兒 script。
@@ -40,6 +40,7 @@ description: "跨 change 反覆適用的長青判斷依據,分四組:source 與�
 
 ## 祕密與把關
 
-- **祕密只留本機,且要加密。** 兩個軸。**本機 vs 雲端**:corp-ssh、local-files 的祕密都在本機磁碟或使用者腦中,雲端密碼管理器(cloud Bitwarden)明確排除,因為情境是單機、無跨機同步需求。**明文 vs 加密**:`HKCU\Environment` 與 `~/.bashrc` 的 export 都是明文,任何能讀使用者環境的程式都看得到,所以走 GPG 加密的 vault、gpg-agent 短期 unlock;代價是 agent 沒 warm 時要打一次 passphrase、跨機器要複製 encrypted blob。已套用於 corp-ssh(`pass`/`gopass`)與 claude-zai token。
+- **祕密只留本機,且要加密。** 兩個軸。**本機 vs 雲端**:corp-ssh、local-files 的祕密都在本機磁碟或使用者腦中,雲端密碼管理器(cloud Bitwarden)明確排除,因為情境是單機、無跨機同步需求。**明文 vs 加密**:`HKCU\Environment` 與 `~/.bashrc` 的 export 都是明文,任何能讀使用者環境的程式都看得到,所以走 GPG 加密的 vault、gpg-agent 短期 unlock;代價是 agent 沒 warm 時要打一次 passphrase、跨機器要複製 encrypted blob。已套用於 corp-ssh(`pass`/`gopass`)、claude-zai token 與 corp GitLab token。
+- **祕密與 corp 識別資訊是兩個問題,答案不同。** 祕密進本機加密 vault;corp 識別資訊(實例 FQDN、內部主機名)留在 OS 的機器本地狀態(`HKCU\Environment`、機器本地的 `~/.ssh/config`)。兩者都不進 repo,但混為一談會導致把 FQDN 塞進 `pass` —— 在那裡它既不好找又不合用,因為它根本不是祕密,只是不該公開。本 repo 為公開 repo,「零 corp 主機名」是可機械驗證的硬邊界:全文搜尋 corp 網域,命中必須為零。
 - **自動化不在無把關的情況下落到機器上。** 把關形式可以是人審或自動驗證,但不得沒有 —— Renovate / mirror workflow 只開 PR,低風險更新由 CI gate 放行、`major` 仍需人審。無論哪一種,最後都還要一次明確的 `chezmoi apply` 才會改到機器。把關機制的細節屬各案文件,不寫在這裡。
 - **被學會忽略的 gate 比沒有 gate 更糟。** 它同時消耗注意力又給出虛假的安全感。所以關卡的頻率由訊號密度決定,不是「每次都跑最安全」——`arch-review` 因此刻意不掛進 `dev-workflow` 或 `finish-branch`,正確頻率是里程碑或數個 change 之後。同理,會硬湊結果的檢查工具跑第二次就沒人信;誠實的「無發現」報告價值在於它排除了疑慮。
