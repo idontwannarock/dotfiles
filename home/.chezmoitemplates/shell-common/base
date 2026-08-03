@@ -164,8 +164,10 @@ chezmoi() {
         esac
     done
     [ -n "$sub" ] || return "$rc"
-    # chezmoi 根本沒裝時 rc=127，那不是 apply 中止，別把警告貼上去。
-    command -v chezmoi >/dev/null 2>&1 || return "$rc"
+    # chezmoi 根本沒裝時 rc=127，那不是 apply 中止，別把警告貼上去。不能用
+    # `command -v chezmoi` 判斷 —— 它回報的是「這個名字會被解讀成什麼」，而那正是
+    # 這個 function 自己，永遠為真。
+    [ "$rc" -eq 127 ] && return "$rc"
 
     printf >&2 '\n\033[33mchezmoi: %s 中止 (exit %s)。chezmoi 依字典序處理 target 且不跳過失敗項 —— 排在它之後的 target 全部未部署。\033[0m\n' "$sub" "$rc"
     local pending

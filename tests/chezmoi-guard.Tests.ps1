@@ -2,7 +2,7 @@
 # home/Documents/exact__shared-profile.d/96-chezmoi-guard.ps1
 #
 # Black-box: dot-sources the profile fragment in a child PowerShell whose PATH is
-# headed by a mock chezmoi.cmd, then asserts on stdout and exit code. A child
+# headed by a mock chezmoi.cmd, then asserts on stderr and exit code. A child
 # process is required because the fragment defines a function named `chezmoi`,
 # which would otherwise shadow the real binary for the rest of the test session.
 
@@ -35,6 +35,7 @@ exit /b %MOCK_CHEZMOI_RC%
         $psi.RedirectStandardError  = $true
         $psi.UseShellExecute        = $false
         $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
+        $psi.StandardErrorEncoding  = [Text.Encoding]::UTF8
         # Load-bearing: cmd.exe refuses a UNC working directory, so the mock
         # chezmoi.cmd misbehaves if the tests are launched from \\wsl.localhost\...
         $psi.WorkingDirectory       = $MockDir
@@ -59,40 +60,52 @@ Describe '96-chezmoi-guard.ps1' {
     Context 'apply / update failure' {
         It 'warns that later targets were not deployed' {
             $r = Invoke-Guard -Arguments 'apply' -Rc 1
-            $r.Stdout | Should -Match 'apply .* \(exit 1\)'
-            $r.Stdout | Should -Match 'target'
+            $r.Stderr | Should -Match 'apply .* \(exit 1\)'
+            $r.Stderr | Should -Match 'target'
         }
 
         It 'reports the pending item count from chezmoi status' {
             $r = Invoke-Guard -Arguments 'apply' -Rc 1
-            $r.Stdout | Should -Match '3'
+            $r.Stderr | Should -Match '3'
         }
 
         It 'covers update as well as apply' {
             $r = Invoke-Guard -Arguments 'update' -Rc 2
-            $r.Stdout | Should -Match 'update .* \(exit 2\)'
+            $r.Stderr | Should -Match 'update .* \(exit 2\)'
         }
 
         It 'preserves the exit code' {
             (Invoke-Guard -Arguments 'apply' -Rc 3).ExitCode | Should -Be 3
         }
 
-        It 'still fires when the subcommand follows a global flag' {
+        It 'still fires when the subcommand follows a long global flag' {
             $r = Invoke-Guard -Arguments '--verbose apply' -Rc 1
-            $r.Stdout | Should -Match 'apply .* \(exit 1\)'
+            $r.Stderr | Should -Match 'apply .* \(exit 1\)'
+        }
+
+        # Regression: [CmdletBinding()] would bind -v to -Verbose and swallow it,
+        # so the subcommand never reached the wrapper (and never reached chezmoi).
+        It 'passes chezmoi short flags through untouched' {
+            $r = Invoke-Guard -Arguments '-v apply' -Rc 1
+            $r.Stderr | Should -Match 'apply .* \(exit 1\)'
+        }
+
+        It 'writes the warning to stderr, not stdout' {
+            $r = Invoke-Guard -Arguments 'apply' -Rc 1
+            $r.Stdout | Should -Not -Match '中止'
         }
     }
 
     Context 'paths that must stay silent' {
         It 'prints nothing extra when apply succeeds' {
             $r = Invoke-Guard -Arguments 'apply' -Rc 0
-            $r.Stdout | Should -Not -Match 'exit'
+            $r.Stderr | Should -Not -Match 'exit'
             $r.ExitCode | Should -Be 0
         }
 
         It 'ignores failures from other subcommands' {
             $r = Invoke-Guard -Arguments 'cat' -Rc 1
-            $r.Stdout | Should -Not -Match 'exit 1'
+            $r.Stderr | Should -Not -Match 'exit 1'
             $r.ExitCode | Should -Be 1
         }
     }
