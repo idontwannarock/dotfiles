@@ -63,9 +63,12 @@
 # WSL's PATH interop puts the Windows ~/.local/bin ahead of anything else, so a
 # bare `ensure-openspec.sh` from WSL hits that stale copy. The command file is
 # the only thing that calls it bare -- dev-workflow uses the absolute path --
-# and it is redundant with dev-workflow's own first step, so both go.
+# and it is redundant with dev-workflow's own first step, so both go. The skill's
+# own scripts/ dir is a third copy from the same era; the source side keeps only
+# SKILL.md.tmpl, and .claude/skills/ is not exact_, so nothing prunes it.
 .local/bin/ensure-openspec.sh
 .claude/commands/ensure-openspec.md
+.claude/skills/dev-workflow/scripts
 
 # rtk 退役。它摘要 Bash tool 的輸出以省 token，但摘要會靜默扭曲結果——截斷過的
 # git status 讓 working tree 看起來乾淨、wc -l 對兩行檔案回傳 0——而看起來權威的
