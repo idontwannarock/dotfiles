@@ -245,7 +245,7 @@
 # delegating each alias to vim.exe/gvim.exe/xxd.exe with the right flag.
 # PATH is not modified -- ~/.local/bin is already Wave 1's first PATH entry.
 # renovate: ignore — mirrored by mirror-externals.yml (upstream's vimXX runtime-dir name is coupled to MAJOR.MINOR and to the 15 .cmd wrappers; the mirror renames it to a stable `current/` so a version bump touches nothing else).
-{{- $vimVersion := "9.2.0858" }}
+{{- $vimVersion := "9.2.0901" }}
 
 [".local/share/vim"]
     type = "archive"
