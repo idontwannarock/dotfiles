@@ -13,7 +13,7 @@
 
 - [x] 3.1 `home/.chezmoitemplates/shell-common/base` 的 `claude-zai` 旁加入 `glab()`:先檢查 `GITLAB_HOST`,再依 vault → `$GITLAB_TOKEN` 解析,轉呼叫用 `command glab`
 - [x] 3.2 三條路徑中兩條已實測:(b) `GITLAB_HOST` 未設定 → 明確錯誤、無網路請求;(c) vault 與 env 皆無 → 明指兩來源的錯誤。(a) 的 fallback 分支亦實測通過(`glab api version` 回 `19.2.0-ee`)
-- [ ] 3.3 **待使用者於有 TTY 的 shell 驗證**:vault 讀取分支(`pass show` 需 pinentry,agent 的 Bash tool 無 TTY 會卡住),以及呼叫結束後 caller 的 `GITLAB_TOKEN` 未被汙染
+- [x] 3.3 vault 讀取分支已於使用者的 TTY shell 驗證:`GITLAB_TOKEN` unset(故無 fallback 可用)時 `glab api version` 回 `19.2.0-ee`,證明權杖來自 `pass gitlab/corp-token`;呼叫結束後 caller 的 `GITLAB_TOKEN` 仍為未設定,未被汙染
 
 ## 4. PowerShell 對應版本
 
