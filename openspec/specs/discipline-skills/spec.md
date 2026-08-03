@@ -93,6 +93,7 @@
 - **WHEN** 使用者選擇 Push + PR 且該 PR 已 merge
 - **THEN** `finish-branch` SHALL 先同步 base,並確認 branch 的樹狀內容已完整落在 base 上,確認後才處置 branch/worktree 並移除 active_workflows row
 - **AND** SHALL NOT 以 `git branch -d` 的祖先關係檢查作為該判準;squash 與 rebase merge 會改寫 commit,使該檢查對已合併與未合併的 branch 給出相同結果
+- **AND** 該內容比對 SHALL 限縮於 branch 自身變更過的路徑;未限縮的全樹比對會在 base 於 PR 開啟期間前進時誤報,而 base 前進屬正常情形
 
 #### Scenario: 兩處 `git branch -D` 的把關不對稱
 - **WHEN** 有人主張為 Push + PR 收尾的 `git branch -D` 補上使用者確認,或反過來移除 Discard 的確認 gate

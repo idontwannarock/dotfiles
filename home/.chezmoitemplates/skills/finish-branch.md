@@ -76,8 +76,16 @@ When it merges, sync the base then dispose — run from the base worktree
 
 ```bash
 git switch main && git pull --ff-only   # bare-worktree: cd <repo>/main first
-git diff main <branch> --stat           # MUST be empty
+paths=$(git diff --name-only "$(git merge-base main <branch>)" <branch>)
+git diff main <branch> -- $paths        # MUST be empty
 ```
+
+Scope the comparison to the paths the branch touched. An unscoped
+`git diff main <branch>` is ambiguous: non-empty can mean the branch's
+work never landed, or merely that the base moved on unrelated files
+while the PR was open — one dependency bump merging ahead of you is
+enough. Scoped, only the first reading survives. Still non-empty means
+the base also moved on *these* paths; stop and look.
 
 **`git branch -d` cannot gate this.** It tests whether the branch tip is
 an ancestor of the base; squash and rebase merges rewrite the commit, so
