@@ -22,7 +22,10 @@ description: "跨 change 反覆適用的長青判斷依據,分四組:source 與�
 ## 跨平台與跨工具部署
 
 - **盡量跨平台。** 目標是 Windows/macOS/Linux 皆可用;平台差異用 per-platform 片段拆分,而非整份分叉。
-- **能力的部署形狀由觸發模式決定。** 純手動觸發(使用者自己打 `/name`)的能力走 Claude command + `disable-model-invocation: true`,Codex 端因無 command 概念包成 skill;要讓模型自行判斷時機的才兩邊都做成 skill。前者的理由不只是省 system prompt budget —— 成本高或有副作用的操作(整庫掃描、寫檔)不該由模型在使用者沒開口時自行啟動。
+- **可逆性而非副作用決定 gate 的位置。** 一個能力該不該讓模型自行啟動,問的是「做錯了救不救得回來、外面看不看得到」——**不可逆或外部可見**才鎖(Claude command + `disable-model-invocation: true`),兩者皆非則放行。本地檔案與 git 物件可救(`.git` 還在,commit/rebase 都能靠 reflog 回復);遠端寫入與外部通知不可救(Issue comment 刪掉也已被看過,workflow 跑了就是跑了)。**不要用「有副作用」當判準**:它對 `git commit` 與「寫 GitHub Issue comment」給出相同答案,而兩者風險差一個量級;判準一旦失去鑑別力,實際分類就會靠直覺,於是同類能力散落在閘門兩側(舊判準下 `git/clean-gone` 刪本地分支卻沒鎖,唯讀的 `code/review-types` 反而鎖著)。
+
+  兩個推論。其一,**flag 擋的是自動啟動,不是能力** —— 模型讀得到 `~/.claude/commands/<name>.md` 的規格,鎖住只會換來它繞路自己實作一份沒有護欄的版本(`git-commit` 的價值正是敏感檔阻擋清單與禁止 `git add -A`,鎖住它等於逼模型走無護欄的預設路徑,對公開 repo 而言方向是反的)。其二,**token 成本不歸這條判準管** —— 整庫掃描很貴但可逆,控制頻率的責任在 skill body 的觸發條件,不在 wrapper 的 flag。
+- **部署形狀:Claude 端 command、Codex 端 skill。** Claude 端走 command 換得穩定的 `/name` 入口;Codex 無 command 概念,同一份 body 包成 skill。這是形狀差異,與可呼叫性無關 —— 可呼叫性由上一條的判準決定。**注意 budget 只由 flag 決定,不由形狀決定**:未帶 `disable-model-invocation` 的 command 與 skill 一樣占 system prompt 的 skill listing budget,所以「轉成 command 就省 budget」只在鎖住的那些成立。省 budget 是 flag 的副產品,不能反過來當成加 flag 的理由——真要省就拉 `skillListingBudgetFraction`。Codex 沒有 gate 欄位,所以仍需鎖住的能力在那邊留有無法消除的落差;**不要用 description 措辭去補**,那會造成已施加限制的錯覺而實際約束力無法驗證。
 - **跨工具 parity = shared body + 薄指標。** 權威 body 一份在 `~/.agent` / `.chezmoitemplates`,每工具一個 name-map wrapper。目標工具清單見詞彙表。
 - **WSL 下呼叫腳本一律用絕對路徑。** PATH interop 把 Windows 家目錄的 `~/.local/bin` 併進 WSL 的 PATH,所以 bare 名稱可能命中另一台機器、另一個年代的同名腳本。腳本正典搬家後,舊位置的副本要用 `.chezmoiremove` 點名清掉 —— 留著它就是留一條會靜默跑到舊碼的路徑。
 - **Codex frontmatter 要嚴格 YAML。** skill `description:` 若含 `:`/`#`/開頭 `[`{` 必須加引號;Claude 容忍、Codex 會報錯。用真的 YAML parser 驗,不要只 grep。

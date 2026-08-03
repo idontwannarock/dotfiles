@@ -1,7 +1,6 @@
 ---
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*)
 description: Type design review — encapsulation, invariant expression, type safety
-disable-model-invocation: true
 ---
 
 ## Context

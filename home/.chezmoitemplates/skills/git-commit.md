@@ -28,10 +28,14 @@ Based on the above context, create a single git commit. Follow these rules stric
   git commit -m "$(cat <<'EOF'
   message here
 
-  Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+  Co-Authored-By: <current model name> <noreply@anthropic.com>
   EOF
   )"
   ```
+  Use the name of the model you are actually running as — do not copy a version
+  from this file or from an earlier commit. Pinning a literal here turns whatever
+  model happened to be current when it was written into a requirement, and it
+  silently goes stale every time the model changes.
 
 ## Execution
 
