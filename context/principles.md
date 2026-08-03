@@ -15,6 +15,7 @@ description: "跨 change 反覆適用的長青判斷依據,分四組:source 與�
 
   三者可能同時發生在同一次退役上,漏掉任一個都會留下互相矛盾的殘骸:只刪 script 會留下指向不存在檔案的註冊,只刪註冊會留下孤兒 script。
 - **`exact_` 只用於 chezmoi 獨佔的目錄。** 它宣告「此目錄的內容完全屬於 chezmoi」,apply 會刪除其中所有未被管理的檔案。凡是可能被 plugin、其他工具或使用者手動寫入的目錄(`~/.claude/commands/`、`~/.claude/skills/`),套用它就是靜默刪檔。判斷方式很直接:`comm -13 <(chezmoi managed 的清單) <(實際檔案清單)` 若非空,前提就不成立。
+- **以 repo 為單位的 agent 產物,repo 身分只有一個定義:`slug(dirname(realpath(git-common-dir)))`。** auto-memory、handoff 與未來同類產物都套這條,兩個系統才會對「同一個 repo」得出同一個答案。不要用 `git rev-parse --show-toplevel` —— normal 佈局下兩者相同,bare+worktree 下它回傳當前 worktree,於是同一個 repo 的產物依 worktree 各自落在不同目錄、互相看不見。這個 bug 不會報錯:寫得出來、找得到、只是找不到*別的 worktree 寫的那些*,要等到有人在另一個 worktree 撈不到東西才會浮現(`shoalter-ai-toolkit` 曾因此分裂成三個 handoff 目錄)。
 - **`run_*` 腳本要能從 apply 輸出被讀懂。** 每支有起訖 banner(結束的標題取自開始時記下的那一份,不另外手寫,否則必然漂移),每個段落印出**目的**而非代號,早退與失敗也要收尾。同一 interpreter 內重複兩次以上的邏輯抽到 `.chezmoitemplates/scripts/`;若多支腳本抽掉資料後控制流逐字相同,合併成一支資料表驅動的腳本。細節在 `chezmoi-author` skill。
 - **會讀自己輸出的腳本必須是不動點。** `modify_*`(以及在 Windows 代其職責的 `run_after_*` shim)吃的是目標檔上一輪的內容,所以 `f(f(x))` 必須等於 `f(x)`。這與安裝腳本「已裝就跳過」的冪等是不同性質:那個靠守衛,這個靠輸出形狀與輸入中不具語意的部分無關。破口幾乎都在**接縫** —— 從舊檔切一段保留、再接上新內容時,分隔用的空白必須由單一方提供,被保留的段落不得自帶尾端空白,否則每輪疊加一次而 TOML/JSON 這類格式又對它無感,於是沒人發現,只有 `chezmoi diff` 永遠不乾淨。驗收只看一件事:修好之後**不需要手動清理現場**;若還得清一次,修的就是症狀而不是成因。
 
@@ -43,4 +44,5 @@ description: "跨 change 反覆適用的長青判斷依據,分四組:source 與�
 - **祕密只留本機,且要加密。** 兩個軸。**本機 vs 雲端**:corp-ssh、local-files 的祕密都在本機磁碟或使用者腦中,雲端密碼管理器(cloud Bitwarden)明確排除,因為情境是單機、無跨機同步需求。**明文 vs 加密**:`HKCU\Environment` 與 `~/.bashrc` 的 export 都是明文,任何能讀使用者環境的程式都看得到,所以走 GPG 加密的 vault、gpg-agent 短期 unlock;代價是 agent 沒 warm 時要打一次 passphrase、跨機器要複製 encrypted blob。已套用於 corp-ssh(`pass`/`gopass`)、claude-zai token 與 corp GitLab token。
 - **祕密與 corp 識別資訊是兩個問題,答案不同。** 祕密進本機加密 vault;corp 識別資訊(實例 FQDN、內部主機名)留在 OS 的機器本地狀態(`HKCU\Environment`、機器本地的 `~/.ssh/config`)。兩者都不進 repo,但混為一談會導致把 FQDN 塞進 `pass` —— 在那裡它既不好找又不合用,因為它根本不是祕密,只是不該公開。本 repo 為公開 repo,「零 corp 主機名」是可機械驗證的硬邊界:全文搜尋 corp 網域,命中必須為零。
 - **自動化不在無把關的情況下落到機器上。** 把關形式可以是人審或自動驗證,但不得沒有 —— Renovate / mirror workflow 只開 PR,低風險更新由 CI gate 放行、`major` 仍需人審。無論哪一種,最後都還要一次明確的 `chezmoi apply` 才會改到機器。把關機制的細節屬各案文件,不寫在這裡。
+- **不可回復的操作要問「誤判時損失什麼」,不是「正確時損失什麼」。** 「內容已經備份在別處」不足以支持 `rm` —— 它只證明*判斷正確時*沒有損失,而風險全在判斷錯誤的那些。當保守選項的代價是可忽略的雜訊(多一層永遠不看的 `archive/` 目錄)、激進選項的代價是不可回復的資料消失時,選保守。版控之外的路徑(`~/.agent/`、`~/.claude/`)沒有 undo,這條在那裡尤其硬。2026-08-03 一個 session 拿 slug 字面相似度判定 5 份 handoff 已完成並當場 `rm`,其中 2 份根本沒開始做。
 - **被學會忽略的 gate 比沒有 gate 更糟。** 它同時消耗注意力又給出虛假的安全感。所以關卡的頻率由訊號密度決定,不是「每次都跑最安全」——`arch-review` 因此刻意不掛進 `dev-workflow` 或 `finish-branch`,正確頻率是里程碑或數個 change 之後。同理,會硬湊結果的檢查工具跑第二次就沒人信;誠實的「無發現」報告價值在於它排除了疑慮。

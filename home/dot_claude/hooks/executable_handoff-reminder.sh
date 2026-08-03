@@ -80,7 +80,7 @@ SENTINEL="${SENTINEL_DIR}/reminded-${SESSION_ID}-${TIER}"
 [ -f "$SENTINEL" ] && exit 0
 touch "$SENTINEL" 2>/dev/null || true
 
-MSG="[handoff-reminder] ${LABEL}：Context 使用量約 ${PCT}%（剛跨越 ${TIER}% 門檻）。請主動告知使用者，並建議呼叫 /handoff 將進度寫入 ~/.local/state/handoffs/，新 session 再用 /pickup <id> 接續。若使用者不需要切 session，忽略即可；下次跨越下個門檻才會再提醒。"
+MSG="[handoff-reminder] ${LABEL}：Context 使用量約 ${PCT}%（剛跨越 ${TIER}% 門檻）。請主動告知使用者，並建議呼叫 /handoff 將進度寫入 ~/.agent/handoffs/，新 session 再用 /pickup <id> 接續。若使用者不需要切 session，忽略即可；下次跨越下個門檻才會再提醒。"
 
 jq -nc --arg msg "$MSG" '{
     hookSpecificOutput: {
