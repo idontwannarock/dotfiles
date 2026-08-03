@@ -6,9 +6,9 @@ This skill reads and prints. It never moves, deletes, or rewrites anything. Arch
 
 ## Resolve the directory
 
-Compute the **repo slug** the same way `handoff` and `pickup` do: `dirname(realpath(git rev-parse --git-common-dir))`, falling back to `$PWD` if that fails, with every `:`, `\`, `/`, and `.` replaced by `-`. Not `git rev-parse --show-toplevel` -- under bare+worktree that splits one repo across several directories.
+Compute the **repo slug** the same way `handoff` and `pickup` do: take `git rev-parse --path-format=absolute --git-common-dir` minus its last component, falling back to `$PWD` if that fails, then replace every `:`, `\`, `/`, and `.` with `-`. Not `git rev-parse --show-toplevel` -- under bare+worktree that splits one repo across several directories.
 
-The user may name a different repo (`--repo <path|name>`); resolve its slug with `git -C <target> rev-parse --git-common-dir`. If the path does not exist or is not a git repo, report it and stop.
+The user may point at a different repo with `--repo <path>`; resolve its slug with `git -C <target> rev-parse --path-format=absolute --git-common-dir`. Keep `--path-format=absolute`: without it git prints a path relative to your own cwd and you get the current repo's slug instead. If the path does not exist or is not a git repo, report it and stop.
 
 ## List
 
@@ -23,7 +23,7 @@ For each file, print one row:
 
 Sort newest first. If a file is missing `## Next steps`, print `steps: —` and flag it as malformed: `pickup` cannot act on it, and it needs a human to say what was supposed to happen.
 
-If the directory does not exist or holds no `.md` files, say there are no open handoffs and stop. That is not an error.
+If that directory does not exist or holds no `.md` files, check the same legacy locations `pickup` falls back to, in order: `~/.local/state/handoffs/<repo-slug>/`, then `<repo>/.claude/handoffs/`. List whatever you find there, marked as legacy. Only after all three come up empty do you report that there are no open handoffs -- that is not an error, but a false "nothing to do" is the one output this skill must never produce, and `pickup` would still resume those files.
 
 ## Do not judge
 

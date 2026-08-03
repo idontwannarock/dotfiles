@@ -57,10 +57,12 @@ If Phase 1 surfaced more than 5 candidate zones, say so in the report and name t
 
 Write to `~/.agent/handoffs/<repo-slug>/<ID>.md`. This is the same location and convention `handoff` uses, so `pickup` can resume it.
 
-- **Repo slug**: identical derivation to `handoff` -- the absolute repo path (`git rev-parse --show-toplevel`, falling back to `$PWD`) with every `:`, `\`, `/`, and `.` replaced by `-`:
-  - `/home/user/work/api` becomes `-home-user-work-api`
-  - `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`
-  - `\\wsl.localhost\Ubuntu\home\me\proj` becomes `--wsl-localhost-Ubuntu-home-me-proj`
+- **Repo slug**: identical derivation to `handoff` -- take `git rev-parse --path-format=absolute --git-common-dir`, drop the last component, and replace every `:`, `\`, `/`, and `.` with `-`. Fall back to `$PWD` if the git command fails.
+  - `/home/user/work/api/.git` becomes `-home-user-work-api`
+  - `/home/user/work/api/.bare` becomes `-home-user-work-api` from **any** worktree of that repo
+  - `D:\ws\github\dotfiles\.git` becomes `D--ws-github-dotfiles`
+
+  Not `git rev-parse --show-toplevel`: under bare+worktree that returns the current worktree, so reports would land where `pickup` will not look from a sibling worktree.
 - **ID**: `YYYY-MM-DD-HHMM__arch-review`, user's local time.
 - Create the directory if missing. Never write inside a tool-specific dotdir (`.claude/`, `.codex/`) or into the repo.
 
@@ -112,8 +114,10 @@ Rank candidates by expected payoff over effort -- highest first.
 
 To resume in any future session, run:
 
-    /pickup <ID>
+    /pickup <ID> in <session language>
 ```
+
+Append the session language the same way `handoff` does -- `in zh-tw` for a Chinese session, nothing at all for an English one.
 
 ### On the `## Suggested skills` section
 

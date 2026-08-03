@@ -507,13 +507,27 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 `/handoff` 的輸出：
 
 - `~/.agent/handoffs/<repo-slug>/<YYYY-MM-DD-HHMM>__<slug>.md` — 簡短 checkpoint（≤50 行，以 references 為主，不重述既有 artifact）
-- 印出該檔絕對路徑，以及可直接複製的 `/pickup <id>` 指令
+- 印出該檔絕對路徑，以及可直接複製的 `/pickup <id> in <語言>` 指令（英文 session 不加後綴）
 
 落點在 `~/.agent/` 而非 repo 內或工具專屬 dotdir。副作用是不需要動 `.gitignore` — 檔案本來就不在 repo 裡。
 
-`repo-slug` 為 repo 絕對路徑把 `:`、`\`、`/`、`.` 全換成 `-`，與 `~/.claude/projects/<slug>/` 的既有慣例對齊。
+`repo-slug` 取 `git rev-parse --path-format=absolute --git-common-dir` 去掉最後一段，再把 `:`、`\`、`/`、`.` 全換成 `-`；與 `~/.claude/memory/<id>/` 的 auto-memory 規則同源。不用 `--show-toplevel` — 那在 bare+worktree 佈局下會依 worktree 分裂成多個目錄，彼此看不見。
+
+`## Suggested skills` 與 `## Next steps` 是**寫入端**的硬性要求，`handoff` 寫檔前自我檢查；後者每條還要帶可驗證的成功判準。
+
+跨 repo 交接用 `--repo <path>`，且只認使用者明講 —— agent 察覺內容屬別的 repo 可以問，但不得自行改落點。
 
 這個目錄不只放 session state：`/arch-review` 的體檢報告也寫在這裡，靠同一套 `pickup` 契約被接手（見下節）。
+
+### 待辦清單與封存
+
+這個目錄同時當待辦清單用，三個指令構成一個生命週期：
+
+- `/handoff-list` — 唯讀列出未封存項（ID、日期、一行 Task、next-step 條數）。**不推測**任何 handoff 是否完成，也不標註「可能已完成」候選
+- `/pickup` — 接手；`## Next steps` 全數達成後列出逐條證據，經使用者確認才把檔案 `mv` 進 `<repo-slug>/archive/`
+- 封存永遠是搬移，不是 `rm`。`pickup` 只 glob `<repo-slug>/*.md`，故 `archive/` 天然退出所有查找
+
+刻意不與 `finish-branch` 耦合：跨 repo 交接與 `arch-review` 報告不對應任何分支，綁在一起會讓它們永遠無法封存。
 
 ### 舊路徑
 

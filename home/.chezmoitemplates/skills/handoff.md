@@ -17,7 +17,7 @@ The location is user-level and AI-agnostic on purpose: a handoff produced by Cla
 
 Run these before composing:
 
-- Repo identity: `dirname(realpath(git rev-parse --git-common-dir))`. If the command fails (not a git dir), fall back to `$PWD` -- a slug derived from a non-repo dir is fine.
+- Repo identity: `git rev-parse --path-format=absolute --git-common-dir`, minus its last component. If the command fails (not a git dir), fall back to `$PWD` -- a slug derived from a non-repo dir is fine. Always pass `--path-format=absolute`: without it git prints a path relative to the current directory, which resolves to the wrong repo the moment you use `-C`.
 - Branch: `git rev-parse --abbrev-ref HEAD` (skip if non-git).
 - Dirty state: `git status --porcelain` and `git diff --shortstat`.
 - Recent commits: `git log -3 --oneline`.
@@ -34,7 +34,7 @@ Run these before composing:
 ### 2. Compose the ID, repo slug, and path
 
 - **ID**: `YYYY-MM-DD-HHMM__<slug>` (no extension). Use the user's local time.
-- **Repo slug**: take the repo identity path from Gather -- `dirname(realpath(git rev-parse --git-common-dir))` -- and replace every `:`, `\`, `/`, and `.` with `-`. Examples:
+- **Repo slug**: take the repo identity path from Gather and replace every `:`, `\`, `/`, and `.` with `-`. Examples:
   - normal layout: git-common-dir is `/home/user/work/api/.git`, so the identity path is `/home/user/work/api` and the slug is `-home-user-work-api`
   - bare+worktree layout: git-common-dir is `/home/user/work/api/.bare` from **any** worktree, so every worktree of that repo yields the same slug `-home-user-work-api`
   - `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`
@@ -43,15 +43,15 @@ Run these before composing:
   Use `git-common-dir`, **not** `git rev-parse --show-toplevel`. Under bare+worktree the latter returns the current worktree path, so handoffs written from different worktrees of one repo land in different directories and become invisible to each other. This slug rule is the same one Claude auto-memory uses for `~/.claude/memory/<id>/`, so both systems agree on what "the same repo" means.
 - **Path**: `~/.agent/handoffs/<repo-slug>/<ID>.md`. Create the directory if missing.
 
-**Handing off to a different repo.** Working in repo A and finding something that belongs to repo B is normal, and the handoff belongs in B's directory. This only happens when the user names the target -- `--repo <path|name>` in the wrapper, or plainly saying so in the args.
+**Handing off to a different repo.** Working in repo A and finding something that belongs to repo B is normal, and the handoff belongs in B's directory. This only happens when the user names the target -- `--repo <path>` in the wrapper, or plainly saying so in the args. The target is always a path: if the user gives a bare repo name, ask which path they mean rather than searching for it.
 
-- Resolve the target's identity path with `git -C <target> rev-parse --git-common-dir`, then apply the same slug rule as above. If the path does not exist or is not a git repo, stop and report it -- do not fall back to the current repo or guess another location.
+- Resolve the target's identity path with `git -C <target> rev-parse --path-format=absolute --git-common-dir`, minus its last component, then apply the same slug rule as above. `--path-format=absolute` is not optional here: plain `--git-common-dir` prints a path relative to **your** cwd, not the target's, so dropping it silently produces the current repo's slug and files the handoff where nobody will look for it. If the path does not exist or is not a git repo, stop and report it -- do not fall back to the current repo or guess another location.
 - Do **not** consult `~/.agent/workflow-registry.md` for this. It is a per-machine, partially populated file whose path column mixes several unrelated conventions; deriving the slug from git directly is both authoritative and complete.
 - If the work clearly belongs to another repo but the user did not say so, you may **ask**. Until they answer, the target stays the current repo.
 
 ### 2b. Cross-repo header
 
-When the target is not the current repo, the reader needs to know which repo each field describes -- `- Branch:` records the *source* branch, which is meaningless to whoever picks this up in the target. Replace the single repo line with two:
+When the target is not the current repo, the reader needs to know which repo each field describes -- `- Branch:` records the *source* branch, which is meaningless to whoever picks this up in the target. Replace **both** the `- Repo / cwd:` and `- Branch:` lines of the template below with these two, leaving no unqualified branch line behind:
 
 ```markdown
 - Target repo: <absolute path of the repo this handoff is for>

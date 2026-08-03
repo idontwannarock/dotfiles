@@ -1,6 +1,6 @@
 ---
 name: handoff-list
-description: 'Use when the user wants to see which handoffs are still open for a repo. Triggered by /handoff-list, "有哪些 handoff", "還有什麼沒做完", "list handoffs", or any request to review the handoff todo list. Prints ID, date, a one-line task summary and the remaining step count for each open handoff; accepts --repo <path|name>. Read-only — it never archives, moves or deletes, and never guesses whether a handoff is finished.'
+description: 'Use when the user wants to see which handoffs are still open for a repo. Triggered by /handoff-list, "有哪些 handoff", "還有什麼沒做完", "list handoffs", or any request to review the handoff todo list. Prints ID, date, a one-line task summary and the next-step count for each open handoff; accepts --repo <path>. Read-only — it never archives, moves or deletes, and never guesses whether a handoff is finished.'
 ---
 
 {{ template "skills/handoff-list.md" . -}}

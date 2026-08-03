@@ -21,8 +21,9 @@ If nothing matches in `~/.agent/handoffs/<repo-slug>/`, check the legacy locatio
 
 1. Read the resolved file in full.
 2. Invoke each skill listed under `## Suggested skills` (use the Skill tool / equivalent on Codex). If a listed skill is not available, note it briefly and continue.
-3. Proceed with the items under `## Next steps`. Treat any user-supplied args (beyond the ID) as additional context that supersedes or refines the first next-step item.
-4. Do not summarize the handoff content back to the user. Do not ask for confirmation. Just continue working.
+3. If the args end with `in <language>` (the suffix `handoff` puts on the resume line), conduct this session in that language and drop it from the args -- it is a directive to you, not a refinement of the work.
+4. Proceed with the items under `## Next steps`. Treat any remaining user-supplied args (beyond the ID) as additional context that supersedes or refines the first next-step item.
+5. Do not summarize the handoff content back to the user. Do not ask for confirmation. Just continue working.
 
 ## Close out
 
@@ -32,7 +33,7 @@ Once **every** item under `## Next steps` has met its success criterion:
 
 1. List the items with the evidence for each -- the merged PR, the passing command and its output, the file that now exists. Evidence, not recollection.
 2. Ask whether to archive this handoff.
-3. If the user agrees, `mv` the file to `~/.agent/handoffs/<repo-slug>/archive/<ID>.md`, creating the directory if missing.
+3. If the user agrees, `mv` the file to `~/.agent/handoffs/<repo-slug>/archive/<ID>.md`, creating the directory if missing. This is the destination even when the file was resolved from one of the legacy locations -- archiving doubles as the migration out of them.
 
 Hard rules:
 

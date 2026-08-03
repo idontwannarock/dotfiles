@@ -20,7 +20,9 @@
 
 ### Requirement: repo slug 取自 git common dir 的父目錄
 
-handoff 產物落點所用的 repo slug SHALL 由 `slug(dirname(realpath(git-common-dir)))` 導出,其中 slug 化為將絕對路徑中每個 `:`、`\`、`/`、`.` 替換為 `-`。`handoff` 與 `pickup` 兩端 SHALL 使用同一條規則。SHALL NOT 使用 `git rev-parse --show-toplevel` 作為 slug 來源。
+handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=absolute --git-common-dir` 去除最後一段後導出,其中 slug 化為將絕對路徑中每個 `:`、`\`、`/`、`.` 替換為 `-`。`handoff`、`pickup`、`handoff-list` 與 `arch-review` SHALL 使用同一條規則。SHALL NOT 使用 `git rev-parse --show-toplevel` 作為 slug 來源。
+
+`--path-format=absolute` SHALL NOT 省略:未加時 git 印出的是相對於**呼叫者** cwd 的路徑,搭配 `-C <目標>` 會靜默解析成當前 repo。
 
 此規則與 `context/glossary.md` 記載的 auto-memory path-slug 規則一致,兩個系統對「同一個 repo」的定義 SHALL 對齊。
 
@@ -96,11 +98,21 @@ handoff 產物落點所用的 repo slug SHALL 由 `slug(dirname(realpath(git-com
 - **WHEN** 本次 session 以英文進行
 - **THEN** resume 行 SHALL 為 `/pickup <ID>`,SHALL NOT 附加語言後綴
 
+#### Scenario: pickup 消化語言後綴
+
+- **WHEN** `pickup` 收到的 args 以 `in <語言>` 結尾
+- **THEN** SHALL 以該語言進行本次 session,並將該後綴自 args 移除,SHALL NOT 把它當成對第一條 next step 的補充說明
+
+#### Scenario: arch-review 產出沿用同一形狀
+
+- **WHEN** `arch-review` 寫出報告的 resume 行
+- **THEN** SHALL 套用同一條語言後綴規則 —— 該產物與 handoff 共用 `pickup` 契約,形狀不得分叉
+
 ### Requirement: 跨 repo 交接只接受明講的目標
 
 `handoff` SHALL 支援將產物寫入其他 repo 的 handoff 目錄。目標 repo SHALL 只由使用者明講指定(wrapper 參數或 args 中明確指名)。未指定時 SHALL 落在當前 repo。`handoff` SHALL NOT 從對話內容推斷而自行改變落點。
 
-目標 repo 的絕對路徑 SHALL 由 `git -C <目標> rev-parse --git-common-dir` 取得後套用 slug 規則。SHALL NOT 以 `~/.agent/workflow-registry.md` 作為目標路徑的權威來源。
+目標 repo 的絕對路徑 SHALL 由 `git -C <目標> rev-parse --path-format=absolute --git-common-dir` 取得後套用 slug 規則。SHALL NOT 以 `~/.agent/workflow-registry.md` 作為目標路徑的權威來源。目標 SHALL 以路徑指定;使用者僅給 repo 名稱時 SHALL 詢問對應路徑,SHALL NOT 自行搜尋。
 
 #### Scenario: 明講跨 repo 目標
 
@@ -109,7 +121,7 @@ handoff 產物落點所用的 repo slug SHALL 由 `slug(dirname(realpath(git-com
 
 #### Scenario: 未指定時落在當前 repo
 
-- **WHEN** 使用者未指定目標 repo
+- **WHEN** 使用者未指定目標 repo,且無跡象顯示內容屬於別的 repo
 - **THEN** 產物 SHALL 寫入當前 repo 的 slug 目錄,SHALL NOT 詢問確認
 
 #### Scenario: 偵測到內容屬於別的 repo
@@ -177,7 +189,12 @@ handoff 產物落點所用的 repo slug SHALL 由 `slug(dirname(realpath(git-com
 - **WHEN** 某 handoff 的主題與已合併的 PR 相似,或其 next steps 看似已有對應產出
 - **THEN** SHALL NOT 標註為「可能已完成」或任何等價提示 —— 名稱相似度與主題相似度已被實證證明會誤判(2026-08-03 誤刪事件),而清單的閱讀者正是封存決策的唯一把關者
 
-#### Scenario: 目錄為空
+#### Scenario: 主目錄為空但 legacy 位置有項目
 
-- **WHEN** 該 repo slug 目錄不存在或無未封存項
+- **WHEN** `~/.agent/handoffs/<repo-slug>/` 不存在或無 `.md`,但 `~/.local/state/handoffs/<repo-slug>/` 或 `<repo>/.claude/handoffs/` 有項目
+- **THEN** SHALL 列出這些項目並標示為 legacy —— `pickup` 仍會回退查找它們,回報「無未封存項」會是假的空清單
+
+#### Scenario: 全部位置皆為空
+
+- **WHEN** 主目錄與兩個 legacy 位置皆不存在或無未封存項
 - **THEN** SHALL 明確回報無項目,SHALL NOT 報錯
