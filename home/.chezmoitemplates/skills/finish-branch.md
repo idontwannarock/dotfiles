@@ -71,6 +71,31 @@ need the workspace). Keep the `active_workflows.md` row, update Current
 Step (e.g. `pr-open`); dispose + remove the row only after the PR
 merges.
 
+When it merges, sync the base then dispose — run from the base worktree
+(`normal`: the repo itself; `bare-worktree`: `<repo>/main`):
+
+```bash
+git switch main && git pull --ff-only   # bare-worktree: cd <repo>/main first
+git diff main <branch> --stat           # MUST be empty
+```
+
+**`git branch -d` cannot gate this.** It tests whether the branch tip is
+an ancestor of the base; squash and rebase merges rewrite the commit, so
+it reports "not fully merged" for a merged branch and a genuinely
+unmerged one alike — the guard stops discriminating, and reaching for
+`-D` to silence it discards the question instead of answering it. Use
+the test that still holds: `git diff main <branch>` empty means the
+branch's tree is entirely on the base and nothing is lost. That holds
+for merge-commit, squash, rebase, and cherry-pick alike. Non-empty →
+stop and report; something did not land.
+
+Only then dispose: `git branch -D <branch>`; under `bare-worktree`,
+`git --git-dir=<repo>/.bare worktree remove <branch>` first, then
+`branch -D` from `main/`, then `worktree prune`. The remote branch is
+already gone if the repo sets `delete_branch_on_merge`; otherwise
+`git push origin --delete <branch>`. Then remove the
+`active_workflows.md` row.
+
 ### Keep branch as is
 
 Leave branch, worktree, and the `active_workflows.md` row untouched
