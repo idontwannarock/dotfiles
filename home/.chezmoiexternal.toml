@@ -312,7 +312,7 @@
     stripComponents = 1
 
 # renovate: datasource=github-releases depName=adoptium/temurin11-binaries extractVersion=^jdk-(?<version>.+)$
-{{- $jdk11Version := "11.0.31+11" }}
+{{- $jdk11Version := "11.0.32+9" }}
 {{- $jdk11Tag := $jdk11Version | replace "+" "%2B" }}
 {{- $jdk11Asset := $jdk11Version | replace "+" "_" }}
 [".local/opt/jdk-11"]
