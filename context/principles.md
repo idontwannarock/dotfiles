@@ -26,7 +26,7 @@ description: "跨 change 反覆適用的長青判斷依據,分四組:source 與�
 
   兩個推論。其一,**flag 擋的是自動啟動,不是能力** —— 模型讀得到 `~/.claude/commands/<name>.md` 的規格,鎖住只會換來它繞路自己實作一份沒有護欄的版本(`git-commit` 的價值正是敏感檔阻擋清單與禁止 `git add -A`,鎖住它等於逼模型走無護欄的預設路徑,對公開 repo 而言方向是反的)。其二,**token 成本不歸這條判準管** —— 整庫掃描很貴但可逆,控制頻率的責任在 skill body 的觸發條件,不在 wrapper 的 flag。
 - **部署形狀:Claude 端 command、Codex 端 skill。** Claude 端走 command 換得穩定的 `/name` 入口;Codex 無 command 概念,同一份 body 包成 skill。這是形狀差異,與可呼叫性無關 —— 可呼叫性由上一條的判準決定。**注意 budget 只由 flag 決定,不由形狀決定**:未帶 `disable-model-invocation` 的 command 與 skill 一樣占 system prompt 的 skill listing budget,所以「轉成 command 就省 budget」只在鎖住的那些成立。省 budget 是 flag 的副產品,不能反過來當成加 flag 的理由——真要省就拉 `skillListingBudgetFraction`。Codex 沒有 gate 欄位,所以仍需鎖住的能力在那邊留有無法消除的落差;**不要用 description 措辭去補**,那會造成已施加限制的錯覺而實際約束力無法驗證。
-- **跨工具 parity = shared body + 薄指標。** 權威 body 一份在 `~/.agent` / `.chezmoitemplates`,每工具一個 name-map wrapper。目標工具清單見詞彙表。
+- **跨工具 parity = shared body + 薄指標。** 權威 body 一份在 `~/.agent` / `.chezmoitemplates`,每工具一個 name-map wrapper。目標工具清單與這條鏈的具名檔案見詞彙表。**接新工具時,先確認該工具實際的 instruction-file 慣例再給指標檔,不要照既有工具推斷檔名** —— 檔名猜錯的失敗是靜默的:檔案生得出來、`chezmoi apply` 也不會報錯,只是該工具永遠讀不到,而「指令沒生效」與「指令寫得不好」在使用時難以區分。
 - **WSL 下呼叫腳本一律用絕對路徑。** PATH interop 把 Windows 家目錄的 `~/.local/bin` 併進 WSL 的 PATH,所以 bare 名稱可能命中另一台機器、另一個年代的同名腳本。腳本正典搬家後,舊位置的副本要用 `.chezmoiremove` 點名清掉 —— 留著它就是留一條會靜默跑到舊碼的路徑。
 - **Codex frontmatter 要嚴格 YAML。** skill `description:` 若含 `:`/`#`/開頭 `[`{` 必須加引號;Claude 容忍、Codex 會報錯。用真的 YAML parser 驗,不要只 grep。
 - **Windows toolchain 脫離 Scoop。** Go/JDK/GnuPG 等從官方第一手來源經 `.chezmoiexternal.toml` / 官方安裝器 provision,搭配一次性 `run_once_after_migrate-scoop-*` 清理。
