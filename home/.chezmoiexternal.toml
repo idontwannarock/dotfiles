@@ -425,7 +425,7 @@
 # 2601). To upgrade: bump $sevenZipVersion AND delete ~/.local/opt/7zip so the
 # run_once re-extracts (the run_once is hash-keyed, not version-aware).
 # renovate: datasource=github-releases depName=ip7z/7zip versioning=loose
-{{- $sevenZipVersion := "26.01" }}
+{{- $sevenZipVersion := "26.02" }}
 {{- $sevenZipAsset := $sevenZipVersion | replace "." "" }}
 
 [".local/share/7zip/7zip-x64.msi"]
