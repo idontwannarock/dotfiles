@@ -10,18 +10,20 @@ The location is user-level and AI-agnostic on purpose: a handoff produced by Cla
 - **Lean.** Target <= 50 lines total. If it reads like a report, cut it.
 - **Args-driven tailoring.** If the user passed arguments, treat them as the description of what the next session will focus on -- they override or refine the first item in "Next steps".
 - **Redact secrets.** Replace API keys, passwords, TOTP codes, corp identifiers with placeholders. Note in "Open / unresolved" if redaction loses information the next session needs.
-- **No confirmation.** The user invoked you -- just do it.
+- **No confirmation.** The user invoked you -- just do it. The one exception is the cross-repo suggestion below, which is a question, not a confirmation of work you were already told to do.
+- **The user picks the target repo, never you.** The handoff lands in the current repo unless the user names a different one. Inferring the target from conversation content is forbidden: a wrong inference writes a file that exists, parses, and reads fine but that nobody will ever find -- and no error is raised at any point.
 
 ## Gather
 
 Run these before composing:
 
-- Repo root: `git rev-parse --show-toplevel` (if it fails OR the result is not a prefix of `$PWD`, fall back to `$PWD` -- a slug derived from a non-repo dir is fine; writing to the wrong repo is not).
+- Repo identity: `dirname(realpath(git rev-parse --git-common-dir))`. If the command fails (not a git dir), fall back to `$PWD` -- a slug derived from a non-repo dir is fine.
 - Branch: `git rev-parse --abbrev-ref HEAD` (skip if non-git).
 - Dirty state: `git status --porcelain` and `git diff --shortstat`.
 - Recent commits: `git log -3 --oneline`.
 - Current task/todo list snapshot (if any is active).
 - What was being worked on in the last 2-3 turns.
+- Session language: the language this conversation has been conducted in (e.g. `zh-tw`, `ja`, `en`). It goes into the resume line so the next session starts in the same language instead of guessing.
 
 ## Flow
 
@@ -32,16 +34,40 @@ Run these before composing:
 ### 2. Compose the ID, repo slug, and path
 
 - **ID**: `YYYY-MM-DD-HHMM__<slug>` (no extension). Use the user's local time.
-- **Repo slug**: the absolute repo path with every `:`, `\`, `/`, and `.` replaced by `-`. Examples:
+- **Repo slug**: take the repo identity path from Gather -- `dirname(realpath(git rev-parse --git-common-dir))` -- and replace every `:`, `\`, `/`, and `.` with `-`. Examples:
+  - normal layout: git-common-dir is `/home/user/work/api/.git`, so the identity path is `/home/user/work/api` and the slug is `-home-user-work-api`
+  - bare+worktree layout: git-common-dir is `/home/user/work/api/.bare` from **any** worktree, so every worktree of that repo yields the same slug `-home-user-work-api`
   - `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`
-  - `/home/user/work/api` becomes `-home-user-work-api`
   - `\\wsl.localhost\Ubuntu\home\me\proj` becomes `--wsl-localhost-Ubuntu-home-me-proj`
-  (This matches the existing convention used by `~/.claude/projects/<slug>/` so users can mentally align handoff and memory layouts.)
+
+  Use `git-common-dir`, **not** `git rev-parse --show-toplevel`. Under bare+worktree the latter returns the current worktree path, so handoffs written from different worktrees of one repo land in different directories and become invisible to each other. This slug rule is the same one Claude auto-memory uses for `~/.claude/memory/<id>/`, so both systems agree on what "the same repo" means.
 - **Path**: `~/.agent/handoffs/<repo-slug>/<ID>.md`. Create the directory if missing.
+
+**Handing off to a different repo.** Working in repo A and finding something that belongs to repo B is normal, and the handoff belongs in B's directory. This only happens when the user names the target -- `--repo <path|name>` in the wrapper, or plainly saying so in the args.
+
+- Resolve the target's identity path with `git -C <target> rev-parse --git-common-dir`, then apply the same slug rule as above. If the path does not exist or is not a git repo, stop and report it -- do not fall back to the current repo or guess another location.
+- Do **not** consult `~/.agent/workflow-registry.md` for this. It is a per-machine, partially populated file whose path column mixes several unrelated conventions; deriving the slug from git directly is both authoritative and complete.
+- If the work clearly belongs to another repo but the user did not say so, you may **ask**. Until they answer, the target stays the current repo.
+
+### 2b. Cross-repo header
+
+When the target is not the current repo, the reader needs to know which repo each field describes -- `- Branch:` records the *source* branch, which is meaningless to whoever picks this up in the target. Replace the single repo line with two:
+
+```markdown
+- Target repo: <absolute path of the repo this handoff is for>
+- Written from: <absolute path> (branch: <branch>) -- source context only
+```
 
 ### 3. Compose the file
 
-Use this shape. Omit empty sections rather than leaving placeholders. Non-ASCII (Chinese, em-dash, check marks) is fine -- this file is read, not pasted through a clipboard.
+Use this shape. Non-ASCII (Chinese, em-dash, check marks) is fine -- this file is read, not pasted through a clipboard.
+
+**Two sections are mandatory; every other section is optional and free-form.**
+
+- `## Next steps` -- the only load-bearing section. `pickup` proceeds with the items under it; without it the next session opens a complete-looking file and finds nothing to do. Each item MUST carry a verifiable success criterion, because `pickup`'s closing step has to cite evidence per item before offering to archive the handoff. "Finish the refactor" is not a criterion; "grep returns no hits and `chezmoi diff` shows only the expected hunk" is.
+- `## Suggested skills` -- skills the next session should invoke before starting. If there is nothing to suggest, write it as a plain sentence (`No skills needed.`), **never** as a bullet such as `- None`: a bullet is indistinguishable from a real entry and `pickup` will try to invoke it.
+
+Omit the other sections rather than leaving placeholders.
 
 ```markdown
 # Handoff: <slug> @ <ISO-8601 timestamp>
@@ -89,15 +115,27 @@ Use this shape. Omit empty sections rather than leaving placeholders. Non-ASCII 
 
 To resume in any future session (Claude Code or Codex CLI), run:
 
-    /pickup <ID>
+    /pickup <ID> in <session language>
 ```
 
-### 4. Report to the user
+The resume line carries the session language so the next session continues in it without being told: a `zh-tw` session writes `/pickup <ID> in zh-tw`, a `ja` session writes `in ja`. An English session writes plain `/pickup <ID>` with no suffix.
+
+### 4. Self-check before writing
+
+Verify all three, and fix before writing -- never write a file that fails any of them:
+
+1. `## Next steps` exists and is non-empty.
+2. Every item under it carries a verifiable success criterion.
+3. `## Suggested skills` exists, and if it has no entries it is a plain sentence rather than a `- None` bullet.
+
+These failures are silent: the file gets written, `pickup` finds it, it reads as complete, and only the session that picks it up discovers there is nothing actionable -- by which point the original context is gone.
+
+### 5. Report to the user
 
 Print, concisely:
 
 1. Absolute path of the handoff file just written.
-2. The exact `/pickup <ID>` line the user can copy.
+2. The exact resume line the user can copy -- identical to the one in the file, language suffix included.
 
 Do not re-print the file content -- it is on disk.
 

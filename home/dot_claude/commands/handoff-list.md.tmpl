@@ -1,0 +1,6 @@
+---
+description: List the open handoffs under ~/.agent/handoffs/ for this repo — ID, date, one-line task, remaining step count. Pass --repo <path|name> for another repo. Read-only; never archives or deletes. Manual trigger only.
+disable-model-invocation: true
+---
+
+{{ template "skills/handoff-list.md" . -}}
