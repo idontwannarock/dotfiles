@@ -358,6 +358,7 @@ dotfiles/
 | [Codex CLI](docs/codex-cli.md) | Codex CLI 設定、skills、Claude workflow 對齊 |
 | [Corp SSH（Linux/WSL）](docs/corp-ssh-setup.md) | 公司 SSH 密碼 + OTP 自動化 |
 | [Corp SSH（Windows）](docs/corp-ssh-setup-windows.md) | 同上的 Windows 版 |
+| [Corp GitLab（glab）](docs/gitlab-corp-access.md) | glab 的權杖與 host 解析、每台機器的一次性設定 |
 | [Git 憑證管理](docs/git-credentials.md) | Git 遠端認證（GCM、SSH、WSL） |
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
 | [Renovate](docs/renovate.md) | external 工具版本自動追蹤與 auto-merge |

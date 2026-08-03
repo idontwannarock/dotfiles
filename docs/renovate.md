@@ -43,6 +43,9 @@ Optional fields: `versioning=<scheme>` (e.g. `loose` for CalVer), and
 - **Version source ≠ download host:** `kubectl` (binary from dl.k8s.io, version
   from `kubernetes/kubernetes`), `maven`, `docker` CLI (binary from
   download.docker.com, version from `docker/cli`).
+- **Hosted outside GitHub:** `glab` uses `gitlab-releases` with
+  `depName=gitlab-org/cli` — the only non-GitHub datasource in the file. Its tags
+  carry a `v` prefix the asset filenames omit, hence the `extractVersion`.
 - **JDKs:** each Temurin major (`adoptium/temurinNN-binaries`) is its own repo,
   so a bump can never cross majors. The `+build` suffix needs the regex
   versioning in `renovate.json` packageRules; JDK 8's legacy `8uNNN-bNN` scheme

@@ -114,6 +114,34 @@ claude-zai() {
     claude "$@"
 }
 
+# ── glab: corp GitLab CLI ───────────────────────────────────────────────────
+# 與 claude-zai 同形：從 pass vault 惰性取 token（shell 啟動時不解密，故不跳
+# pinentry），vault 不可用時 fallback 到 $GITLAB_TOKEN。
+# 這個 function 以 glab 為名遮蔽 binary，轉呼叫用 `command glab` 避免遞迴。
+# host 由機器本地狀態提供，刻意不在此 repo 裡（見 docs/gitlab-corp-access.md）。
+glab() {
+    # 未設 host 時 glab 預設連 gitlab.com，用 corp token 會拿到 401 —— 一個指向
+    # token、真正成因卻是 host 的錯誤。先擋下來，直接說出成因。
+    if [ -z "$GITLAB_HOST" ]; then
+        printf >&2 'glab: GITLAB_HOST 未設定；不設會連向 gitlab.com 並回 401。見 docs/gitlab-corp-access.md\n'
+        return 1
+    fi
+
+    local token=""
+    if command -v pass >/dev/null 2>&1; then
+        token="$(pass show gitlab/corp-token 2>/dev/null)"
+    fi
+    if [ -z "$token" ]; then
+        token="$GITLAB_TOKEN"
+    fi
+    if [ -z "$token" ]; then
+        printf >&2 'glab: no token (vault entry gitlab/corp-token unreadable and GITLAB_TOKEN unset)\n'
+        return 1
+    fi
+
+    GITLAB_TOKEN="$token" command glab "$@"
+}
+
 # ── 自動 fetch dotfiles 並提示更新 ───────────────────────────────────────────
 _dotfiles_check_update() {
     local flag_file="$HOME/.local/share/chezmoi-last-fetch"
