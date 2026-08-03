@@ -245,7 +245,7 @@ Claude Code 2.x 開始強制 `skillListingBudgetFraction`（預設 1%），超�
 #### 三種應對
 
 1. **砍重複/不用的 skill**：對於 wrapper skill（歷史例:曾有 `sp:tdd` 包 `superpowers:test-driven-development`,與現在的自家 `tdd` skill 無關）直接刪。對於 plugin 整包不用就 disable。
-2. **Skill → Command + `disable-model-invocation: true`**：轉換後 description 不再進 system prompt，直接從 budget 移除。例如 `/handoff`、`/worklog-daily`。這是 budget 的機制，不是選擇的理由——哪些能力該做成 command，依 `context/` 的判斷依據決定。
+2. **Skill → Command + `disable-model-invocation: true`**：轉換後 description 不再進 system prompt，直接從 budget 移除。例如 `/worklog-daily`、`/worklog-team-status`。這是 budget 的機制，不是選擇的理由——哪些能力該做成 command，依 `context/` 的判斷依據決定。
 3. **拉 budget**（兜底）：在 `dot_claude/modify_settings.json.sh.tmpl` 加 `.skillListingBudgetFraction = 0.02`（2%）。每 turn 多 ~5K input tokens，1M context 上完全無感。
 
 #### 跨工具共用（Codex）skill 轉 command 的 chezmoitemplate 拆分
@@ -254,7 +254,7 @@ Codex CLI 沒有 command 概念，只有 skill。要讓「Claude 這邊轉 comma
 
 1. `.chezmoitemplates/skills/<name>.md` 拿掉 frontmatter，只留 markdown body
 2. `dot_codex/skills/<name>/SKILL.md.tmpl` 加 skill frontmatter（`name:` + `description:`）後 `{{ template ... -}}`
-3. `dot_claude/commands/<name>.md.tmpl` 加 command frontmatter（`description:` + `disable-model-invocation: true`）後 `{{ template ... -}}`
+3. `dot_claude/commands/<name>.md.tmpl` 加 command frontmatter（`description:`；是否加 `disable-model-invocation: true` 依 `context/principles.md` 的可逆性判準決定，**不要沿用鄰近檔案的寫法當預設**）後 `{{ template ... -}}`
 4. 刪 `dot_claude/skills/<name>/`（chezmoi 不會自動清 deployed orphan，需手動 `rm -rf ~/.claude/skills/<name>`）
 
 實例：`handoff`、`worklog-daily`、`worklog-team-status` 走這個模式（commit `7a555e8` / 2026-05-06）。
@@ -477,7 +477,7 @@ go build -o ~/.claude/statusline .       # macOS/Linux
 
 | 角色 | 檔案 | 觸發 |
 |---|---|---|
-| Command / Skill | `dot_claude/commands/handoff.md.tmpl`（帶 `disable-model-invocation`）＋ `dot_codex/skills/handoff/`；共用 body 在 `.chezmoitemplates/skills/handoff.md` | `/handoff`、「切 session」、reminder 後確認 |
+| Command / Skill | `dot_claude/commands/handoff.md.tmpl`＋ `dot_codex/skills/handoff/`；共用 body 在 `.chezmoitemplates/skills/handoff.md` | `/handoff`、「切 session」、reminder 後確認 |
 | 復原端 | `dot_claude/commands/pickup.md.tmpl` ＋ `dot_codex/skills/pickup/`；共用 body 在 `.chezmoitemplates/skills/pickup.md` | `/pickup <id>`；無參數則取最新一份 |
 | 提醒 hook | `dot_claude/hooks/executable_handoff-reminder.sh` | UserPromptSubmit；context 達 40/70/90% 各提醒一次 |
 | Cache writer | `tools/statusline/statusline.go` 的 `writeContextWindowCache()` | 每次 statusline 渲染 |
@@ -546,7 +546,7 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 
 | 角色 | 檔案 |
 |---|---|
-| Claude command | `dot_claude/commands/arch-review.md.tmpl`（`disable-model-invocation: true`） |
+| Claude command | `dot_claude/commands/arch-review.md.tmpl` |
 | Codex skill | `dot_codex/skills/arch-review/SKILL.md.tmpl` |
 | 共用 body | `.chezmoitemplates/skills/arch-review.md` |
 

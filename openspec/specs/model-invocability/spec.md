@@ -12,8 +12,13 @@ SHALL NOT 以「是否有副作用」作為判準。該措辭無法區分風險�
 
 #### Scenario: 本地且可回復的操作
 
-- **WHEN** 某能力的效果僅限本機,且在 `.git` 或原始檔案存在的前提下可回復(如 `git commit`、`git rebase`、寫入 `~/.agent/` 下的檔案)
+- **WHEN** 某能力的效果僅限本機,且在 `.git` 或原始檔案存在的前提下可回復(如 `git commit`、`git rebase`、**新增**檔案到 `~/.agent/` 下)
 - **THEN** SHALL NOT 標記 `disable-model-invocation`
+
+#### Scenario: 版控之外路徑的破壞性操作
+
+- **WHEN** 某能力會**移動或刪除**版控之外的檔案(如 `~/.agent/`、`~/.claude/` 下既有的檔案)
+- **THEN** wrapper flag SHALL NOT 被當成該操作的把關 —— 那些路徑沒有 undo,把關責任在 skill body 自身的使用者確認步驟(見 `pickup` 的封存收尾)。判準管的是「能力能不能被自行啟動」,不是「啟動後可以做多毀滅性的事」
 
 #### Scenario: 遠端寫入
 
@@ -38,8 +43,13 @@ SHALL NOT 以「是否有副作用」作為判準。該措辭無法區分風險�
 
 #### Scenario: 解鎖清單
 
-- **WHEN** 檢視 `handoff`、`pickup`、`handoff-list`、`arch-review`、`git/commit`、`git/sync`、`code/review-surgical`、`code/review-comprehensive`、`code/review-linus`、`code/review-uncommitted`、`code/review-security`、`code/review-spec`、`code/review-types` 的 frontmatter
-- **THEN** 皆 SHALL NOT 含 `disable-model-invocation`
+- **WHEN** 檢視 `handoff`、`pickup`、`handoff-list`、`arch-review`、`git/commit`、`git/sync`、`git/clean-gone`、`code/review-surgical`、`code/review-comprehensive`、`code/review-linus`、`code/review-uncommitted`、`code/review-security`、`code/review-spec`、`code/review-types` 的 frontmatter
+- **THEN** 皆 SHALL NOT 含 `disable-model-invocation`(共 14 支;`git/clean-gone` 刪除遠端已消失的本地分支,可經 reflog 回復,故屬可逆)
+
+#### Scenario: 清單涵蓋整棵樹
+
+- **WHEN** 比對 `home/dot_claude/commands/` 下的檔案總數與上述兩份清單的總和
+- **THEN** SHALL 相等 —— 清單是全稱斷言,任何一支未列出即為破口
 
 #### Scenario: 鎖住清單
 

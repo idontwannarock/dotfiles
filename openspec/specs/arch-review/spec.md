@@ -5,7 +5,7 @@
 
 ## Requirements
 
-### Requirement: 跨工具部署與手動觸發
+### Requirement: 跨工具部署形狀
 `arch-review` SHALL 以 chezmoi shared-body(`home/.chezmoitemplates/skills/arch-review.md`)搭配 per-tool wrapper 部署:Claude 端為 command(`home/dot_claude/commands/arch-review.md.tmpl`),Codex 端為 skill(`home/dot_codex/skills/arch-review/SKILL.md.tmpl`)。兩端 SHALL 共用同一份 body,行為 SHALL NOT 分叉。
 
 `arch-review` 的產物為 `~/.agent/handoffs/` 下的報告檔,可逆且非外部可見,故依 `model-invocability` 的判準 SHALL NOT 標記 `disable-model-invocation: true`。控制體檢頻率的責任在 skill body 自身的觸發條件與「關卡頻率由訊號密度決定」的原則,不在 wrapper 的 flag。
