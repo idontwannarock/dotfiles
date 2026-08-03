@@ -21,6 +21,14 @@
 # -- reads LF fine.
 *.ps1.tmpl text eol=lf
 
+# Every other chezmoi template. Patterns match the whole basename, so a .tmpl
+# suffix escapes every bare-extension rule above -- *.md never matches
+# SKILL.md.tmpl -- leaving only `* text=auto`, which on Windows checks out CRLF.
+# Templates inline .chezmoitemplates fragments (forced LF below), so that would
+# render mixed endings. The .sh.tmpl and .ps1.tmpl rules above are this same
+# rule, discovered one extension at a time; they stay only for their comments.
+*.tmpl text eol=lf
+
 # Everything deployed to ~/.local/bin/ -- extensionless wrappers, .cmd shims, and
 # the .ps1 helpers alike. This rule sits after the extension rules above and last
 # match wins, so it deliberately overrides *.ps1 -> CRLF and *.cmd -> CRLF here.
