@@ -1,7 +1,6 @@
 ---
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*), Bash(openspec:*)
 description: Spec-driven code review — uses OpenSpec artifacts as context to verify implementation aligns with requirements
-disable-model-invocation: true
 ---
 
 ## Context

@@ -1,7 +1,6 @@
 ---
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*)
 description: Security review — silent failure detection, error handling, vulnerabilities
-disable-model-invocation: true
 ---
 
 ## Context

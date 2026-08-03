@@ -83,3 +83,16 @@ AppData/Local/rtk
 .local/bin/rtk
 .local/bin/rtk.exe
 .cache/rtk-hook-version-ok
+
+# git command orphans. When git-amend / git-push were demoted from skills to
+# commands and later dropped altogether, .chezmoiremove named only the skill
+# paths (.claude/skills/git-*) -- the command files under .claude/commands/git/
+# were never pointed at, and that directory is not exact_, so nothing pruned
+# them. git/undo is from the same era. All three survived the 2026-08-03 orphan
+# sweep for the same reason: source-side greps cannot see files that exist only
+# on the machine. They still carry disable-model-invocation, so leaving them
+# would make the model-invocability spec's inventory false on any machine that
+# has them.
+.claude/commands/git/amend.md
+.claude/commands/git/push.md
+.claude/commands/git/undo.md
