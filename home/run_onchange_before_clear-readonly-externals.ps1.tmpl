@@ -3,6 +3,7 @@
 {{- range (splitList "\n" (include ".chezmoiexternal.toml")) -}}
 {{-   if regexMatch "\\$jdk[0-9]+Version\\s*:=" . }}{{ $jdkPins = append $jdkPins (regexFind "jdk[0-9]+Version\\s*:=\\s*\"[^\"]+\"" .) }}{{ end -}}
 {{- end -}}
+{{- if ne (len $jdkPins) 5 }}{{ fail (printf "clear-readonly-externals: expected 5 $jdkNNVersion pins in .chezmoiexternal.toml, found %d -- the onchange key would silently freeze and this script would never run again" (len $jdkPins)) }}{{ end -}}
 # chezmoi run_onchange_before_ script — unblock JDK external overwrites (Windows only)
 #
 # Purpose: Temurin's zips carry a read-only permission bit on a handful of entries.
