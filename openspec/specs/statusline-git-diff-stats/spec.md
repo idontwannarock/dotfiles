@@ -1,7 +1,7 @@
 # statusline-git-diff-stats Specification
 
 ## Purpose
-規範 statusline 顯示當前 git diff 的新增/刪除行數。
+規範 statusline 如何呈現工作目錄未提交變更的規模:資料取自 `git diff --shortstat`,以 `+N -M` 接在分支名稱之後顯示,並在無變更或單邊為零時省略對應的數字。
 
 ## Requirements
 
