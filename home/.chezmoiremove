@@ -96,3 +96,12 @@ AppData/Local/rtk
 .claude/commands/git/amend.md
 .claude/commands/git/push.md
 .claude/commands/git/undo.md
+
+# codex-claude-parity, removed from source in 872d208 (2026-06-17) when the
+# Codex config was pointed at dev-workflow instead. .chezmoiremove already
+# existed by then, so this was simply missed -- and the machine that removed it
+# shows nothing wrong, because deleting the source only stops chezmoi managing
+# the target. It surfaced in a Windows/WSL md5 comparison of deployed skills:
+# WSL never had it (that directory postdates the removal), Windows carried it
+# for seven weeks.
+.codex/skills/codex-claude-parity
