@@ -142,6 +142,38 @@ glab() {
     GITLAB_TOKEN="$token" command glab "$@"
 }
 
+# ── apply 中止可見化 ─────────────────────────────────────────────────────────
+# chezmoi 依 target path 字典序處理且沒有 skip-on-error：任何一項失敗，字典序排在它
+# 之後的 target 全部靜默落空，而 chezmoi 的輸出只有那一行錯誤。曾因此讓
+# Documents/_shared-profile.d/26-glab.ps1 長期沒部署到 Windows，靠跨機比對才發現。
+#
+# 這個 function 以 chezmoi 為名遮蔽 binary，轉呼叫用 `command chezmoi` 避免遞迴。
+# 待處理筆數只在失敗路徑上算 —— `chezmoi status` 要掃 external 底下數千個檔案，
+# 該機實測 31 秒，不能放進 shell 啟動路徑。
+# Mirror of Documents/_shared-profile.d/96-chezmoi-guard.ps1; the two warning
+# strings are kept byte-identical on purpose.
+chezmoi() {
+    command chezmoi "$@"
+    local rc=$?
+    [ "$rc" -eq 0 ] && return 0
+
+    local arg sub=""
+    for arg in "$@"; do
+        case "$arg" in
+            apply|update) sub="$arg"; break ;;
+        esac
+    done
+    [ -n "$sub" ] || return "$rc"
+    # chezmoi 根本沒裝時 rc=127，那不是 apply 中止，別把警告貼上去。
+    command -v chezmoi >/dev/null 2>&1 || return "$rc"
+
+    printf >&2 '\n\033[33mchezmoi: %s 中止 (exit %s)。chezmoi 依字典序處理 target 且不跳過失敗項 —— 排在它之後的 target 全部未部署。\033[0m\n' "$sub" "$rc"
+    local pending
+    pending="$(command chezmoi status 2>/dev/null | grep -c '')"
+    printf >&2 '\033[33mchezmoi: 目前 %s 筆待處理（chezmoi status）。\033[0m\n\n' "$pending"
+    return "$rc"
+}
+
 # ── 自動 fetch dotfiles 並提示更新 ───────────────────────────────────────────
 _dotfiles_check_update() {
     local flag_file="$HOME/.local/share/chezmoi-last-fetch"

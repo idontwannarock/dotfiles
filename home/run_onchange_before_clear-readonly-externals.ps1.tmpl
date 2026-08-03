@@ -1,0 +1,75 @@
+{{- if eq .chezmoi.os "windows" -}}
+{{- $jdkPins := list -}}
+{{- range (splitList "\n" (include ".chezmoiexternal.toml")) -}}
+{{-   if regexMatch "\\$jdk[0-9]+Version\\s*:=" . }}{{ $jdkPins = append $jdkPins (regexFind "jdk[0-9]+Version\\s*:=\\s*\"[^\"]+\"" .) }}{{ end -}}
+{{- end -}}
+# chezmoi run_onchange_before_ script — unblock JDK external overwrites (Windows only)
+#
+# Purpose: Temurin's zips carry a read-only permission bit on a handful of entries.
+# chezmoi maps that to the DOS ReadOnly file attribute when it extracts the archive,
+# and Windows then refuses to overwrite those same files on the next version bump:
+#
+#     .local/opt/jdk-17/bin/server/classes.jsa: Access is denied.
+#
+# This is not a lock and not an ACL problem — the user holds FullControl and no JVM
+# is running. chezmoi will not clear the attribute itself to make its own write
+# succeed (twpayne/chezmoi#3441 — before_ scripts are the upstream answer), so we do
+# it here, in the phase that runs before any target is written.
+#
+# The cost of getting this wrong is not cosmetic: chezmoi processes targets in
+# lexicographic order with no skip-on-error, so one failure under .local/ silently
+# drops every later target — .shell_common and all of Documents/ — with nothing in
+# the output saying so.
+#
+# Scope is ~/.local/opt/jdk-* only, matching the onchange key below. Every other
+# external (maven, jdtls, vim) currently extracts zero read-only files; widening the
+# scan without widening the key would only buy false confidence.
+#
+# onchange key — the pins below are inlined from .chezmoiexternal.toml so this script
+# re-runs exactly when a JDK version moves, which is the only moment an overwrite is
+# attempted. A normal apply pays nothing.
+{{ range $jdkPins }}#   {{ . }}
+{{ end }}
+$ErrorActionPreference = "Stop"
+
+{{ template "scripts/log.ps1" }}
+
+Log-Begin "unblock JDK external overwrites"
+try {
+    $optDir = Join-Path $env:USERPROFILE ".local\opt"
+
+    Log-Section "clear the ReadOnly attribute Temurin's zip left behind: chezmoi cannot overwrite its own read-only output"
+    if (-not (Test-Path $optDir)) {
+        Log-Skip "[clear-readonly] $optDir does not exist yet"
+        return
+    }
+
+    $jdkDirs = @(Get-ChildItem -Path $optDir -Directory -Filter "jdk-*" -ErrorAction SilentlyContinue)
+    if ($jdkDirs.Count -eq 0) {
+        Log-Skip "[clear-readonly] no ~/.local/opt/jdk-* directory to scan"
+        return
+    }
+
+    $cleared = 0
+    foreach ($dir in $jdkDirs) {
+        $readOnly = @(
+            Get-ChildItem -Path $dir.FullName -Recurse -File -Force -ErrorAction SilentlyContinue |
+                Where-Object { $_.Attributes -band [IO.FileAttributes]::ReadOnly }
+        )
+        if ($readOnly.Count -eq 0) { continue }
+
+        foreach ($file in $readOnly) { $file.IsReadOnly = $false }
+        $cleared += $readOnly.Count
+        Log-Step "[clear-readonly] $($dir.Name): cleared $($readOnly.Count) file(s)"
+    }
+
+    if ($cleared -eq 0) {
+        Log-Skip "[clear-readonly] no read-only files under ~/.local/opt/jdk-*"
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
+{{ end -}}

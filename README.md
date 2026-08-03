@@ -175,6 +175,36 @@ chezmoi: .claude/settings.json.sh: fork/exec ...\*.settings.json.sh: %1 is not a
 手動修復：直接執行 `chezmoi init`，這會重新 render `.chezmoi.toml.tmpl`
 成本機 config（不會動 source directory、也不會問問題）。
 
+### 任何平台：apply 中止會讓字典序在後的 target 靜默落空
+
+chezmoi 依 **target path 字典序**處理 target，而且**沒有 skip-on-error**。任何一項失敗，
+排在它之後的 target 全部不會部署 —— 而 apply 的輸出只有那一行錯誤，不會說「還有 N 項
+未處理」。曾因此讓 `Documents/_shared-profile.d/26-glab.ps1` 長期沒部署到 Windows，
+正向測試完全看不出來，最後靠跨機比對才發現。
+
+判斷方式：懷疑某個變更沒到某台機器時，先看它的 target path 排在失敗項之前還之後
+（`.claude` < `.codex` < `.local` < `Documents`）。`chezmoi status` 會列出所有待處理項目。
+
+防呆：`chezmoi apply` / `chezmoi update` 非零退出時，shell wrapper 會印出警告與待處理
+筆數（`Documents/_shared-profile.d/96-chezmoi-guard.ps1` 與
+`.chezmoitemplates/shell-common/base` 的 `chezmoi()`，兩邊訊息一致）。
+
+### Windows：`.local/opt/jdk-*/...: Access is denied.`
+
+症狀：`chezmoi apply` 在 JDK 升版時中止，例如
+
+```
+chezmoi: .local/opt/jdk-17/bin/server/classes.jsa: Access is denied.
+```
+
+原因**不是**檔案鎖，也不是 ACL：Temurin 的 zip 對少數 entry 帶唯讀權限位，chezmoi 解壓
+external archive 時把它映射成 Windows 的 `ReadOnly` 檔案屬性，下次升版就無法覆寫自己
+寫出來的檔案。chezmoi 不會為了自己的寫入而暫時解除唯讀（[twpayne/chezmoi#3441](https://github.com/twpayne/chezmoi/issues/3441)）。
+
+自動修復：`run_onchange_before_clear-readonly-externals.ps1.tmpl` 會在 apply 進入寫入
+階段之前清掉 `~/.local/opt/jdk-*` 底下的 `ReadOnly` 屬性。它以 `.chezmoiexternal.toml`
+裡的五個 JDK 版本 pin 為 onchange key，只有版本異動時才跑。
+
 ---
 
 ## 管理範圍
