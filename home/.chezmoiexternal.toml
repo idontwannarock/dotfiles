@@ -330,7 +330,7 @@
     stripComponents = 1
 
 # renovate: datasource=github-releases depName=adoptium/temurin21-binaries extractVersion=^jdk-(?<version>.+)$
-{{- $jdk21Version := "21.0.11+10" }}
+{{- $jdk21Version := "21.0.12+8" }}
 {{- $jdk21Tag := $jdk21Version | replace "+" "%2B" }}
 {{- $jdk21Asset := $jdk21Version | replace "+" "_" }}
 [".local/opt/jdk-21"]
