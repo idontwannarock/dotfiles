@@ -88,3 +88,13 @@
 #### Scenario: Discard 確認 gate
 - **WHEN** 使用者選擇 Discard(捨棄未 merge 的工作)
 - **THEN** `finish-branch` SHALL 在執行 `git branch -D` 前再次向使用者確認
+
+#### Scenario: Push + PR 的 PR 合併後收尾
+- **WHEN** 使用者選擇 Push + PR 且該 PR 已 merge
+- **THEN** `finish-branch` SHALL 先同步 base,並確認 branch 的樹狀內容已完整落在 base 上,確認後才處置 branch/worktree 並移除 active_workflows row
+- **AND** SHALL NOT 以 `git branch -d` 的祖先關係檢查作為該判準;squash 與 rebase merge 會改寫 commit,使該檢查對已合併與未合併的 branch 給出相同結果
+
+#### Scenario: 兩處 `git branch -D` 的把關不對稱
+- **WHEN** 有人主張為 Push + PR 收尾的 `git branch -D` 補上使用者確認,或反過來移除 Discard 的確認 gate
+- **THEN** SHALL NOT 採納。兩者風險不同:Discard 銷毀的是未合併的成果,Push + PR 收尾在此之前已有內容比對把關
+- **AND** 為每次例行清理加設確認會使該 gate 被學會忽略,而被學會忽略的 gate 比沒有 gate 更糟
