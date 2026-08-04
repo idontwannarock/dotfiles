@@ -98,6 +98,12 @@ assert_noisy() { # message
     if [ -n "$ERR" ]; then ok "$1"; else ng "$1" "expected a diagnostic on stderr, got none"; fi
 }
 
+# skip — tallied separately and NEVER as a pass. A skip counted as ok is the same
+# false green this suite exists to prevent: the summary would claim coverage the
+# run never exercised.
+skipped=0
+skip() { skipped=$((skipped + 1)); printf '  skip  %s — %s\n' "$current" "$1"; }
+
 # ---------------------------------------------------------------- fixtures
 sandbox_n=0
 
@@ -426,7 +432,7 @@ if mkdir -p "$TMP_SANDBOX2" 2>/dev/null; then
         '/tmpfoo shares a prefix with /tmp but is not under it'
     rm -rf "$TMP_SANDBOX2"
 else
-    ok 'skipped /tmpfoo case — no write access to /'
+    skip 'no write access to / — the /tmp-prefix half of over-reach is unpinned here'
 fi
 
 describe 'a malformed settings file is never truncated'
@@ -454,6 +460,30 @@ chmod 700 "$proj"
 assert_rc 0 'the hook is not broken by a failed write'
 assert_noisy 'the failure is still reported on stderr'
 
+describe 'a failed migration is neither reported nor swallowed'
+new_sandbox; proj="$s/proj"
+mkdir -p "$proj" "$h/.claude/memory/proj" "$h/.claude/projects/-bucket/memory"
+printf 'legacy\n' >"$h/.claude/memory/proj/M.md"
+printf 'claude\n' >"$h/.claude/projects/-bucket/memory/M.md"
+chmod 500 "$h/.claude/memory"          # the legacy source cannot be renamed
+run_apply "$proj" "$h"
+chmod 700 "$h/.claude/memory"
+assert_rc 0 'exits cleanly'
+case $ERR in
+    *migrated*) ng 'no false success' "stderr claims a migration happened: $ERR" ;;
+    *)          ok 'no false success' ;;
+esac
+assert_exists "$h/.claude/memory/proj/M.md" 'the source that could not move is left intact'
+
+describe 'HOME unset does not kill the hook'
+new_sandbox; proj="$s/proj"
+mkdir -p "$proj"
+# `|| true` at the call site cannot catch this: under `set -u` an unbound
+# expansion terminates the shell before any AND-OR list is reached.
+( CDPATH= cd -- "$proj" && env -u HOME -u CLAUDE_PROJECT_DIR "$SEED_SH" "$SCRIPT" apply ) 2>/dev/null
+RC=$?; ERR=""
+assert_rc 0 'an unset HOME still exits 0'
+
 # ---------------------------------------------------------------- summary
-printf '\n[%s] %d passed, %d failed\n' "$SEED_SH" "$passed" "$failed"
+printf '\n[%s] %d passed, %d failed, %d skipped\n' "$SEED_SH" "$passed" "$failed" "$skipped"
 [ "$failed" -eq 0 ] || exit 1
