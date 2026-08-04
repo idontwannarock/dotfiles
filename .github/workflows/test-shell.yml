@@ -23,21 +23,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # The scripts under test silently no-op when jq is missing, so a runner
-      # without it would report a vacuous pass. The test files assert on jq
-      # themselves; this fails earlier and more legibly.
-      - name: Verify prerequisites
-        run: |
-          command -v jq
-          command -v git
-
+      # No prerequisite step: the scripts under test silently no-op when jq is
+      # missing, so each test file asserts on jq and git itself and exits with a
+      # named FATAL. Repeating that here would only duplicate the check with a
+      # less legible failure.
+      #
       # Looping means a new tests/<name>.test.sh is picked up without editing
       # this workflow. `set -e` makes the first failing file fail the job.
       #
-      # Once per interpreter: these scripts are invoked by /bin/sh from the
-      # post-checkout hook and by bash from Claude's SessionStart hook, so both
-      # are production paths and dash/bash differ in ways that matter here
-      # (`cd ""` fails in bash but not in dash).
+      # Once per interpreter: the script under test is invoked by /bin/sh from
+      # the post-checkout hook and by bash from Claude's SessionStart hook, so
+      # both are production paths and dash/bash differ in ways that matter here
+      # (`cd ""` fails in bash but not in dash). The harness itself is always
+      # run by sh; only the subject varies.
       - name: Run tests
         run: |
           set -e

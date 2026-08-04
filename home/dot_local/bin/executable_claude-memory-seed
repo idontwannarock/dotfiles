@@ -80,13 +80,21 @@ settings_root=$(physical "$toplevel") || settings_root=$id_root
 #   /tmp/* — throwaway clones, worktrees and scratchpads. Seeding them leaves
 #            permanent orphans under ~/.claude/memory pointing at paths that are
 #            gone after a reboot.
-# Checked against the resolved settings_root, so a repo whose toplevel IS $HOME
-# (yadm-style layouts) is covered as well.
+# settings_root arrives from `pwd -P`, so the values it is compared against must
+# be resolved too — a one-sided comparison is never equal once either side holds
+# a symlink or a trailing slash, and the guard then fails open. Resolving the
+# baselines also covers macOS, where /tmp IS a symlink to /private/tmp, without
+# hard-coding a per-platform case. A baseline that cannot be resolved falls back
+# to its literal form: the failure direction has to be "refuse more", not "less".
+home_p=$(physical "${HOME:-}") || home_p=${HOME:-}
+tmp_p=$(physical /tmp)         || tmp_p=/tmp
+
 refused() {
     case $1 in
-        /|/tmp|/tmp/*) return 0 ;;
+        /) return 0 ;;
+        "$tmp_p"|"$tmp_p"/*) return 0 ;;
     esac
-    [ "$1" = "$HOME" ]
+    [ -n "$home_p" ] && [ "$1" = "$home_p" ]
 }
 
 # slug: absolute path with '/' -> '-'.
@@ -106,15 +114,16 @@ fold() { printf '%s' "$1" | tr '_.' '--'; }
 # memory, or nothing. Prints the first non-empty match in glob order; a bucket
 # collision (foo_bar vs foo-bar) is possible in theory, and picking
 # deterministically leaves the loser untouched rather than merged.
+# "Fold" means normalising '_' and '.' to '-'; '-' is already the target form.
 find_claude_memory() {
     _want=$(fold "$1")
     for _p in "$HOME"/.claude/projects/*/; do
         # Also filters the literal pattern when the glob does not expand: POSIX
         # sh has no nullglob.
-        [ -d "$_p/memory" ] || continue
+        [ -d "${_p}memory" ] || continue          # $_p ends in '/' — it came from a */ glob
         [ "$(fold "$(basename "$_p")")" = "$_want" ] || continue
-        [ -n "$(ls -A "$_p/memory" 2>/dev/null)" ] || continue
-        printf '%s' "$_p/memory"
+        [ -n "$(ls -A "${_p}memory" 2>/dev/null)" ] || continue
+        printf '%s' "${_p}memory"
         return 0
     done
     return 1
@@ -122,9 +131,10 @@ find_claude_memory() {
 
 # try_migrate <src> <dst> — rename src onto dst when src actually holds memory.
 # Only the memory/ dir moves; transcripts sitting alongside it stay where Claude
-# expects to find them. Tests use `[ ... ] || return 1` rather than
-# `[ ... ] && return 1` throughout: under `set -e` a failing left-hand side of an
-# AND list is what would abort the whole hook.
+# expects to find them. Preconditions are written `[ ... ] || return 1` rather
+# than `[ ... ] && return 1` because the sense is inverted — `&&` would return on
+# success. (`set -e` is not the reason: POSIX exempts every command of an AND-OR
+# list except the last, so a failing left-hand side aborts nothing.)
 try_migrate() {
     _src=$1 _dst=$2
     [ -n "$_src" ] || return 1
@@ -168,15 +178,32 @@ do_apply() {
     fi
     [ -n "$input" ] || input='{}'
 
+    # Write through a temp file: redirecting straight at $settings truncates it
+    # BEFORE jq runs, so an unparseable input would leave nothing behind — and
+    # unparseable is exactly the case that reaches here, since a jq that cannot
+    # read the current value yields cur="" and lands in the (re)write branch.
+    # The emptiness check is what detects that: the pipeline's exit status comes
+    # from tr, so jq's failure never shows up in $?.
     mkdir -p "$settings_root/.claude"
-    printf '%s' "$input" | jq --arg d "$value" '.autoMemoryDirectory = $d' \
-        | tr -d '\r' >"$settings"
-    printf 'claude-memory-seed: set autoMemoryDirectory=%s\n' "$value" >&2
+    tmp="$settings.tmp.$$"
+    if printf '%s' "$input" | jq --arg d "$value" '.autoMemoryDirectory = $d' \
+        | tr -d '\r' >"$tmp" && [ -s "$tmp" ]; then
+        mv "$tmp" "$settings"
+        printf 'claude-memory-seed: set autoMemoryDirectory=%s\n' "$value" >&2
+    else
+        rm -f "$tmp"
+        printf 'claude-memory-seed: could not rewrite %s, left unchanged\n' "$settings" >&2
+    fi
 }
 
 cmd=${1:-apply}
 case "$cmd" in
-    apply) do_apply ;;
+    # `|| true` at the single exit rather than around each write: the ways this
+    # can fail (unwritable dir, full disk, mv across mounts) outnumber the places
+    # worth guarding, and any new one would silently reintroduce the problem.
+    # The SessionStart hook invokes this bare, so a non-zero status here surfaces
+    # as a session-startup error. Diagnostics still go to stderr.
+    apply) do_apply || true ;;
     where) id=$(repo_id 2>/dev/null) && [ -n "$id" ] && printf '~/.claude/memory/%s\n' "$id" || echo ;;
     *)     echo "usage: claude-memory-seed {apply | where}" >&2; exit 1 ;;
 esac
