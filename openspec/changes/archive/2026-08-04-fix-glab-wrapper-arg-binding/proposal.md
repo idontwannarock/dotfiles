@@ -41,6 +41,7 @@
 
 ### Modified Capabilities
 - `corp-gitlab-access`: wrapper 對參數的處理與錯誤輸出從「宣稱一致」變成「可驗證一致」。
+- `powershell-config`: `_shared-profile.d` 片段的編碼要求(含非 ASCII 者需 UTF-8 BOM)。
 
 ## Impact
 

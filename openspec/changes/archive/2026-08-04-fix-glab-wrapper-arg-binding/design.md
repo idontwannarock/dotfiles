@@ -46,10 +46,21 @@ wrapper 是收益而非代價 —— 那些旗標本來就該屬於被包的 CLI
 
 ### D2: 錯誤路徑用 `[Console]::Error.WriteLine` 並顯式設 `$LASTEXITCODE`
 
-`Write-Error` 有兩個與 bash 版不合的行為:它把 function 名再前綴一次(實際輸出成
-`glab: glab: …`),而且走的是 error stream 而非 stderr。`[Console]::Error.WriteLine`
-兩者都對上。退出碼則是 bash `return 1` 的對應物 —— pwsh 版原本讓 `$LASTEXITCODE`
-停在上一個命令的值,讀到的是過期的成功。
+PowerShell 沒有「乾淨單行 + 可被 `2>` 攔截」的錯誤輸出,只能二選一:
+
+| 機制 | `2>` / `2>&1` 攔得到 | OS 層 stderr | 單行乾淨 | `$?` / `$Error` |
+|---|---|---|---|---|
+| `Write-Error` | 是 | 是 | **否** —— 兩個版本的 PS 都渲染成引用原始碼行的多行區塊,且再前綴一次 function 名 | 有 |
+| `[Console]::Error` | **否** | 是 | 是 | 無 |
+| `Write-Host` | 否(要 `6>`) | 是 | 是 | 無 |
+
+選 `[Console]::Error`:spec 的措辭是「於 stderr 印出」,而它字面上就是 process 的
+stderr;訊息的讀者是人,單行且與 bash 逐字相同比可重導更重要。代價寫進註解,避免下一個
+人把它「修」回 `Write-Error`。
+
+退出碼是 bash `return 1` 的對應物 —— pwsh 版原本讓 `$LASTEXITCODE` 停在上一個命令的值,
+讀到的是過期的成功。`binary not on PATH` 取 127(command-not-found 慣例,與
+`96-chezmoi-guard.ps1` 一致),另外兩個守衛取 1。
 
 <!-- evergreen-candidate -->
 「兩邊刻意一致」這種宣稱要嘛可驗證,要嘛不要寫。字串一致但串流與退出碼不一致,
@@ -66,6 +77,11 @@ PS 5.1 的 parser 在讀檔時就決定編碼,晚於它的任何 `chcp` / `[Cons
   的任何能力(無 pipeline 輸入、無 `ShouldProcess`),移除後 `$args` 即可用。
 - **[測試需要 mock glab,而 mock 無法覆蓋 glab 真實的旗標語意]** → 測試斷言的是
   「wrapper 轉交了什麼」,不是「glab 怎麼解讀」。前者正是本次的缺陷所在,後者是 glab 的事。
+  另以真實 `glab.exe` 跑過 `-R` 與 `-d` 兩個形態,確認修法不是只滿足 mock。
+- **[移除 `[CmdletBinding()]` 的連帶影響大於「失去 -Verbose/-Debug」]** → 守衛拒絕時
+  `$?` 維持 `True`、`$Error` 不再累積、`try { glab … } catch` 不再觸發,且 `-ErrorAction`
+  不再是 common parameter 而是原樣轉交給 `glab`。對這支 wrapper 都是可接受的:它的
+  失敗訊號是退出碼(與 bash 版一致),而 `-ErrorAction` 本來就該屬於被包的 CLI。
 
 ## Open Questions
 

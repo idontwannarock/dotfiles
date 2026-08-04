@@ -8,8 +8,10 @@
 # otherwise shadow the real binary for the rest of the test session — and because
 # the guard paths must run with GITLAB_HOST / GITLAB_TOKEN controlled.
 #
-# The mock gopass always fails, so the token comes from $env:GITLAB_TOKEN. That
-# keeps the real vault (and its pinentry prompt) out of the test entirely.
+# The mock gopass returns $env:MOCK_GOPASS_TOKEN when set and fails otherwise, so
+# the real vault (and its pinentry prompt) never enters the test. Giving the vault
+# and the environment different token values is what makes the snapshot/restore
+# assertion meaningful.
 
 BeforeAll {
     $script:RepoRoot     = Split-Path -Parent $PSScriptRoot
@@ -22,6 +24,7 @@ BeforeAll {
     # order, which `echo %*` would flatten away.
     @'
 @echo off
+echo TOKEN:%GITLAB_TOKEN%
 :loop
 if "%~1"=="" goto end
 echo ARG:%~1
@@ -33,14 +36,27 @@ exit /b 0
 
     @'
 @echo off
+if not "%MOCK_GOPASS_TOKEN%"=="" (
+  echo %MOCK_GOPASS_TOKEN%
+  exit /b 0
+)
 exit /b 1
 '@ | Set-Content -Path (Join-Path $MockDir 'gopass.cmd') -Encoding ascii
 
     function Invoke-Glab {
-        param([string]$Arguments, [string]$GitlabHost = 'gitlab.example.com', [string]$Token = 'faketoken')
+        param(
+            [string]$Arguments,
+            [string]$GitlabHost = 'gitlab.example.com',
+            [string]$Token = 'faketoken',
+            [string]$VaultToken = '',
+            [string]$Path = '',
+            [string]$Trailer = ''
+        )
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = (Get-Process -Id $PID).Path
-        $psi.Arguments              = "-NoProfile -ExecutionPolicy Bypass -Command `". '$FragmentPath'; glab $Arguments; exit `$LASTEXITCODE`""
+        # Single quotes only inside this string: it becomes a Windows command line,
+        # whose parser strips double quotes before PowerShell ever sees them.
+        $psi.Arguments              = "-NoProfile -ExecutionPolicy Bypass -Command `". '$FragmentPath'; glab $Arguments; $Trailer exit `$LASTEXITCODE`""
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError  = $true
         $psi.UseShellExecute        = $false
@@ -49,7 +65,9 @@ exit /b 1
         # cmd.exe refuses a UNC working directory, which would break the mocks when
         # the suite is launched from \\wsl.localhost\...
         $psi.WorkingDirectory       = $MockDir
-        $psi.EnvironmentVariables['PATH'] = "$MockDir;$env:PATH"
+        $psi.EnvironmentVariables['PATH'] = if ($Path) { $Path } else { "$MockDir;$env:PATH" }
+        if ($VaultToken) { $psi.EnvironmentVariables['MOCK_GOPASS_TOKEN'] = $VaultToken }
+        else { $psi.EnvironmentVariables.Remove('MOCK_GOPASS_TOKEN') | Out-Null }
         if ($GitlabHost) { $psi.EnvironmentVariables['GITLAB_HOST'] = $GitlabHost }
         else { $psi.EnvironmentVariables.Remove('GITLAB_HOST') | Out-Null }
         if ($Token) { $psi.EnvironmentVariables['GITLAB_TOKEN'] = $Token }
@@ -63,6 +81,7 @@ exit /b 1
             Stdout   = $stdout
             Stderr   = $stderr
             Argv     = @($stdout -split "`r?`n" | Where-Object { $_ -like 'ARG:*' } | ForEach-Object { $_.Substring(4) })
+            SeenToken = @($stdout -split "`r?`n" | Where-Object { $_ -like 'TOKEN:*' } | ForEach-Object { $_.Substring(6) }) | Select-Object -First 1
         }
     }
 }
@@ -98,6 +117,35 @@ Describe '26-glab.ps1' {
             $r = Invoke-Glab -Arguments 'api projects/1 -X GET'
             $r.Argv | Should -Be @('api', 'projects/1', '-X', 'GET')
         }
+
+        # The spec scenario is `glab mr create -d "描述"`. The CJK half is not
+        # observable through cmd.exe, but the quoted-value-with-spaces half is,
+        # and that is the part a splatting bug would break.
+        It 'keeps a quoted value containing spaces as one argument' {
+            $r = Invoke-Glab -Arguments "mr create -d 'two words'"
+            $r.Argv | Should -Be @('mr', 'create', '-d', 'two words')
+        }
+    }
+
+    Context 'token resolution and restoration' {
+        It 'prefers the vault over GITLAB_TOKEN' {
+            $r = Invoke-Glab -Arguments 'api version' -VaultToken 'vault-token' -Token 'env-token'
+            $r.SeenToken | Should -Be 'vault-token'
+        }
+
+        It 'falls back to GITLAB_TOKEN when the vault fails' {
+            $r = Invoke-Glab -Arguments 'api version' -Token 'env-token'
+            $r.SeenToken | Should -Be 'env-token'
+        }
+
+        # The try/finally exists solely for this: PowerShell $env: assignments leak
+        # to process scope, so a vault token must not outlive the call.
+        It 'restores the caller GITLAB_TOKEN after the call' {
+            $r = Invoke-Glab -Arguments 'api version' -VaultToken 'vault-token' -Token 'env-token' `
+                             -Trailer "Write-Output ('AFTER:' + `$env:GITLAB_TOKEN);"
+            $r.SeenToken | Should -Be 'vault-token'
+            $r.Stdout | Should -Match 'AFTER:env-token'
+        }
     }
 
     Context 'guard paths' {
@@ -117,8 +165,16 @@ Describe '26-glab.ps1' {
             $r.Argv.Count | Should -Be 0
         }
 
-        It 'writes guard messages to stderr, not stdout' {
+        # 127 is the command-not-found convention, matching 96-chezmoi-guard.ps1.
+        It 'reports 127 when no glab binary is on PATH' {
+            $r = Invoke-Glab -Arguments 'api version' -Path 'C:\Windows\System32'
+            $r.Stderr | Should -Match '^glab: binary not on PATH'
+            $r.ExitCode | Should -Be 127
+        }
+
+        It 'writes guard messages to stderr and not to stdout' {
             $r = Invoke-Glab -Arguments 'api version' -GitlabHost ''
+            $r.Stderr.Trim() | Should -Not -BeNullOrEmpty
             $r.Stdout | Should -Not -Match 'GITLAB_HOST'
         }
     }
