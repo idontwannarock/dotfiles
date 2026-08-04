@@ -37,6 +37,12 @@ Claude 端是 command 的能力（`/handoff`、`/pickup`、`/arch-review`）在 
 
 其中 `arch-review` 的檔案方位與實跑經驗見 [claude-code.md](claude-code.md) 的 Arch Review 章節，行為契約見 [`openspec/specs/arch-review/spec.md`](../openspec/specs/arch-review/spec.md)。
 
+唯一的例外是 `herdr`：它從上游同步而非自家撰寫，也不走 chezmoi 的檔案管理——
+`run_onchange_install-herdr-skill.sh.tmpl` 依本機 herdr 版本抓對應 tag 的 SKILL.md，
+同一份內容同時寫進 Claude 與 Codex 的 skill 目錄。該腳本寫入前會驗 description 有加
+引號，因為 Codex 的 YAML frontmatter parser 比 Claude 嚴格；驗不過就保留舊檔並警告。
+細節見 [claude-code.md](claude-code.md) 的「外部 skill：herdr」。
+
 ### 3. 讓 Codex 能讀既有專案慣例
 
 `config.toml` 設定了：
