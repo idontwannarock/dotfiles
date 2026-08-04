@@ -31,6 +31,15 @@ your tool needs equivalent handling). For the tool-agnostic git mechanics see
   managed roots (`~/.claude/memory`, `~/.claude/projects`), so it's safe to
   leave on. Only `autoMemoryDirectory` is auto-seeded; `worktree.baseRef` below
   stays a manual setting.
+- **Non-git projects are covered too.** A plain directory (no repo) is anchored
+  on `CLAUDE_PROJECT_DIR`, falling back to cwd, and gets the same
+  `~/.claude/memory/<id>` treatment — only the SessionStart trigger reaches it,
+  since there is no checkout event. Three locations are refused outright,
+  whether or not they are repos: `$HOME` (the file would land in Claude's
+  **user-level** `~/.claude/settings.local.json`, making `autoMemoryDirectory`
+  global and collapsing every project's memory into one bucket), `/`, and
+  anything under `/tmp` (a throwaway clone would leave a permanent
+  `~/.claude/memory/` entry pointing at a path that vanishes on reboot).
 - **Cross-tool note:** this is Claude-only. Codex and other agents use
   incompatible, non-relocatable memory stores — Codex keeps a global
   `~/.codex/memories/` (markdown + SQLite state) with no per-project

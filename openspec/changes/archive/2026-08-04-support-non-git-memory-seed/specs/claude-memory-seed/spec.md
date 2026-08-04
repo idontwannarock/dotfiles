@@ -1,41 +1,43 @@
-# claude-memory-seed Specification
+## ADDED Requirements
 
-## Purpose
-把 Claude Code 的 auto-memory 統一到 `~/.claude/memory/<id>` 這個可預期的共享
-路徑,使記憶不再鎖在 Claude 私有的 `projects/` 樹下(model agnostic),且同一 repo 的
-所有 worktree 共用一份記憶。適用於 git repo 與非 git 專案目錄。
+### Requirement: 寫入護欄:三種不得落地的設定位置
 
-## Requirements
-### Requirement: SessionStart 觸發以 union-append 併入且不覆寫既有 hook
+`claude-memory-seed apply` SHALL 在解析出 `settings_root` 後、寫入任何檔案**之前**檢查護欄。
+當 `settings_root` 符合下列任一條件時 SHALL 安靜 exit 0,SHALL NOT 建立 `.claude/` 目錄、
+SHALL NOT 寫入 `settings.local.json`、SHALL NOT 執行遷移:
 
-機器的 Claude `settings.json` SHALL 含一個 SessionStart hook 呼叫 `claude-memory-seed apply`,使每次 session 啟動都嘗試種子。該 hook SHALL 由 `modify_settings` 以 **union-append** 併入:既有 SessionStart entries(如其他工具於 runtime 註冊者)SHALL 被保留;當既有任一 SessionStart hook command 已含 `claude-memory-seed` 時 SHALL NOT 重複加入。
+1. `settings_root` 等於 `$HOME`
+2. `settings_root` 等於 `/`
+3. `settings_root` 位於 `/tmp/` 之下(含 `/tmp` 本身)
 
-#### Scenario: 保留既有 SessionStart entries
+護欄 SHALL 統一套用,**不區分**該位置是否為 git repo。
 
-- **WHEN** 現行 settings.json 的 SessionStart 已含其他工具註冊的 entry,經 `modify_settings` 處理
-- **THEN** 那些 entry 仍在,且新增一個呼叫 `claude-memory-seed apply` 的 entry
+條件 1 是資料安全需求:該情境下設定路徑會是 `~/.claude/settings.local.json`,即 Claude 的
+**user-level** 設定檔;寫入 `autoMemoryDirectory` 會使**所有**未自訂該值的專案共用同一個記憶
+目錄。條件 3 阻止拋棄式 checkout 與 scratchpad 在 `~/.claude/memory/` 留下永久孤兒目錄
+(`/tmp` 清空後該目錄指向不存在的路徑,永不再被讀取)。
 
-#### Scenario: 重複套用不重加
+#### Scenario: cwd 為 $HOME 時拒絕寫入
 
-- **WHEN** settings.json 的 SessionStart 已含 `claude-memory-seed` 的 hook,再次經 `modify_settings` 處理
-- **THEN** 不再新增重複 entry
+- **WHEN** 於 `$HOME` 執行 `claude-memory-seed apply`
+- **THEN** exit 0,且 `~/.claude/settings.local.json` 未被建立或修改
 
-### Requirement: post-checkout 觸發沿用全域 dispatcher 且不覆蓋 repo-local hook
+#### Scenario: $HOME 本身是 git repo 時同樣拒絕
 
-全域 `post-checkout` dispatcher SHALL 在其既有步驟(`localfiles restore`)之後呼叫
-`claude-memory-seed apply`,且呼叫失敗 SHALL NOT 阻斷 checkout。dispatcher 對 repo-local
-`.githooks/post-checkout` 與 `.git/hooks/post-checkout` 的 chain(含 realpath 防遞迴)SHALL
-維持不變。
+- **WHEN** `$HOME` 為一個 git repo 的 toplevel(如 yadm/homeshick 佈局),於其中執行 apply
+- **THEN** exit 0,且 `~/.claude/settings.local.json` 未被建立或修改
 
-#### Scenario: checkout 後種子
+#### Scenario: /tmp 之下拒絕寫入
 
-- **WHEN** 對任一 git repo 執行 `git worktree add` 或 branch checkout,且其目標 `~/.claude/memory/<id>` 尚未建立
-- **THEN** dispatcher 觸發 `claude-memory-seed apply`,完成遷移/種入
+- **WHEN** 於 `/tmp/<any>` 執行 apply(不論該目錄是否為 git repo)
+- **THEN** exit 0,且該目錄下未產生 `.claude/settings.local.json`
 
-#### Scenario: 保留 repo-local hook
+#### Scenario: 根目錄拒絕寫入
 
-- **WHEN** repo 內存在可執行的 `.githooks/post-checkout`
-- **THEN** dispatcher 在種子步驟後仍呼叫該 repo-local hook(傳入原始參數),不因新增步驟而被覆蓋
+- **WHEN** 於 `/` 執行 apply
+- **THEN** exit 0,且 `/.claude/settings.local.json` 未被建立
+
+## MODIFIED Requirements
 
 ### Requirement: git repo 偵測與 path-slug 目標推導
 
@@ -100,43 +102,6 @@ worktree 自身的 toplevel,故每個 worktree SHALL 各自持有指向同一 `<
 
 - **WHEN** 經由 symlink 進入某非 git 專案目錄執行 apply
 - **THEN** `<id>` 依 physical path 推導,與直接進入實體路徑執行的結果相同
-
-### Requirement: 寫入護欄:三種不得落地的設定位置
-
-`claude-memory-seed apply` SHALL 在解析出 `settings_root` 後、寫入任何檔案**之前**檢查護欄。
-當 `settings_root` 符合下列任一條件時 SHALL 安靜 exit 0,SHALL NOT 建立 `.claude/` 目錄、
-SHALL NOT 寫入 `settings.local.json`、SHALL NOT 執行遷移:
-
-1. `settings_root` 等於 `$HOME`
-2. `settings_root` 等於 `/`
-3. `settings_root` 位於 `/tmp/` 之下(含 `/tmp` 本身)
-
-護欄 SHALL 統一套用,**不區分**該位置是否為 git repo。
-
-條件 1 是資料安全需求:該情境下設定路徑會是 `~/.claude/settings.local.json`,即 Claude 的
-**user-level** 設定檔;寫入 `autoMemoryDirectory` 會使**所有**未自訂該值的專案共用同一個記憶
-目錄。條件 3 阻止拋棄式 checkout 與 scratchpad 在 `~/.claude/memory/` 留下永久孤兒目錄
-(`/tmp` 清空後該目錄指向不存在的路徑,永不再被讀取)。
-
-#### Scenario: cwd 為 $HOME 時拒絕寫入
-
-- **WHEN** 於 `$HOME` 執行 `claude-memory-seed apply`
-- **THEN** exit 0,且 `~/.claude/settings.local.json` 未被建立或修改
-
-#### Scenario: $HOME 本身是 git repo 時同樣拒絕
-
-- **WHEN** `$HOME` 為一個 git repo 的 toplevel(如 yadm/homeshick 佈局),於其中執行 apply
-- **THEN** exit 0,且 `~/.claude/settings.local.json` 未被建立或修改
-
-#### Scenario: /tmp 之下拒絕寫入
-
-- **WHEN** 於 `/tmp/<any>` 執行 apply(不論該目錄是否為 git repo)
-- **THEN** exit 0,且該目錄下未產生 `.claude/settings.local.json`
-
-#### Scenario: 根目錄拒絕寫入
-
-- **WHEN** 於 `/` 執行 apply
-- **THEN** exit 0,且 `/.claude/settings.local.json` 未被建立
 
 ### Requirement: apply:自動遷移既有記憶並依覆寫政策寫入
 

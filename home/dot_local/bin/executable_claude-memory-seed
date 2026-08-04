@@ -1,22 +1,36 @@
 #!/bin/sh
-# claude-memory-seed — unify Claude Code's autoMemoryDirectory across ALL git
-# repos so every checkout/worktree of a repo shares one auto-memory home at
-# ~/.claude/memory/<id>, where <id> is the slug (path with '/'->'-') of the
-# repo's CANONICAL ROOT: the main checkout for a normal repo, the container for
-# a bare+worktree layout. Anchoring on dirname(git-common-dir) makes <id> stable
-# across all worktrees of a repo and unique across repos (no folder-name clash).
+# claude-memory-seed — unify Claude Code's autoMemoryDirectory across every
+# project so its auto-memory lives at ~/.claude/memory/<id>, a shared path other
+# tools can read, instead of Claude's private projects/ tree. <id> is the slug
+# (path with '/'->'-') of the project's anchor.
 #
-# On first apply for a repo it also MIGRATES existing memory into the new home
-# (old basename scheme, then Claude's default projects/<id>/memory) by moving the
+# Two anchors, deliberately distinct inside a linked worktree:
+#   id_root       decides <id>       git: dirname(git-common-dir) — the main
+#                                    checkout, or the container of a .bare
+#                                    layout, so every worktree shares one <id>
+#                                    non-git: CLAUDE_PROJECT_DIR, else cwd
+#   settings_root decides where the  git: the current worktree's toplevel, so
+#                 settings file goes each worktree carries its own file
+#                                    non-git: same as id_root
+#
+# Three settings_root values are REFUSED outright, git or not: $HOME (the file
+# would be Claude's user-level settings, making autoMemoryDirectory global), /,
+# and anything under /tmp (throwaway checkouts would leave permanent orphans).
+#
+# On first apply for a project it also MIGRATES existing memory into the new home
+# (old basename scheme, then Claude's own projects/ bucket) by moving the
 # memory/ dir only — transcripts are left in place. Migration runs only when the
-# target is absent/empty; an already-populated target is never clobbered.
+# target is absent/empty; an already-populated target is never clobbered. The
+# Claude bucket is located by folded comparison, not by string-building the path:
+# its encoding is close to our slug but not identical (it folds '_' to '-' too).
 #
-# Idempotent and self-gating: a non-git cwd or missing jq no-op silently; an
-# autoMemoryDirectory pointing outside the managed roots (~/.claude/memory,
-# ~/.claude/projects) is respected and never overwritten.
+# Idempotent and self-gating: an unresolvable anchor or missing jq no-op
+# silently; an autoMemoryDirectory pointing outside the managed roots
+# (~/.claude/memory, ~/.claude/projects) is respected and never overwritten.
 #
 # Called from two triggers sharing this single source of truth:
-#   - Claude SessionStart hook  (covers pre-existing repos, no git event)
+#   - Claude SessionStart hook  (every session, git or not — the only trigger a
+#                                non-git project ever gets)
 #   - global post-checkout hook (covers new worktrees at `worktree add`/checkout)
 #
 # usage: claude-memory-seed {apply | where}
@@ -25,22 +39,106 @@ set -eu
 common=$(git rev-parse --git-common-dir 2>/dev/null) || common=""
 toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || toplevel=""
 
+# physical: absolute path with every symlink resolved. Both anchors below go
+# through it so a project reached via a symlink lands in the same bucket as its
+# real path instead of a second one.
+# The empty-argument check is load-bearing: `cd ""` does NOT fail in dash, it
+# stays put, so without it physical "" would quietly report the current
+# directory instead of reporting failure to the caller.
+physical() {
+    [ -n "$1" ] || return 1
+    CDPATH= cd -- "$1" 2>/dev/null && pwd -P
+}
+
 # Canonical root = dirname(realpath(common-dir)) — parent of .git (normal repo)
 # or parent of .bare (bare+worktree). Stable across every worktree of the repo.
 canonical_root() {
     [ -n "$common" ] || return 1
-    rp=$(CDPATH= cd -- "$common" 2>/dev/null && pwd -P) || return 1
+    rp=$(physical "$common") || return 1
     dirname "$rp"
 }
 
-# slug: absolute path with '/' -> '-' (matches Claude's projects-dir encoding).
+# The two anchors are deliberately DIFFERENT inside a linked worktree, and
+# conflating them is the easy way to break this script: <id> must be shared by
+# every worktree of a repo, while the settings file belongs to whichever
+# worktree the session is actually sitting in.
+#
+# Outside a git repo there are no worktrees to reconcile, so both collapse onto
+# the project dir. CLAUDE_PROJECT_DIR is Claude's own notion of that root — the
+# same thing it buckets transcripts by, which keeps the migration lookup a
+# straight match — with cwd ('.') as the fallback for a manual run where the
+# variable is not exported.
+id_root=$(canonical_root) || id_root=$(physical "${CLAUDE_PROJECT_DIR:-.}") || id_root=""
+settings_root=$(physical "$toplevel") || settings_root=$id_root
+
+# Three locations never receive a settings file, git repo or not:
+#   $HOME  — the file would be ~/.claude/settings.local.json, which is Claude's
+#            USER-level settings; an autoMemoryDirectory there applies globally
+#            and collapses every project's memory into one bucket. This is the
+#            only genuinely destructive failure mode here.
+#   /      — the same mistake one level up.
+#   /tmp/* — throwaway clones, worktrees and scratchpads. Seeding them leaves
+#            permanent orphans under ~/.claude/memory pointing at paths that are
+#            gone after a reboot.
+# Checked against the resolved settings_root, so a repo whose toplevel IS $HOME
+# (yadm-style layouts) is covered as well.
+refused() {
+    case $1 in
+        /|/tmp|/tmp/*) return 0 ;;
+    esac
+    [ "$1" = "$HOME" ]
+}
+
+# slug: absolute path with '/' -> '-'.
 repo_id() {
-    root=$(canonical_root) || return 1
-    printf '%s' "$root" | tr '/' '-'
+    [ -n "$id_root" ] || return 1
+    printf '%s' "$id_root" | tr '/' '-'
+}
+
+# Claude's projects/ bucket name is close to our slug but NOT identical: it folds
+# '_' to '-' as well (observed: .../cashback_api -> ...-cashback-api), so the
+# source cannot be found by string-building the path. Fold '-', '_' and '.' on
+# both sides and compare that instead — rule-agnostic, so it keeps working if
+# Claude starts folding another character we have no sample for today.
+fold() { printf '%s' "$1" | tr '_.' '--'; }
+
+# find_claude_memory <id> — the projects/<bucket>/memory holding this project's
+# memory, or nothing. Prints the first non-empty match in glob order; a bucket
+# collision (foo_bar vs foo-bar) is possible in theory, and picking
+# deterministically leaves the loser untouched rather than merged.
+find_claude_memory() {
+    _want=$(fold "$1")
+    for _p in "$HOME"/.claude/projects/*/; do
+        # Also filters the literal pattern when the glob does not expand: POSIX
+        # sh has no nullglob.
+        [ -d "$_p/memory" ] || continue
+        [ "$(fold "$(basename "$_p")")" = "$_want" ] || continue
+        [ -n "$(ls -A "$_p/memory" 2>/dev/null)" ] || continue
+        printf '%s' "$_p/memory"
+        return 0
+    done
+    return 1
+}
+
+# try_migrate <src> <dst> — rename src onto dst when src actually holds memory.
+# Only the memory/ dir moves; transcripts sitting alongside it stay where Claude
+# expects to find them. Tests use `[ ... ] || return 1` rather than
+# `[ ... ] && return 1` throughout: under `set -e` a failing left-hand side of an
+# AND list is what would abort the whole hook.
+try_migrate() {
+    _src=$1 _dst=$2
+    [ -n "$_src" ] || return 1
+    [ "$_src" != "$_dst" ] || return 1
+    [ -d "$_src" ] && [ -n "$(ls -A "$_src" 2>/dev/null)" ] || return 1
+    [ -d "$_dst" ] && rmdir "$_dst" 2>/dev/null || true  # drop empty dst so mv renames
+    mkdir -p "$(dirname "$_dst")"
+    mv "$_src" "$_dst"
+    printf 'claude-memory-seed: migrated %s -> %s\n' "$_src" "$_dst" >&2
 }
 
 do_apply() {
-    [ -n "$toplevel" ] || return 0            # not a git repo: no-op
+    [ -n "$settings_root" ] || return 0       # nothing resolvable: no-op
+    if refused "$settings_root"; then return 0; fi  # never seed these
     id=$(repo_id) || return 0
     command -v jq >/dev/null 2>&1 || return 0 # no jq: no-op, never block caller
 
@@ -48,21 +146,15 @@ do_apply() {
     target="$memroot/$id"
 
     # Migrate existing memory into the new home — only when target absent/empty.
+    # Sources in order: the retired basename scheme, then Claude's own bucket.
     if [ ! -d "$target" ] || [ -z "$(ls -A "$target" 2>/dev/null)" ]; then
-        root=$(canonical_root)
-        for src in "$memroot/$(basename "$root")" "$HOME/.claude/projects/$id/memory"; do
-            [ "$src" = "$target" ] && continue
-            [ -d "$src" ] && [ -n "$(ls -A "$src" 2>/dev/null)" ] || continue
-            [ -d "$target" ] && rmdir "$target" 2>/dev/null || true  # drop empty target so mv renames
-            mkdir -p "$(dirname "$target")"
-            mv "$src" "$target"
-            printf 'claude-memory-seed: migrated %s -> %s\n' "$src" "$target" >&2
-            break
-        done
+        try_migrate "$memroot/$(basename "$id_root")" "$target" \
+            || try_migrate "$(find_claude_memory "$id" || true)" "$target" \
+            || true
     fi
 
     value="~/.claude/memory/$id"
-    settings="$toplevel/.claude/settings.local.json"
+    settings="$settings_root/.claude/settings.local.json"
     if [ -f "$settings" ]; then
         cur=$(jq -r '.autoMemoryDirectory // ""' "$settings" 2>/dev/null) || cur=""
         [ "$cur" = "$value" ] && return 0           # already canonical: nothing to do
@@ -76,7 +168,7 @@ do_apply() {
     fi
     [ -n "$input" ] || input='{}'
 
-    mkdir -p "$toplevel/.claude"
+    mkdir -p "$settings_root/.claude"
     printf '%s' "$input" | jq --arg d "$value" '.autoMemoryDirectory = $d' \
         | tr -d '\r' >"$settings"
     printf 'claude-memory-seed: set autoMemoryDirectory=%s\n' "$value" >&2
