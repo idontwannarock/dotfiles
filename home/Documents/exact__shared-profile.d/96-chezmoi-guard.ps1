@@ -7,14 +7,21 @@
 # 待處理筆數只在失敗路徑上算 —— `chezmoi status` 要掃 external 底下數千個檔案，
 # 該機實測 31 秒，不能放進 shell 啟動路徑。
 #
-# Mirror of .chezmoitemplates/shell-common/base's chezmoi() function：警告字串、
-# 輸出串流（stderr）與 ANSI 顏色三者都刻意保持一致，這樣 `chezmoi apply 2> log`
-# 在兩個平台上撈到的東西才一樣。
+# Mirror of .chezmoitemplates/shell-common/base's chezmoi() function。保證一致的是:
+# 警告的文字（逐字）、ANSI 顏色碼、訊息落在 process 的 stderr、以及退出碼（拒絕呼叫
+# 沿用 chezmoi 自己的碼，找不到執行檔為 127）。**不**保證的是行尾字元（這裡 CRLF、
+# 那裡 LF）與非 ASCII 的呈現 —— 後者仰賴 00-encoding.ps1 先把 console 設成 UTF-8。
 #
-# 刻意不用 [CmdletBinding()] + ValueFromRemainingArguments（26-glab.ps1 的形狀）：
-# 具名參數繫結先於 remaining 收集，且 common parameter 支援前綴比對，於是 chezmoi 的
-# 短旗標會被吃掉 —— `-v` 綁到 -Verbose 後消失，`-D <dir>` 綁到 -Debug 後把 <dir> 留成
-# 孤兒位置參數。裸 function 的 $args 不做任何繫結。
+# [Console]::Error.WriteLine 而非 Write-Error，是刻意的取捨。Write-Error 會再前綴一次
+# function 名，且 PS 5.1 與 PS 7 都把 ErrorRecord 渲染成引用呼叫端原始碼行的多行區塊，
+# 與 bash 的單行 printf >&2 相去甚遠。換來單行乾淨的代價是:PowerShell 的 `2>` 只重導
+# 自己的錯誤串流，攔不到 process stderr（OS 層對整個行程的重導仍然攔得到）。要把它改回
+# Write-Error 之前，先重讀這段取捨。
+#
+# 刻意不用 [CmdletBinding()] + ValueFromRemainingArguments：具名參數繫結先於 remaining
+# 收集，且 common parameter 支援前綴比對，於是 chezmoi 的短旗標會被吃掉 —— `-v` 綁到
+# -Verbose 後消失，`-D <dir>` 綁到 -Debug 後把 <dir> 留成孤兒位置參數。裸 function 的
+# $args 不做任何繫結。26-glab.ps1 曾是那個形狀，代價見該檔檔頭。
 
 function chezmoi {
     # -CommandType Application skips this function, so no recursion. Select-Object

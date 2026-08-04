@@ -27,7 +27,7 @@ exit /b %MOCK_CHEZMOI_RC%
 '@ | Set-Content -Path (Join-Path $MockDir 'chezmoi.cmd') -Encoding ascii
 
     function Invoke-Guard {
-        param([string]$Arguments, [int]$Rc)
+        param([string]$Arguments, [int]$Rc, [string]$Path = '')
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = (Get-Process -Id $PID).Path
         $psi.Arguments              = "-NoProfile -ExecutionPolicy Bypass -Command `". '$FragmentPath'; chezmoi $Arguments; exit `$LASTEXITCODE`""
@@ -39,7 +39,7 @@ exit /b %MOCK_CHEZMOI_RC%
         # Load-bearing: cmd.exe refuses a UNC working directory, so the mock
         # chezmoi.cmd misbehaves if the tests are launched from \\wsl.localhost\...
         $psi.WorkingDirectory       = $MockDir
-        $psi.EnvironmentVariables['PATH']             = "$MockDir;$env:PATH"
+        $psi.EnvironmentVariables['PATH']             = if ($Path) { $Path } else { "$MockDir;$env:PATH" }
         $psi.EnvironmentVariables['MOCK_CHEZMOI_RC']  = "$Rc"
         $proc   = [System.Diagnostics.Process]::Start($psi)
         $stdout = $proc.StandardOutput.ReadToEnd()
@@ -101,6 +101,13 @@ Describe '96-chezmoi-guard.ps1' {
             $r = Invoke-Guard -Arguments 'apply' -Rc 0
             $r.Stderr | Should -Not -Match 'exit'
             $r.ExitCode | Should -Be 0
+        }
+
+        # 127 is the command-not-found convention, matching 26-glab.ps1.
+        It 'reports 127 when no chezmoi binary is on PATH' {
+            $r = Invoke-Guard -Arguments 'apply' -Rc 1 -Path 'C:\Windows\System32'
+            $r.Stderr | Should -Match 'chezmoi: binary not on PATH'
+            $r.ExitCode | Should -Be 127
         }
 
         It 'ignores failures from other subcommands' {
