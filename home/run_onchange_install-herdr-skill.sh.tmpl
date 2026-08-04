@@ -1,0 +1,65 @@
+{{- if lookPath "herdr" -}}
+{{- $ver := output "herdr" "--version" | trim | replace "herdr " "" -}}
+{{- $path := "SKILL.md" -}}
+{{- if semverCompare ">=0.8.0" $ver }}{{ $path = "skills/herdr/SKILL.md" }}{{ end -}}
+#!/usr/bin/env bash
+# chezmoi run_onchange_ script — 把 herdr 官方 skill 同步成本機 herdr 的對應版本
+#
+# 為什麼是腳本而不是 .chezmoiexternal.toml：external 抓不到檔案時 chezmoi 整個指令
+# exit 1 中止，字典序排在後面的 target 會全部靜默落空（見 README Troubleshooting）。
+# 上游已經在 v0.8.0 把 SKILL.md 從 repo root 搬進 skills/herdr/，同樣的事會再發生；
+# 腳本能失敗軟著陸——抓不到就保留現有檔案、印警告、正常結束，apply 照常走完。
+#
+# 為什麼綁本機版本而不是 repo 裡的 pin：herdr binary 會自己更新（herdr update、
+# stable/preview channel），repo 這端釘任何版本都只是猜。skill 的內容是 CLI 語法
+# 教學，跟 binary 對不上就會教 agent 用不存在的指令，而且不會報錯。
+#
+# run_onchange_ 的 key 是下面渲染出來的版本號，因此只有本機 herdr 換版時才重跑，
+# 平時的 apply 完全不碰網路。herdr 不在 PATH 時整支腳本渲染成空字串（Windows 沒有
+# herdr，自動不適用），不需要額外的 OS 條件。
+#
+# herdr version: {{ $ver }}
+
+set -euo pipefail
+
+{{ template "scripts/log.sh" }}
+
+log_begin "herdr skill"
+
+VERSION="{{ $ver }}"
+URL="https://raw.githubusercontent.com/ogulcancelik/herdr/v${VERSION}/{{ $path }}"
+
+log_section "sync the agent skill to the installed herdr (v${VERSION})"
+
+TMP="$(mktemp)"
+
+# curl 的錯誤走 stderr，會插在格式化日誌之間；收進 log_warn 才讀得出是哪一種失敗。
+if ! CURL_ERR="$(curl -fsSL --max-time 20 -o "$TMP" "$URL" 2>&1)"; then
+    rm -f "$TMP"
+    log_warn "cannot fetch $URL (${CURL_ERR:-no detail}) — keeping the skill already on disk"
+    exit 0
+fi
+
+# 驗證再覆蓋：抓到 HTML 錯誤頁或半截檔案時，舊的可用版本比新的壞檔案有價值。
+# description 必須帶引號——Codex 的 YAML frontmatter parser 比 Claude 嚴格。
+if ! [ -s "$TMP" ] \
+    || [ "$(head -n 1 "$TMP")" != "---" ] \
+    || ! grep -q '^name: herdr$' "$TMP" \
+    || ! grep -q '^description: "' "$TMP"; then
+    rm -f "$TMP"
+    log_warn "v${VERSION} skill failed validation — keeping the skill already on disk"
+    exit 0
+fi
+
+for target in "$HOME/.claude/skills/herdr/SKILL.md" "$HOME/.codex/skills/herdr/SKILL.md"; do
+    if [ -f "$target" ] && cmp -s "$TMP" "$target"; then
+        log_skip "${target/#$HOME/\~} already at v${VERSION}"
+        continue
+    fi
+    mkdir -p "$(dirname "$target")"
+    cp "$TMP" "$target"
+    log_step "wrote ${target/#$HOME/\~} ($(wc -l < "$TMP") lines)"
+done
+
+rm -f "$TMP"
+{{- end }}

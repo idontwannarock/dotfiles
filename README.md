@@ -390,6 +390,7 @@ dotfiles/
 | [Corp SSH（Windows）](docs/corp-ssh-setup-windows.md) | 同上的 Windows 版 |
 | [Corp GitLab（glab）](docs/gitlab-corp-access.md) | glab 的權杖與 host 解析、每台機器的一次性設定 |
 | [Git 憑證管理](docs/git-credentials.md) | Git 遠端認證（GCM、SSH、WSL） |
+| [herdr](docs/herdr.md) | Agent 多工器的實測行為與陷阱（Linux/macOS） |
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
 | [Renovate](docs/renovate.md) | external 工具版本自動追蹤與 auto-merge |
 | [SSH](docs/ssh.md) | SSH key 設定教學 |

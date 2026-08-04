@@ -57,6 +57,57 @@ remove-superpowers-plugin change 移除 —— 已驗證 episodic-memory 不依�
 retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 主動 uninstall 並清 cache,移除才隨 apply 收斂到每台機器。)
 
+### 外部 skill：herdr
+
+上面那張表都是自家寫的。目前唯一一份**向上游同步**的 skill 是 `herdr` ——
+[herdr](https://herdr.dev/) 是專為 coding agent 設計的終端多工器（workspace / tab / pane，
+會辨識 pane 裡跑的是哪個 agent 及其 idle/working/blocked/done 狀態），
+它附的 skill 讓 agent 透過 CLI 與 unix socket 反過來操作 herdr 自己：開 pane、
+起另一個 agent、送 prompt、等它做完、讀回輸出。派工給 Codex 因此不必刮螢幕。
+
+它**不走 chezmoi 檔案管理**，body 也不在 repo 裡。
+`run_onchange_install-herdr-skill.sh.tmpl` 讀本機 `herdr --version`，
+抓該版本 tag 上的 SKILL.md，驗過再寫進 `~/.claude/skills/herdr/` 與
+`~/.codex/skills/herdr/`。
+
+| 項目 | 值 |
+|------|-----|
+| 上游 | `github.com/ogulcancelik/herdr` — tag `v<本機版本>` |
+| 版本來源 | 本機 binary，不是 repo 裡的 pin |
+| 安裝者 | `home/run_onchange_install-herdr-skill.sh.tmpl` |
+| 部署 | `.claude/skills/herdr/`、`.codex/skills/herdr/` |
+
+三個設計選擇，都有具體理由：
+
+1. **跟本機 binary 對齊，而不是釘在 repo。** herdr 會自己更新（`herdr update`、
+   stable/preview channel），repo 這端釘任何版本都只是猜。skill 的內容是 CLI
+   語法教學，跟 binary 對不上就會教 agent 用不存在的指令，而且不會報錯。
+
+2. **用腳本而不是 `.chezmoiexternal.toml`。** external 抓不到檔案時 chezmoi
+   整個指令 exit 1 中止，字典序排在後面的 target 全部靜默落空（見 README 的
+   Troubleshooting）。上游已經在 v0.8.0 把 SKILL.md 從 repo root 搬進
+   `skills/herdr/`，同樣的事會再發生。腳本能失敗軟著陸：抓不到或內容驗不過就
+   保留現有檔案、印 `!!` 警告、正常結束。路徑差異由 `semverCompare` 分流
+   （`>=0.8.0` 走 `skills/herdr/SKILL.md`，更舊的走 root `SKILL.md`）。
+
+3. **平台判斷用「有沒有這個 binary」，不用 OS。** herdr 只發 Linux 與 macOS，
+   `lookPath "herdr"` 失敗時整支腳本渲染成空字串，因此 Windows 與任何沒裝
+   herdr 的機器自動不適用，不需要 `.chezmoiignore` 條件。
+
+`run_onchange_` 的 key 是渲染進腳本的版本號，所以**只有本機 herdr 換版時才重跑**，
+平時的 apply 不碰網路。寫入前會驗 frontmatter 起始、`name: herdr`、以及 description
+有加引號（Codex 的 YAML parser 比 Claude 嚴格）——抓到 HTML 錯誤頁或半截檔案時，
+舊的可用版本比新的壞檔案有價值。
+
+代價要講清楚：**body 不在 repo 裡，上游改動不經你審閱就會生效**。這是換取
+「skill 永遠對得上 binary」的代價。要改回可審閱，就是把檔案 vendored 回
+`.chezmoitemplates/`，並接受版本漂移要自己盯。
+
+skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕執行。
+它的 description 偏長，會吃 Skill Listing Budget（見下方章節）。
+
+實測記錄與 `pane read` 的來源陷阱見 [herdr.md](herdr.md)。
+
 ### 前置需求
 
 - **OpenSpec CLI** (`@fission-ai/openspec`) — 由 `dev-workflow` 開場執行 `~/.agent/bin/ensure-openspec.sh` 按需安裝
