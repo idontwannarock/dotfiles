@@ -17,11 +17,19 @@
 # VAR=val), so GITLAB_TOKEN is snapshotted + restored via try/finally to keep
 # glab invocations outside this wrapper unaffected.
 #
-# Mirror of .chezmoitemplates/shell-common/base's glab() function: the error
-# strings, the stream they go to (stderr) and the non-zero exit code are all kept
-# identical. Hence [Console]::Error.WriteLine and not Write-Error, which prefixes
-# the function name a second time (`glab: glab: ...`) and writes to the error
-# stream rather than stderr.
+# Mirror of .chezmoitemplates/shell-common/base's glab(). What is guaranteed to
+# match: the message text (byte-for-byte), the fact that it lands on the process's
+# stderr handle, and the non-zero exit code. What is NOT: the line terminator
+# (CRLF here, LF there) and the rendering of non-ASCII, which relies on
+# 00-encoding.ps1 having set the console to UTF-8 first.
+#
+# [Console]::Error.WriteLine rather than Write-Error, deliberately, with a known
+# cost. Write-Error prefixes the function name a second time (`glab: glab: ...`)
+# and both PS 5.1 and PS 7 render an ErrorRecord as a multi-line block quoting the
+# calling source line -- nothing like bash's one line. The price of the clean line
+# is that PowerShell's `2>` redirects only its own error stream, so it does not
+# intercept this; OS-level redirection of the whole process still does. Do not
+# "fix" this back to Write-Error without re-reading that trade-off.
 #
 # Deliberately NOT [CmdletBinding()] + ValueFromRemainingArguments: named binding
 # runs before remaining-argument collection, and common parameters are prefix-
@@ -37,7 +45,7 @@ function glab {
     }
 
     $token = $null
-    if (Get-Command gopass -ErrorAction SilentlyContinue) {
+    if (Get-Command gopass -CommandType Application -ErrorAction SilentlyContinue) {
         $token = & gopass show -o gitlab/corp-token 2>$null
         if ($LASTEXITCODE -ne 0) { $token = $null }
     }
@@ -54,7 +62,11 @@ function glab {
     $exe = Get-Command glab -CommandType Application -ErrorAction SilentlyContinue |
         Select-Object -First 1
     if (-not $exe) {
-        $global:LASTEXITCODE = 1
+        # 127, not 1: this is the "command not found" condition, which is what bash
+        # would report here (it has no such guard -- `command glab` surfaces 127
+        # itself) and what 96-chezmoi-guard.ps1 uses for the same case. The other
+        # two guards mirror an explicit `return 1` in the bash version.
+        $global:LASTEXITCODE = 127
         [Console]::Error.WriteLine('glab: binary not on PATH (expected ~/.local/bin/glab.exe from the chezmoi external)')
         return
     }

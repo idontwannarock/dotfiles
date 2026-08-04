@@ -1,4 +1,4 @@
-# 25-claude-zai.ps1 — Route Claude Code to z.ai's Anthropic-compatible endpoint.
+﻿# 25-claude-zai.ps1 — Route Claude Code to z.ai's Anthropic-compatible endpoint.
 #
 # Token source: gopass z.ai/claude-code-token (shared vault with WSL `pass`).
 # Falls back to $env:ZAI_API_KEY if gopass unavailable or entry missing.

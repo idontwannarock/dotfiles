@@ -16,11 +16,11 @@ PowerShell 的 `[CmdletBinding()]` 加 `ValueFromRemainingArguments` 會先做�
 - **WHEN** 使用者執行 `glab mr list -R owner/repo`
 - **THEN** 命令送達 `glab`,不出現 PowerShell 的參數繫結錯誤
 
-### Requirement: 兩個平台的 wrapper 在錯誤路徑上 SHALL 產出相同的字串、串流與退出碼
+### Requirement: 兩個平台的 wrapper 在錯誤路徑上 SHALL 產出相同的訊息文字與退出碼
 
-同一支 wrapper 的兩個平台實作 SHALL 在錯誤路徑上輸出逐字相同的訊息、寫到同一種串流(stderr)、並以相同的非零碼結束。
+同一支 wrapper 的兩個平台實作 SHALL 在錯誤路徑上輸出逐字相同的訊息文字、寫到 process 的 stderr、並以相同的非零碼結束(拒絕呼叫為 1,找不到執行檔為 127)。
 
-`Write-Error` 會再前綴一次 function 名並走 error stream,兩者都與 bash 的 `printf >&2` 不同;宣稱一致而實際不一致,比一開始就不宣稱更糟。
+`Write-Error` 會再前綴一次 function 名,且兩個版本的 PowerShell 都把 ErrorRecord 渲染成引用原始碼行的多行區塊,與 bash 的單行 `printf >&2` 相去甚遠。改用 `[Console]::Error` 的代價要一併寫進註解:PowerShell 的 `2>` 只重導自己的錯誤串流,攔不到 process stderr。行尾字元(CRLF vs LF)與非 ASCII 的編碼(仰賴 `00-encoding.ps1` 先設好 UTF-8)不在保證範圍內 —— 宣稱一致而實際不一致,比一開始就不宣稱更糟。
 
 #### Scenario: 錯誤訊息不被重複前綴
 
@@ -30,15 +30,9 @@ PowerShell 的 `[CmdletBinding()]` 加 `ValueFromRemainingArguments` 會先做�
 #### Scenario: 守衛路徑回報非零退出碼
 
 - **WHEN** wrapper 因 host 未設定或取不到 token 而拒絕呼叫 `glab`
-- **THEN** 後續讀取退出碼者看到非零值,而非上一個命令留下的舊值
+- **THEN** 後續讀取退出碼者看到 1,而非上一個命令留下的舊值
 
-### Requirement: 含非 ASCII 的 profile 片段 SHALL 帶 UTF-8 BOM
+#### Scenario: 找不到執行檔時回報 command-not-found
 
-`Documents/_shared-profile.d/` 底下含非 ASCII 的 `.ps1` SHALL 以 UTF-8 BOM(`EF BB BF`)開頭。
-
-這些片段同時被 PS 5.1 與 PS 7 的 profile loader dot-source,而 PS 5.1 的 parser 對無 BOM 檔案退回系統 ANSI codepage,中文序列 mojibake 後可能吃掉引號,並在無關的行報出 parser 錯誤。
-
-#### Scenario: 片段的前三個位元組
-
-- **WHEN** 檢查 `Documents/_shared-profile.d/` 下任一含非 ASCII 的 `.ps1`
-- **THEN** 檔案前三個位元組為 `EF BB BF`
+- **WHEN** PATH 上沒有 `glab` 執行檔
+- **THEN** 退出碼為 127,與同 repo 其他 wrapper 對同一情境的取值一致
