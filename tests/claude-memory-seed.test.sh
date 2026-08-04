@@ -82,31 +82,50 @@ assert_exists() { # path message
     if [ -e "$1" ]; then ok "$2"; else ng "$2" "missing: $1"; fi
 }
 
+# assert_rc / assert_silent — read $RC and $ERR, published by the last run_apply.
+# The script's central promise is that it never fails its caller, so the exit
+# code needs assertions of its own: asserting only on files left behind cannot
+# distinguish "the guard refused" from "the write blew up".
+assert_rc() { # expected message
+    if [ "$RC" = "$1" ]; then ok "$2"; else ng "$2" "expected rc: $1" "actual rc:   $RC" "stderr:      $ERR"; fi
+}
+
+assert_silent() { # message
+    if [ -z "$ERR" ]; then ok "$1"; else ng "$1" "unexpected stderr: $ERR"; fi
+}
+
+assert_noisy() { # message
+    if [ -n "$ERR" ]; then ok "$1"; else ng "$1" "expected a diagnostic on stderr, got none"; fi
+}
+
 # ---------------------------------------------------------------- fixtures
 sandbox_n=0
 
-# new_sandbox — fresh dir with an isolated HOME, published as $SANDBOX.
+# new_sandbox — fresh dir with an isolated HOME, published as $s and $h.
 # Deliberately NOT `s=$(new_sandbox)`: command substitution runs the function in
 # a subshell, so the counter increment would be discarded and every case would
 # silently share one directory.
 new_sandbox() {
     sandbox_n=$((sandbox_n + 1))
-    SANDBOX="$SANDBOX_BASE/s$sandbox_n"
-    mkdir -p "$SANDBOX/home"
+    s="$SANDBOX_BASE/s$sandbox_n"
+    h="$s/home"
+    mkdir -p "$h"
 }
 
-# run_apply <cwd> <home> [CLAUDE_PROJECT_DIR] — drives the script under test.
-# CLAUDE_PROJECT_DIR is explicitly cleared unless passed, because the test
-# process may well have inherited one from the Claude session running it.
+# run_apply <cwd> <home> [CLAUDE_PROJECT_DIR] — drives the script under test and
+# publishes $RC and $ERR for assert_rc / assert_silent / assert_noisy.
+# CLAUDE_PROJECT_DIR is always set explicitly — empty unless passed — because the
+# test process may well have inherited one from the Claude session running it.
+# One branch suffices: the script reads it as ${CLAUDE_PROJECT_DIR:-.}, so empty
+# and unset behave identically.
+RC=0
+ERR=""
 run_apply() {
-    _cwd=$1 _home=$2 _pd=${3:-}
-    if [ -n "$_pd" ]; then
-        ( CDPATH= cd -- "$_cwd" && HOME="$_home" CLAUDE_PROJECT_DIR="$_pd" \
-            "$SEED_SH" "$SCRIPT" apply 2>/dev/null )
-    else
-        ( CDPATH= cd -- "$_cwd" && HOME="$_home" CLAUDE_PROJECT_DIR= \
-            "$SEED_SH" "$SCRIPT" apply 2>/dev/null )
-    fi
+    _err="$SANDBOX_BASE/.stderr"
+    ( CDPATH= cd -- "$1" && HOME="$2" CLAUDE_PROJECT_DIR="${3:-}" \
+        "$SEED_SH" "$SCRIPT" apply 2>"$_err" )
+    RC=$?
+    ERR=$(cat "$_err" 2>/dev/null)
 }
 
 run_where() {
@@ -115,15 +134,13 @@ run_where() {
         "$SEED_SH" "$SCRIPT" where 2>/dev/null )
 }
 
-# slug — the id derivation the script is specified to use: '/' -> '-'.
-slug() { printf '%s' "$1" | tr '/' '-'; }
-
-# physical_of — the resolved path the script will anchor on. Sandboxes sit under
-# $HOME/.cache, which may itself be reached through a symlink on some machines.
-physical_of() { ( CDPATH= cd -- "$1" && pwd -P ); }
+# id_of <dir> — the <id> the script is specified to derive: the resolved
+# physical path with '/' -> '-'. Resolved because sandboxes sit under
+# $HOME/.cache, which may itself be reached through a symlink.
+id_of() { ( CDPATH= cd -- "$1" && pwd -P ) | tr '/' '-'; }
 
 # amd — reads .autoMemoryDirectory out of a settings file ("" when absent).
-amd() { jq -r '.autoMemoryDirectory // ""' "$1" 2>/dev/null || printf ''; }
+amd() { jq -r '.autoMemoryDirectory // ""' "$1" 2>/dev/null; }
 
 make_repo() { # dir — a git repo with one commit (worktree add needs a commit)
     mkdir -p "$1"
@@ -136,23 +153,25 @@ make_repo() { # dir — a git repo with one commit (worktree add needs a commit)
 # anchor from the settings location cannot silently change it.
 
 describe 'normal repo'
-new_sandbox; s="$SANDBOX"; h="$s/home"; repo="$s/proj"
+new_sandbox; repo="$s/proj"
 make_repo "$repo"
-repo_p=$(CDPATH= cd -- "$repo" && pwd -P)
-id=$(slug "$repo_p")
+id=$(id_of "$repo")
 assert_eq "~/.claude/memory/$id" "$(run_where "$repo" "$h")" 'where prints the path-slug target'
 run_apply "$repo" "$h"
 assert_eq "~/.claude/memory/$id" "$(amd "$repo/.claude/settings.local.json")" \
     'apply writes autoMemoryDirectory into the repo toplevel'
 
 describe 'worktree shares the id but keeps its own settings file'
-new_sandbox; s="$SANDBOX"; h="$s/home"; repo="$s/proj"; wt="$s/proj-feature"
+new_sandbox; repo="$s/proj"; wt="$s/proj-feature"
 make_repo "$repo"
 git -C "$repo" worktree add -q -b feature "$wt" 2>/dev/null
-repo_p=$(CDPATH= cd -- "$repo" && pwd -P)
-id=$(slug "$repo_p")
-assert_eq "$(run_where "$repo" "$h")" "$(run_where "$wt" "$h")" \
-    'main checkout and worktree resolve to the same id'
+id=$(id_of "$repo")
+# Both sides asserted against the expected literal, never against each other:
+# `where` prints `~/.claude/memory/-` and exits 0 when the anchor cannot be
+# resolved, so comparing two invocations stays green even if id derivation is
+# completely broken.
+assert_eq "~/.claude/memory/$id" "$(run_where "$repo" "$h")" 'main checkout resolves to the id'
+assert_eq "~/.claude/memory/$id" "$(run_where "$wt" "$h")" 'the worktree resolves to the same id'
 run_apply "$wt" "$h"
 assert_eq "~/.claude/memory/$id" "$(amd "$wt/.claude/settings.local.json")" \
     'worktree settings point at the shared id'
@@ -160,7 +179,7 @@ assert_absent "$repo/.claude/settings.local.json" \
     'applying in the worktree does not write into the main checkout'
 
 describe 'overwrite policy'
-new_sandbox; s="$SANDBOX"; h="$s/home"; repo="$s/proj"
+new_sandbox; repo="$s/proj"
 make_repo "$repo"
 mkdir -p "$repo/.claude"
 printf '{"autoMemoryDirectory":"~/somewhere/custom"}' >"$repo/.claude/settings.local.json"
@@ -169,7 +188,7 @@ assert_eq '~/somewhere/custom' "$(amd "$repo/.claude/settings.local.json")" \
     'a value outside the managed roots is left alone'
 
 describe 'unrelated keys survive'
-new_sandbox; s="$SANDBOX"; h="$s/home"; repo="$s/proj"
+new_sandbox; repo="$s/proj"
 make_repo "$repo"
 mkdir -p "$repo/.claude"
 printf '{"permissions":{"allow":["WebSearch"]}}' >"$repo/.claude/settings.local.json"
@@ -179,7 +198,7 @@ assert_eq 'WebSearch' \
     'existing keys are preserved by the jq merge'
 
 describe 'idempotent'
-new_sandbox; s="$SANDBOX"; h="$s/home"; repo="$s/proj"
+new_sandbox; repo="$s/proj"
 make_repo "$repo"
 run_apply "$repo" "$h"
 first=$(cat "$repo/.claude/settings.local.json")
@@ -188,10 +207,9 @@ assert_eq "$first" "$(cat "$repo/.claude/settings.local.json")" \
     'a second apply changes nothing'
 
 describe 'migration from the Claude default location'
-new_sandbox; s="$SANDBOX"; h="$s/home"; repo="$s/proj"
+new_sandbox; repo="$s/proj"
 make_repo "$repo"
-repo_p=$(CDPATH= cd -- "$repo" && pwd -P)
-id=$(slug "$repo_p")
+id=$(id_of "$repo")
 mkdir -p "$h/.claude/projects/$id/memory"
 printf 'remembered\n' >"$h/.claude/projects/$id/memory/MEMORY.md"
 printf 'transcript\n' >"$h/.claude/projects/$id/session.jsonl"
@@ -200,10 +218,9 @@ assert_exists "$h/.claude/memory/$id/MEMORY.md" 'memory/ is moved to the shared 
 assert_exists "$h/.claude/projects/$id/session.jsonl" 'transcripts stay behind'
 
 describe 'populated target is never clobbered'
-new_sandbox; s="$SANDBOX"; h="$s/home"; repo="$s/proj"
+new_sandbox; repo="$s/proj"
 make_repo "$repo"
-repo_p=$(CDPATH= cd -- "$repo" && pwd -P)
-id=$(slug "$repo_p")
+id=$(id_of "$repo")
 mkdir -p "$h/.claude/memory/$id" "$h/.claude/projects/$id/memory"
 printf 'new\n' >"$h/.claude/memory/$id/MEMORY.md"
 printf 'old\n' >"$h/.claude/projects/$id/memory/MEMORY.md"
@@ -212,20 +229,20 @@ assert_eq 'new' "$(cat "$h/.claude/memory/$id/MEMORY.md")" \
     'existing memory wins over the migration source'
 
 describe 'bare+worktree layout'
-new_sandbox; s="$SANDBOX"; h="$s/home"; seed="$s/seed"; box="$s/container"
+new_sandbox; seed="$s/seed"; box="$s/container"
 make_repo "$seed"
 branch=$(git -C "$seed" branch --show-current)
 mkdir -p "$box"
 git clone --bare -q "$seed" "$box/.bare"
 git --git-dir="$box/.bare" worktree add -q "$box/$branch" "$branch" 2>/dev/null
-box_p=$(physical_of "$box"); id=$(slug "$box_p")
+id=$(id_of "$box")
 assert_eq "~/.claude/memory/$id" "$(run_where "$box/$branch" "$h")" \
     'the id is the container path, not the worktree path'
 
 describe 'legacy basename dir is upgraded'
-new_sandbox; s="$SANDBOX"; h="$s/home"; repo="$s/proj"
+new_sandbox; repo="$s/proj"
 make_repo "$repo"
-repo_p=$(physical_of "$repo"); id=$(slug "$repo_p")
+id=$(id_of "$repo")
 mkdir -p "$h/.claude/memory/proj"
 printf 'remembered\n' >"$h/.claude/memory/proj/MEMORY.md"
 run_apply "$repo" "$h"
@@ -234,11 +251,12 @@ assert_exists "$h/.claude/memory/$id/MEMORY.md" \
 assert_absent "$h/.claude/memory/proj" 'nothing is left behind at the old name'
 
 describe 'symlinked project dir'
-new_sandbox; s="$SANDBOX"; h="$s/home"; repo="$s/real"; link="$s/link"
+new_sandbox; repo="$s/real"; link="$s/link"
 make_repo "$repo"
 ln -s "$repo" "$link"
-assert_eq "$(run_where "$repo" "$h")" "$(run_where "$link" "$h")" \
-    'reaching a repo through a symlink resolves to the same id'
+id=$(id_of "$repo")
+assert_eq "~/.claude/memory/$id" "$(run_where "$link" "$h")" \
+    'reaching a repo through a symlink resolves to the real path id'
 
 # ================================================================ GUARDS
 # Three locations must never receive a settings file. The $HOME one is the only
@@ -247,20 +265,22 @@ assert_eq "$(run_where "$repo" "$h")" "$(run_where "$link" "$h")" \
 # collapse every project's memory into one bucket.
 
 describe 'guard: $HOME'
-new_sandbox; s="$SANDBOX"; h="$s/home"
+new_sandbox
 run_apply "$h" "$h"
 assert_absent "$h/.claude/settings.local.json" \
     'a plain $HOME is refused'
+assert_rc 0 'and exits cleanly'
 
 describe 'guard: $HOME that is itself a git repo'
-new_sandbox; s="$SANDBOX"; h="$s/home"
+new_sandbox
 make_repo "$h"
 run_apply "$h" "$h"
 assert_absent "$h/.claude/settings.local.json" \
     'a yadm-style $HOME repo is refused too'
+assert_rc 0 'and exits cleanly'
 
 describe 'guard: /tmp'
-new_sandbox; h="$SANDBOX/home"
+new_sandbox
 TMP_SANDBOX="/tmp/cms-test-$$"
 rm -rf "$TMP_SANDBOX"
 mkdir -p "$TMP_SANDBOX/plain"
@@ -271,11 +291,16 @@ assert_absent "$TMP_SANDBOX/repo/.claude/settings.local.json" \
 run_apply "$TMP_SANDBOX/plain" "$h"
 assert_absent "$TMP_SANDBOX/plain/.claude/settings.local.json" \
     'a non-git dir under /tmp is refused'
+assert_rc 0 'and exits cleanly'
 
 describe 'guard: /'
-new_sandbox; h="$SANDBOX/home"
+new_sandbox
 run_apply / "$h"
-assert_absent /.claude/settings.local.json 'the filesystem root is refused'
+# NOT assert_absent: an unprivileged user cannot write to / anyway, so that
+# assertion passes with the guard deleted. A guard-less run fails on
+# `mkdir: Permission denied`, which is exactly what rc + silence catch.
+assert_rc 0 'the filesystem root is refused without failing'
+assert_silent 'refusing / produces no diagnostic'
 
 # ================================================================ NON-GIT PROJECTS
 # A non-git dir has no worktrees to reconcile, so both anchors collapse onto the
@@ -283,9 +308,9 @@ assert_absent /.claude/settings.local.json 'the filesystem root is refused'
 # projects/, keeping the migration lookup a straight match.
 
 describe 'non-git project dir'
-new_sandbox; s="$SANDBOX"; h="$s/home"; proj="$s/devops"
+new_sandbox; proj="$s/devops"
 mkdir -p "$proj"
-proj_p=$(physical_of "$proj"); id=$(slug "$proj_p")
+id=$(id_of "$proj")
 assert_eq "~/.claude/memory/$id" "$(run_where "$proj" "$h")" \
     'where derives the id from the project dir itself'
 run_apply "$proj" "$h"
@@ -293,9 +318,9 @@ assert_eq "~/.claude/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
     'apply seeds a non-git project dir'
 
 describe 'CLAUDE_PROJECT_DIR wins over cwd'
-new_sandbox; s="$SANDBOX"; h="$s/home"; proj="$s/devops"
+new_sandbox; proj="$s/devops"
 mkdir -p "$proj/sub"
-proj_p=$(physical_of "$proj"); id=$(slug "$proj_p")
+id=$(id_of "$proj")
 run_apply "$proj/sub" "$h" "$proj"
 assert_eq "~/.claude/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
     'settings land on the project root, not the subdir'
@@ -303,24 +328,25 @@ assert_absent "$proj/sub/.claude/settings.local.json" \
     'the subdir gets nothing'
 
 describe 'CLAUDE_PROJECT_DIR unset falls back to cwd'
-new_sandbox; s="$SANDBOX"; h="$s/home"; proj="$s/devops"
+new_sandbox; proj="$s/devops"
 mkdir -p "$proj"
-proj_p=$(physical_of "$proj"); id=$(slug "$proj_p")
+id=$(id_of "$proj")
 run_apply "$proj" "$h"
 assert_eq "~/.claude/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
     'a missing CLAUDE_PROJECT_DIR is not an error'
 
 describe 'symlinked non-git project dir'
-new_sandbox; s="$SANDBOX"; h="$s/home"; proj="$s/real"; link="$s/link"
+new_sandbox; proj="$s/real"; link="$s/link"
 mkdir -p "$proj"
 ln -s "$proj" "$link"
-assert_eq "$(run_where "$proj" "$h")" "$(run_where "$link" "$h")" \
+id=$(id_of "$proj")
+assert_eq "~/.claude/memory/$id" "$(run_where "$link" "$h")" \
     'the symlink resolves to the real path bucket'
 
 describe 'non-git migration from the Claude default location'
-new_sandbox; s="$SANDBOX"; h="$s/home"; proj="$s/devops"
+new_sandbox; proj="$s/devops"
 mkdir -p "$proj"
-proj_p=$(physical_of "$proj"); id=$(slug "$proj_p")
+id=$(id_of "$proj")
 mkdir -p "$h/.claude/projects/$id/memory"
 printf 'remembered\n' >"$h/.claude/projects/$id/memory/MEMORY.md"
 run_apply "$proj" "$h"
@@ -338,9 +364,9 @@ assert_exists "$h/.claude/memory/$id/MEMORY.md" \
 claude_bucket() { printf '%s' "$1" | tr '_.' '--'; }
 
 describe 'migration source with an underscore in the path'
-new_sandbox; s="$SANDBOX"; h="$s/home"; proj="$s/cashback_api"
+new_sandbox; proj="$s/cashback_api"
 mkdir -p "$proj"
-proj_p=$(physical_of "$proj"); id=$(slug "$proj_p")
+id=$(id_of "$proj")
 bucket=$(claude_bucket "$id")
 [ "$bucket" = "$id" ] && ng 'fixture' 'the fixture path must differ once folded'
 mkdir -p "$h/.claude/projects/$bucket/memory"
@@ -350,17 +376,17 @@ assert_exists "$h/.claude/memory/$id/MEMORY.md" \
     "a '-' bucket is matched against our '_' id"
 
 describe 'missing projects dir'
-new_sandbox; s="$SANDBOX"; h="$s/home"; proj="$s/devops"
+new_sandbox; proj="$s/devops"
 mkdir -p "$proj"
-proj_p=$(physical_of "$proj"); id=$(slug "$proj_p")
+id=$(id_of "$proj")
 run_apply "$proj" "$h"
 assert_eq "~/.claude/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
     'an absent ~/.claude/projects is not an error'
 
 describe 'folded match still respects a populated target'
-new_sandbox; s="$SANDBOX"; h="$s/home"; proj="$s/mms_chat_api"
+new_sandbox; proj="$s/mms_chat_api"
 mkdir -p "$proj"
-proj_p=$(physical_of "$proj"); id=$(slug "$proj_p")
+id=$(id_of "$proj")
 bucket=$(claude_bucket "$id")
 mkdir -p "$h/.claude/memory/$id" "$h/.claude/projects/$bucket/memory"
 printf 'new\n' >"$h/.claude/memory/$id/MEMORY.md"
@@ -368,6 +394,65 @@ printf 'old\n' >"$h/.claude/projects/$bucket/memory/MEMORY.md"
 run_apply "$proj" "$h"
 assert_eq 'new' "$(cat "$h/.claude/memory/$id/MEMORY.md")" \
     'the folded lookup does not bypass the never-clobber rule'
+
+# ================================================================ HARDENING
+# settings_root arrives via `pwd -P`, so every value it is compared against has
+# to be resolved too. A one-sided comparison is silently never equal.
+
+describe 'guard: $HOME reached through a symlink'
+new_sandbox
+mkdir -p "$s/realhome"; ln -s "$s/realhome" "$s/linkhome"
+run_apply "$s/linkhome" "$s/linkhome"
+assert_rc 0 'exits cleanly'
+assert_absent "$s/realhome/.claude/settings.local.json" \
+    'a symlinked $HOME is refused at its real path'
+
+describe 'guard: $HOME with a trailing slash'
+new_sandbox
+run_apply "$h" "$h/"
+assert_absent "$h/.claude/settings.local.json" \
+    'a trailing slash does not defeat the comparison'
+
+describe 'guard does not over-reach'
+new_sandbox; proj="$s/sub/proj"
+mkdir -p "$proj"
+run_apply "$proj" "$h"
+assert_exists "$proj/.claude/settings.local.json" \
+    'a directory under $HOME is still seeded'
+TMP_SANDBOX2="/tmpfoo-cms-$$"
+if mkdir -p "$TMP_SANDBOX2" 2>/dev/null; then
+    run_apply "$TMP_SANDBOX2" "$h"
+    assert_exists "$TMP_SANDBOX2/.claude/settings.local.json" \
+        '/tmpfoo shares a prefix with /tmp but is not under it'
+    rm -rf "$TMP_SANDBOX2"
+else
+    ok 'skipped /tmpfoo case — no write access to /'
+fi
+
+describe 'a malformed settings file is never truncated'
+new_sandbox; proj="$s/proj"
+mkdir -p "$proj/.claude"
+printf '{"permissions":{"allow":["WebSearch"]},}' >"$proj/.claude/settings.local.json"
+before=$(cat "$proj/.claude/settings.local.json")
+run_apply "$proj" "$h"
+assert_rc 0 'exits cleanly despite the parse failure'
+assert_eq "$before" "$(cat "$proj/.claude/settings.local.json")" \
+    'the unparseable file keeps its contents'
+
+describe 'no temp file is left behind'
+new_sandbox; proj="$s/proj"
+mkdir -p "$proj"
+run_apply "$proj" "$h"
+leftovers=$(find "$proj/.claude" -name '*.tmp*' 2>/dev/null | wc -l)
+assert_eq 0 "$leftovers" 'a successful write leaves no scratch file'
+
+describe 'an unwritable project dir never fails the caller'
+new_sandbox; proj="$s/readonly"
+mkdir -p "$proj"; chmod 500 "$proj"
+run_apply "$proj" "$h"
+chmod 700 "$proj"
+assert_rc 0 'the hook is not broken by a failed write'
+assert_noisy 'the failure is still reported on stderr'
 
 # ---------------------------------------------------------------- summary
 printf '\n[%s] %d passed, %d failed\n' "$SEED_SH" "$passed" "$failed"
