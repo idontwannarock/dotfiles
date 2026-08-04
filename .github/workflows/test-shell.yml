@@ -1,0 +1,49 @@
+name: Test shell scripts
+
+# Sibling of test-pester.yml, kept separate because the repo runs one workflow
+# per concern (see test-tools-build.yml) and because these two need different
+# runners: Pester tests PowerShell artifacts on windows-latest, this tests POSIX
+# sh on ubuntu-latest, where `sh` and `jq` are the same ones the scripts meet in
+# production. PR-only for the same reason as test-pester.yml — nothing to publish.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tests/*.test.sh'
+      - 'home/dot_local/bin/**'
+      - '.github/workflows/test-shell.yml'
+  workflow_dispatch:
+
+jobs:
+  shell:
+    name: Run shell tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The scripts under test silently no-op when jq is missing, so a runner
+      # without it would report a vacuous pass. The test files assert on jq
+      # themselves; this fails earlier and more legibly.
+      - name: Verify prerequisites
+        run: |
+          command -v jq
+          command -v git
+
+      # Looping means a new tests/<name>.test.sh is picked up without editing
+      # this workflow. `set -e` makes the first failing file fail the job.
+      #
+      # Once per interpreter: these scripts are invoked by /bin/sh from the
+      # post-checkout hook and by bash from Claude's SessionStart hook, so both
+      # are production paths and dash/bash differ in ways that matter here
+      # (`cd ""` fails in bash but not in dash).
+      - name: Run tests
+        run: |
+          set -e
+          for shell in sh bash; do
+            for t in tests/*.test.sh; do
+              echo "== $shell $t"
+              SEED_SH="$shell" sh "$t"
+            done
+          done
