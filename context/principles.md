@@ -42,6 +42,7 @@ description: "跨 change 反覆適用的長青判斷依據,分四組:source 與�
 - **spec 的 `## Purpose` 要精確描述實際涵蓋範圍。** 過寬的措辭會被讀成納管宣告,而 requirement 才是真正的邊界。判準:Purpose 提到的每個載體,requirement 裡都要有對應斷言;沒有的就不該出現在 Purpose。`bootstrap-docs` 的 Purpose 曾寫「README / docs」,但它的 requirement 幾乎只斷言 README,結果兩度被誤判成「管 `docs/` 的 spec」。
 - **`index.md` 只放「這個目錄有什麼、何時讀哪個」,不放知識本身。** 任何一段內容若會被 agent 當答案引用,它就屬於一個具名檔案。這條界線讓 index 永遠可被自動生成或重建;OKF 更是把 `index.md` 列為 reserved filename,明文禁止當 concept 用。
 - **長青文件只在 sync/archive 階段寫入。** `context/` 的每一條都要有已 ship 的實作背書,所以 grill、arch-review、實作階段一律只把候選標記進 `design.md`,由 sync/archive 對照實際做出來的東西再決定晉升。閘門管的是**證據等級**而非正確性 —— 一條還沒被實作驗證過的原則即使是對的,也先留在 `design.md`;否則這份文件會慢慢變成「我們覺得應該這樣」的清單,而它的價值恰恰在於每一行都指得出對應的實作。
+- **「兩邊刻意保持一致」這種宣稱要嘛可驗證,要嘛不要寫。** 檔頭寫下宣稱之後,讀者就會按它去信任這份程式碼,而落差只在出事時才顯現 —— 比一開始不宣稱更糟。`26-glab.ps1` 曾寫「兩個錯誤字串刻意保持一致」,實際上 pwsh 的 `Write-Error` 多前綴一次 function 名、走的是 error stream 而非 stderr、退出碼也停在上一個命令的舊值,三項全不一致而沒有任何機制會發現。判準:宣稱一致的每一個面向(字串、串流、退出碼、參數轉交)都要有一則測試釘住;釘不住的面向就從宣稱裡拿掉,別留在註解裡當裝飾。
 - **文件要 model-agnostic、人可讀。** reference body 放 tool-neutral 位置;專案文件描述意圖,不綁單一工具的實作。
 
 ## 祕密與把關

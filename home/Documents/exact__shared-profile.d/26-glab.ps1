@@ -1,6 +1,11 @@
-# 26-glab.ps1 — corp GitLab CLI wrapper.
+﻿# 26-glab.ps1 — corp GitLab CLI wrapper.
 #
-# Token source: gopass gitlab/corp-token (shared vault with WSL `pass`).
+# Token source: this machine's own gopass store, entry gitlab/corp-token. It is
+# NOT shared with WSL's `pass` — they are two separate stores
+# (C:\Users\<user>\.password-store here, ~/.password-store in WSL), each filled by
+# its own one-time insert; see docs/gitlab-corp-access.md. Skipping the Windows
+# insert because the WSL one is already done yields a 401, an error that points at
+# the token when the fault is that this store has no entry.
 # Falls back to $env:GITLAB_TOKEN if gopass unavailable or entry missing.
 #
 # The host comes from machine-local state (HKCU\Environment), deliberately not
@@ -12,18 +17,22 @@
 # VAR=val), so GITLAB_TOKEN is snapshotted + restored via try/finally to keep
 # glab invocations outside this wrapper unaffected.
 #
-# Mirror of .chezmoitemplates/shell-common/base's glab() function; the two
-# error strings are kept byte-identical on purpose.
+# Mirror of .chezmoitemplates/shell-common/base's glab() function: the error
+# strings, the stream they go to (stderr) and the non-zero exit code are all kept
+# identical. Hence [Console]::Error.WriteLine and not Write-Error, which prefixes
+# the function name a second time (`glab: glab: ...`) and writes to the error
+# stream rather than stderr.
+#
+# Deliberately NOT [CmdletBinding()] + ValueFromRemainingArguments: named binding
+# runs before remaining-argument collection, and common parameters are prefix-
+# matched, so glab's own short flags get eaten — `-d` (--description) binds to
+# -Debug and vanishes, `-R` (--repo) fails to bind at all. A bare function's
+# $args is the only PowerShell shape equivalent to bash's "$@".
 
 function glab {
-    [CmdletBinding()]
-    param(
-        [Parameter(ValueFromRemainingArguments = $true)]
-        [string[]] $Remaining
-    )
-
     if (-not $env:GITLAB_HOST) {
-        Write-Error 'glab: GITLAB_HOST 未設定；不設會連向 gitlab.com 並回 401。見 docs/gitlab-corp-access.md'
+        $global:LASTEXITCODE = 1
+        [Console]::Error.WriteLine('glab: GITLAB_HOST 未設定；不設會連向 gitlab.com 並回 401。見 docs/gitlab-corp-access.md')
         return
     }
 
@@ -34,21 +43,26 @@ function glab {
     }
     if (-not $token) { $token = $env:GITLAB_TOKEN }
     if (-not $token) {
-        Write-Error 'glab: no token (vault entry gitlab/corp-token unreadable and GITLAB_TOKEN unset)'
+        $global:LASTEXITCODE = 1
+        [Console]::Error.WriteLine('glab: no token (vault entry gitlab/corp-token unreadable and GITLAB_TOKEN unset)')
         return
     }
 
-    # -CommandType Application skips this function, so no recursion.
-    $exe = Get-Command glab -CommandType Application -ErrorAction SilentlyContinue
+    # -CommandType Application skips this function, so no recursion. Select-Object
+    # is load-bearing: Get-Command returns EVERY glab on PATH, and `.Source` on a
+    # multi-element result yields the paths joined into one unrunnable string.
+    $exe = Get-Command glab -CommandType Application -ErrorAction SilentlyContinue |
+        Select-Object -First 1
     if (-not $exe) {
-        Write-Error 'glab: binary not on PATH (expected ~/.local/bin/glab.exe from the chezmoi external)'
+        $global:LASTEXITCODE = 1
+        [Console]::Error.WriteLine('glab: binary not on PATH (expected ~/.local/bin/glab.exe from the chezmoi external)')
         return
     }
 
     $snapshot = [Environment]::GetEnvironmentVariable('GITLAB_TOKEN', 'Process')
     try {
         $env:GITLAB_TOKEN = $token
-        & $exe.Source @Remaining
+        & $exe.Source @args
     }
     finally {
         if ($null -eq $snapshot) {
