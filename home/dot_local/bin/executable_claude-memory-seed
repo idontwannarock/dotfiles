@@ -142,11 +142,21 @@ try_migrate() {
     [ -d "$_src" ] && [ -n "$(ls -A "$_src" 2>/dev/null)" ] || return 1
     [ -d "$_dst" ] && rmdir "$_dst" 2>/dev/null || true  # drop empty dst so mv renames
     mkdir -p "$(dirname "$_dst")"
-    mv "$_src" "$_dst"
+    # `|| return 1` is required, not decorative: this function is called on the
+    # left of an `||`, and POSIX exempts every command of an AND-OR list except
+    # the last from `set -e` — an exemption that reaches into the function body.
+    # A bare `mv` would fall through to the success message on failure AND
+    # short-circuit the chain, so the next source would never be tried.
+    mv "$_src" "$_dst" || return 1
     printf 'claude-memory-seed: migrated %s -> %s\n' "$_src" "$_dst" >&2
 }
 
 do_apply() {
+    # Every path below expands $HOME bare. Under `set -u` an unset HOME kills the
+    # shell outright, which `|| true` at the call site cannot catch — it only
+    # intercepts a non-zero command status, never a fatal expansion. Gating here
+    # is what actually makes "apply always exits 0" true.
+    [ -n "${HOME:-}" ] || return 0
     [ -n "$settings_root" ] || return 0       # nothing resolvable: no-op
     if refused "$settings_root"; then return 0; fi  # never seed these
     id=$(repo_id) || return 0
