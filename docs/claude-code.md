@@ -226,11 +226,15 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 
 **chezmoi 只負責基礎設施。** `run_install-02-npm-tools` 把 `chrome-devtools-mcp`、`agent-browser-mcp`
 全域裝好（不走 `npx`，理由見上表），讓任何 repo 想用的時候「已經在那裡」；但
-`run_onchange_install-03-claude-config` **只註冊 `codegraph` 一個 user-scope server**。
+`run_onchange_install-03-claude-config` **只註冊 `codegraph` 與 `atlassian` 兩個 user-scope server**。
 
-判準是「**是不是每個 session 都真的會用到**」。codegraph 是跨檔查 symbol／caller 的通用工具，
-符合；瀏覽器、codex、Jira 都只有特定工作才需要，不符合——把它們放 user scope 等於讓每個
-純後端 repo 的 session 都替用不到的東西付錢。
+判準對 stdio 與 http 不一樣，因為成本不一樣：
+
+- **stdio**：每個 session 一個 process，所以要問「**是不是每個 session 都真的會用到**」。
+  codegraph 是跨檔查 symbol／caller 的通用工具，符合；瀏覽器與 codex 只有特定工作才需要，
+  不符合——把它們放 user scope 等於讓每個純後端 repo 的 session 都替用不到的東西付錢。
+- **http**：本機不 spawn 任何 process，上面那個乘數根本不成立。`atlassian` 因此放 user scope，
+  代價接近零，換來的是任何 repo 隨時能查 Jira／Confluence 而不必逐一註冊。
 
 #### 現成可用的 MCP 清單
 
@@ -243,7 +247,7 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | `chrome-devtools` | 驅動 Chrome：導航、抓 DOM／console／network、效能 trace | binary 已裝，待註冊 | install-02（`chrome-devtools-mcp`） |
 | `agent-browser` | 較輕量的瀏覽器自動化（點擊、填表、截圖） | binary 已裝，待註冊 | install-02（`agent-browser-mcp`） |
 | `codex` | 把 Codex CLI 當 MCP server，交叉詢問另一個模型 | binary 已裝，待註冊 | install-02（`@openai/codex`） |
-| `atlassian` | Jira／Confluence 讀寫 | 遠端 http，無需 binary，待註冊 | — |
+| `atlassian` | Jira／Confluence 讀寫 | **已在 user scope**，新機器只差 `/mcp` 完成 OAuth | 遠端 http，無需 binary |
 
 註冊指令（在該 repo 根目錄執行，選要的貼一行）：
 
@@ -252,7 +256,6 @@ claude mcp add --scope project chrome-devtools \
   -e CHROME_DEVTOOLS_MCP_NO_USAGE_STATISTICS=1 -- chrome-devtools-mcp
 claude mcp add --scope project agent-browser -- agent-browser-mcp
 claude mcp add --scope project codex -- codex mcp-server
-claude mcp add --scope project --transport http atlassian https://mcp.atlassian.com/v1/mcp
 ```
 
 幾個要知道的：
@@ -261,7 +264,7 @@ claude mcp add --scope project --transport http atlassian https://mcp.atlassian.
   `--scope local`（寫進 `~/.claude.json` 的該專案區段，不進版控）。
 - 專案 scope 的 server 首次載入需要核准，記在 settings 的 `enabledMcpjsonServers`。
 - **一律指向全域 binary，不要寫 `npx -y <pkg>@latest`**——理由見上面的 process 數表。
-- `atlassian` 註冊後還要 `/mcp` 選它完成 OAuth 登入，指令本身代不了登入。
+- `atlassian` 由 install-03 自動註冊，但**登入代不了**：新機器要自己 `/mcp` 選它完成 OAuth。
 - 換新機器時這些 binary 由 `chezmoi apply` 自動補齊；repo 裡的 `.mcp.json` 跟著 git 走，兩邊會合。
 
 清單要新增成員時，**同時改兩處**：`run_install-02-npm-tools.{sh,ps1}.tmpl` 加安裝、這張表加一列。

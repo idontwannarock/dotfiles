@@ -279,7 +279,8 @@ Go 的 base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本
 | slack plugin | Claude Code plugin |
 | episodic-memory / elements-of-style plugins | 來自 `obra/superpowers-marketplace` |
 | explanatory-output-style plugin | 來自 `claude-plugins-official`，並取消安裝 `learning-output-style` |
-| codegraph MCP | 唯一由此腳本註冊的 user-scope MCP server（偵測到 `codegraph` binary 才註冊） |
+| codegraph MCP | 由此腳本註冊的 user-scope MCP server（偵測到 `codegraph` binary 才註冊） |
+| atlassian MCP | 由此腳本註冊的 user-scope MCP server；http transport，本機不 spawn process，OAuth 需自行 `/mcp` 完成 |
 | 清理 | 取消安裝已退役的 `superpowers` plugin 並清掉其殘留 cache，使移除在每台機器上收斂 |
 
 > jdtls（Java LSP）已於 Wave 11 移出此腳本，改由 `.chezmoiexternal.toml` 提供（`~/.local/opt/jdtls` + `~/.local/bin/jdtls`）。
