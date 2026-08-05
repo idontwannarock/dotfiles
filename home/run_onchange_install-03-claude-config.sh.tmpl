@@ -149,26 +149,36 @@ else
     log_skip "[deps] episodic-memory not present; nothing to repair"
 fi
 
-log_section "register user-scope MCP servers — user scope means EVERY session pays for them"
-# A stdio server costs one process per session, not one per machine, so user
-# scope is reserved for servers every session genuinely uses. Everything else
-# (chrome-devtools, agent-browser, codex, atlassian) is installed by
-# install-02 but left unregistered: each repo opts in with
-# `claude mcp add --scope project`. See docs/claude-code.md.
+log_section "register user-scope MCP servers — a stdio server costs one process per session"
+# The cost of user scope is per session, not per machine, so a stdio server
+# earns the scope only if every session genuinely uses it. An http server
+# spawns nothing locally and is close to free. Everything still out of scope
+# (chrome-devtools, agent-browser, codex) is installed by install-02 but left
+# unregistered: each repo opts in with `claude mcp add --scope project`.
+# See docs/claude-code.md.
+#
+# $1 is the server name; everything after is handed to `claude mcp add`
+# verbatim, so a row can carry `--transport http` ahead of a url or `--` ahead
+# of a command.
 mcp_add_if_missing() {
     local name="$1"; shift
     if claude mcp list 2>/dev/null | grep -q "^${name}:"; then
         log_skip "[mcp] ${name} already registered"
     else
-        claude mcp add --scope user "$name" -- "$@" && log_step "[mcp] ${name} registered"
+        claude mcp add --scope user "$name" "$@" && log_step "[mcp] ${name} registered"
     fi
 }
 
 if command -v codegraph &>/dev/null; then
-    mcp_add_if_missing "codegraph" codegraph "serve" "--mcp"
+    mcp_add_if_missing "codegraph" -- codegraph "serve" "--mcp"
 else
     log_skip "[mcp] codegraph binary not found"
 fi
+
+# http transport: no binary to guard on, and no per-session process. The script
+# registers it but cannot log in — run /mcp and pick atlassian to finish the
+# OAuth flow on a new machine.
+mcp_add_if_missing "atlassian" --transport http "https://mcp.atlassian.com/v1/mcp"
 
 log_section "set user preferences in ~/.claude.json"
 CLAUDE_JSON="$HOME/.claude.json"
