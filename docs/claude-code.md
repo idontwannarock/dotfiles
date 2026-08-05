@@ -66,13 +66,13 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 起另一個 agent、送 prompt、等它做完、讀回輸出。派工給 Codex 因此不必刮螢幕。
 
 它**不走 chezmoi 檔案管理**，body 也不在 repo 裡。
-`run_onchange_install-herdr-skill.sh.tmpl` 讀本機 `herdr --version`，
-抓該版本 tag 上的 SKILL.md，驗過再寫進 `~/.claude/skills/herdr/` 與
-`~/.codex/skills/herdr/`。
+`run_onchange_install-herdr-skill.sh.tmpl` 執行本機的 `herdr --skill`（v0.8.0 新增，
+印出該顆 binary 內建的 skill），驗過再寫進 `~/.claude/skills/herdr/` 與
+`~/.codex/skills/herdr/`。**完全不碰網路。**
 
 | 項目 | 值 |
 |------|-----|
-| 上游 | `github.com/ogulcancelik/herdr` — tag `v<本機版本>` |
+| 來源 | 本機 binary 的 `herdr --skill` |
 | 版本來源 | 本機 binary，不是 repo 裡的 pin |
 | 安裝者 | `home/run_onchange_install-herdr-skill.sh.tmpl` |
 | 部署 | `.claude/skills/herdr/`、`.codex/skills/herdr/` |
@@ -83,21 +83,28 @@ retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
    stable/preview channel），repo 這端釘任何版本都只是猜。skill 的內容是 CLI
    語法教學，跟 binary 對不上就會教 agent 用不存在的指令，而且不會報錯。
 
-2. **用腳本而不是 `.chezmoiexternal.toml`。** external 抓不到檔案時 chezmoi
+2. **從 binary 取，而不是從 GitHub 抓。** 早期版本讀 `herdr --version` 再去組
+   `raw.githubusercontent.com/<org>/herdr/v<版本>/<路徑>`。那條路有三個各自獨立的
+   斷點，全部實測踩過：`semverCompare` 預設**排除 prerelease**，所以 preview 版
+   （`0.8.0-preview.<date>-<sha>`）會讓 `>=0.8.0` 回 false，選到 v0.8.0 搬走前的舊
+   路徑；preview 的 git tag 是 `preview-<date>-<sha>`，`v<版本>` 根本組不出來，一律
+   404；上游 org 還從 `ogulcancelik` 改名 `herdrdev`（目前靠 GitHub redirect 續命）。
+   `herdr --skill` 讓「skill 對得上 binary」從推導變成結構保證，三個斷點一次消失。
+
+3. **用腳本而不是 `.chezmoiexternal.toml`。** external 抓不到檔案時 chezmoi
    整個指令 exit 1 中止，字典序排在後面的 target 全部靜默落空（見 README 的
-   Troubleshooting）。上游已經在 v0.8.0 把 SKILL.md 從 repo root 搬進
-   `skills/herdr/`，同樣的事會再發生。腳本能失敗軟著陸：抓不到或內容驗不過就
-   保留現有檔案、印 `!!` 警告、正常結束。路徑差異由 `semverCompare` 分流
-   （`>=0.8.0` 走 `skills/herdr/SKILL.md`，更舊的走 root `SKILL.md`）。
+   Troubleshooting）。腳本能失敗軟著陸：`herdr --skill` 失敗（例如 binary 舊於
+   0.8.0，沒有這個 flag）或內容驗不過，就保留現有檔案、印 `!!` 警告、正常結束。
 
-3. **平台判斷用「有沒有這個 binary」，不用 OS。** herdr 只發 Linux 與 macOS，
-   `lookPath "herdr"` 失敗時整支腳本渲染成空字串，因此 Windows 與任何沒裝
-   herdr 的機器自動不適用，不需要 `.chezmoiignore` 條件。
+4. **平台判斷用「有沒有這個 binary」，不用 OS。** `lookPath "herdr"` 失敗時整支
+   腳本渲染成空字串，沒裝 herdr 的機器自動不適用，不需要 `.chezmoiignore` 條件。
+   ⚠️ 這條原本的註解寫著「Windows 沒有 herdr」—— 自 herdr Windows preview beta 起
+   **不再成立**，裝了就會跑。Windows 的細節與陷阱見 [herdr.md](herdr.md)。
 
-`run_onchange_` 的 key 是渲染進腳本的版本號，所以**只有本機 herdr 換版時才重跑**，
-平時的 apply 不碰網路。寫入前會驗 frontmatter 起始、`name: herdr`、以及 description
-有加引號（Codex 的 YAML parser 比 Claude 嚴格）——抓到 HTML 錯誤頁或半截檔案時，
-舊的可用版本比新的壞檔案有價值。
+`run_onchange_` 的 key 是渲染進腳本的版本號，所以**只有本機 herdr 換版時才重跑**。
+寫入前會驗 frontmatter 起始、`name: herdr`、以及 description 有加引號（Codex 的 YAML
+parser 比 Claude 嚴格）——拿到半截輸出時，舊的可用版本比新的壞檔案有價值。Windows 的
+`herdr.exe` 吐 CRLF，寫檔前會 `tr -d '\r'` 正規化（Unix 端是 no-op）。
 
 代價要講清楚：**body 不在 repo 裡，上游改動不經你審閱就會生效**。這是換取
 「skill 永遠對得上 binary」的代價。要改回可審閱，就是把檔案 vendored 回

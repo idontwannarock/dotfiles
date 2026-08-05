@@ -1,6 +1,8 @@
 {{- if eq .chezmoi.os "windows" -}}
+{{- $expectedPath := printf "%s;%s" (joinPath .chezmoi.homeDir ".local/bin") (output "powershell" "-NoProfile" "-Command" "[Environment]::GetEnvironmentVariable('Path','Machine')+';'+[Environment]::GetEnvironmentVariable('Path','User')" | trim) -}}
 # chezmoi run_onchange_before_ script — self-heal ~/.config/chezmoi/chezmoi.toml
-# on Windows so that modify_*.sh scripts can find the correct sh interpreter.
+# on Windows: (1) [scriptEnv] PATH, so subprocesses see tools installed after the
+# last init, and (2) [interpreters.sh], so modify_*.sh finds the correct sh.
 #
 # Background: `.chezmoi.toml.tmpl` is rendered into the local chezmoi config
 # only on `chezmoi init`. `chezmoi update` / `chezmoi apply` do not re-render
@@ -11,6 +13,16 @@
 #
 # until someone manually runs `chezmoi init` again. This script patches the
 # local config in place so a plain `chezmoi update` can self-heal.
+#
+# The same staleness bites [scriptEnv] PATH, which the template builds from the
+# registry (Machine + User) at render time and then freezes into the config. Any
+# installer that prepends to the registry PATH — herdr's install.ps1 does exactly
+# this — stays invisible to chezmoi until someone re-runs `chezmoi init`:
+# `lookPath` misses the binary and the PATH handed to run_*/modify_* subprocesses
+# lacks its directory. The expected PATH is rendered into this script below, so
+# the run_onchange_ hash changes precisely when the registry PATH changes, and
+# this script re-runs exactly then (a plain run_ would fire on every apply and
+# add another permanently-dirty entry to `chezmoi status`).
 #
 # Must be .ps1 (not .sh) to avoid the chicken-and-egg of needing the sh
 # interpreter before we've configured it. Uses run_onchange_before_ so it
@@ -25,9 +37,49 @@ $ErrorActionPreference = "Stop"
 
 {{ template "scripts/log.ps1" }}
 
-Log-Begin "chezmoi.toml sh-interpreter self-heal"
+Log-Begin "chezmoi.toml self-heal"
 try {
     $configPath = Join-Path $env:USERPROFILE ".config\chezmoi\chezmoi.toml"
+
+    Log-Section "refresh [scriptEnv] PATH from the registry — the config froze it at init time"
+    # Single-quoted here-string: the PATH is rendered verbatim from the same
+    # expression .chezmoi.toml.tmpl uses, and must not be re-interpolated.
+    $expectedPath = @'
+{{ $expectedPath }}
+'@
+    if (-not (Test-Path $configPath)) {
+        Log-Skip "[chezmoi.toml] no local config; chezmoi init renders scriptEnv correctly"
+    } else {
+        $content = Get-Content $configPath -Raw
+        # `[^\[]*?` keeps the search inside the block — a section header would end it,
+        # so a config without a scriptEnv PATH can never match some other section's.
+        $pathMatch = [regex]::Match($content, '(?m)^\[scriptEnv\][^\[]*?^\s*PATH\s*=\s*"([^"]*)"')
+        # Un-escape before comparing, else the block is rewritten on every run.
+        $currentPath = if ($pathMatch.Success) { $pathMatch.Groups[1].Value.Replace('\\', '\') } else { $null }
+
+        if ($currentPath -eq $expectedPath) {
+            Log-Skip "[chezmoi.toml] scriptEnv PATH already matches the registry"
+        } else {
+            $escapedPath = $expectedPath.Replace('\', '\\')
+            if ($pathMatch.Success) {
+                # Swap the value in place by index. Strip-and-re-append would eat the
+                # newline on both sides of the block and glue the next section header
+                # onto the tail of a comment; splicing the quoted value touches nothing
+                # else, and index math needs no escaping of `$` or `\` in the PATH.
+                $g = $pathMatch.Groups[1]
+                $newContent = $content.Remove($g.Index, $g.Length).Insert($g.Index, $escapedPath)
+            } else {
+                # Config predates the [scriptEnv] block entirely — append one.
+                $newContent = $content.TrimEnd() + "`n`n[scriptEnv]`n    PATH = `"$escapedPath`"`n"
+            }
+            $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+            [System.IO.File]::WriteAllText($configPath, $newContent, $utf8NoBom)
+
+            Log-Step "[chezmoi.toml] refreshed [scriptEnv] PATH from the registry"
+            Log-Warn "chezmoi read the old PATH at startup — re-run 'chezmoi apply' once so"
+            Log-Warn "lookPath and run_*/modify_* subprocesses see newly installed tools"
+        }
+    }
 
     Log-Section "locate git-bash by ordered candidate roots — a PATH lookup would pick WSL's System32 bash"
     # Detect git-bash: ordered candidate Git-for-Windows roots, first whose
