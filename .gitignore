@@ -4,6 +4,9 @@
 tools/statusline/statusline
 # Invoke-Pester -CI writes a JUnit report into the working directory.
 testResults.xml
+# Ad-hoc debug captures, e.g. `chezmoi apply -v > apply.log`. Nothing here is a
+# source file; add a `!` exception if a sample log ever needs tracking.
+*.log
 
 # Claude Code local settings
 .claude/settings.local.json
