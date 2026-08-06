@@ -1,0 +1,6 @@
+---
+name: review-cross-model
+description: "Use after a code review when the findings should be challenged by a different model — 跨模型 review, 「找另一個模型挑戰」, 「second opinion」, or as the adversarial leg of the Large dev-workflow review gate. Dispatches an agent of a different kind into its own herdr pane, hands it only the branch and repo path so it gathers its own evidence, then has both sides refute each other exactly once. Read-only on both sides; requires HERDR_ENV=1 and degrades loudly when herdr or a counterpart agent is unavailable."
+---
+
+{{ template "skills/review-cross-model.md" . -}}
