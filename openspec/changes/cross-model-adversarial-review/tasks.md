@@ -23,14 +23,14 @@
 
 blocked 由 1 依賴。此片把所有異常收斂到「軟退化 + 顯式標註 + 仍然收尾」。
 
-- [ ] 2.1 收斂判定只採信 `idle`/`done`;`blocked`、timeout、stalled 走退化路徑
-- [ ] 2.2 findings 檔缺失或為空時視為失敗,不得解讀為「無發現」
-- [ ] 2.3 前置條件檢查:`HERDR_ENV` 未設、herdr 不可執行、無可用異種 kind —— 各自產生具名原因
-- [ ] 2.4 退化時於報告顯著位置標註「跨模型反駁:未執行 —— <原因>」
-- [ ] 2.5 失敗路徑同樣執行 `pane close` + `agent list` 確認;只關自己開的 pane
-- [ ] 2.6 實作有時限的 best-effort 禮貌退出:已知 kind 送其結束指令(`blocked` 時先送 esc),逾時或未知 kind 直接跳過;無論結果 `pane close` 皆執行
-- [ ] 2.7 實跑至少兩條失敗路徑(建議:herdr 不可用、對造 blocked),確認皆有標註且無殘留
-- [ ] 2.8 驗證禮貌退出確有作用:比對正常退出與硬關 pane 兩種情況下,對造的 session 記錄是否完整落地
+- [x] 2.1 收斂判定只採信 `idle`/`done`;`blocked`、timeout、stalled 走退化路徑
+- [x] 2.2 findings 檔缺失或為空時視為失敗,不得解讀為「無發現」
+- [x] 2.3 前置條件檢查:`HERDR_ENV` 未設、herdr 不可執行、無可用異種 kind —— 各自產生具名原因
+- [x] 2.4 退化時於報告顯著位置標註「跨模型反駁:未執行 —— <原因>」
+- [x] 2.5 失敗路徑同樣執行 `pane close` + `agent list` 確認;只關自己開的 pane
+- [x] 2.6 實作有時限的 best-effort 禮貌退出:已知 kind 送其結束指令(`blocked` 時先送 esc),逾時或未知 kind 直接跳過;無論結果 `pane close` 皆執行
+- [x] 2.7 實跑兩條失敗路徑:對造 blocked(以省略 approval 預授權 + 寫入 workspace 外重現)與 herdr 不可用(前置檢查兩分支);皆正確歸類、收尾無殘留、工作樹逐字相同
+- [x] 2.8 驗證結果**推翻原假設**:codex 硬關 pane 前後 session 皆 14 行、結尾為完整 `task_complete`,孤兒行程 0 —— 禮貌退出對此 kind 測不到好處;design 與 body 已改為只主張「hook-bearing kind」且標明未實測
 
 ## 3. 接進 review 關卡的分級
 
@@ -67,3 +67,5 @@ blocked by 4。
 - [x] 1c.5 實跑驗證:工作樹前後快照比對、scratch 移除、pane 收尾皆通過
 - [x] 1c.6 實跑發現:agent 退出後 pane 回到 shell,`agent prompt` 的文字被 shell 逐行執行;body 與 spec 補上「送出前確認 agent 仍佔用 pane」
 - [x] 1c.7 補跑完成:`session_meta.cwd` = `/home/howardwang/ws/github/dotfiles`(codex-cli 0.146.1)、findings 落在 `.cross-model-review/verify-run/`、收尾後工作樹逐字相同且 scratch 已移除
+
+- [x] 2.9 退化理由集中成清單並要求回報實際命中的那一個(原本散在四個 step,措辭不一致)
