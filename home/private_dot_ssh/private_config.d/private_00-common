@@ -1,0 +1,8 @@
+# ──── Shared defaults for every host ───────────────────────────────────────
+# Managed by chezmoi (dotfiles: home/private_dot_ssh/config.d/00-common).
+# Included from the TOP of ~/.ssh/config, and ssh takes the FIRST value it sees
+# for a keyword — so anything here OVERRIDES the per-host blocks below it.
+# Only put settings whose value is already uniform across every host; host
+# aliases, FQDNs and IPs stay machine-local in ~/.ssh/config. All platforms.
+Host *
+  ServerAliveInterval 30           # avoid idle disconnects; was repeated in ~24 blocks

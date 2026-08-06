@@ -39,6 +39,12 @@ home/dot_local/bin/* text eol=lf
 # Git hooks (POSIX sh, run by git-bash on Windows — force LF)
 home/dot_config/git/hooks/* text eol=lf
 
+# SSH config drop-ins. chezmoi deploys these verbatim to ~/.ssh/config.d/, where
+# OpenSSH on Linux/macOS reads them; text=auto would check them out CRLF on
+# Windows and ship that CRLF to every platform. OpenSSH tolerates a trailing \r,
+# so the breakage would be silent rather than loud -- force LF instead.
+home/private_dot_ssh/** text eol=lf
+
 # Chezmoi template fragments (shell scripts, force LF)
 home/.chezmoitemplates/** text eol=lf
 
