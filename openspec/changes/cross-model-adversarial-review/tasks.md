@@ -36,10 +36,18 @@ blocked 由 1 依賴。此片把所有異常收斂到「軟退化 + 顯式標註
 
 blocked by 1。此片改動既有 review body,讓打分與反駁分工落地。
 
-- [ ] 3.1 修改 `home/.chezmoitemplates/skills/review-comprehensive.md`:confidence 打分移至送交反駁之前,職責收斂為噪音過濾
-- [ ] 3.2 對造獨立發現的 findings 走同一套打分後才納入比較
-- [ ] 3.3 實作分級規則:兩造皆認可→Critical;反駁成立→降級或剔除並附理由;僅單造提出→明列為分歧交由使用者裁決
-- [ ] 3.4 實跑一次完整 `review-comprehensive` + 跨模型段,確認三種分級皆能出現在報告中
+- [x] 3.1 修改 `home/.chezmoitemplates/skills/review-comprehensive.md`:confidence 打分移至送交反駁之前,職責收斂為噪音過濾
+- [x] 3.2 對造獨立發現的 findings 走同一套打分後才納入比較
+- [x] 3.3 實作分級規則:兩造皆認可→Critical;反駁成立→降級或剔除並附理由;僅單造提出→明列為分歧交由使用者裁決
+- [x] 3.4 實跑跨模型交換與分級,三種分級皆出現(Critical 2 / Split 1 / Refuted 2);**範圍縮減**:未跑六個 lens 的 subagent fan-out,僅驗交換與分級路徑
+
+## 3b. 跨模型 review 對本 change 自身的發現(待修)
+
+- [ ] 3b.1 **Critical** 快照既不完整也不是還原來源:雜湊只涵蓋 scope 內 tracked 檔(scope 外的髒檔改動 porcelain 不變、隱形)、untracked 內容從未雜湊、且雜湊只能偵測不能還原 —— 「restore those paths」從 git 還原會抹掉使用者未 commit 的工作
+- [ ] 3b.2 **Critical** claude profile 的 `Bash(git *)` 預授權涵蓋 `git reset --hard` / `git clean` 等破壞性指令
+- [ ] 3b.3 **Critical** 對造若為寫入不受限的 kind(如 claude),repo 外的寫入既不受限也不被偵測;需決定:限定只用可限制寫入範圍的 kind,或明載殘餘風險
+- [ ] 3b.4 **Split** Step 0 缺具體的「已安裝且已登入」探測,失敗延後到 `agent start` 之後(待你裁決是否修)
+- [ ] 3b.5 scratch 目錄在**其他 repo** 未被 gitignore:run 期間為可見的未追蹤檔,不可攔截的終止會留殘骸,併發 `git add -A` 有 staging race
 
 ## 4. 接進大型流程與清單維護
 

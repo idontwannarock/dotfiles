@@ -23,6 +23,27 @@ After obtaining the diff, dispatch **all review tasks in parallel**. Each task r
 | Comment accuracy | `comment-analyzer` | Comment accuracy vs actual code behavior, stale comments, missing critical comments |
 
 {{ template "skills/code-review-confidence.md" . }}
+## Cross-model rebuttal
+
+The six lenses above and the confidence pass all run on one model family. They differ by prompt, not by priors, and each of them read evidence you selected. That structure is good at rejecting misjudgements and blind to shared omissions.
+
+So the filtered findings are not the verdict yet -- they are one side of an exchange. Run `/code:review-cross-model` with them.
+
+Its inputs and outputs:
+
+- **In**: the findings that survived the confidence filter. The filter is the noise gate; unfiltered findings sent to a counterpart dilute the exchange and cost a round trip.
+- **Out**: the counterpart's own findings (scored through the same filter, so the two sets are comparable), plus one round of rebuttal each way.
+
+Confidence no longer decides severity here -- it decides what is worth arguing about. Severity comes from the exchange:
+
+| Outcome | Grade |
+|---------|-------|
+| Both sides raised it, or one raised it and the rebuttal failed | Critical |
+| Successfully refuted | Downgrade or drop, stating the refutation |
+| Raised by one side only, uncontested | **Split** -- present both positions, do not resolve it |
+
+If the cross-model leg does not run, say so in the report and grade on confidence alone. A single-model review is a legitimate result; a single-model review presented as a cross-verified one is not.
+
 ## Output
 
 ---
@@ -31,14 +52,21 @@ After obtaining the diff, dispatch **all review tasks in parallel**. Each task r
 
 **Scope**: [reviewed what — PR #N / branch diff / commit range / staged / HEAD]
 **Diff size**: [N files changed, +X/-Y lines]
+**Cross-model rebuttal**: [counterpart kind, or `not run — <reason>`]
 
 **Summary**: [one sentence on overall quality and most important finding]
 
-🔴 **Critical Issues** (confidence ≥ 80, must fix)
-- [issue] — _source: [agent], confidence: [score]_
+🔴 **Critical Issues** (must fix)
+- [issue] — _source: [agent], upheld by: [both sides / rebuttal failed]_
 
-🟡 **Suggestions** (confidence ≥ 80, should consider)
-- [suggestion] — _source: [agent], confidence: [score]_
+🟡 **Suggestions** (should consider)
+- [suggestion] — _source: [agent]_
+
+⚖️ **Split** (the two models disagree — your call)
+- [finding] — _raised by: [side]. Their position: [...]. The other side: [...]_
+
+🚫 **Refuted** (raised, then withdrawn)
+- [finding] — _refuted because: [...]_
 
 📋 **Minor / Nitpicks** (confidence 50-79, titles only)
 - [title]
