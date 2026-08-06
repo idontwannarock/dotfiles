@@ -31,3 +31,8 @@ openspec/.vector-search.db*
 
 # codegraph local index
 .codegraph/
+
+# Scratch dir for review-cross-model: the counterpart agent works inside the
+# repo so its session is filed against this project, and writes its findings
+# here. Removed at the end of every run, including the failed ones.
+.cross-model-review/

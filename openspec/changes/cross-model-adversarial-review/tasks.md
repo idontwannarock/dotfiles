@@ -15,8 +15,9 @@
 - [x] 1b.3 派工前確認 `git diff <base>...<branch>` 非空,否則以 `scope not visible` 退化
 - [x] 1b.4 kind-specific 的啟動參數與結束指令外置為 `~/.agent/reference/cross-model-counterparts.md`
 - [x] 1b.5 body 補上「新 split 的 pane 未就緒時 `agent start` 會回 `agent_pane_busy`,需等 prompt 並重試」
-- [ ] 1b.6 **實測 codex profile**:`--sandbox read-only --add-dir <FINDINGS_DIR>` 是否真能組合成「repo 唯讀、findings 目錄可寫、無核准提示」;驗證後才把該列標為已驗證
-- [ ] 1b.7 實測 claude profile 同上;未通過者維持標示未驗證
+- [x] 1b.6 **實測 codex profile** — `--sandbox read-only` 與 `--add-dir` 互斥;可行組合為 `--cd <FINDINGS_DIR> --sandbox workspace-write --ask-for-approval never`,三向 probe 全數如預期,該列標為已驗證
+- [x] 1b.7 實測 claude profile — `--disallowedTools "Write(<repo>/**)"` **未能**擋下寫入 repo;該列標為「邊界未強制」,並補上 `acceptEdits` 不涵蓋 Bash 的實測
+- [x] 1b.8 兩個 kind 皆再現「首個 prompt 被啟動通知吞掉、herdr 仍回報收斂」——body 與 spec 補上「重送一次再退化」
 
 ## 2. 失敗路徑與退化可見性
 
@@ -56,3 +57,13 @@ blocked by 4。
 - [ ] 5.1 `openspec validate` 通過
 - [ ] 5.2 `verify-done`:跑 repo 既有測試,確認未被本次變更影響
 - [ ] 5.3 sync-specs 時對照實作檢視 design.md 的兩條長青候選,決定是否晉升 `context/`
+
+## 1c. 邊界改採偵測(依 Q1/Q2 的實測結論反轉 1b 的部分決策)
+
+- [x] 1c.1 對造工作目錄改回 repo,findings 寫 `<repo>/.cross-model-review/<run id>/`
+- [x] 1c.2 `.gitignore` 加入 `.cross-model-review/`
+- [x] 1c.3 profile 表改寫:沙箱只負責「寫入不超出 repo」,不再宣稱對 repo 唯讀
+- [x] 1c.4 body 加派工前工作樹快照,收尾加比對/還原/揭露,以及移除 scratch 目錄
+- [x] 1c.5 實跑驗證:工作樹前後快照比對、scratch 移除、pane 收尾皆通過
+- [x] 1c.6 實跑發現:agent 退出後 pane 回到 shell,`agent prompt` 的文字被 shell 逐行執行;body 與 spec 補上「送出前確認 agent 仍佔用 pane」
+- [x] 1c.7 補跑完成:`session_meta.cwd` = `/home/howardwang/ws/github/dotfiles`(codex-cli 0.146.1)、findings 落在 `.cross-model-review/verify-run/`、收尾後工作樹逐字相同且 scratch 已移除

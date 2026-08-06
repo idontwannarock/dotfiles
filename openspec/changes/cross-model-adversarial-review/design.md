@@ -66,10 +66,24 @@ haiku 打分擅長且便宜地濾掉明顯的誤判與 nitpick,保留此職責;*
 
 表中每列 SHALL 標示是否經真機驗證。**未經驗證的列比缺列更糟**:缺列會顯性退化,錯列看起來權威卻安靜地失敗。
 
-**Alternative considered**:把 findings 檔改寫到對造沙箱預設可寫之處(`/tmp`、或以 scratch 目錄當 cwd)。否決理由 —— 「大多數 agent 允許 /tmp」不是保證,且以 scratch 當 cwd 會把 repo 推到 workspace 之外,讀取是否需要核准反而變成新的未知數。預授權讓邊界由沙箱**施加**,而非僅由 prompt 措辭**表達**。
+### 4b. 唯讀邊界改採偵測,對造留在 repo 內
+
+4a 的預授權設計實測後再次修正。兩項實測資料推翻了「以沙箱預防」這個路線:
+
+- **沒有任何受測 kind 能做到「某子目錄可寫、其餘唯讀」。** codex 的 `--sandbox read-only` 與 `--add-dir` 互斥(明文拒絕);claude 的 `--disallowedTools "Write(<repo>/**)"` 未能擋下寫入。可寫根就是 workspace 本身。
+- 因此預防只能靠「把 workspace 移出 repo」,而那有一個先前未計入的成本:**agent 的 session 依工作目錄歸檔**。實測 codex 的 `session_meta.cwd` 記的正是那個拋棄式路徑,於是該次 review 對話在其所審專案的歷史中不可檢索 —— transcript 保住了,卻歸進一個過幾天就不存在的抽屜。
+
+改採:對造的工作目錄是 repo,findings 寫進 gitignored 的 `<repo>/.cross-model-review/<run id>/`;沙箱(有的話)只負責把寫入限制在 repo 之內;repo 內容則由**派工前後的工作樹快照比對**把關,差異即還原並揭露。
+
+這也消除了原設計的不一致:預防只在 codex 成立,claude 那側的「唯讀」從頭到尾只是措辭。偵測對所有 kind 一致。
+
+**Alternative considered**:維持 workspace 在 repo 外以保住沙箱預防。否決理由 —— 換來的是 session 歸檔錯位,且該預防本來就只涵蓋一半的 kind。
 
 <!-- evergreen-candidate -->
-**唯讀邊界要由執行機制施加,不能只由 prompt 措辭表達。** 措辭是指示,沙箱才是強制;兩者同時存在時,可驗證的那一個才是邊界。
+**邊界可以用偵測取代預防,但前提是目標可完全復原。** 版控之下的工作樹兩者等價:比對便宜、還原完整,於是換取其他性質(此處是 session 歸檔的正確性)是划算的。目標一旦離開版控,同一個交換就不成立 —— 那時偵測只告訴你已經來不及。
+
+<!-- evergreen-candidate -->
+**唯讀邊界要由執行機制施加,不能只由 prompt 措辭表達。** 措辭是指示,機制才是強制;兩者同時存在時,可驗證的那一個才是邊界。機制不必是沙箱 —— 事後可驗證的比對同樣算數,只要它真的會被執行。
 
 ### 4. Body 為 model-neutral:規定「kind ≠ 當前工具」
 
