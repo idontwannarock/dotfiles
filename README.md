@@ -321,7 +321,7 @@ Windows 端為 no-op：每個舊有套件現在不是來自 external、就是來
 
 | 項目 | 原因 |
 |------|------|
-| [SSH keys](docs/ssh.md) | 每台機器獨立，不應同步 |
+| [SSH keys 與 `~/.ssh/config`](docs/ssh.md) | 每台機器獨立，不應同步；config 含內網 IP 與主機別名。可共用的部分走 `~/.ssh/config.d/` drop-in |
 | [Git 憑證](docs/git-credentials.md) | 包含機器專屬 access token |
 | GUI 應用程式 | 各機器需求不同（清單維護於 [gist](https://gist.github.com/idontwannarock/cef42b856b878e718a2e402eb8e5d7e1)） |
 | NeoVim | 已棄用並自 repo 移除，改用 [Vim](docs/vim.md) 設定；舊設定可自 git history 取回 |
@@ -394,7 +394,7 @@ dotfiles/
 | [herdr](docs/herdr.md) | Agent 多工器的實測行為與陷阱（Linux/macOS） |
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
 | [Renovate](docs/renovate.md) | external 工具版本自動追蹤與 auto-merge |
-| [SSH](docs/ssh.md) | SSH key 設定教學 |
+| [SSH](docs/ssh.md) | SSH key 設定教學、`~/.ssh/config.d/` Include 慣例 |
 | [Starship](docs/starship.md) | Starship prompt 設定 |
 | [User Scripts](docs/user-scripts.md) | 手動執行的輔助腳本（scoop 更新、pwsh 換裝） |
 | [Vim](docs/vim.md) | Vim / IdeaVim 設定與快捷鍵 |
