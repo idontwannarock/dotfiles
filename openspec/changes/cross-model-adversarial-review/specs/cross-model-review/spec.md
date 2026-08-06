@@ -66,6 +66,15 @@ kind-specific 的啟動參數與結束指令 SHALL 外置於 tool-neutral 的 re
 - **WHEN** 對造的 kind 在表中無對應列
 - **THEN** SHALL 以預設參數派工並跳過禮貌退出,SHALL NOT 以類比其他 kind 的方式猜測旗標或指令字串
 
+#### Scenario: 對造的工作目錄為 repo
+- **WHEN** 建立對造所在的 pane
+- **THEN** 其工作目錄 SHALL 為 repo,findings SHALL 寫入 repo 內已被 gitignore 的 scratch 目錄
+- **AND** 理由為 session 歸檔:agent 的 transcript 依其工作目錄歸檔,置於拋棄式路徑會使該次 review 對話對其所審之專案不可檢索
+
+#### Scenario: 沙箱只負責限制寫入範圍不超出 repo
+- **WHEN** 對造的 kind 具備可用沙箱
+- **THEN** 啟動參數 SHALL 將其寫入範圍限縮於 repo,SHALL NOT 宣稱其對 repo 內容唯讀 —— 受測的 kind 皆無法做到「某子目錄可寫、其餘唯讀」
+
 #### Scenario: 未經實測的 profile 列
 - **WHEN** 某列尚未在真機上端到端驗證
 - **THEN** 該列 SHALL 標示為未驗證;啟動失敗或仍被 blocked 時 SHALL 退化並回報,SHALL NOT 臨場改寫旗標繞過
@@ -78,9 +87,19 @@ kind-specific 的啟動參數與結束指令 SHALL 外置於 tool-neutral 的 re
 - **WHEN** 組裝第一輪 prompt
 - **THEN** 該 prompt SHALL 明確聲明唯讀邊界
 
-#### Scenario: 工作樹未被更動
+#### Scenario: 工作樹以偵測而非預防把關
 - **WHEN** 本能力執行結束(含失敗路徑)
-- **THEN** 使用者的工作樹狀態 SHALL 與執行前一致
+- **THEN** SHALL 以派工前的 `git status --porcelain` 與 tracked 檔雜湊快照比對當前狀態
+- **AND** scratch 目錄以外的任何差異 SHALL 還原並於報告中揭露,SHALL NOT 靜默併入結果
+- **AND** 快照 SHALL 在派工前取得 —— 工作樹本就可能是髒的,沒有前置快照就無法區分「對造改的」與「使用者改的」
+
+#### Scenario: 偵測取代預防的適用範圍
+- **WHEN** 有人主張把此偵測式邊界套用到非版控的目標
+- **THEN** SHALL NOT 採納 —— 該取捨成立的前提是目標在版控之下,使檢查便宜且偏差可完全復原
+
+#### Scenario: scratch 目錄不留存
+- **WHEN** 兩個方向的檔案皆已讀取,或執行因任何原因中止
+- **THEN** SHALL 移除本次 run 的 scratch 目錄,且該目錄 SHALL 已被 gitignore 涵蓋
 
 ### Requirement: 一輪交叉反駁
 
@@ -138,6 +157,17 @@ kind-specific 的啟動參數與結束指令 SHALL 外置於 tool-neutral 的 re
 #### Scenario: 對造停在等待輸入
 - **WHEN** 對造的最終狀態為 `blocked`
 - **THEN** SHALL 視為未完成,SHALL NOT 讀取並採信其 findings
+
+#### Scenario: 送出前確認 pane 仍由 agent 佔用
+- **WHEN** 準備送出任一 prompt(含重送)
+- **THEN** SHALL 先確認該 pane 仍由預期的 agent 佔用
+- **AND** 若 agent 已不存在,SHALL 走退化路徑,SHALL NOT 送出 —— agent 退出後 pane 回到 shell,送出的 prompt 文字會被 shell 逐行當指令執行,而 review prompt 是任意文字且 cwd 就是 repo
+- **AND** agent 自我更新等啟動期行為可造成此情形,`interactive_ready` 為真不構成後續仍存活的保證
+
+#### Scenario: 收斂狀態不等於 prompt 已送達
+- **WHEN** 對造回報收斂狀態但 findings 檔不存在
+- **THEN** SHALL 重送該 prompt **一次**後才退化 —— 啟動後的首個 prompt 可能被 agent 自身的啟動通知吞掉,而 herdr 仍回報收斂狀態(兩個受測 kind 皆再現)
+- **AND** SHALL NOT 將收斂狀態本身當作工作已執行的證據
 
 ### Requirement: 退化必須顯式可見
 
