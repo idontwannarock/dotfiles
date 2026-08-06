@@ -130,7 +130,11 @@ herdr 不可用、對造 CLI 未安裝或未登入、`agent start` timeout、對
 
 **禮貌退出與強制關閉的職責分離。** `herdr agent` 無 `stop` 子命令,但 agent 可經 `agent prompt` / `send-keys` 收到自己的結束指令(Claude Code / Codex CLI / agy CLI 皆有 `/exit`),而 herdr 明確把「agent exits」建模為正典狀態 —— agent name 會在其 exit / released / replaced 時被釋放,pane 回到 shell prompt。
 
-禮貌退出的價值在於**讓對造跑自己的收尾**:SessionEnd hook、transcript flush(本機的 episodic-memory 索引依賴它)、以及它自己起的子行程(如 MCP server)有機會正常結束。硬關 pane 會跳過這一切。
+禮貌退出的價值在於**讓對造跑自己的收尾**,但這個價值的範圍經 2026-08-06 實測後必須收窄:
+
+對 codex 而言**測不到好處**。同一份工作分別以 `/exit` 與硬關 pane 結束,session 檔在硬關前後皆為 14 行、結尾都是完整的 `task_complete`(transcript 逐筆寫入,不依賴結束時的 flush);`ppid=1` 的孤兒行程數為 0。原本寫的「transcript flush 與子行程收尾」對這個 kind 是錯的。
+
+仍保留禮貌退出,理由只剩一項:**具備 session-end hook 的 kind**(如 Claude Code)在硬關時不會執行那些 hook,而本機的 episodic-memory 索引正是掛在 hook 上。此項尚未實測,因此屬於保守而非已證實的收益 —— 它便宜、有時限、失敗不影響保證,所以留著;但不得再以「保住 transcript」為由主張它。
 
 但它 SHALL NOT 被當作保證,原因有三:
 

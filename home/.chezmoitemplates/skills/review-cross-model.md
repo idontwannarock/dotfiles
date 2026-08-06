@@ -125,7 +125,9 @@ Stop there. Do not open a second round, and do not extend on the grounds that "t
 
 Always, on every path -- success, timeout, blocked, error:
 
-1. **Courtesy exit, time-boxed.** Send the exit command from the counterpart's profile in `~/.agent/reference/cross-model-counterparts.md`, so its session hooks, transcript flush, and child processes (MCP servers) wind down cleanly. If it is `blocked`, send `esc` first. If its kind has no row there, skip this step -- do not guess a command string.
+1. **Courtesy exit, time-boxed.** Send the exit command from the counterpart's profile in `~/.agent/reference/cross-model-counterparts.md`, so a kind that runs session-end hooks gets to run them. If it is `blocked`, send `esc` first. If its kind has no row there, skip this step -- do not guess a command string.
+
+   Do not expect more of it than that. Measured on codex: a hard close truncates nothing (the transcript is written as it goes) and orphans nothing. The step is kept because it is cheap and because hook-bearing kinds exist, not because the transcript needs it.
 2. **Guaranteed close.** `herdr pane close <pane id>` -- unconditionally, whether or not step 1 worked. Never retry step 1, never let it block this one.
 3. **Verify the agent is gone.** `herdr agent list` -- the name must not appear.
 4. **Compare the tree against the Step 2 snapshot.** Anything that changed outside `.cross-model-review/` was written by the counterpart against its instructions: restore those paths and report it in the review. A counterpart that edited the repo has also compromised its own findings, so say so rather than folding the result in quietly.
@@ -154,5 +156,22 @@ When any precondition or step fails, produce the review **without** the cross-mo
 > **Cross-model rebuttal: not run — `<reason>`**
 
 Never omit that line, and never soften it into an absence. The report has to be readable as what it is: a single-model review.
+
+The reasons, and where each is raised:
+
+| Reason | Raised at |
+|--------|-----------|
+| `herdr unavailable — not running inside herdr` | Step 0 |
+| `herdr unavailable — binary not found` | Step 0 |
+| `no counterpart agent available` | Step 0 |
+| `scope not visible to counterpart — nothing committed on the branch` | Step 1 |
+| `counterpart failed to start` | Step 3 |
+| `counterpart no longer present` | Step 3, before any submission |
+| `counterpart blocked on input` | Step 4 |
+| `counterpart timed out` | Step 4 |
+| `counterpart produced no findings file` | Step 4, after one resubmission |
+| `rebuttal exchange incomplete` | Step 5 |
+
+Report the reason you actually hit. Several of these look alike from the outside and mean very different things -- a counterpart that blocked on a permission prompt is a fixable configuration problem, while one that produced no file after a resubmission is not. Collapsing them into "cross-model review failed" throws away the only information that would let anyone fix it.
 
 Degrading still runs the teardown in Step 6 for anything already created.
