@@ -26,8 +26,25 @@ body SHALL NOT 寫死對造的 agent kind。派工時 SHALL 選擇一個 kind �
 - **WHEN** 由 Codex 端呼叫本能力
 - **THEN** 起始的 agent kind SHALL NOT 為 `codex`
 
+#### Scenario: 優先選寫入受限的 kind,但不因此放棄執行
+- **WHEN** 挑選對造 kind
+- **THEN** SHALL 優先採用 profile 表中「寫入受限於 repo」為真的 kind
+- **AND** 若僅有寫入不受限的 kind 可用,SHALL 仍執行,但報告 SHALL 揭露「對造寫入未受限,僅驗證 repo 範圍」
+- **AND** SHALL NOT 以寫入不受限為由拒絕執行 —— 真實失敗模式是對造改動它正在讀的 repo,而該處正是比對涵蓋範圍;為低機率風險放棄整個關卡,換來的是關卡在該工具上完全不存在
+- **AND** 預授權的指令集 SHALL 限於唯讀子命令 —— `Bash(git *)` 這類寬鬆授權涵蓋 `git reset --hard`、`git clean`,而對造的職責只有讀
+
+#### Scenario: 派工前執行 readiness 探測
+- **WHEN** 選定對造 kind 之後、建立 pane 之前
+- **THEN** SHALL 執行 profile 表所載的 readiness 探測命令
+- **AND** 探測失敗 SHALL 以 `counterpart not authenticated` 退化 —— 未登入的 CLI 啟動得起來、回報 ready,再卡在登入畫面,而該情形會被歸類成 `blocked`,指向錯誤的原因
+
+#### Scenario: 探測結果不得被留存
+- **WHEN** 記錄 profile 表或任何文件
+- **THEN** SHALL 只記錄探測**命令**,SHALL NOT 記錄探測**結果**
+- **AND** 理由:登入狀態是會變的 session 狀態,快取下來的「未登入」會在使用者重新登入後持續壓制對造
+
 #### Scenario: 無可用的異種 kind
-- **WHEN** 找不到任何已安裝且可用、且 kind 異於當前工具的 agent
+- **WHEN** 找不到異於當前工具且通過 readiness 探測的 agent
 - **THEN** SHALL 走退化路徑並回報原因,SHALL NOT 退而求其次派同 kind 的 agent
 
 ### Requirement: 對造的上下文邊界
@@ -89,9 +106,20 @@ kind-specific 的啟動參數與結束指令 SHALL 外置於 tool-neutral 的 re
 
 #### Scenario: 工作樹以偵測而非預防把關
 - **WHEN** 本能力執行結束(含失敗路徑)
-- **THEN** SHALL 以派工前的 `git status --porcelain` 與 tracked 檔雜湊快照比對當前狀態
-- **AND** scratch 目錄以外的任何差異 SHALL 還原並於報告中揭露,SHALL NOT 靜默併入結果
+- **THEN** SHALL 以派工前的 `git status --porcelain` 與**全部** tracked 檔及全部未被忽略之 untracked 檔的內容雜湊比對當前狀態
+- **AND** 雜湊範圍 SHALL NOT 限縮於 review scope —— 對造改動 scope 外的既有髒檔時 porcelain 輸出不變,範圍受限的快照看不見;未雜湊的 untracked 檔則完全無從檢查
 - **AND** 快照 SHALL 在派工前取得 —— 工作樹本就可能是髒的,沒有前置快照就無法區分「對造改的」與「使用者改的」
+
+#### Scenario: 偵測到偏差時不得自動還原
+- **WHEN** 比對發現 scratch 目錄以外的差異
+- **THEN** SHALL 列出路徑並於報告揭露,且 SHALL 聲明對造的 findings 因此可疑
+- **AND** SHALL NOT 自動還原 —— 還原的內容只能取自 git,對使用者已修改但未 commit 的檔案而言,那會為了撤銷對造的改動而銷毀使用者的工作
+- **AND** SHALL NOT 宣稱未 commit 的內容可復原 —— 雜湊能證明檔案變了,無法重建它先前的內容
+
+#### Scenario: scratch 目錄在任意目標 repo 皆不進入 status
+- **WHEN** 在任一 repo 建立 scratch 目錄
+- **THEN** SHALL 將其加入該 repo 的 `.git/info/exclude`,並於收尾時移除該條目
+- **AND** SHALL NOT 依賴 dotfiles repo 自身的 `.gitignore` —— 該條目只在這個 repo 生效,其他 repo 於 run 期間會看到未追蹤檔,併發的 `git add -A` 可能將其暫存
 
 #### Scenario: 偵測取代預防的適用範圍
 - **WHEN** 有人主張把此偵測式邊界套用到非版控的目標

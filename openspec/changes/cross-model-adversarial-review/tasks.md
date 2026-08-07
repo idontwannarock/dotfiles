@@ -43,11 +43,11 @@ blocked by 1。此片改動既有 review body,讓打分與反駁分工落地。
 
 ## 3b. 跨模型 review 對本 change 自身的發現(待修)
 
-- [ ] 3b.1 **Critical** 快照既不完整也不是還原來源:雜湊只涵蓋 scope 內 tracked 檔(scope 外的髒檔改動 porcelain 不變、隱形)、untracked 內容從未雜湊、且雜湊只能偵測不能還原 —— 「restore those paths」從 git 還原會抹掉使用者未 commit 的工作
-- [ ] 3b.2 **Critical** claude profile 的 `Bash(git *)` 預授權涵蓋 `git reset --hard` / `git clean` 等破壞性指令
-- [ ] 3b.3 **Critical** 對造若為寫入不受限的 kind(如 claude),repo 外的寫入既不受限也不被偵測;需決定:限定只用可限制寫入範圍的 kind,或明載殘餘風險
-- [ ] 3b.4 **Split** Step 0 缺具體的「已安裝且已登入」探測,失敗延後到 `agent start` 之後(待你裁決是否修)
-- [ ] 3b.5 scratch 目錄在**其他 repo** 未被 gitignore:run 期間為可見的未追蹤檔,不可攔截的終止會留殘骸,併發 `git add -A` 有 staging race
+- [x] 3b.1 **Critical** 快照既不完整也不是還原來源:雜湊只涵蓋 scope 內 tracked 檔(scope 外的髒檔改動 porcelain 不變、隱形)、untracked 內容從未雜湊、且雜湊只能偵測不能還原 —— 「restore those paths」從 git 還原會抹掉使用者未 commit 的工作
+- [x] 3b.2 **Critical** claude profile 的 `Bash(git *)` 預授權涵蓋 `git reset --hard` / `git clean` 等破壞性指令
+- [x] 3b.3 **Critical** 改為軟限制:優先選寫入受限的 kind,僅有不受限者仍執行但報告須揭露。實測推翻「claude 不可限制」—— cwd=repo 且不給 `--add-dir` 時,repo 外寫入會跳核准對話框而非落地(2026-08-07),先前結論是測試組態的產物
+- [x] 3b.4 採 A:profile 表加 readiness 探測欄(codex `codex login status`),Step 0 於建立 pane 前執行,失敗以 `counterpart not authenticated` 退化;並明訂只記錄探測**命令**、不得留存**結果**
+- [x] 3b.5 scratch 目錄在**其他 repo** 未被 gitignore:run 期間為可見的未追蹤檔,不可攔截的終止會留殘骸,併發 `git add -A` 有 staging race
 
 ## 4. 接進大型流程與清單維護
 
