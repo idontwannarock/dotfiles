@@ -62,9 +62,9 @@ blocked by 3。
 
 blocked by 4。
 
-- [ ] 5.1 `openspec validate` 通過
-- [ ] 5.2 `verify-done`:跑 repo 既有測試,確認未被本次變更影響
-- [ ] 5.3 sync-specs 時對照實作檢視 design.md 的兩條長青候選,決定是否晉升 `context/`
+- [x] 5.1 `openspec validate` 通過
+- [x] 5.2 `verify-done`:跑 repo 既有測試,確認未被本次變更影響
+- [x] 5.3 sync-specs 時對照實作檢視 design.md 的兩條長青候選,決定是否晉升 `context/`
 
 ## 1c. 邊界改採偵測(依 Q1/Q2 的實測結論反轉 1b 的部分決策)
 
