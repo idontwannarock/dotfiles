@@ -45,6 +45,56 @@ JSON（用 `.result.*` 取 id）；`pane read` / `agent read` 直接回純文字
 **id 從回應取，不要自己推。** pane id 形如 `wK:pV`，關閉後不重用，`pane move`
 之後會換新 id。
 
+**新 split 的 pane 還沒回到 shell prompt。** `agent start` 會拒絕（`agent_pane_busy`），
+但過一兩秒同一個 pane 就可用。先等 prompt 再啟動，別把第一次拒絕當成失敗。
+
+**沒有 `agent stop`。** agent 生命週期綁在 pane 上，收尾的正典是「送該 agent 自己的
+結束指令（`/exit`）→ `pane close` → `agent list` 確認」。實測（codex 0.146.1）硬關
+pane **不會**截斷 session 記錄：同一份工作在硬關前後皆為 14 行、結尾都是完整的
+`task_complete`，也沒有留下 `ppid=1` 的孤兒行程。所以禮貌退出的價值只剩「讓有
+session-end hook 的 kind 跑完 hook」，不要拿「保住 transcript」去主張它。
+
+## 三種「看起來成功的失敗」
+
+以下三項都不報錯、退出碼為零、狀態機也顯示收斂，是實際踩過才浮現的：
+
+**`agent wait` 預設把 `blocked` 當收斂。** 但 `blocked` 意思是 agent 停在權限對話框
+或澄清問題上，工作**沒有完成**。只有 `idle`/`done` 能當成功；照預設等待會在對方卡住時
+讀到不完整或不存在的結果。
+
+**`interactive_ready: true` 與收斂狀態都不保證 prompt 被處理。** 啟動後的第一個 prompt
+可能被 agent 自己的啟動通知（usage limit 提示、MCP 失敗警告、自我更新）吞掉，而
+`--wait` 照樣回報 `done`/`idle`、context 計數停在 0。判斷工作是否真的發生只能看它有沒有
+產出約定的檔案 —— 缺檔就重送一次，再缺才放棄。
+
+**agent 退出後，`agent prompt` 的文字會被 shell 當指令執行。** 實際踩到的路徑是 codex
+啟動時自我更新完就退出，pane 回到 shell prompt，後續送出的 prompt 逐行變成指令：
+
+```
+❯ 1. Report your current working directory.
+1.: command not found
+```
+
+那次剛好無害，但 prompt 是任意文字、cwd 是使用者的 repo。**每次送出前都要先確認 pane
+仍由預期的 agent 佔用**；不在就走退化路徑，不要送。
+
+## 限制對造 agent 的寫入範圍
+
+關鍵是**工作目錄就是可寫根**，而且不要額外加目錄：
+
+| kind | 限制方式 | 越界時 |
+|------|---------|--------|
+| codex | `--cd <repo> --sandbox workspace-write --ask-for-approval never` | 直接失敗（`read-only file system`），流程繼續 |
+| claude | cwd 設為 repo，**不給 `--add-dir`** | 跳核准對話框 → `blocked`，流程停住 |
+
+兩個反例：codex 的 `--sandbox read-only` 與 `--add-dir` **互斥**（明文拒絕「effective
+permissions do not allow additional writable roots」）；claude 的
+`--disallowedTools "Write(<repo>/**)"` **擋不住**，`--add-dir` 的授權是雙向的，路徑樣式
+的否決蓋不過它。
+
+也就是說沒有任何一種 kind 能做到「某子目錄可寫、其餘唯讀」。要唯讀就整個唯讀，
+要能寫就整個工作目錄能寫 —— 於是 findings 檔只能落在工作目錄內。
+
 ## Windows 原生安裝
 
 **只有 preview channel 有 Windows binary。** stable v0.8.0 的 release assets 只發

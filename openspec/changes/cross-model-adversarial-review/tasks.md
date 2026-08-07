@@ -53,10 +53,10 @@ blocked by 1。此片改動既有 review body,讓打分與反駁分工落地。
 
 blocked by 3。
 
-- [ ] 4.1 修改 `home/.chezmoitemplates/skills/dev-workflow.md` 的大型流程串,於 `reviewFull` 後接 `code:review-cross-model`;小型流程不動
-- [ ] 4.2 在 name-map 加入新 command 的兩端名稱
-- [ ] 4.3 更新 `model-invocability` 解鎖清單至 15 支,並確認「清單涵蓋整棵樹」的總數斷言仍成立
-- [ ] 4.4 更新 `docs/herdr.md`:補上 `agent wait` 的 `blocked` 陷阱與「無 `agent stop` 子命令」兩項實測事實
+- [x] 4.1 修改 `home/.chezmoitemplates/skills/dev-workflow.md` 的大型流程串,於 `reviewFull` 後接 `code:review-cross-model`;小型流程不動
+- [x] 4.2 在 name-map 加入新 command 的兩端名稱
+- [x] 4.3 更新 `model-invocability` 解鎖清單至 15 支,並確認「清單涵蓋整棵樹」的總數斷言仍成立
+- [x] 4.4 更新 `docs/herdr.md`:補上 `agent wait` 的 `blocked` 陷阱與「無 `agent stop` 子命令」兩項實測事實
 
 ## 5. 收尾
 
