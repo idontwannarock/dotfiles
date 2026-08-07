@@ -1,0 +1,30 @@
+# Starship prompt configuration
+# https://starship.rs/config/
+#
+# This must live at ~/.config/starship.toml — the path starship reads by default.
+# A ~/.config/starship/ subdirectory is NOT searched, and a missing config fails
+# silently (starship falls back to built-in defaults and still draws a prompt),
+# so a misplaced file looks exactly like a working one.
+
+# Increase command timeout to avoid git command timeouts on large repos
+# Default is 500ms, which is too short on Windows with Defender real-time scanning
+command_timeout = 1000
+
+# Shell indicator — show which shell the prompt belongs to, since every shell
+# shares this one config and otherwise looks identical.
+# pwsh_indicator defaults to unset and falls back to powershell_indicator, so
+# without it PowerShell 5.1 and 7+ are indistinguishable. The split comes from
+# starship's own init script, which sets STARSHIP_SHELL to "powershell" on 5.1
+# and "pwsh" on 6+.
+[shell]
+disabled = false
+bash_indicator = "bash"
+zsh_indicator = "zsh"
+fish_indicator = "fish"
+powershell_indicator = "ps5"
+pwsh_indicator = "pwsh"
+cmd_indicator = "cmd"
+# Default is an empty string, which would hide an unrecognised shell entirely
+unknown_indicator = "?sh"
+style = "bold yellow"
+format = "[$indicator]($style) "
