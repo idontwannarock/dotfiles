@@ -227,7 +227,12 @@ try {
     # http transport: no binary to guard on, and no per-session process. The
     # script registers it but cannot log in -- run /mcp and pick atlassian to
     # finish the OAuth flow on a new machine.
-    Add-McpIfMissing -Name "atlassian" -AddArgs @("--transport", "http", "https://mcp.atlassian.com/v1/mcp")
+    #
+    # /authv2 is Atlassian's current endpoint; the bare /v1/mcp it replaces
+    # carries neither the Compass nor the Teamwork Graph tools. The guard above
+    # matches on name only, so a machine already holding the old url keeps it --
+    # see docs/claude-code.md for the one-line migration.
+    Add-McpIfMissing -Name "atlassian" -AddArgs @("--transport", "http", "https://mcp.atlassian.com/v1/mcp/authv2")
 
     Log-Section "set user preferences in ~/.claude.json"
     $claudeJson = Join-Path $env:USERPROFILE ".claude.json"

@@ -247,7 +247,7 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | `chrome-devtools` | 驅動 Chrome：導航、抓 DOM／console／network、效能 trace | binary 已裝，待註冊 | install-02（`chrome-devtools-mcp`） |
 | `agent-browser` | 較輕量的瀏覽器自動化（點擊、填表、截圖） | binary 已裝，待註冊 | install-02（`agent-browser-mcp`） |
 | `codex` | 把 Codex CLI 當 MCP server，交叉詢問另一個模型 | binary 已裝，待註冊 | install-02（`@openai/codex`） |
-| `atlassian` | Jira／Confluence 讀寫 | **已在 user scope**，新機器只差 `/mcp` 完成 OAuth | 遠端 http，無需 binary |
+| `atlassian` | Jira／Confluence／Compass／Teamwork Graph 讀寫 | **已在 user scope**，新機器只差 `/mcp` 完成 OAuth | 遠端 http，無需 binary |
 
 註冊指令（在該 repo 根目錄執行，選要的貼一行）：
 
@@ -265,10 +265,46 @@ claude mcp add --scope project codex -- codex mcp-server
 - 專案 scope 的 server 首次載入需要核准，記在 settings 的 `enabledMcpjsonServers`。
 - **一律指向全域 binary，不要寫 `npx -y <pkg>@latest`**——理由見上面的 process 數表。
 - `atlassian` 由 install-03 自動註冊，但**登入代不了**：新機器要自己 `/mcp` 選它完成 OAuth。
+  端點細節與兩個坑見下一節。
 - 換新機器時這些 binary 由 `chezmoi apply` 自動補齊；repo 裡的 `.mcp.json` 跟著 git 走，兩邊會合。
 
 清單要新增成員時，**同時改兩處**：`run_install-02-npm-tools.{sh,ps1}.tmpl` 加安裝、這張表加一列。
 只加安裝沒人知道它存在；只加表格則換機器就沒有。
+
+#### atlassian：端點選 `/authv2`，以及兩個坑
+
+install-03 註冊的端點是 `https://mcp.atlassian.com/v1/mcp/authv2`。它是 Atlassian 現行的正典
+端點，被它取代的裸 `/v1/mcp` **少了 Compass 與 Teamwork Graph 兩組工具**（31 支 vs 39 支）——
+差別不只是換 auth 協議。要預先知道某端點會給哪些權限，讀它的 metadata 就好，不必先授權再數：
+
+```sh
+curl -s https://mcp.atlassian.com/.well-known/oauth-protected-resource/v1/mcp/authv2 | jq .scopes_supported
+```
+
+舊 `/v1/mcp` 連這份 metadata 都回 `Not Found`，這本身就是它屬於舊世代的訊號。
+
+**坑一：改完 URL 一定要重啟 Claude Code。** MCP client 把 OAuth discovery 的結果快取在 process
+記憶體裡，不會因為設定檔改了就重新解析。沒重啟就跑 `/mcp`，它會拿**舊端點的** authorization
+server 去授權，token 存進舊的 key，而連線時查的是新端點的 key——症狀是「Got new credentials,
+but atlassian rejected them on reconnect」，log 裡會看到 `Saving tokens` 與 `No access token in
+storage` 只隔 100ms。那不是 OAuth 壞掉，是兩邊在講不同的 key。重啟後一次就過。
+
+**坑二：不要啟用 claude.ai 內建的 Atlassian Rovo connector。** 那不是另一套 server，是 Anthropic
+預填的同一個 Atlassian 端點；而且它停在舊的 `/v1/mcp`（[claude-code#61288](https://github.com/anthropics/claude-code/issues/61288)
+提報後被 closed as not planned）。更麻煩的是內建 connector 會**依 URL 去重、遮蔽同 URL 的自註冊
+條目**——你 dotfiles 註冊的那筆會靜靜消失但行為看似正常，debug 時極易誤判。自註冊的好處正在於
+升級節奏握在自己手上。
+
+**既有機器要手動遷移。** `mcp_add_if_missing` 只比對 server 名稱，所以已經有 `atlassian` 的機器
+不會被 install-03 換掉端點。手動跑一次，然後**重啟** Claude Code 並 `/mcp` 重新授權：
+
+```sh
+claude mcp remove atlassian -s user
+claude mcp add atlassian -s user --transport http https://mcp.atlassian.com/v1/mcp/authv2
+```
+
+注意 `-s/--scope` 是每個子命令各自解析的，`add` 漏掉就會落在預設的 `local`（只在當前目錄生效，
+且優先序 local > project > user 會遮蔽 user scope 那筆，同樣是「改了沒反應」的來源）。
 
 #### 例外：已經在 user scope、想在特定 repo 關掉
 
