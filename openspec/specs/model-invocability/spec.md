@@ -43,8 +43,8 @@ SHALL NOT 以「是否有副作用」作為判準。該措辭無法區分風險�
 
 #### Scenario: 解鎖清單
 
-- **WHEN** 檢視 `handoff`、`pickup`、`handoff-list`、`arch-review`、`git/commit`、`git/sync`、`git/clean-gone`、`code/review-surgical`、`code/review-comprehensive`、`code/review-linus`、`code/review-uncommitted`、`code/review-security`、`code/review-spec`、`code/review-types` 的 frontmatter
-- **THEN** 皆 SHALL NOT 含 `disable-model-invocation`(共 14 支;`git/clean-gone` 刪除遠端已消失的本地分支,可經 reflog 回復,故屬可逆)
+- **WHEN** 檢視 `handoff`、`pickup`、`handoff-list`、`arch-review`、`git/commit`、`git/sync`、`git/clean-gone`、`code/review-surgical`、`code/review-comprehensive`、`code/review-linus`、`code/review-uncommitted`、`code/review-security`、`code/review-spec`、`code/review-types`、`code/review-cross-model` 的 frontmatter
+- **THEN** 皆 SHALL NOT 含 `disable-model-invocation`(共 15 支;`git/clean-gone` 刪除遠端已消失的本地分支,可經 reflog 回復,故屬可逆;`code/review-cross-model` 唯讀,其對外行為僅限於在本機 herdr pane 內起一個唯讀的 agent,無不可逆效果亦非外部可見)
 
 #### Scenario: 清單涵蓋整棵樹
 
@@ -65,6 +65,11 @@ SHALL NOT 以「是否有副作用」作為判準。該措辭無法區分風險�
 
 - **WHEN** 新增任何 Claude command
 - **THEN** SHALL 先依判準判定,再決定是否標記;SHALL NOT 沿用鄰近檔案的寫法作為預設
+
+#### Scenario: 起用外部 agent 不改變分類
+
+- **WHEN** 某能力會在本機起一個外部 agent(如 `code/review-cross-model` 經 herdr 派工)
+- **THEN** 判準 SHALL 仍為該能力自身效果的可逆性與外部可見性 —— 被起用的 agent 若受唯讀邊界約束,SHALL NOT 因「啟動了另一個程序」而改判為需鎖
 
 ### Requirement: Codex 端不施加等效限制
 

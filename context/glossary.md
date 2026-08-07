@@ -24,6 +24,8 @@ description: "本專案的 domain 詞彙:chezmoi 模型、Git 工作區、開發
 
 - **discipline skills** — 六個自家 skill:`grill`、`tdd`、`diagnose`、`verify-done`、`worktree`、`finish-branch`(取代已退役的 `superpowers` plugin)。
 - **dev-workflow** — 編排 skill,跑完整 OpenSpec 生命週期:選流程 → grill → spec → 實作(tdd)→ verify → review → merge。
+- **對造(counterpart)** — 跨模型 review 中,由主 agent 經 herdr 派工、kind 與自己不同的那個 agent。它工作於 repo 內、唯讀、自行蒐證(只收到 branch 與 repo 路徑,不收主 agent 挑好的 diff),產出經檔案回傳。「跨模型」指的是**模型層**的多樣性——同一模型換 prompt 只是 prompt 層,先驗與盲點仍共享。
+- **分歧(split)** — 跨模型 review 的三種分級之一:一造提出、另一造未表態的發現。分歧是輸出而非待消除的雜訊,一律呈給使用者裁決,模型不得自行決定。另兩級為 Critical(兩造皆立或反駁失敗)與 Refuted(反駁成立)。
 - **OpenSpec** — spec/change 追蹤。`openspec/specs/*/spec.md` = 長青行為契約(SHALL + Scenario);*change* = 提案 delta,完成後 archive,可 `sync-specs` 摺回 main specs。
 
 **跨工具部署**
