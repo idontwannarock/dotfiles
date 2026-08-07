@@ -97,6 +97,14 @@ AppData/Local/rtk
 .claude/commands/git/push.md
 .claude/commands/git/undo.md
 
+# starship 的設定檔搬回 ~/.config/starship.toml（starship 唯一的預設路徑）。
+# 舊 source 部署到 ~/.config/starship/starship.toml，而 starship 從不讀那裡，
+# 也沒有任何地方設 STARSHIP_CONFIG — 也就是說 command_timeout 從搬進子目錄那天
+# 起就沒生效過。這台機器看起來正常，純粹因為 ~/.config/starship.toml 還留著一份
+# 未受管的舊副本；新機器 apply 後只會拿到全預設值。整個目錄點名移除，避免那份死
+# 檔繼續讓人以為設定有部署。
+.config/starship
+
 # codex-claude-parity, removed from source in 872d208 (2026-06-17) when the
 # Codex config was pointed at dev-workflow instead. .chezmoiremove already
 # existed by then, so this was simply missed -- and the machine that removed it
