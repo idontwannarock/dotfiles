@@ -34,10 +34,27 @@ Split the pane with `--cwd <REPO>`.
 
 `<REPO>` is the repository under review, and the counterpart's working directory.
 
-| Kind | Launch arguments | Exit command | Confines writes to the repo? |
+| Kind | Readiness probe | Launch arguments | Exit command | Confines writes to the repo? |
 |------|------------------|--------------|------------------------------|
-| `codex` | `--cd <REPO> --sandbox workspace-write --ask-for-approval never` | `/exit` | **Yes** -- sandbox verified 2026-08-06, codex-cli 0.146.0 |
-| `claude` | `--permission-mode acceptEdits --allowedTools "Bash(git *)"` | `/exit` | **No** -- approval avoidance only |
+| `codex` | `codex login status` | `--cd <REPO> --sandbox workspace-write --ask-for-approval never` | `/exit` | **Yes** -- verified 2026-08-06, codex-cli 0.146.1 |
+| `claude` | `claude --version` | `--permission-mode acceptEdits --allowedTools "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" "Bash(git status:*)" "Bash(git ls-files:*)"` | `/exit` | **Yes** -- verified 2026-08-07, but see the note |
+
+Both rows launch with the pane's cwd set to `<REPO>`, and **neither passes `--add-dir`**. That absence is the confinement for claude: its file tools stay within the working directory tree, so a write outside the repo raises a permission prompt instead of landing. An earlier draft passed `--add-dir <REPO>` with the workspace elsewhere and concluded claude could not be confined -- that conclusion was an artifact of the test configuration, not a property of the tool.
+
+The claude confinement differs from codex's in how it fails: codex refuses the write outright and carries on, while claude stops at a prompt and registers as `blocked`. Both prevent the write; only codex lets the run continue afterwards.
+
+The git allowance in the claude row is deliberately narrow. An earlier draft used `Bash(git *)`, which pre-authorizes `git reset --hard` and `git clean` -- destructive commands handed to an agent whose entire job is to read.
+
+### The probe column is not a verified fact
+
+The two columns record different kinds of thing, and conflating them produces a table that rots:
+
+| Column | Records | Lifetime |
+|--------|---------|----------|
+| `Confines writes` | what the flags mean | stable; re-verify only when the CLI changes |
+| `Readiness probe` | **the command to run**, never its result | the answer is session state and changes whenever the user logs in or out |
+
+Run the probe every time. Never write its outcome into this table, into a memory, or into any document. "codex was not authenticated" is true for exactly as long as it takes the user to log in again, and a cached copy of it would suppress the counterpart forever after.
 
 Pass launch arguments after `--` on `herdr agent start`:
 
@@ -60,9 +77,9 @@ So no kind gives "writable here, read-only there". Hence detection rather than p
 
 **codex** -- `workspace-write` with the repo as workspace confines writes to the repo. Writes elsewhere on disk still require approval, which with `--ask-for-approval never` become plain failures rather than a blocked prompt.
 
-**claude** -- the row buys approval avoidance and nothing more; writes are not confined. Note that `--permission-mode acceptEdits` covers edits only, **not** Bash: without a `Bash(...)` allowance the counterpart blocks on its first `git` command.
+**claude** -- confined by its working directory, provided no extra directory is added. Note that `--permission-mode acceptEdits` covers edits only, **not** Bash: without a `Bash(...)` allowance the counterpart blocks on its first `git` command.
 
-Prefer a kind whose writes are confined when you have the choice. Either way the Step 6 tree comparison is what actually protects the repo -- it is not optional for the confined kinds either.
+The Step 6 tree comparison still runs for eligible kinds. Confinement and comparison cover different things -- confinement bounds where damage can land, comparison tells you whether any landed inside those bounds. Neither substitutes for the other, and neither can undo an edit to a file the user had not committed.
 
 **Unverified means unverified.** A row that was reasoned about but never exercised is worse than an absent row: an absent row degrades loudly, a wrong row looks authoritative and fails quietly. If a launch fails or the counterpart still blocks, degrade and report the reason; do not improvise flags to get past it.
 

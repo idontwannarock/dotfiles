@@ -23,11 +23,21 @@ Check, in order. Any failure means **degrade** (see the last section) -- never b
 |-------|--------------------------|
 | `HERDR_ENV` is `1` | `herdr unavailable — not running inside herdr` |
 | `herdr` is executable | `herdr unavailable — binary not found` |
-| A usable counterpart kind exists | `no counterpart agent available` |
+| A counterpart kind of a different kind exists | `no counterpart agent available` |
+| That kind's readiness probe passes | `counterpart not authenticated` |
 
-**Choosing the counterpart kind.** It MUST differ from the tool you are running as right now. You know which one you are -- if you are Claude, do not start `claude`; if you are Codex, do not start `codex`. Prefer a kind you can confirm is installed and authenticated. `herdr agent start --kind` accepts `pi, claude, codex, gemini, cursor, devin, agy, cline, omp, mastracode, opencode, copilot, kimi, kiro, droid, amp, grok, hermes, kilo, qodercli, maki`.
+**Choosing the counterpart kind.** Two requirements, both hard:
 
-If no different kind is available, degrade. Do **not** fall back to your own kind -- a same-kind counterpart provides none of the diversity this gate exists for, while costing the same.
+1. **Different from the tool you are running as.** You know which one you are -- if you are Claude, do not start `claude`; if you are Codex, do not start `codex`. A same-kind counterpart provides none of the diversity this gate exists for, at the same cost.
+2. **Ready to work.** Run its readiness probe from `~/.agent/reference/cross-model-counterparts.md` before splitting a pane. An unauthenticated CLI starts fine, reports ready, and then sits on a login screen -- which surfaces as `blocked`, a reason that points at the wrong problem entirely.
+
+**Prefer a kind whose writes are confined to the repo**, per the same table. The tree comparison in Step 6 only sees the repo, so an unconfined counterpart is unchecked exactly where nothing is recoverable: `~/.claude`, other repositories, shell configuration.
+
+This is a preference, not a veto. The realistic failure is a counterpart that edits the thing it was reading -- which lands inside the repo, where the comparison catches it. Refusing to run at all would trade a low-probability risk for the certain loss of the whole gate on any tool that has no confined counterpart available, and a quality gate that cannot run protects nothing. **If you use an unconfined counterpart, say so in the report**: `counterpart writes were not confined — only the repository was verified`. Never let that omission pass silently.
+
+`herdr agent start --kind` accepts `pi, claude, codex, gemini, cursor, devin, agy, cline, omp, mastracode, opencode, copilot, kimi, kiro, droid, amp, grok, hermes, kilo, qodercli, maki`.
+
+If no kind is both different and ready, degrade with `no counterpart agent available`. Do not fall back to your own kind.
 
 ## Step 1 -- gather your own side, and check the scope is visible
 
@@ -58,7 +68,11 @@ Two files live there, one per direction:
 | `counterpart-findings.md` | the counterpart, in Step 3 |
 | `counterpart-rebuttal.md` | the counterpart, in Step 5 |
 
-**Snapshot the working tree before dispatching**: record `git status --porcelain` plus content hashes of the tracked files in scope. The read-only boundary here is enforced by *detection*, not prevention -- see below. The snapshot is what makes detection possible on a tree that was already dirty, where "the counterpart changed this" and "the user changed this" are otherwise indistinguishable.
+**Keep the scratch dir out of the target repo's status.** `.cross-model-review/` is gitignored in this dotfiles repo only; the skill runs against arbitrary repos that have never heard of it. Add the entry to the target's `.git/info/exclude` -- local, uncommitted, and effective in any repo -- and remove it during teardown. Without this, the scratch files show up as untracked in the user's repo for the length of the run, where a concurrent `git add -A` can stage them.
+
+**Snapshot the working tree before dispatching**: `git status --porcelain`, plus content hashes of **every** tracked file and every non-ignored untracked file -- not just the files in the review scope. A counterpart that edits an already-dirty file outside the diff leaves the porcelain output identical, so a scope-limited snapshot cannot see it; untracked files that are never hashed cannot be checked at all.
+
+The snapshot **detects**; it does not restore. A hash proves a file changed and gives no way to reconstruct what it held before, so there is no honest recovery path for uncommitted content -- see Step 6.
 
 ## Step 3 -- dispatch
 
@@ -130,8 +144,11 @@ Always, on every path -- success, timeout, blocked, error:
    Do not expect more of it than that. Measured on codex: a hard close truncates nothing (the transcript is written as it goes) and orphans nothing. The step is kept because it is cheap and because hook-bearing kinds exist, not because the transcript needs it.
 2. **Guaranteed close.** `herdr pane close <pane id>` -- unconditionally, whether or not step 1 worked. Never retry step 1, never let it block this one.
 3. **Verify the agent is gone.** `herdr agent list` -- the name must not appear.
-4. **Compare the tree against the Step 2 snapshot.** Anything that changed outside `.cross-model-review/` was written by the counterpart against its instructions: restore those paths and report it in the review. A counterpart that edited the repo has also compromised its own findings, so say so rather than folding the result in quietly.
-5. **Remove the scratch directory** once both files have been read.
+4. **Compare the tree against the Step 2 snapshot.** Anything that changed outside `.cross-model-review/` was written by the counterpart against its instructions. **Report those paths. Do not restore them.**
+
+   Restoring means taking content from git, and for a file the user had edited but not committed, that destroys their work to undo the counterpart's -- trading a known problem for a worse one. The snapshot can tell you *what* changed; nothing here can tell you what it held before. List the paths, say the counterpart wrote outside its boundary, and let the user decide. Their findings are also suspect now, so say that too rather than folding the result in quietly.
+
+5. **Remove the scratch directory** once both files have been read, and drop the `.git/info/exclude` entry added in Step 2.
 
 Close only the pane you opened. Never `herdr server stop`, never touch a pane you did not create.
 
@@ -164,6 +181,7 @@ The reasons, and where each is raised:
 | `herdr unavailable — not running inside herdr` | Step 0 |
 | `herdr unavailable — binary not found` | Step 0 |
 | `no counterpart agent available` | Step 0 |
+| `counterpart not authenticated` | Step 0, before any pane is created |
 | `scope not visible to counterpart — nothing committed on the branch` | Step 1 |
 | `counterpart failed to start` | Step 3 |
 | `counterpart no longer present` | Step 3, before any submission |
