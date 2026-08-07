@@ -101,10 +101,22 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 → {{ .n.verifyDone }} (run tests / verify commands — hard evidence)
 → {{ .n.sk }}openspec-verify-change (three-dimension spec/code coherence report)
 → openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → context/) → {{ .n.sk }}openspec-archive-change
-→ {{ .n.gitCommit }} → {{ .n.reviewFull }}
+→ {{ .n.gitCommit }} → {{ .n.reviewFull }} → {{ .n.reviewCrossModel }}
 → Fixes needed? → Confirm scope, start a new change round
 → No fixes → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
 ```
+
+`{{ .n.reviewCrossModel }}` hands the review's filtered findings to an agent of a
+different kind and has both sides refute each other once, because the six lenses
+in `{{ .n.reviewFull }}` share their priors and their blind spots. It is
+read-only, degrades rather than blocking when no counterpart is available, and
+grades on the exchange: upheld by both sides → Critical, refuted → dropped with
+the reason, raised by one side only → a **Split** for the user to settle. Never
+resolve a split yourself.
+
+Small workflow does not run it. A change of a few dozen lines rarely produces a
+disagreement worth the round trip, and a gate that keeps returning nothing is a
+gate people learn to skip.
 
 ### `context/` evergreen promotion (at sync/archive)
 
