@@ -386,7 +386,7 @@
 # (breaks reproducibility). To upgrade: bump $jdtlsVersion to a CURRENT snapshots
 # build + rerun `chezmoi apply` (old snapshot builds 404 once pruned).
 # renovate: ignore — mirrored by mirror-externals.yml (Eclipse snapshots/ milestone+timestamp build is pruned over time and has no datasource; re-hosted verbatim for durability so the pinned URL never 404s).
-{{- $jdtlsVersion := "1.61.0-202607301809" }}
+{{- $jdtlsVersion := "1.61.0-202608051627" }}
 
 # exact = true prunes stale files on a version bump. jdtls jars carry the version
 # in their filename, so a non-exact archive would leave the OLD version's jars in
