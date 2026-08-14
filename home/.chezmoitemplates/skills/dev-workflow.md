@@ -46,13 +46,13 @@ Run `{{ .n.gitSync }}` unless already on a worktree.
 
 ### 2b. Resolve workflow registry
 
-Look up `~/.agent/workflow-registry.md` for this repo's main repo path, active-workflows path, and `Doc Target` (the team-doc step below reads it; carry it forward, do not act on it here). If no entry: derive the repo's canonical slug — the one definition lives in `context/principles.md` under "以 repo 為單位的 agent 產物"; do not reconstruct it from memory, and never slugify `git rev-parse --git-common-dir` raw (that path ends in `.git`/`.bare`, and the resulting key names a different directory) — set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row with `Doc Target` left blank — **do not ask the user about it now**. Registry is per-machine, not synced, and its rows are append-only: never drop a row because a workflow ended.
+Look up `~/.agent/workflow-registry.md` for this repo's main repo path, active-workflows path, and `Doc Target` (the team-doc step below reads it; carry it forward, do not act on it here). If no entry: derive the repo's canonical slug per `~/.agent/reference/repo-identity.md` — read it rather than reconstructing the rule from memory; the two plausible shortcuts both name a different directory and fail silently — set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row with `Doc Target` left blank — **do not ask the user about it now**. Registry is per-machine, not synced, and its rows are append-only: never drop a row because a workflow ended.
 
 > **Architecture-specific:** follow the **Registry / active-workflows path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
 
 ### 2c. Check active workflows
 
-Read `~/.agent/workflows/<repo-slug>/active_workflows.md` (slug derived from `git rev-parse --git-common-dir` as above). Clean stale entries (missing worktree paths, deleted branches).
+Read `~/.agent/workflows/<repo-slug>/active_workflows.md` (same canonical slug as 2b). Clean stale entries (missing worktree paths, deleted branches).
 
 | State | Action |
 |-------|--------|

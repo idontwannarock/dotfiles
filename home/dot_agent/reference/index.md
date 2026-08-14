@@ -25,6 +25,9 @@ Loaded on demand — read the file you need, not the whole tree.
 
 # Workflow
 
+* [Repo identity](repo-identity.md) - the one definition of a repo's slug, the
+  key every per-repo artifact is filed under, and the two shortcuts that name a
+  different directory without erroring.
 * [Worktree isolation](dev-workflow-isolation.md) - when `active_workflows.md`
   has active or paused rows, isolate the new workflow in its own worktree
   instead of sharing the main repo.
