@@ -1,8 +1,5 @@
-# workflow-concurrency Specification
+## MODIFIED Requirements
 
-## Purpose
-定義 dev-workflow 的 per-repo 狀態載體:Workflow Registry(含各 repo 的正典 slug、路徑對應與團隊文件目標)、Active Workflows Index、以及 session 開始時的讀取行為。
-## Requirements
 ### Requirement: Workflow Registry
 Claude SHALL 維護 `~/.agent/workflow-registry.md`，記錄各 repo 的主 repo 路徑、對應的 active-workflows 索引路徑，以及該 repo 的團隊文件目標。此檔案各機器獨立，不透過 dotfiles 同步。格式為：
 
@@ -69,15 +66,3 @@ registry 的列 SHALL 只增不減：既有列 SHALL NOT 因流程結束、分�
 #### Scenario: 流程完成
 - **WHEN** `finish-branch` 完成後
 - **THEN** Claude SHALL 從 `active_workflows.md` 移除該流程紀錄
-
-### Requirement: Session 開始時讀取 Active Workflows
-每個 session 收到任務時，Claude SHALL 先讀取 `active_workflows.md`。
-
-#### Scenario: Session 開始處理順序
-- **WHEN** `active_workflows.md` 存在且有紀錄
-- **THEN** Claude SHALL 先清理過期紀錄（worktree 路徑已不存在的），再將剩餘的進行中流程告知使用者，詢問要接手既有的還是開新的
-
-#### Scenario: 沒有進行中的流程
-- **WHEN** `active_workflows.md` 為空、不存在、或清理過期紀錄後無剩餘
-- **THEN** Claude SHALL 正常進入確認流程
-

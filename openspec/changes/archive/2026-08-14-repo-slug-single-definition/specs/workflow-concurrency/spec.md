@@ -1,15 +1,12 @@
-# workflow-concurrency Specification
+## MODIFIED Requirements
 
-## Purpose
-定義 dev-workflow 的 per-repo 狀態載體:Workflow Registry(含各 repo 的正典 slug、路徑對應與團隊文件目標)、Active Workflows Index、以及 session 開始時的讀取行為。
-## Requirements
 ### Requirement: Workflow Registry
 Claude SHALL 維護 `~/.agent/workflow-registry.md`，記錄各 repo 的主 repo 路徑、對應的 active-workflows 索引路徑，以及該 repo 的團隊文件目標。此檔案各機器獨立，不透過 dotfiles 同步。格式為：
 
 | Repo | Main Repo Path | Active Workflows Path | Doc Target |
 |------|----------------|-----------------------|------------|
 
-`Repo` 欄 SHALL 為該 repo 的正典 slug——其唯一定義見 `~/.agent/reference/repo-identity.md`，此處 SHALL NOT 複述該定義。`Active Workflows Path` 欄 SHALL 指向該 repo 的 `active_workflows.md`，SHALL NOT 填入 project memory 路徑（memory 路徑由 memory-hook 自行推導，不由 registry 承載）。
+`Repo` 欄 SHALL 為該 repo 的正典 slug——其唯一定義見 `context/principles.md` 的「以 repo 為單位的 agent 產物」一條，此處 SHALL NOT 複述該定義。`Active Workflows Path` 欄 SHALL 指向該 repo 的 `active_workflows.md`，SHALL NOT 填入 project memory 路徑（memory 路徑由 memory-hook 自行推導，不由 registry 承載）。
 
 registry 的列 SHALL 只增不減：既有列 SHALL NOT 因流程結束、分支合併或例行清理而被移除。（會隨流程結束而移除的是 `active_workflows.md` 的列，兩者不同檔。）
 
@@ -23,7 +20,7 @@ registry 的列 SHALL 只增不減：既有列 SHALL NOT 因流程結束、分�
 
 #### Scenario: 首次在 repo 開啟 OpenSpec 流程
 - **WHEN** Claude 在某 repo 開始 OpenSpec 流程，且 registry 中無該 repo 紀錄
-- **THEN** Claude SHALL 依 `~/.agent/reference/repo-identity.md` 的定義推導該 repo 的正典 slug 作為 `Repo` 欄，並填入該 slug 對應的 active-workflows 路徑，自動新增到 registry
+- **THEN** Claude SHALL 依 `principles.md` 的定義推導該 repo 的正典 slug 作為 `Repo` 欄，並填入該 slug 對應的 active-workflows 路徑，自動新增到 registry
 - **AND** `Doc Target` SHALL 留空
 
 #### Scenario: 在 worktree 中查詢 registry
@@ -46,13 +43,13 @@ registry 的列 SHALL 只增不減：既有列 SHALL NOT 因流程結束、分�
 
 #### Scenario: 推導算式不得出現在此 spec
 - **WHEN** 任何 requirement 或 scenario 需要提及正典 slug 如何推導
-- **THEN** 該處 SHALL 指向 `~/.agent/reference/repo-identity.md`
+- **THEN** 該處 SHALL 指向 `principles.md` 的定義
 - **AND** SHALL NOT 寫出算式本身或其任何部分片段——片段化的複本會與正典分歧，而分歧的症狀是目錄分裂，不是文字不一致
 
 > 何時讀取 `Doc Target`、何時詢問使用者，屬流程行為，見 `workflow-instructions` 的「團隊文件目標的 lazy 詢問」。此處只定義欄位語意與寫入結果。
 
 ### Requirement: Active Workflows Index
-每個 repo 的 active-workflows 索引 SHALL 位於 `~/.agent/workflows/<repo-slug>/active_workflows.md`，其中 `<repo-slug>` 為該 repo 的正典 slug（定義見 `~/.agent/reference/repo-identity.md`，此處 SHALL NOT 複述），記錄該 repo 所有進行中的 OpenSpec 流程。此檔案各機器獨立，不透過 dotfiles 同步。Current Step 欄位 SHALL 使用 tool-neutral 的語義標籤（如 `apply-change done`、`review`），SHALL NOT 寫入任何工具專屬的 sigil'd skill token —— 此檔案跨工具共用，恢復工作的工具依自身 name-map 重新推導 token。
+每個 repo 的 active-workflows 索引 SHALL 位於 `~/.agent/workflows/<repo-slug>/active_workflows.md`，其中 `<repo-slug>` 為該 repo 的正典 slug（定義見 `context/principles.md`，此處 SHALL NOT 複述），記錄該 repo 所有進行中的 OpenSpec 流程。此檔案各機器獨立，不透過 dotfiles 同步。Current Step 欄位 SHALL 使用 tool-neutral 的語義標籤（如 `apply-change done`、`review`），SHALL NOT 寫入任何工具專屬的 sigil'd skill token —— 此檔案跨工具共用，恢復工作的工具依自身 name-map 重新推導 token。
 
 #### Scenario: 新流程開始
 - **WHEN** 工作區（主 repo branch 或 worktree）建立後
@@ -69,15 +66,3 @@ registry 的列 SHALL 只增不減：既有列 SHALL NOT 因流程結束、分�
 #### Scenario: 流程完成
 - **WHEN** `finish-branch` 完成後
 - **THEN** Claude SHALL 從 `active_workflows.md` 移除該流程紀錄
-
-### Requirement: Session 開始時讀取 Active Workflows
-每個 session 收到任務時，Claude SHALL 先讀取 `active_workflows.md`。
-
-#### Scenario: Session 開始處理順序
-- **WHEN** `active_workflows.md` 存在且有紀錄
-- **THEN** Claude SHALL 先清理過期紀錄（worktree 路徑已不存在的），再將剩餘的進行中流程告知使用者，詢問要接手既有的還是開新的
-
-#### Scenario: 沒有進行中的流程
-- **WHEN** `active_workflows.md` 為空、不存在、或清理過期紀錄後無剩餘
-- **THEN** Claude SHALL 正常進入確認流程
-
