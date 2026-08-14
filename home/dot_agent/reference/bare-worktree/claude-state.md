@@ -74,7 +74,7 @@ repo's `.claude/settings.local.json`:
 local HEAD instead of the default `origin/<default>` — important when you
 routinely have unpushed commits.
 
-## Workflow registry & project-memory path
+## Workflow registry & active-workflows path
 
 The `dev-workflow` skill keeps a per-machine `~/.agent/workflow-registry.md`
 mapping each repo to a **Main Repo Path** and **Active-workflows Path**. Its

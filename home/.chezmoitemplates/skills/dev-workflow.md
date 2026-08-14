@@ -38,7 +38,7 @@ esac
 | Divergence point | `ARCH=normal` | `ARCH=bare-worktree` |
 |------------------|---------------|----------------------|
 | **New-branch workspace** (2c) | `git checkout -b <branch>` in the main repo; or `{{ .n.worktree }}` if another workflow is active | always create via `{{ .n.worktree }}` (worktree off `main`, one branch per worktree) |
-| **Registry / active-workflows path** (2b) | auto-derive: `git rev-parse --git-common-dir` → slug → `~/.agent/workflows/<slug>/active_workflows.md` | manual — Main Repo Path = `<repo>/main`, Active-workflows Path = `~/.agent/workflows/<slug>/active_workflows.md` (slug from `autoMemoryDirectory` key). See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & project-memory path". |
+| **Registry / active-workflows path** (2b) | auto-derive: `git rev-parse --git-common-dir` → slug → `~/.agent/workflows/<slug>/active_workflows.md` | manual — Main Repo Path = `<repo>/main`, Active-workflows Path = `~/.agent/workflows/<slug>/active_workflows.md` (slug from `autoMemoryDirectory` key). See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & active-workflows path". |
 
 ### 2a. Sync main
 
