@@ -4,7 +4,7 @@ Read this in full before executing step 1. The steps are ordered for a reason; d
 
 ## Step 1 — Load the conventions (+ any page-ID cache)
 
-Space coordinates (cloudId / spaceId / folder IDs / template IDs) are hardcoded in `SKILL.md` for `shoalteritbev` — no discovery needed.
+Space coordinates (cloudId / space key / spaceId / folder IDs / template IDs) live in `.local/space.md` next to `SKILL.md` — machine-local and untracked, because this skill ships in a public repo. Read it now. If it is missing, stop and ask the user for the space rather than guessing or inlining the values into a tracked file.
 
 **The conventions themselves are bundled in this skill** — you don't read memory to learn them:
 
@@ -14,7 +14,7 @@ Space coordinates (cloudId / spaceId / folder IDs / template IDs) are hardcoded 
 
 What memory (if present) adds is only a **per-project page-ID cache and any project overrides** from prior work — a convenience, not a prerequisite. Read every `reference-*.md` / `feedback-*.md` in the project memory directory if it exists; expected files:
 
-- `reference-bev-projects` — project portfolio (Customer Chat / Support Chat / Cashback / etc.)
+- `reference-bev-projects` — the team's project portfolio
 - `reference-<project>-docs` — per-project page ID registry from prior work in this space
 - `feedback-*` — any project-specific override to the bundled conventions
 
@@ -37,7 +37,7 @@ Look at what the user wants to record. Categorize:
 
 If the findings include BOTH technical content (how it works internally) AND operational content (how to maintain/change it), propose a PAIR — ARCH + RUNBOOK — via AskUserQuestion. Bundling them is the layering-violation failure mode.
 
-**General KB routes to a different index.** A `[KB]` that passes the KB litmus (reusable by any team, names no single project) is always a single page, and its step-7 index target is the **KB index page** `5922357414` — not a project hub. Decide this here, at classify time, so step 7 doesn't get skipped for want of a hub. A project-specific KB (title carries the project, or the knowledge only holds for that service) stays with its project hub.
+**General KB routes to a different index.** A `[KB]` that passes the KB litmus (reusable by any team, names no single project) is always a single page, and its step-7 index target is the **KB index page** (ID in `.local/space.md`) — not a project hub. Decide this here, at classify time, so step 7 doesn't get skipped for want of a hub. A project-specific KB (title carries the project, or the knowledge only holds for that service) stays with its project hub.
 
 Edge case: pure technical reference with no maintenance procedure → ARCH only. (If maintenance procedure later arises, the RUNBOOK can be added without restructuring the ARCH.)
 
@@ -53,11 +53,11 @@ space = "<spaceKey>" AND (title ~ "<keyword1>" OR title ~ "<keyword2>" ...)
 Pick keywords from the proposed subject (and translate Chinese ↔ English equivalents — search both). Examples:
 
 ```
-space = "shoalteritbev" AND (title ~ "profanity" OR title ~ "sensitive" OR title ~ "mask")
+space = "<key from .local/space.md>" AND (title ~ "profanity" OR title ~ "sensitive" OR title ~ "mask")
 ```
 
 If a same-name page exists:
-- For PAGE-type collision → use `feedback-confluence-page-uniqueness` rule: append parenthetical category suffix to one of them, e.g. `Customer Chat (Runbooks)`.
+- For PAGE-type collision → prefer making one title more specific under the `[TYPE][Project] Subject` grammar; the prefix normally resolves the clash on its own. The old workaround of appending a parenthetical category suffix (`<Project> (Runbooks)`) is deprecated — see `doc-taxonomy.md`.
 - For NEW page proposed title collision → either pick a more specific subject, or add disambiguator.
 
 Document the result before moving on.
@@ -80,11 +80,11 @@ For PAIR creation: ask depth ONCE; the ARCH and RUNBOOK have different structure
 
 For each page in the planned set (1 for single, 2 for ARCH+RUNBOOK pair):
 
-1. Read the matching template from Confluence (template IDs are in the SKILL.md hardcoded table; the space-wide templates under folder 99 apply to every project). Use it as the structural starting point.
+1. Read the matching template from Confluence (template IDs are in `.local/space.md`; the space-wide templates under folder 99 apply to every project). Use it as the structural starting point.
 2. Construct HTML body following `page-anatomy.md` §3 (ARCH) or §4 (RUNBOOK).
 3. Call `mcp__atlassian__createConfluencePage` with:
-   - `cloudId`, `spaceId` from the SKILL.md hardcoded coordinates table
-   - `parentId` — the project sub-folder under the relevant category; from the SKILL.md table if wired (e.g. Customer Chat), else the `reference-<project>-docs` memory, else CQL discovery (step 3)
+   - `cloudId`, `spaceId` from `.local/space.md`
+   - `parentId` — the project's container under the relevant category; from the cache in `.local/space.md` if listed, else the `reference-<project>-docs` memory, else CQL discovery (step 3). If a cached ID 404s or resolves to an unexpected title, re-resolve by title and correct `.local/space.md`.
    - `title` from step 4
    - `contentFormat: "html"`
    - `body` — the constructed HTML
@@ -115,13 +115,13 @@ This is the step that's easy to forget. Skipping it means the new docs are effec
 | Doc | Index target |
 |---|---|
 | Project doc (ARCH / RUNBOOK / API / DESIGN / POC / REPORT / ROADMAP / POSTMORTEM) or **project-specific KB** | That project's hub (folder 07) → §7a |
-| **General `[KB]`** (passes the KB litmus, names no single project) | KB index page `5922357414` (folder 08) → §7b |
+| **General `[KB]`** (passes the KB litmus, names no single project) | KB index page (ID in `.local/space.md`) (folder 08) → §7b |
 
 Both branches are equally non-skippable. A general KB with no project hub is NOT an excuse to skip — it has an index, just a different one.
 
 ### §7a — Project hub
 
-1. Read the project hub page (page ID from memory if cached, else the SKILL.md table, else CQL from step 3).
+1. Read the project hub page (page ID from the cache in `.local/space.md`, else memory, else CQL from step 3).
 2. Identify the relevant section by the doc's TYPE (see `doc-taxonomy.md`):
    - `[ARCH]` / `[DESIGN]` → "## Architecture"
    - `[RUNBOOK]` → "## Runbooks (Operations)"
@@ -135,7 +135,7 @@ For ARCH+RUNBOOK pair: add BOTH entries (ARCH under Architecture section, RUNBOO
 
 ### §7b — KB index page (general KB)
 
-1. Read the KB index page `5922357414` (`🧠 Knowledge Base 索引`).
+1. Read the KB index page (ID in `.local/space.md`) (`🧠 Knowledge Base 索引`).
 2. Find the `<h2>` matching the page's `[Topic]` bracket — the bracket IS the grouping key (see `doc-taxonomy.md`). `[KB][LiveKit] ICE/STUN 機制` goes under the `LiveKit` `<h2>`.
 3. If no `<h2>` for that `[Topic]` exists yet, **add one** — don't drop the entry into an unrelated section, and don't skip.
 4. Add the page as a link bullet under that `<h2>`. Layout per `page-anatomy.md` §9.
@@ -166,7 +166,7 @@ Before reporting completion, verify:
 
 - [ ] Each created page is reachable via its URL
 - [ ] Cross-links between ARCH and RUNBOOK both render correctly (if pair)
-- [ ] The index now lists the new page(s) — open the project hub URL (or, for general KB, the KB index page `5922357414`) and look
+- [ ] The index now lists the new page(s) — open the project hub URL (or, for general KB, the KB index page (ID in `.local/space.md`)) and look
 - [ ] Memory file written and `MEMORY.md` updated
 - [ ] No `(待補)` placeholders in the new pages OR they're explicitly called out for follow-up
 

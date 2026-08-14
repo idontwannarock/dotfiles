@@ -123,7 +123,7 @@ References — ARCH link, sibling RUNBOOKs, code paths
 
 ## §5 — Starting from Confluence templates
 
-Confluence templates in the space provide a baseline structure. Locate them via the SKILL.md hardcoded coordinates table (e.g. `Template - Architecture documentation` page ID `5730042127`, `Template - Runbook` page ID `5731090541` in shoalteritbev).
+Confluence templates in the space provide a baseline structure. Their page IDs are listed in `.local/space.md`.
 
 Read the template page body, copy the structure, replace placeholders. Don't blindly preserve template comments or "fill me in" placeholders in the published page — they look unfinished.
 
@@ -166,7 +166,7 @@ Avoid stacking 3+ panels in a row — they lose visual emphasis.
 
 ## §9 — KB 索引頁 anatomy
 
-The KB index page (`🧠 Knowledge Base 索引`, page ID `5922357414`) is the hub for general `[KB]`.
+The KB index page (`🧠 Knowledge Base 索引`, ID in `.local/space.md`) is the hub for general `[KB]`.
 It is an **index, not content** — same rule as a project hub: delete it and no knowledge is lost.
 
 ```

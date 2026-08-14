@@ -36,6 +36,13 @@ AppData
 .local/bin/corp-ssh-askpass
 {{- end }}
 
+# ── confluence-team-doc: space coordinates stay machine-local ──────────
+# This repo is public. The skill's site host, cloudId, space key and page-ID
+# map are internal topology, so they live in an untracked .local/ beside the
+# skill. Ignoring the target path makes `chezmoi add` on it refuse, which is
+# the guard — the skill body itself stays managed and shareable.
+.claude/skills/confluence-team-doc/.local
+
 # ── wsl-chrome-cdp: WSL-only (netsh portproxy + Windows Chrome) ────────
 {{- if ne .chezmoi.os "linux" }}
 .claude/skills/wsl-chrome-cdp
