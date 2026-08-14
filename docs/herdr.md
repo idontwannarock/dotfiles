@@ -8,6 +8,68 @@
 > binary 本身不由 chezmoi 安裝，用 `herdr update` 自行升版；升完下一次
 > `chezmoi apply` 會偵測到版本變動並同步對應版本的 skill。
 
+## config.toml 由 chezmoi 部分納管
+
+**herdr 自己會寫這個檔** —— onboarding 完成後寫 `onboarding = false`，
+`herdr config reset-keys` 會重寫 keybindings。所以整檔渲染會在每次 apply 把它們抹掉，
+納管方式是 `modify_` script：只覆寫少數幾個 key，其餘原樣放行。
+
+| 管住的 key | 範圍 | 為什麼 |
+|---|---|---|
+| `terminal.default_shell` | Windows | 見下一節，不設會退回 PowerShell 5.1 |
+| `ui.sound.enabled = false` | 全平台 | 不要響 |
+
+`onboarding`、`theme`、`ui.*` 的其餘項目、`[keys]` 一律**不管** —— 那是 herdr 和使用者
+各自機器上的事。
+
+herdr 每個 OS 讀不同路徑（`herdr --help` 最後一行會印出實際位置），而 chezmoi 的
+source path 就決定 target path —— 一份來源檔蓋不了兩個路徑。因此腳本本體集中在
+`.chezmoitemplates/scripts/herdr-config.sh`，各 OS 只放一行 wrapper：
+
+| OS | source | target |
+|----|--------|--------|
+| Windows | `home/AppData/Roaming/herdr/modify_config.toml.sh.tmpl` | `%APPDATA%\herdr\config.toml` |
+| Linux/WSL | `home/dot_config/herdr/modify_config.toml.sh.tmpl` | `~/.config/herdr/config.toml` |
+
+`.sh` 是給 `[interpreters.sh]` 認的，chezmoi 在決定 target 名稱時會剝掉，所以落地是
+`config.toml`。注意 `chezmoi target-path` **不會**做這個剝除（回報 `config.toml.sh`），
+要確認實際目標請看 `chezmoi managed`。
+
+macOS 不部署（`.chezmoiignore.tmpl` 排除）：沒有 Mac 可確認 herdr 走 `~/.config`
+還是 `~/Library/Application Support`，猜錯就是留一個 herdr 不讀的死檔。
+
+**`ensure` 必須是不動點。** 拿自己上一輪的輸出再跑一次要逐字節相同，否則每次 apply
+都長一行（`run_after_modify-codex-config.ps1.tmpl` 就是踩過這個坑）。做法是「先刪掉該
+key 在該 table 下的所有出現，再插回 table header 的下一行」—— 位置只由 header 決定，
+與上一輪輸出無關。因此**落地的檔案裡不放註解**，理由寫在來源腳本與本文。
+
+要主動砍掉某個 key 得加一個對稱的 `drop()`：modify_ 是 patch 不是 render，把 `ensure`
+那行刪掉只代表新機器不會拿到，已部署的機器會永遠留著 —— 跟 `.chezmoiremove` 是同一
+個道理。
+
+改完設定要 `herdr server reload-config` 才會套到已在跑的 server。
+
+## Windows pane 預設是 PowerShell 5.1
+
+herdr 的 `default_shell` 說明寫「Empty means `$SHELL`, then `/bin/sh`」—— 那是 Unix
+視角。Windows 沒有 `$SHELL`，於是落到內建 fallback `powershell.exe`，也就是系統自帶的
+**5.1**。用 PowerShell 7 啟動 herdr 也沒用：pane 的 shell 是 herdr **server** 生子行程
+時決定的，不繼承 client 的 shell。症狀是 pane 裡 starship 與所有 PS7 profile 的 alias
+全部消失。
+
+`modify_` 腳本因此在 Windows 明寫這個 key（值由 `lookPath "pwsh"` 渲染，取不到才退回
+MSI 預設路徑）：
+
+```toml
+[terminal]
+default_shell = "C:/Program Files/PowerShell/7/pwsh.exe"
+```
+
+**路徑要用正斜線。** TOML basic string 會把 `\` 當跳脫字元，`"C:\Program Files\..."`
+直接壞掉。正斜線在 Windows API 上照樣可用。
+
+改完只有**新開的 pane** 會生效 —— 既有 pane 是已經 spawn 的行程。
+
 ## 實測通過的路徑
 
 | 動作 | 指令 | 結果 |
