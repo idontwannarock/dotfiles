@@ -11,28 +11,53 @@ store — is keyed by the repo's **canonical slug**. There is exactly one
 definition, and every mechanism must use it, or the same repo ends up filed
 under two keys that cannot see each other.
 
-## The definition
+## The anchor — agreed by every mechanism
 
 ```
-slug = replace(dirname(realpath(git rev-parse --git-common-dir)), [':', '\', '/', '.'] → '-')
+anchor = dirname(realpath(git rev-parse --git-common-dir --path-format=absolute))
 ```
 
-Three steps, all load-bearing:
+Four parts, all load-bearing:
 
-| Step | Why |
+| Part | Why |
 |---|---|
-| `git rev-parse --git-common-dir` | shared across every worktree of a repo, unlike `--show-toplevel` |
-| `realpath` | resolves symlinks and relative output (`--git-common-dir` often returns a bare `.git`) |
+| `--git-common-dir` | shared across every worktree of a repo, unlike `--show-toplevel` |
+| `--path-format=absolute` | without it the output is relative to **your** cwd, not the target's — so any `-C <path>` / `--repo <path>` invocation silently yields *your* repo's slug |
+| `realpath` | resolves symlinks |
 | `dirname` | strips the `.git` / `.bare` component — **the raw path is not the repo root** |
 
-Then slugify: replace every `:`, `\`, `/`, and `.` with `-`.
-
-Because the input is an absolute path, the result always begins with `-`.
-`/home/me/ws/dotfiles` → `-home-me-ws-dotfiles`. On Windows,
-`D:\ws\github\dotfiles` → `D--ws-github-dotfiles`.
-
 If there is no git repo, fall back to `$PWD` (or `CLAUDE_PROJECT_DIR` where the
-mechanism defines one) as the anchor and slugify that the same way.
+mechanism defines one) and slugify that instead.
+
+## The slugify step — currently NOT agreed
+
+Every mechanism replaces `/` with `-`. On a POSIX path with no dots that is the
+whole rule, and all of them agree:
+`/home/me/ws/dotfiles` → `-home-me-ws-dotfiles`.
+
+They diverge on the other characters:
+
+| Mechanism | Replaces | Defined by |
+|---|---|---|
+| `claude-memory-seed`, local-files store | `/` only | `claude-memory-seed` / `local-files-store` specs |
+| `handoff`, `pickup`, `handoff-list`, `arch-review` | `:` `\` `/` `.` | `session-handoff` spec |
+
+`/home/me/ws/hktv.tw/api` therefore files auto-memory under
+`-home-me-ws-hktv.tw-api` and handoffs under `-home-me-ws-hktv-tw-api`. **A repo
+whose absolute path contains a dot splits in exactly the way this document
+exists to prevent.** No repo on this machine currently has one, so the
+divergence is latent, not observed — which is why it survived this long.
+
+The four-character form exists to handle Windows paths (`D:\ws\dotfiles` →
+`D--ws-github-dotfiles`); the `/`-only form predates that need. Neither camp is
+obviously wrong, and reconciling them means migrating existing keys, so **this
+is an open question, not a settled rule.** Until it is settled: a new mechanism
+SHOULD follow the camp whose artifacts it needs to sit alongside, and SHOULD NOT
+assume the two produce the same key.
+
+Note the leading character is only guaranteed on POSIX: an absolute path starts
+with `/`, so the slug starts with `-`. A Windows drive letter does not
+(`D--ws-github-dotfiles`).
 
 ## The two shortcuts that look right and are not
 
@@ -53,7 +78,11 @@ different worktree or a different tool wrote.
 
 ## Who uses this
 
-`claude-memory-seed` (auto-memory + `autoMemoryDirectory`), `handoff` / `pickup`,
-the local-files store, and the workflow registry with its `active_workflows.md`
-index. When adding another per-repo artifact, use this key rather than inventing
-one — two keys for one repo is the defect, not a style difference.
+`claude-memory-seed` (auto-memory + `autoMemoryDirectory`), the local-files
+store, `handoff` / `pickup` / `handoff-list`, `arch-review`, and the workflow
+registry with its `active_workflows.md` index.
+
+When adding another per-repo artifact, derive the anchor exactly as above rather
+than inventing one — two anchors for one repo is a defect, not a style
+difference. For the slugify step, see the open question above and say in your
+spec which camp you joined.
