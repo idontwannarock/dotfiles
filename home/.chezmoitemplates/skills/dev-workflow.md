@@ -46,7 +46,7 @@ Run `{{ .n.gitSync }}` unless already on a worktree.
 
 ### 2b. Resolve workflow registry
 
-Look up `~/.agent/workflow-registry.md` for this repo's main repo path and active-workflows path. If no entry: derive the repo slug from `git rev-parse --git-common-dir` (slugify the result with `/`→`-`), set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row. Registry is per-machine, not synced.
+Look up `~/.agent/workflow-registry.md` for this repo's main repo path, active-workflows path, and `Doc Target` (the team-doc step below reads it; carry it forward, do not act on it here). If no entry: derive the repo slug from `git rev-parse --git-common-dir` (slugify the result with `/`→`-`), set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row with `Doc Target` left blank — **do not ask the user about it now**. Registry is per-machine, not synced, and its rows are append-only: never drop a row because a workflow ended.
 
 > **Architecture-specific:** follow the **Registry / active-workflows path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
 
@@ -87,7 +87,7 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 → [{{ .n.sk }}openspec-sync-specs — ask if implementation drifted from specs; promote design.md evergreen-candidates → context/] → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewQuick }}
 → Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from {{ .n.sk }}openspec-new-change)
-→ No fixes → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
+→ No fixes → [team-doc step] → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
 ```
 
 ### Large workflow
@@ -103,7 +103,7 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 → openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → context/) → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewFull }} → {{ .n.reviewCrossModel }}
 → Fixes needed? → Confirm scope, start a new change round
-→ No fixes → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
+→ No fixes → [team-doc step] → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
 ```
 
 `{{ .n.reviewCrossModel }}` hands the review's filtered findings to an agent of a
@@ -117,6 +117,44 @@ resolve a split yourself.
 Small workflow does not run it. A change of a few dozen lines rarely produces a
 disagreement worth the round trip, and a gate that keeps returning nothing is a
 gate people learn to skip.
+
+### Team-doc step (both workflows)
+
+**`Doc Target` is `none` → skip this whole section.** Do not ask, do not
+propose, go straight to `{{ .n.finishBranch }}`. That column came from step 2b.
+
+**{{ .n.teamDocGap }}** And if `Doc Target` names a space `{{ .n.teamDoc }}`
+does not support yet, the write is off the table before it is proposed: say so,
+say it needs that skill's coordinates generalized first, and never reach for the
+team space's coordinates on another space.
+
+Otherwise, just before `{{ .n.finishBranch }}`, ask one question:
+
+> Could someone outside this repo answer what this change produced — how to
+> operate it, or why it was designed this way — anywhere other than by reading
+> the diff? **No → it is worth writing up.**
+
+The signal is bound to **who the readers are**, not to diff size, so both
+workflows run it: a three-line change can produce the switchover procedure
+another team has to follow. The content boundary below (under *`context/`
+evergreen promotion*) lists three carriers whose readers all sit inside the
+repo; this step covers the fourth reader, the one outside.
+
+Worth writing → state the reason and a proposed title and let the user decide,
+then hand it to `{{ .n.teamDoc }}`, which owns the ARCH/RUNBOOK/KB choice
+through its own doc-taxonomy rules — do not re-derive that here. Not worth
+writing → **say nothing at all**. A routine "nothing to document this time" is
+what turns a gate into noise people learn to read past.
+
+The per-repo half is the `Doc Target` column: blank, a hub page URL/ID, or
+`none`. Blank means nobody has been asked yet; `none` means this repo
+deliberately has no team space. Read it at step 2b — that step already does —
+but **ask only once the per-change question comes out yes**, then write the
+answer back. Asking up front makes the user rule on an abstract question before
+they know what the change produced.
+
+Every outcome here, degraded or skipped or declined, still ends at
+`{{ .n.finishBranch }}`: this step reports, it never blocks.
 
 ### `context/` evergreen promotion (at sync/archive)
 
