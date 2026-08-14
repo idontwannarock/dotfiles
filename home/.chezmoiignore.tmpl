@@ -5,6 +5,15 @@
 # ── Windows 專屬（非 Windows 環境排除）─────────────────────────────────────
 {{- if ne .chezmoi.os "windows" }}
 Documents
+AppData
+{{- end }}
+
+# ── herdr config：各 OS 路徑不同，共用 scripts/herdr-config.sh ─────────────
+# Windows 讀 %APPDATA%\herdr\（上面的 AppData 規則已擋掉非 Windows），Linux 讀
+# ~/.config/herdr/。macOS 不部署：沒有 Mac 可確認 herdr 走 ~/.config 還是
+# ~/Library/Application Support，猜錯就是留一個 herdr 不讀的死檔。
+{{- if ne .chezmoi.os "linux" }}
+.config/herdr
 {{- end }}
 
 # ── codex config（Windows 用 run_after_ 處理，排除 modify_ script）────────
