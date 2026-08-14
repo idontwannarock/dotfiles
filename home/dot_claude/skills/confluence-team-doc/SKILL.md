@@ -1,11 +1,13 @@
 ---
 name: confluence-team-doc
-description: Use when the user asks to record technical findings, architecture/design notes, or operational procedures into the team Confluence space `shoalteritbev` — triggers include 「記錄到 Confluence」、「寫成文件」、「put this on the wiki」、「document this」、「建一個 ARCH 頁」、「建 RUNBOOK」, or any request to create/update pages in a Confluence space that hosts multiple sibling projects (Customer Chat / Support Chat / Cashback / etc.). Skip for code comments, README edits, in-line docs, repos with no associated team Confluence space, or trivial single-page notes that don't need cross-linking.
+description: Use when the user asks to record technical findings, architecture/design notes, or operational procedures into the team Confluence space — triggers include 「記錄到 Confluence」、「寫成文件」、「put this on the wiki」、「document this」、「建一個 ARCH 頁」、「建 RUNBOOK」, or any request to create/update pages in a Confluence space that hosts several sibling projects under shared category folders. Skip for code comments, README edits, in-line docs, repos with no associated team Confluence space, or trivial single-page notes that don't need cross-linking.
 ---
 
 # Confluence Team Doc
 
-Orchestrate Confluence page creation in the `shoalteritbev` team space — placement, title convention, ARCH/RUNBOOK split, cross-linking, project-hub indexing, and memory recording, in the correct order.
+Orchestrate Confluence page creation in the team space — placement, title convention, ARCH/RUNBOOK split, cross-linking, project-hub indexing, and memory recording, in the correct order.
+
+**Which space, and its page IDs, live in `.local/space.md` — a machine-local file that is deliberately not in version control** (this skill ships in a public dotfiles repo; site host, `cloudId`, space key and the folder map are internal topology). Read it first. If it is absent, this machine has not been configured: ask the user for the space, then write the file — never inline the coordinates back into this skill or its references.
 
 The canonical **document-classification and naming standard** (the closed type vocabulary, the ARCH/KB/Hub decision rule, the `[TYPE][Project] Subject` grammar) lives locally in `references/doc-taxonomy.md` — apply it directly, never fetch Confluence to look it up. Per-project page-ID registries and any project-specific overrides are stored as `reference-*` / `feedback-*` memory files. This skill orchestrates the **order of operations** that uses those conventions correctly — especially the step every fresh agent forgets: **updating the index** (the project hub for project docs, the KB index page for general KB).
 
@@ -15,61 +17,43 @@ The canonical **document-classification and naming standard** (the closed type v
 |---|---|
 | User asks to record/document findings to wiki/Confluence | **Use** |
 | User asks 「建一個 ARCH 頁」/「建 RUNBOOK」/ create a page on team Confluence | **Use** |
-| Recording related to `shoalteritbev` space (mms_chat_api, customer chat, support chat, cashback, etc.) | **Use** |
+| Recording related to a project that already has a hub in the team space | **Use** |
 | Code comments / README / inline docs | Skip |
-| Different Confluence space (not shoalteritbev) | Skip — this skill is hardcoded to shoalteritbev; generalize first |
+| A Confluence space other than the one in `.local/space.md` | Skip — the conventions here assume that space's folder taxonomy |
 | Single ad-hoc note, no naming convention, no hub | Skip |
 
-## Hardcoded coordinates (`shoalteritbev`)
+## Space coordinates
 
-| Item | Value |
-|---|---|
-| `cloudId` | `3819c19c-0ec7-4434-a6d6-63c237693b8f` |
-| `spaceId` | `5552898162` |
-| `space key` | `shoalteritbev` |
-| Homepage page ID | `5552898496` |
+Everything site-specific — `cloudId`, space key, `spaceId`, homepage ID, the 00–99 category folder
+IDs, the KB index page, the template page IDs, and the cached per-project container IDs — lives in
+**`.local/space.md`**, next to this file. Read it at step 1.
 
-Folder taxonomy (under homepage, all `type=folder`):
+Why it is separate: this skill is published in a public dotfiles repo. The coordinates are a valid
+tenant identifier plus a map of internal systems, so they stay machine-local and untracked
+(`.chezmoiignore.tmpl` excludes the path, so `chezmoi add` on it is refused). Keep it that way —
+if you find yourself pasting a page ID or the site host into this file or `references/*`, stop.
 
-| Page ID | Title |
-|---|---|
-| `5554667689` | 00 - 📌 Start Here |
-| `5553913939` | 01 - 🏗 Architecture |
-| `5554307156` | 02 - 📡 APIs & Interfaces Spec |
-| `5553684539` | 03 - ⚙️ Runbooks (Operations) |
-| `5554438238` | 04 - 🚨 Incident / Postmortem |
-| `5553586309` | 05 - 📝 Meeting Notes |
-| `5554536553` | 06 - 🛠 Admin Work |
-| `5553717348` | 07 - 📂 Projects |
-| `5552996508` | 08 - 🧠 Knowledge Base |
-| `5554667686` | 09 - 👨‍💻 Onboarding |
-| `5554405442` | 99 - 📄 Template |
+**Page IDs drift.** The cached container IDs are a convenience, not the source of truth: a single
+reorganisation on 2026-08-11 invalidated four of them, and nothing warns you — a stale ID either
+404s or, worse, resolves to a trashed page. Resolve by title with CQL whenever a lookup surprises
+you, and write the corrected ID back to `.local/space.md`:
 
-**KB 索引頁**（folder 08 底下）：`5922357414` — `🧠 Knowledge Base 索引`。通用 KB 的 hub，作用等同專案 hub 之於專案文件：每建一頁通用 `[KB]` 就登記於此（見 workflow step 7）。專案專屬 KB 不進這裡，仍由其專案 hub（folder 07）索引。
+```
+space = "<key from .local/space.md>" AND title = "[PROJECT] <Name>"
+```
 
-Customer Chat sub-folders / hub / templates (the reference example, page IDs hardcoded below). Group Chat, LiveKit and Zoom Sales also have the full ARCH/RUNBOOK/Hub triad in the space, but their page IDs aren't enumerated here — pull them from `reference-<project>-docs` memory or a CQL search:
-
-| Page ID | Page |
-|---|---|
-| `5730795637` | Customer Chat (under 01 - Architecture) |
-| `5731713084` | Customer Chat (Runbooks) (under 03 - Runbooks) |
-| `5731549244` | Customer Chat (Project Hub) (under 07 - Projects) † |
-| `5730042127` | Template - Architecture documentation (under 99 - Template) |
-| `5731090541` | Template - Runbook (under 99 - Template) |
-| `5732237314` | Template - Project hub (under 99 - Template) |
-
-† Title uses the deprecated `<Name> (Project Hub)` suffix. Per `doc-taxonomy.md` the current grammar is `[PROJECT] <Name>` (e.g. `[PROJECT] Customer Chat`) — migrate when next touched.
-
-Most existing projects (Support Chat, Group Chat, CDN Media, Chat Setting, Chat File, LiveKit, Zoom Sales, Category Classification) already have a hub and sub-folders — find them via memory or CQL rather than assuming they're absent. Only for a genuinely new project (no pages in the space yet) confirm with the user where to place and create the sub-folder pattern.
+Most projects in the space already have a hub and category containers — search before assuming one
+is absent. Only for a genuinely new project (no pages yet) confirm with the user where to place it
+and create the container pattern.
 
 ## The orchestration
 
 ```
-1. Load conventions          — bundled in doc-taxonomy/page-anatomy/workflow (+ optional memory page-ID cache)
+1. Load conventions          — read `.local/space.md` for coordinates + doc-taxonomy/page-anatomy/workflow for rules
 2. Classify doc type         — apply doc-taxonomy.md (2-question rule + closed vocab); decide PAIR vs single
-3. Search for collisions     — CQL against shoalteritbev (uniqueness rule)
+3. Search for collisions     — CQL against the space (uniqueness rule)
 4. Confirm with user         — title + content depth via AskUserQuestion
-5. Create page(s)            — use template page (see table above) as starting structure
+5. Create page(s)            — use the template page from `.local/space.md` as starting structure
 6. Cross-link the pair       — ARCH ↔ RUNBOOK info panels (if pair)
 7. Update the index          — project hub OR KB index. NON-SKIPPABLE. The recurring failure mode.
 8. Record in memory          — page IDs + URLs as a reference-* memory file
@@ -90,9 +74,9 @@ Most existing projects (Support Chat, Group Chat, CDN Media, Chat Setting, Chat 
 | Mistake | Why it happens | Fix |
 |---|---|---|
 | Forgetting to update project hub | Hub lives in a separate category folder; easy to miss after "page created" notification | Step 7 is non-skippable. Open the hub page and verify the new doc is listed before declaring done. |
-| Creating a general `[KB]` without registering it on the KB index | Step 7 reads as "project hub", and a general KB has no project — so the step gets silently skipped | The KB index page `5922357414` IS the hub for general KB. Add the link under the matching `[Topic]` `<h2>` (create the `<h2>` if absent), then re-read to verify. Not done until it's listed. |
+| Creating a general `[KB]` without registering it on the KB index | Step 7 reads as "project hub", and a general KB has no project — so the step gets silently skipped | The KB index page (ID in `.local/space.md`) IS the hub for general KB. Add the link under the matching `[Topic]` `<h2>` (create the `<h2>` if absent), then re-read to verify. Not done until it's listed. |
 | Bundling ARCH+RUNBOOK into one page | Feels economical | Re-read `page-anatomy.md` §1 for the layering rationale; almost always two pages is correct. |
-| Omitting the project on a project-scoped sub-topic doc (`[ARCH] Profanity Filter`) | Works on single-project spaces, fails on team spaces | Project-scoped types (ARCH/API/RUNBOOK/DESIGN/POC/ROADMAP/REPORT/POSTMORTEM) MUST include project: `[ARCH][Customer Chat] Profanity Filter`. Exception: the project-level umbrella doc, where the subject IS the project (`[ARCH] Customer Chat`). General types (KB/GUIDELINE/SCHEDULE) OMIT project — see doc-taxonomy.md. |
+| Omitting the project on a project-scoped sub-topic doc (`[ARCH] Profanity Filter`) | Works on single-project spaces, fails on team spaces | Project-scoped types (ARCH/API/RUNBOOK/DESIGN/POC/ROADMAP/REPORT/POSTMORTEM) MUST include project: `[ARCH][Order Service] Profanity Filter`. Exception: the project-level umbrella doc, where the subject IS the project (`[ARCH] Order Service`). General types (KB/GUIDELINE/SCHEDULE) OMIT project — see doc-taxonomy.md. |
 | Inventing a prefix or mixing case (`[Postmortem]`, `[Report]`) | No canonical list in view | Vocabulary is closed & ALL-CAPS; pick from doc-taxonomy.md. Add a new type by editing that file first. |
 | Creating page then discovering title collision | Skipped step 3 | Always CQL-search before AskUserQuestion. |
 | Treating hub update as conditional ("if it exists") | Baseline agents phrase this defensively | Hub exists if memory says it exists. If memory says it exists, update it — full stop. |
