@@ -123,7 +123,10 @@ gate people learn to skip.
 **`Doc Target` is `none` → skip this whole section.** Do not ask, do not
 propose, go straight to `{{ .n.finishBranch }}`. That column came from step 2b.
 
-**{{ .n.teamDocGap }}**
+**{{ .n.teamDocGap }}** And if `Doc Target` names a space `{{ .n.teamDoc }}`
+does not support yet, the write is off the table before it is proposed: say so,
+say it needs that skill's coordinates generalized first, and never reach for the
+team space's coordinates on another space.
 
 Otherwise, just before `{{ .n.finishBranch }}`, ask one question:
 
@@ -150,9 +153,7 @@ but **ask only once the per-change question comes out yes**, then write the
 answer back. Asking up front makes the user rule on an abstract question before
 they know what the change produced.
 
-If `Doc Target` points at a space `{{ .n.teamDoc }}` does not support yet, say
-so and drop the write — never use the team space's coordinates on another
-space. Every outcome here, degraded or skipped or declined, still ends at
+Every outcome here, degraded or skipped or declined, still ends at
 `{{ .n.finishBranch }}`: this step reports, it never blocks.
 
 ### `context/` evergreen promotion (at sync/archive)
