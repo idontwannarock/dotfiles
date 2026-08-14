@@ -46,7 +46,7 @@ Run `{{ .n.gitSync }}` unless already on a worktree.
 
 ### 2b. Resolve workflow registry
 
-Look up `~/.agent/workflow-registry.md` for this repo's main repo path and active-workflows path. If no entry: derive the repo slug from `git rev-parse --git-common-dir` (slugify the result with `/`→`-`), set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row. Registry is per-machine, not synced.
+Look up `~/.agent/workflow-registry.md` for this repo's main repo path, active-workflows path, and `Doc Target` (the team-doc step below reads it; carry it forward, do not act on it here). If no entry: derive the repo slug from `git rev-parse --git-common-dir` (slugify the result with `/`→`-`), set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row with `Doc Target` left blank — **do not ask the user about it now**. Registry is per-machine, not synced, and its rows are append-only: never drop a row because a workflow ended.
 
 > **Architecture-specific:** follow the **Registry / active-workflows path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
 
@@ -120,7 +120,12 @@ gate people learn to skip.
 
 ### Team-doc step (both workflows)
 
-Just before `{{ .n.finishBranch }}`, ask one question:
+**`Doc Target` is `none` → skip this whole section.** Do not ask, do not
+propose, go straight to `{{ .n.finishBranch }}`. That column came from step 2b.
+
+**{{ .n.teamDocGap }}**
+
+Otherwise, just before `{{ .n.finishBranch }}`, ask one question:
 
 > Could someone outside this repo answer what this change produced — how to
 > operate it, or why it was designed this way — anywhere other than by reading
@@ -128,9 +133,9 @@ Just before `{{ .n.finishBranch }}`, ask one question:
 
 The signal is bound to **who the readers are**, not to diff size, so both
 workflows run it: a three-line change can produce the switchover procedure
-another team has to follow. `specs/` = WHAT, `design.md` = one-off decisions,
-`context/` = reusable principles — all three have readers inside the repo. This
-step covers the fourth reader: the one outside it.
+another team has to follow. The content boundary below (under *`context/`
+evergreen promotion*) lists three carriers whose readers all sit inside the
+repo; this step covers the fourth reader, the one outside.
 
 Worth writing → state the reason and a proposed title and let the user decide,
 then hand it to `{{ .n.teamDoc }}`, which owns the ARCH/RUNBOOK/KB choice
@@ -138,19 +143,17 @@ through its own doc-taxonomy rules — do not re-derive that here. Not worth
 writing → **say nothing at all**. A routine "nothing to document this time" is
 what turns a gate into noise people learn to read past.
 
-Two gates at different grains. The per-repo one is the `Doc Target` column in
-`~/.agent/workflow-registry.md`: blank, a hub page URL/ID, or `none`. Blank and
-`none` are not the same — blank means nobody has been asked yet, `none` means
-this repo deliberately has no team space. Read the column at step 2b (free, that
-step already reads the registry) but **ask only at the moment the per-change
-question comes out yes**, then write the answer back. Asking up front makes the
-user rule on an abstract question before they know what the change produced;
-asking late is also what puts `none` on the record at the one moment it is
-obvious.
+The per-repo half is the `Doc Target` column: blank, a hub page URL/ID, or
+`none`. Blank means nobody has been asked yet; `none` means this repo
+deliberately has no team space. Read it at step 2b — that step already does —
+but **ask only once the per-change question comes out yes**, then write the
+answer back. Asking up front makes the user rule on an abstract question before
+they know what the change produced.
 
-Degrade loudly, never silently. {{ .n.teamDocGap }} And if `Doc Target` points at
-a space `{{ .n.teamDoc }}` does not support yet, say so and stop — never write
-into another space using the team space's coordinates.
+If `Doc Target` points at a space `{{ .n.teamDoc }}` does not support yet, say
+so and drop the write — never use the team space's coordinates on another
+space. Every outcome here, degraded or skipped or declined, still ends at
+`{{ .n.finishBranch }}`: this step reports, it never blocks.
 
 ### `context/` evergreen promotion (at sync/archive)
 

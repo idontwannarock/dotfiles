@@ -22,7 +22,7 @@ registry 的列 SHALL 只增不減：既有列 SHALL NOT 因流程結束、分�
 #### Scenario: 首次在 repo 開啟 OpenSpec 流程
 - **WHEN** Claude 在某 repo 開始 OpenSpec 流程，且 registry 中無該 repo 紀錄
 - **THEN** Claude SHALL 用 `git rev-parse --git-common-dir` 推導主 repo 路徑，算出 project memory 路徑，自動新增到 registry
-- **AND** `Doc Target` SHALL 留空——此時不得詢問使用者
+- **AND** `Doc Target` SHALL 留空
 
 #### Scenario: 在 worktree 中查詢 registry
 - **WHEN** Claude 當前在某 worktree 中
