@@ -16,6 +16,12 @@ tree a place where everything in it is listed; it is not on any load path.
 
 Loaded on demand — read the file you need, not the whole tree.
 
+姊妹樹 `~/.agent/local/` 是同一層(machine-level、跨 repo、tool-agnostic)的**非公開**
+半邊:不受 chezmoi 管、不在本 repo、不跨機同步。判準是**設定類知識歸它** —— 設定
+描述「這個環境長什麼樣」,本質上綁特定機器與平台,即使句子本身看不出是誰的環境;
+本 repo 為公開 repo,那類內容不進這棵樹。此處只記存在性,內容不複述,需要時直接讀
+`~/.agent/local/index.md`(該檔不存在就代表這台機器沒建過)。
+
 # Git layouts
 
 * [Bare + worktree](bare-worktree/) - repos organized as a bare git repo plus
