@@ -13,15 +13,19 @@ set -eu
 prompt="${1:-}"
 hosts_file="$HOME/.corp-ssh/hosts.yaml"
 
-# 1. Parse hostname from prompt: "(user@host.fqdn) Password:" → host.fqdn
-#    Greedy "(.+@)?" handles prompts where the user principal contains '@',
+# 1. Parse hostname from the prompt. Two shapes exist, one per auth method:
+#      keyboard-interactive (PAM) → "(user@host.fqdn) Password:"
+#      password (openssh builtin) → "user@host.fqdn's password: "
+#    Greedy "(.+@)?" in both handles user principals containing '@',
 #    e.g. "(ad-user@corp-domain@actual-host.fqdn) Password:".
-#    Regex stored in a variable to avoid bash inline-regex parser quirks.
-prompt_re='\((.+@)?([^)]+)\) '
-if [[ ! "$prompt" =~ $prompt_re ]]; then
+#    Regexes stored in variables to avoid bash inline-regex parser quirks.
+kbdint_re='\((.+@)?([^)]+)\) '
+passwd_re="^(.+@)?(.+)'s password: ?\$"
+if [[ "$prompt" =~ $kbdint_re ]] || [[ "$prompt" =~ $passwd_re ]]; then
+  target_host="${BASH_REMATCH[2]}"
+else
   exit 1   # prompt format unrecognized → decline
 fi
-target_host="${BASH_REMATCH[2]}"
 short_host="${target_host%%.*}"
 
 # 2. Only answer for hosts listed in hosts.yaml (either FQDN or short form).
@@ -30,10 +34,21 @@ if ! grep -qE "^[[:space:]]*-[[:space:]]*(${short_host}|${target_host})[[:space:
   exit 1   # not a corp host → decline, openssh aborts this auth method
 fi
 
-# 3. Resolve pass_path prefix from yaml. Actual entries live at
+# 3. Resolve pass_path prefix from yaml. Shared corp credentials live at
 #    "$pass_path/password" and "$pass_path/totp".
 pass_path=$(awk -F: '/^pass_path:/ { print $2 }' "$hosts_file" | tr -d ' ')
 [[ -n "$pass_path" ]] || exit 1
+
+# 3b. Hosts with their own local account (not the shared AD principal) keep
+#     their password at "$pass_path/hosts/<short_host>". Select by checking the
+#     store file directly — probing with `pass show` would decrypt, and a cold
+#     gpg-agent cache would then look identical to "no per-host entry" and
+#     silently send the shared password to the wrong host.
+password_entry="$pass_path/password"
+host_entry="$pass_path/hosts/$short_host"
+if [[ -f "${PASSWORD_STORE_DIR:-$HOME/.password-store}/$host_entry.gpg" ]]; then
+  password_entry="$host_entry"
+fi
 
 # 4. Dispatch by prompt content. pass uses gpg → gpg-agent must already have
 #    the key passphrase cached. We have no TTY here for pinentry to prompt on,
@@ -44,14 +59,14 @@ pass_path=$(awk -F: '/^pass_path:/ { print $2 }' "$hosts_file" | tr -d ' ')
 #    `case` is first-match and "*Password:*" would otherwise swallow it.
 rc=0
 case "$prompt" in
-  *"One-time Password:"*) out=$(pass otp  "$pass_path/totp"     2>/dev/null) || rc=$? ;;
-  *"Password:"*)          out=$(pass show "$pass_path/password" 2>/dev/null) || rc=$? ;;
+  *"One-time Password:"*)          out=$(pass otp  "$pass_path/totp"  2>/dev/null) || rc=$? ;;
+  *"Password:"*|*"'s password:"*) out=$(pass show "$password_entry" 2>/dev/null) || rc=$? ;;
   *) exit 1 ;;
 esac
 
 if [[ $rc -ne 0 || -z "$out" ]]; then
   echo "corp-ssh-askpass: pass failed (rc=$rc) — gpg-agent cache cold or store missing." >&2
-  echo "corp-ssh-askpass: Warm cache: pass show $pass_path/password >/dev/null" >&2
+  echo "corp-ssh-askpass: Warm cache: pass show $password_entry >/dev/null" >&2
   exit 1
 fi
 

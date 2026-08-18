@@ -23,11 +23,18 @@ if (-not $env:GNUPGHOME) { $env:GNUPGHOME = Join-Path $env:USERPROFILE '.gnupg' 
 $prompt    = if ($args.Count -ge 1) { $args[0] } else { '' }
 $hostsFile = Join-Path $env:USERPROFILE '.corp-ssh\hosts.yaml'
 
-# 1. Parse hostname: "(user@host.fqdn) Password:" -> host.fqdn.
-#    Greedy "(.+@)?" handles "(ad-user@realm@host.fqdn) Password:" form.
-if ($prompt -notmatch '\((.+@)?([^)]+)\) ') { exit 1 }
-$targetHost = $matches[2]
-$shortHost  = $targetHost.Split('.')[0]
+# 1. Parse hostname. Two shapes exist, one per auth method:
+#      keyboard-interactive (PAM) -> "(user@host.fqdn) Password:"
+#      password (openssh builtin) -> "user@host.fqdn's password: "
+#    Greedy "(.+@)?" in both handles "(ad-user@realm@host.fqdn) Password:" form.
+if ($prompt -match '\((.+@)?([^)]+)\) ') {
+    $targetHost = $matches[2]
+} elseif ($prompt -match "^(.+@)?(.+)'s password: ?$") {
+    $targetHost = $matches[2]
+} else {
+    exit 1
+}
+$shortHost = $targetHost.Split('.')[0]
 
 # 2. Allowlist check.
 if (-not (Test-Path -LiteralPath $hostsFile)) { exit 1 }
@@ -46,14 +53,28 @@ foreach ($line in $lines) {
 }
 if ([string]::IsNullOrEmpty($passPath)) { exit 1 }
 
+# 3b. Hosts with their own local account (not the shared AD principal) keep
+#     their password at "$passPath/hosts/<shortHost>". Select by listing entry
+#     names — `gopass show` would decrypt, and a cold gpg-agent cache would then
+#     look identical to "no per-host entry", silently sending the shared
+#     password to the wrong host. Fail closed if the store can't be listed.
+$entries = & gopass ls --flat 2>$null
+if ($LASTEXITCODE -ne 0) {
+    [Console]::Error.WriteLine('corp-ssh-askpass: gopass ls failed -- store missing or unreadable.')
+    exit 1
+}
+$passwordEntry = "$passPath/password"
+$hostEntry     = "$passPath/hosts/$shortHost"
+if ($entries -contains $hostEntry) { $passwordEntry = $hostEntry }
+
 # 4. Dispatch. OTP branch FIRST — "Password:" is a substring of "One-time Password:".
 $out = $null
 $rc  = 0
 if ($prompt -like '*One-time Password:*') {
-    $out = & gopass otp     "$passPath/totp"     2>$null
+    $out = & gopass otp     "$passPath/totp"  2>$null
     $rc  = $LASTEXITCODE
-} elseif ($prompt -like '*Password:*') {
-    $out = & gopass show -o "$passPath/password" 2>$null
+} elseif (($prompt -like '*Password:*') -or ($prompt -like "*'s password:*")) {
+    $out = & gopass show -o "$passwordEntry" 2>$null
     $rc  = $LASTEXITCODE
 } else {
     exit 1
@@ -61,7 +82,7 @@ if ($prompt -like '*One-time Password:*') {
 
 if ($rc -ne 0 -or [string]::IsNullOrEmpty($out)) {
     [Console]::Error.WriteLine("corp-ssh-askpass: gopass failed (rc=$rc) -- gpg-agent cache cold or store missing.")
-    [Console]::Error.WriteLine("corp-ssh-askpass: Warm cache: gopass show -o $passPath/password >`$null")
+    [Console]::Error.WriteLine("corp-ssh-askpass: Warm cache: gopass show -o $passwordEntry >`$null")
     exit 1
 }
 

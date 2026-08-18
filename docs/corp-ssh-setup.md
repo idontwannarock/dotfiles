@@ -111,6 +111,19 @@ pass show corp/password >/dev/null && echo "password OK"
 pass otp corp/totp     # should print a 6-digit code matching your authenticator app
 ```
 
+**Hosts with their own local account.** `corp/password` is the shared AD
+password. A host that authenticates against a *local* account instead (a DB box
+with its own `root` password, say) keeps its own entry under `corp/hosts/`,
+named by the **first segment of its HostName**:
+
+```bash
+pass insert corp/hosts/mms-product-grouping-api-db-dev
+```
+
+The helper prefers `corp/hosts/<short-host>` when that entry exists and falls
+back to `corp/password` otherwise — no configuration needed beyond creating the
+entry. Such hosts still need their FQDN on the `hosts.yaml` allowlist below.
+
 The first `pass show` will trigger pinentry to ask for the GPG passphrase.
 Subsequent calls within `default-cache-ttl` (8h) skip the prompt.
 
@@ -158,9 +171,9 @@ secrets, *is* reproduced: chezmoi deploys it as a drop-in at
 WSL/Linux/macOS only — Win32-OpenSSH has no ControlMaster):
 
 ```
-# ──── Corp hosts with password+OTP — enable connection multiplexing ─────────
-Host devkws* dev-livekit
-  PubkeyAuthentication no          # password+OTP only — don't offer agent keys (avoids MaxAuthTries)
+# ──── Corp hosts authenticating by password — enable connection multiplexing ────
+Host devkws* dev-livekit devdb-*
+  PubkeyAuthentication no          # password(+OTP) only — don't offer agent keys (avoids MaxAuthTries)
   ControlMaster auto
   ControlPath ~/.ssh/cm/%C
   ControlPersist 8h
@@ -208,6 +221,21 @@ The helper parses the hostname out of the prompt, looks it up in
 `pass show` (for password prompts) or `pass otp` (for OTP prompts) and
 writes the result to stdout. OpenSSH reads stdout as the credential.
 
+The prompt arrives in one of two shapes, depending on which auth method the
+server offers, and the helper recognizes both:
+
+| Auth method | Prompt text | Who composes it |
+|---|---|---|
+| `keyboard-interactive` (PAM) | `(user@host.fqdn) Password:` | server, wrapped in context by openssh |
+| `password` (openssh builtin) | `user@host.fqdn's password: ` | openssh client |
+
+For password prompts the helper picks the entry by checking whether
+`~/.password-store/<pass_path>/hosts/<short-host>.gpg` exists, preferring it
+over the shared `<pass_path>/password`. It tests the **file**, not `pass show`:
+probing by decryption would make a cold gpg-agent cache indistinguishable from
+"no per-host entry", and the helper would then send the shared AD password to a
+host that never wanted it.
+
 `pass` decrypts via gpg-agent. As long as the agent has the passphrase cached
 (8h TTL), no pinentry prompt fires and the helper completes silently. Once
 the cache expires, `pass` fails (no TTY available under sshd), the helper
@@ -230,6 +258,8 @@ method fails. No corp credentials are leaked to unrelated servers.
 | Auth succeeds manually but cron/harness still fails | Harness env doesn't share gpg-agent | gpg-agent runs as a per-user daemon; any process as same uid can talk to it via `~/.gnupg/S.gpg-agent`. Make sure cron isn't using a different uid or chrooted env |
 | Host listed in `hosts.yaml` but helper declines | Entry is ssh alias, not HostName | Regenerate using the `ssh -G` recipe in step 4 |
 | Passphrase-protected SSH key no longer works | `SSH_ASKPASS_REQUIRE=force` intercepts passphrase prompt too | Use unencrypted keys, OR `SSH_ASKPASS_REQUIRE=never ssh host` per session |
+| `Host key verification failed.` on first connect to a new host, **no** yes/no prompt shown | `SSH_ASKPASS_REQUIRE=force` intercepts the host-key confirmation too, and the helper declines it | Verify the fingerprint out of band — run `ssh-keyscan -t ed25519 <target>` on the jump host and compare with the key `ssh -v` reports — then `ssh -o StrictHostKeyChecking=accept-new <host>` once |
+| `Permission denied, please try again.` repeated, **never** prompted for a password | Host missing from `hosts.yaml`, or its prompt shape is unrecognized — the helper declines and ssh submits an empty password | `ssh -v` shows `read_passphrase: requested to askpass`; add the HostName to `hosts.yaml`. To see the real prompt text, point `SSH_ASKPASS` at a wrapper that logs `$1` |
 | `Too many authentication failures` (disconnect before any credential is accepted) | (a) ssh offers agent/default pubkeys to a password+OTP host and exhausts server `MaxAuthTries`, or (b) a wrong/stale credential — usually an expired AD password — is retried every round | See ["Too many authentication failures"](#too-many-authentication-failures) below |
 
 ### "Too many authentication failures"
@@ -253,8 +283,8 @@ plus the one-line `Include ~/.ssh/config.d/*` in the machine-local `~/.ssh/confi
 reproduces it on every machine:
 
 ```
-Host devkws* dev-livekit
-  PubkeyAuthentication no          # password+OTP only — don't offer agent keys
+Host devkws* dev-livekit devdb-*
+  PubkeyAuthentication no          # password(+OTP) only — don't offer agent keys
   ControlMaster auto
   ControlPath ~/.ssh/cm/%C
   ControlPersist 8h
