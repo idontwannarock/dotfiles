@@ -68,6 +68,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **Code graph**: For cross-file questions (callers, callees, impact radius, symbol search), use `codegraph` instead of stitching answers from Read/Grep. If unavailable or index error, fall back to Read/Grep — but mention that codegraph was not initialized.
 - **Library docs**: Before writing code that calls an external library, framework, SDK, or CLI tool, query `context7` for current syntax. Training data drifts; APIs rename parameters and deprecate surfaces between releases.
 - **English prose**: When writing English commit messages, PR descriptions, error messages, or user-facing docs, apply Strunk's *Elements of Style* — cut excess words, prefer active voice, concrete over abstract. Use available writing style tools (e.g. `elements-of-style`) if present.
+- **Local conventions**: Before writing a project's configuration — service config files, local DB containers, deployment env vars, integration-test setup — read `~/.agent/local/index.md` if it exists. It holds cross-project conventions kept deliberately outside every repo, so no repo, no search, and no other reference will surface them. No such file means this machine has none.
 
 ## 6. Subagent Dispatch
 
