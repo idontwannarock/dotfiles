@@ -116,6 +116,95 @@ pane **不會**截斷 session 記錄：同一份工作在硬關前後皆為 14 �
 `task_complete`，也沒有留下 `ppid=1` 的孤兒行程。所以禮貌退出的價值只剩「讓有
 session-end hook 的 kind 跑完 hook」，不要拿「保住 transcript」去主張它。
 
+## 重開機後的復原
+
+（2026-08-14、08-15 於 herdr 0.8.0、WSL2 實測；程式碼引用對照 `herdrdev/herdr` main。）
+
+狀態正典是 `~/.config/herdr/session.json`（version 3），**每次變更即時寫檔**，不是關閉時
+才寫：單一份 server log 裡 `persist.save` 3177 次。因此 **detach 的方式與復原無關** ——
+16 次 `app.startup` 只對到 6 次 `app.shutdown`，其餘 10 次是 WSL 被硬殺，而每次
+「關機前最後一次 save」與「重開後 `persist.restore`」的 workspace 數字都一致
+（10→10、9→9、8→8）。不必為了保狀態去追求優雅關閉。
+
+**存的是骨架，不是內容。** 每個 pane 只留 `cwd` 與 `agent_session`，tab 留 `custom_name`／
+`layout`／`focused`，workspace 留 `custom_name`／`identity_cwd`／`active_tab`。行程、
+scrollback、pane 裡進行中的任何東西都不存 —— 復原後每個 pane 是 `pane.spawn.start` 開出來
+的全新 shell，cwd 對、畫面空。「重開後長得不太一樣」多半就是這個，加上**沒自訂名字的
+workspace 只剩 `identity_cwd`**，辨識度差很多。常用的 workspace／tab 請命名。
+
+**pane 的 cwd 是跟著 `cd` 走的。** `AppEvent::TerminalCwdReported` 收到新 cwd 就寫進 terminal
+狀態並 `mark_session_dirty()`，所以持久化的是 pane **當下**的 cwd，不是它被建立時的。實測：
+新開一個 cwd 在 dotfiles 的 pane → `cd ~/devops` → 下一次 save 之後 session.json 記的就是
+`~/devops`。在 pane 裡 `cd` 去別的 repo，重開機後那個 workspace 就在新地方開，workspace 的
+`identity_cwd`（sidebar 的 branch/git status 靠它）也跟著漂走。跨 repo 開新 workspace，不要
+在既有 pane 裡 `cd` 過去。
+
+agent 的自動 resume 由 `[session] resume_agents_on_restore` 控制（0.8.0 預設 true）。
+`herdr config check` 會抓出打錯的 key（實測打錯一個字母回 `unknown config key ...; ignoring key`），
+改完用 `herdr server reload-config` 生效。2026-08-15 一次真實重開機的成績：10 個 workspace、
+19 個 pane、7 個 agent 全部自動回來，7 個 `claude --resume` **全部成功**。
+
+## pane↔session 對應會記錯
+
+這是目前唯一需要人介入的環節，而且它**不會報錯**。
+
+**`claude --resume <uuid>` 是全域解析 uuid，不受 cwd 限制。** 所以 herdr 就算拿著別的 pane 的
+session id，resume 照樣會成功 —— 傷害不是「接不起來」，而是**對話在錯的工作目錄裡被接起來**，
+然後開始讀寫錯的 repo。2026-08-15 那次重開機，7 個 resume 全成功，其中 3 個 cwd 是錯的；
+其中一個對話（整段都在 `mms_product_grouping_api`）被接到 qa-portal，transcript 裡多了一筆
+cwd 是 qa-portal 的紀錄。
+
+**結構性原因是身分被放在訊息裡，而不是通道裡。** hook（`~/.claude/hooks/herdr-agent-state.sh`）
+把 session id 連同 `pane_id = $HERDR_PANE_ID` 送進 socket，server 的
+`handle_pane_report_agent_session` 直接 `parse_pane_id(&params.pane_id)` 就採用，**從不檢查
+回報的行程是否真的活在那個 pane 裡**。而 `HERDR_PANE_ID` 會被所有子行程繼承 —— 從某個 pane
+的環境衍生出去的行程（背景 job、從別的 agent 的 shell 裡起的 agent）都帶著一個不屬於自己的
+pane id。上游 issue **#2012（OPEN）** 記錄的是同一個信任邊界在 `herdr pane current` 上的版本。
+
+這些資訊沒有一項是真的不可知的：
+
+| 事實 | 權威來源 | herdr 現況 |
+|------|---------|-----------|
+| workspace／tab／pane 拓樸 | herdr 自己 spawn 的 | 確定 |
+| pane 裡有哪些行程、誰在前景 | OS | 已經在查（`child_pid()`、`foreground_process_group_id()`） |
+| **回報者住在哪個 pane** | OS，kernel 可驗證 | **靠 `$HERDR_PANE_ID` 自稱** |
+| agent 當下的 session id | agent 自己 | hook push，確定 |
+
+Unix socket 的連線本身帶著 kernel 給的、無法偽造的對端 pid（`SO_PEERCRED`；Windows 具名管道有
+`GetNamedPipeClientProcessId`），配上 herdr 已經握有的 `child_pid()` 就能確定地解出回報者屬於
+哪個 pane。但整個 `src/` grep 不到任何一處使用 —— 於是 `set_agent_session_ref_for_session_start`
+只能用 `process_present`、`session_anchored`、seq 新鮮度、suppression 去**猜**「這筆回報像不像
+真的」。CHANGELOG 在這塊反覆修過 #511、#712、#943、#1789、#1927、#2159，可見猜錯是常態。
+
+**實測：server 完全不驗證。**（2026-08-18，herdr 0.8.0）開兩個空 pane A、B，從 **A 的 shell**
+送一筆指名 **B** 的回報：
+
+```bash
+herdr pane report-agent-session <B> --source herdr:claude --agent claude \
+      --agent-session-id 00000000-dead-beef-0000-000000000000 \
+      --seq $(date +%s%N) --session-start-source startup
+```
+
+B **完全沒有跑任何 agent**（`agent: None`），假 id 照樣黏上去，而且**寫進了 session.json** ——
+也就是說下次重開機，herdr 會拿這個捏造的 id 去 `claude --resume`。無錯誤、無警告。
+
+**具體觸發條件仍未查明。** 2026-08-15 重開機後 7 個 claude 行程的 `HERDR_PANE_ID` 全部正確，
+仍新增一筆污染；2026-08-18 又見同型複發（**沒有經過重開機**：兩個不同 repo 的 pane、兩邊 env
+都正確，晚起的那個被記成早起那個的 session id）。所以「env 過期」不是解釋。但驗證對端 pid 能
+讓**整類**問題消失 —— 不需要先找出兇手。
+
+**好消息是它可自癒。** 只要該 pane 的 agent 重新啟動一次，hook 就會重報正確的 id，紀錄自動
+修好 —— 缺的只是「知道哪幾筆錯了」。
+
+### 檢查與修復
+
+`herdr-session-check`（本機 `~/.local/bin`，尚未進 chezmoi）比對每個 agent pane 的 cwd 與
+**transcript 第一筆記錄的 cwd**。不用 project 目錄名反推：slug 會把 `/` `_` `.` 全換成 `-`，
+反推不回去。錯配時它印出正確的 `claude --resume` 指令與該 cwd 最近的候選 session；exit 1。
+
+修法（實測過三次）：在該 pane 送 `/exit` → 確認 pane 回到 shell → 在 **cwd 正確的 pane** 執行
+`claude --resume <id>`。transcript 不會受影響，重啟同時也把 herdr 的紀錄修回來。
+
 ## 三種「看起來成功的失敗」
 
 以下三項都不報錯、退出碼為零、狀態機也顯示收斂，是實際踩過才浮現的：
