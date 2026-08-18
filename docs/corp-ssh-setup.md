@@ -172,7 +172,7 @@ WSL/Linux/macOS only — Win32-OpenSSH has no ControlMaster):
 
 ```
 # ──── Corp hosts authenticating by password — enable connection multiplexing ────
-Host devkws* dev-livekit devdb-*
+Host devkws* dev-livekit devdb-* stgdb-*
   PubkeyAuthentication no          # password(+OTP) only — don't offer agent keys (avoids MaxAuthTries)
   ControlMaster auto
   ControlPath ~/.ssh/cm/%C
@@ -283,7 +283,7 @@ plus the one-line `Include ~/.ssh/config.d/*` in the machine-local `~/.ssh/confi
 reproduces it on every machine:
 
 ```
-Host devkws* dev-livekit devdb-*
+Host devkws* dev-livekit devdb-* stgdb-*
   PubkeyAuthentication no          # password(+OTP) only — don't offer agent keys
   ControlMaster auto
   ControlPath ~/.ssh/cm/%C
