@@ -25,6 +25,8 @@ Run these before composing:
 - What was being worked on in the last 2-3 turns.
 - Session language: the language this conversation has been conducted in (e.g. `zh-tw`, `ja`, `en`). It goes into the resume line so the next session starts in the same language instead of guessing.
 
+All of this is a snapshot, and composing the file takes many more turns. A parallel session can merge a branch, archive a handoff you cite, or add a worktree in between -- so step 4 re-reads the volatile ones before the file is written. Phrase them as snapshots too ("at the time of writing HEAD was X; re-check before starting") rather than as bare assertions: the reader cannot tell a stale fact from a current one, and a confidently wrong base commit costs more than an admitted uncertainty.
+
 ## Flow
 
 ### 1. Pick a slug
@@ -33,7 +35,7 @@ Run these before composing:
 
 ### 2. Compose the ID, repo slug, and path
 
-- **ID**: `YYYY-MM-DD-HHMM__<slug>` (no extension). Use the user's local time.
+- **ID**: `YYYY-MM-DD-HHMM__<slug>` (no extension). Use the user's local time. The minute is not a unique key -- two parallel sessions handing off in the same minute share a prefix, which has happened -- so the slug must identify the work on its own. A full ID always resolves; a date-prefix lookup will make the user choose between them.
 - **Repo slug**: take the repo identity path from Gather and replace every `:`, `\`, `/`, and `.` with `-`. Examples:
   - normal layout: git-common-dir is `/home/user/work/api/.git`, so the identity path is `/home/user/work/api` and the slug is `-home-user-work-api`
   - bare+worktree layout: git-common-dir is `/home/user/work/api/.bare` from **any** worktree, so every worktree of that repo yields the same slug `-home-user-work-api`
@@ -57,6 +59,8 @@ When the target is not the current repo, the reader needs to know which repo eac
 - Target repo: <absolute path of the repo this handoff is for>
 - Written from: <absolute path> (branch: <branch>) -- source context only
 ```
+
+The resume line at the foot of the file needs the same qualifier. `/pickup <ID>` resolves against the slug of whatever repo the next session happens to open in, so a bare resume line on a cross-repo handoff points the reader at a directory that does not hold the file -- and the session that follows it is, by definition, the one sitting in the wrong repo. Write the line as `cd <target repo absolute path> && claude "/pickup <ID> in <lang>"`, and report that same line to the user in step 5. Same-repo handoffs keep the short form.
 
 ### 3. Compose the file
 
@@ -122,13 +126,14 @@ The resume line carries the session language so the next session continues in it
 
 ### 4. Self-check before writing
 
-Verify all three, and fix before writing -- never write a file that fails any of them:
+Verify all four, and fix before writing -- never write a file that fails any of them:
 
 1. `## Next steps` exists and is non-empty.
 2. Every item under it carries a verifiable success criterion.
 3. `## Suggested skills` exists, and if it has no entries it is a plain sentence rather than a `- None` bullet.
+4. The volatile facts are re-read rather than remembered. Re-run `git rev-parse --short HEAD`, `ls` the target handoff directory, and `git worktree list`, then reconcile the draft against what they now say. On 2026-08-20 a handoff was picked up naming a base commit two merges stale, and while its successor was being drafted a parallel session archived one of the files that draft cited.
 
-These failures are silent: the file gets written, `pickup` finds it, it reads as complete, and only the session that picks it up discovers there is nothing actionable -- by which point the original context is gone.
+These failures are silent: the file gets written, `pickup` finds it, it reads as complete, and only the session that picks it up discovers there is nothing actionable -- or acts on a fact that expired before the file was saved -- by which point the original context is gone.
 
 ### 5. Report to the user
 
