@@ -60,6 +60,8 @@ When the target is not the current repo, the reader needs to know which repo eac
 - Written from: <absolute path> (branch: <branch>) -- source context only
 ```
 
+The resume line at the foot of the file needs the same qualifier. `/pickup <ID>` resolves against the slug of whatever repo the next session happens to open in, so a bare resume line on a cross-repo handoff points the reader at a directory that does not hold the file -- and the session that follows it is, by definition, the one sitting in the wrong repo. Write the line as `cd <target repo absolute path> && claude "/pickup <ID> in <lang>"`, and report that same line to the user in step 5. Same-repo handoffs keep the short form.
+
 ### 3. Compose the file
 
 Use this shape. Non-ASCII (Chinese, em-dash, check marks) is fine -- this file is read, not pasted through a clipboard.

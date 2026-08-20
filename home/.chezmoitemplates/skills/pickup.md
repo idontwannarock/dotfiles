@@ -15,7 +15,7 @@ Then look in `~/.agent/handoffs/<repo-slug>/`. Resolution order, given the user'
 3. **Date prefix** (e.g. `2026-05-26` or `2026-05-26-1430`): glob `<prefix>*.md`. Same disambiguation rule as slug.
 4. **No argument**: pick the file with the latest mtime.
 
-If nothing matches in `~/.agent/handoffs/<repo-slug>/`, check the legacy locations once, in order: `~/.local/state/handoffs/<repo-slug>/` (the pre-`~/.agent` location), then `<repo>/.claude/handoffs/` (files written before 2026-05-26). If still nothing, report the absolute paths searched and stop -- do not invent a file.
+If nothing matches in `~/.agent/handoffs/<repo-slug>/`, check the legacy locations once, in order: `~/.local/state/handoffs/<repo-slug>/` (the pre-`~/.agent` location), then `<repo>/.claude/handoffs/` (files written before 2026-05-26). If still nothing, sweep every slug directory once: glob `~/.agent/handoffs/*/` for the same pattern. Cross-repo handoffs written before their resume line carried a `cd` are what this catches -- they get invoked from the repo they were written *from* rather than the one they are *for*, and the exact-match rules above have no way to reach them. A hit here is not an ordinary resolution: before reading the file, say which repo it belongs to and that the rest of this session works on that repo's behalf. If the sweep is empty too, report the absolute paths searched and stop -- do not invent a file.
 
 ## Apply
 
@@ -38,7 +38,7 @@ Once **every** item under `## Next steps` has met its success criterion:
    - **Decisions belong in memory, not in the handoff.** A ruling reached during the work -- an interface shape, a scope call, a question deliberately left open -- vanishes from every lookup the moment the file moves. Write it to `~/.claude/memory/<repo-slug>/` first, then archive.
    - **Durable reference material gets cited by its post-archive path.** Half a finished handoff is spent todos; the other half can be an inventory, a dependency map, a batch plan that the next several sessions still need. Have a living artifact -- the successor handoff, a memory file -- name it as `~/.agent/handoffs/<repo-slug>/archive/<ID>.md`, the path it will hold **after** the move, never the one it holds now. A citation written against the current path breaks in the same step that creates it.
 3. Ask whether to archive this handoff -- unless the user has a standing instruction to archive without asking (a per-repo memory, or something they said earlier in this session). A standing instruction replaces the question, never the evidence in step 1.
-4. If the user agrees, `mv` the file to `~/.agent/handoffs/<repo-slug>/archive/<ID>.md`, creating the directory if missing. This is the destination even when the file was resolved from one of the legacy locations -- archiving doubles as the migration out of them.
+4. If the user agrees, `mv` the file to `~/.agent/handoffs/<repo-slug>/archive/<ID>.md`, creating the directory if missing. `<repo-slug>` is the directory the file was **resolved from** -- the repo the handoff is for -- which is not the current repo's slug when the cross-repo sweep found it. Archiving into the cwd's tree would lose the file from the only directory anyone will look in. The resolved directory is also the destination when the file came from one of the legacy locations -- archiving doubles as the migration out of them.
 
 Hard rules:
 
