@@ -1,10 +1,10 @@
 # discipline-skills Specification
 
 ## Purpose
-定義自家開發紀律 skills(grill/tdd/diagnose/verify-done/worktree/finish-branch/coordinating-lines)的跨工具(Claude/Codex)部署方式與各自行為契約。
+定義自家開發紀律 skills(grill/tdd/diagnose/verify-done/worktree/finish-branch/coordinate)的跨工具(Claude/Codex)部署方式與各自行為契約。
 ## Requirements
 ### Requirement: 跨工具部署
-七個自家流程/紀律 skills(`grill`、`tdd`、`diagnose`、`verify-done`、`worktree`、`finish-branch`、`coordinating-lines`)SHALL 以 chezmoi shared-body(`home/.chezmoitemplates/skills/<name>.md`)+ per-tool name-map wrapper 部署,Claude 與 Codex 共用同一份身體。
+七個自家流程/紀律 skills(`grill`、`tdd`、`diagnose`、`verify-done`、`worktree`、`finish-branch`、`coordinate`)SHALL 以 chezmoi shared-body(`home/.chezmoitemplates/skills/<name>.md`)+ per-tool name-map wrapper 部署,Claude 與 Codex 共用同一份身體。
 
 #### Scenario: chezmoi apply 後雙工具可用
 - **WHEN** `chezmoi apply` 完成
@@ -120,8 +120,8 @@
 - **THEN** SHALL NOT 採納。兩者風險不同:Discard 銷毀的是未合併的成果,Push + PR 收尾在此之前已有內容比對把關
 - **AND** 為每次例行清理加設確認會使該 gate 被學會忽略,而被學會忽略的 gate 比沒有 gate 更糟
 
-### Requirement: coordinating-lines 協調者契約
-`coordinating-lines` SHALL 定義**協調者**角色:自己不寫程式,產出是裁決、跨線事實、handoff。它 SHALL 明示自己是 wayfinder 的延伸,處理 wayfinder 排除的那半——多條線同時解票——並以對應表把既有載體對上 wayfinder 概念(map↔handoff、decision ticket↔線＋編號、fog↔待認領清單、blocking↔解鎖條件)。
+### Requirement: coordinate 協調者契約
+`coordinate` SHALL 定義**協調者**角色:自己不寫程式,產出是裁決、跨線事實、handoff。它 SHALL 明示自己是 wayfinder 的延伸,處理 wayfinder 排除的那半——多條線同時解票——並以對應表把既有載體對上 wayfinder 概念(map↔handoff、decision ticket↔線＋編號、fog↔待認領清單、blocking↔解鎖條件)。
 
 skill 內文 SHALL 分兩層:**主體為平台中立的協調原則**,**附錄收平台／工具相依的機制**。分層判準 SHALL 為「換一個 repo、換一個 merge 平台、或換一個 agent kind 之後,這句話會不會靜默失效」——會的進附錄並標明前提,不會的留主體。
 

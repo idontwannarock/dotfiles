@@ -184,7 +184,7 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 - **THEN** task 切分 SHALL 符合上述慣例,SHALL NOT 按層橫切
 
 ### Requirement: 協調模式下的線側契約
-當一條線是由協調者派出的多條平行線之一時,`dev-workflow` 的核心流程 SHALL 不變,但 SHALL 附加三項義務。完整規則屬於 `coordinating-lines`;`dev-workflow` 內文 SHALL 只放**線側**契約,並以 name-map 指向該 skill,SHALL NOT 寫死 skill 名。
+當一條線是由協調者派出的多條平行線之一時,`dev-workflow` 的核心流程 SHALL 不變,但 SHALL 附加三項義務。完整規則屬於 `coordinate`;`dev-workflow` 內文 SHALL 只放**線側**契約,並以 name-map 指向該 skill,SHALL NOT 寫死 skill 名。
 
 #### Scenario: 以名字定址協調者
 - **WHEN** 一條線要回報給協調者

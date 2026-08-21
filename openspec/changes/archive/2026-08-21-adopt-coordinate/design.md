@@ -1,6 +1,6 @@
 ## Context
 
-`coordinating-lines` 是 2026-08-21 一個協調者 session 帶四條實作線（`!42`／`!44`／`!45`／`!46` 全數合併）時，**在工作中途**寫下的田野筆記，加上 frontmatter 就成了 skill。它的可信度來自真實事故，過度綁定也來自同一個原因——兩者是同一件事的兩面。
+`coordinate` 是 2026-08-21 一個協調者 session 帶四條實作線（`!42`／`!44`／`!45`／`!46` 全數合併）時，**在工作中途**寫下的田野筆記，加上 frontmatter 就成了 skill。它的可信度來自真實事故，過度綁定也來自同一個原因——兩者是同一件事的兩面。
 
 它刻意寫成 Matt Pocock `wayfinder` 的延伸：wayfinder 規劃一張決策地圖並明說「一個 session 只解一張票」，本 skill 處理它排除的那半——**多條線同時在解票**。
 
@@ -66,7 +66,7 @@
 - **[附錄被讀成「可以略過的部分」，機制細節失效]** → 附錄標題寫明它是**前提**不是補充；主體引用附錄處直接點名。
 - **[拔掉 memory 指標後 provenance 消失]** → 軼事本身帶日期與情境，且 skill 內文已內聯操作性事實；真要追來源，`~/.agent/handoffs/` 那條線的 handoff 仍在。
 - **[Codex 端沒有 herdr 或行為不同]** → 已查證 `--kind codex` 是支援值；附錄的改名那節以 gap 字串標明 Claude 專屬，Codex 渲染不會指向不存在的旗標。
-- **[本機 target 已存在，apply 衝突]** → `coordinating-lines` 目前是 unmanaged，納入後首次 apply 會以 source 覆蓋 target；已確認本機那份與凍結版逐字相同，覆蓋不損失內容。
+- **[本機 target 已存在，apply 衝突]** → `coordinate` 目前是 unmanaged，納入後首次 apply 會以 source 覆蓋 target；已確認本機那份與凍結版逐字相同，覆蓋不損失內容。
 
 ## Open Questions
 

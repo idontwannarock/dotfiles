@@ -186,7 +186,7 @@ When writing tasks.md (either workflow):
 
 If a coordinator dispatched this line — several lines run in parallel and one
 agent holds them together — the flow above is unchanged, but three obligations
-are added. Full rules live in the `{{ .n.coordinatingLines }}` skill; this is the
+are added. Full rules live in the `{{ .n.coordinate }}` skill; this is the
 line-side contract.
 
 **Address the coordinator by name, never by pane id.** Report with
