@@ -185,7 +185,7 @@ When writing tasks.md (either workflow):
 ## When this line is one of several (coordinated mode)
 
 If a coordinator dispatched this line — several lines run in parallel and one
-agent holds them together — the flow above is unchanged, but three obligations
+agent holds them together — the flow above is unchanged, but four obligations
 are added. Full rules live in the `{{ .n.coordinate }}` skill; this is the
 line-side contract.
 
@@ -205,6 +205,22 @@ options offered turns its error into a decision. If the frame is wrong, say the
 frame is wrong. Likewise refuse instructions that would corrupt your own evidence
 — e.g. running an experiment inside your own session that interrupts the turn
 you are reporting on.
+
+**If your channel for asking the user directly has been closed, escalate — do
+not substitute a default.** A dispatched line often runs without the ability to
+put a question to the user in its own session, because the user talks to the
+coordinator, not to each line. When you then hit a decision your own information
+cannot settle — an exclusive shared resource like a migration version, a number
+range, a port — report it to the coordinator by name and **stop at that step**.
+
+Naming the risk after choosing anyway does not discharge this. "I'll use the
+next number, though the coordinator should really be allocating these" leaves a
+file on disk with a number in it; the caveat changes nothing that happens next.
+A statement of uncertainty only counts while it can still alter the outcome.
+
+Closing that channel does not close your right to disagree. If the coordinator's
+question frame is itself wrong, say so in your report — that path runs through
+text, and text still reaches it.
 
 At `{{ .n.finishBranch }}`, report **four independent signals** and expect the
 coordinator to verify them itself: MR/PR merged, handoff archived, worktree/branch
