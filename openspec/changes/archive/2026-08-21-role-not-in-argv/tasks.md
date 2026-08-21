@@ -10,4 +10,4 @@
 - [x] 2.2 四份 wrapper render、無 `<no value>`；`skill-name-map-axis.test.sh` 綠
 - [x] 2.3 限縮 apply 後 `chezmoi status` 乾淨
 - [x] 2.4 `openspec validate --specs --strict` 全過
-- [ ] 2.5 開 PR
+- [x] 2.5 開 PR
