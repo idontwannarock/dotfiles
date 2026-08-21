@@ -1,0 +1,12 @@
+{{- /* Claude name-map for the shared coordinate body */ -}}
+{{- $n := dict
+    "tool" "claude"
+    "agentKind" "claude"
+    "devWorkflow" "dev-workflow"
+    "finishBranch" "finish-branch" -}}
+---
+name: coordinate
+description: "Use when running several implementation lines in parallel and you are the one holding them together rather than writing code — dispatching agents, merging what each line learned into one truth, ruling on questions they raise, ordering the merge queue, and closing lines down. Triggers include 協調、開線、分線、多條線同時跑, acting as coordinator over herdr/background agents, or any session whose own deliverable is handoffs and rulings rather than commits. Extends Matt Pocock's wayfinder (decision maps with fog) to the case wayfinder explicitly excludes: parallel lines resolving tickets at the same time."
+---
+
+{{ template "skills/coordinate.md" (dict "n" $n "chez" .chezmoi) -}}

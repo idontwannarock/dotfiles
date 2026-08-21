@@ -182,6 +182,36 @@ When writing tasks.md (either workflow):
 - Wide refactors are the exception: sequence expand–contract, migrate in
   batches sized by blast radius.
 
+## When this line is one of several (coordinated mode)
+
+If a coordinator dispatched this line — several lines run in parallel and one
+agent holds them together — the flow above is unchanged, but three obligations
+are added. Full rules live in the `{{ .n.coordinate }}` skill; this is the
+line-side contract.
+
+**Address the coordinator by name, never by pane id.** Report with
+`herdr agent prompt coordinator "..."`. Pane ids change on handover; the name does not.
+
+**Report cross-line facts immediately, not at the end.** Anything another line
+could also touch: shared fixtures, a measurement both lines assert on, migration
+version numbers, decision-number ranges, a port or test file in both blast radii.
+Your local view is never the whole truth — a number you measured is true only for
+the base you measured it on, and the coordinator is the only one merging those
+into one answer. Waiting until merge means the wrong number already shipped.
+
+**A ruling with a wrong premise should be pushed back on, not executed.** The
+coordinator's question frame can itself be wrong, and answering only within the
+options offered turns its error into a decision. If the frame is wrong, say the
+frame is wrong. Likewise refuse instructions that would corrupt your own evidence
+— e.g. running an experiment inside your own session that interrupts the turn
+you are reporting on.
+
+At `{{ .n.finishBranch }}`, report **four independent signals** and expect the
+coordinator to verify them itself: MR/PR merged, handoff archived, worktree/branch
+disposed, `active_workflows.md` row removed (anchored on the change name).
+Verify "merged" with a scoped diff, not `git branch -d` — under squash merges
+that command answers the same for "merged" and "never merged".
+
 ## Code Review Commands
 
 {{ .n.reviewList }}

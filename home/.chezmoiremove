@@ -113,3 +113,11 @@ AppData/Local/rtk
 # WSL never had it (that directory postdates the removal), Windows carried it
 # for seven weeks.
 .codex/skills/codex-claude-parity
+
+# coordinating-lines 改名為 coordinate（本 PR 內，合併前）。舊名從未進過 merged
+# source——它先是完全未受管的本機檔案，後來只在這支分支上短暫被 apply 過，所以
+# 唯一可能持有舊路徑的是「apply 過這支分支」的機器。不點名的話，那台機器會同時
+# 載入 coordinating-lines 與 coordinate 兩支描述重疊的 skill，而 .claude/skills/
+# 不是 exact_，沒有東西會 prune 它。在沒有舊路徑的機器上是 no-op。
+.claude/skills/coordinating-lines
+.codex/skills/coordinating-lines
