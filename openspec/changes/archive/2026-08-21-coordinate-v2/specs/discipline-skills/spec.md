@@ -241,6 +241,11 @@
 ### Requirement: coordinate 派線時關閉線的直接發問管道
 新增一個 Scenario:pane 的按鍵行為與「依線的 kind 而定的事實」屬同一族,SHALL NOT 依讀者的 kind 條件化。其餘內容不變。
 
+#### Scenario: 軸的宣告有機械守衛
+- **WHEN** 共用 skill body 新增一個依 `.n.tool` 的條件分支
+- **THEN** 該分支上一行 SHALL 帶 `axis: reader` 標記並說明為何這是讀者自身的性質
+- **AND** `tests/skill-name-map-axis.test.sh` SHALL 在缺少該標記時失敗——這一族三次都不是不小心,而是兩個軸在該位置看起來都合理,所以 SHALL NOT 只靠散文提醒
+
 #### Scenario: pane 的按鍵行為依被驅動的 pane 而定
 - **WHEN** 內容描述協調者對某條線的 pane 送按鍵的後果(方向鍵、選單操作)
 - **THEN** SHALL 以涵蓋各 kind 的對照表呈現,SHALL NOT 以渲染此檔的工具做條件分支——那是被驅動的 pane 的 TUI 行為,與協調者自己跑在哪個 agent 上無關

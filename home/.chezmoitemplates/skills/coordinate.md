@@ -795,6 +795,7 @@ herdr agent read <name> --source visible --format ansi
 
 ### 送訊息：兩層管道，而第二層的規則不能刪
 
+{{/* axis: reader — SendMessage 是「協調者自己」有沒有的工具，不是線的性質。新增 .n.tool 分支前先讀 tests/skill-name-map-axis.test.sh */}}
 {{ if eq .n.tool "claude" -}}
 | 對方可達 | 走什麼 | 要不要先讀輸入框 |
 |---|---|---|
@@ -863,8 +864,11 @@ herdr agent read <name> --source visible --format ansi
 慣例是**用 change 名稱**，協調者固定叫 `coordinator`。
 
 ```bash
-herdr agent start <name> --kind {{ .n.agentKind }} --pane <pane-id>
+herdr agent start <name> --kind <line-kind> --pane <pane-id>
 ```
+
+**`<line-kind>` 是那條線要跑什麼，不是你在跑什麼。** 你派得出 21 種——
+把它渲染成你自己的 kind 會讓「線跟我同種」變成預設值，而那是一個沒有人會去質疑的預設值。
 
 **關掉那條線的發問管道**（必須連同升級契約一起給，見主體）：
 
@@ -896,8 +900,15 @@ Claude 的設定檔三層分別是使用者層 `~/.claude/settings.json`、專�
 這類確實會動到工具集的旗標，只是它沒有一個等價於 `AskUserQuestion` 的東西可關。
 派新 kind 之前先自己查一次，不要照抄本表。
 
-{{ if eq .n.tool "claude" -}}
-**名字有三層，最容易搞錯的是第二層到不了手機。**
+**名字有幾層，依「線的 kind」而定——又是同一個軸。** 你要設定的是**那條線**被看見的名字，
+與你自己跑在哪個 agent 上無關。
+
+| 線的 kind | 名字有幾層 |
+|---|---|
+| `claude` | **三層**，見下表 |
+| 其餘 kind | **多半只有 herdr 定址名這一層。** 派新 kind 前自己查一次有沒有等價旗標，不要假設有、也不要假設沒有 |
+
+`claude` 線的三層，**最容易搞錯的是第二層到不了手機**：
 
 | | 設定方式 | 誰看得到 |
 |---|---|---|
@@ -905,7 +916,7 @@ Claude 的設定檔三層分別是使用者層 `~/.claude/settings.json`、專�
 | **本機 display name** | `claude -n <name>`（啟動）或 `/rename <name>`（跑到一半也能改） | prompt box、`/resume` picker、terminal title——**全部都是本機終端機** |
 | **Remote Control session 名** | `claude --remote-control [name]` | **claude.ai 與手機 app**（唯一到得了那裡的一層） |
 
-開線時一行讓三層同名：
+開一條 `claude` 線時，一行讓三層同名：
 
 ```bash
 herdr agent start <name> --kind claude --pane <pane-id> -- --remote-control "<name>" -n "<name>"
@@ -918,12 +929,6 @@ herdr 把 `--` 之後的參數原樣透傳給 agent，於是同一個字串貫�
 
 > **`--remote-control` 是行為改變，不只是加一個旗標**：session 會被橋接到 claude.ai，
 > 對話內容、檔案路徑、程式碼片段都經過那邊。內部程式碼的專案要先確認這個代價可接受。
-{{- else -}}
-**這個 agent 沒有「啟動時設定 session 名稱」的旗標**，也沒有等價於 Remote Control 的
-遠端 session 名稱層。**只有 herdr 定址名這一層**，用上面那道指令設定即可。
-
-需要讓使用者在別處分辨各線時，靠 herdr 的名字與 pane 標題，不要假設有第二、三層。
-{{- end }}
 
 ## 附錄 C：合併平台的行為
 

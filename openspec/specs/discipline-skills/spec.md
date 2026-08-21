@@ -165,6 +165,11 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 - **WHEN** 內容描述協調者對某條線的 pane 送按鍵的後果(方向鍵、選單操作)
 - **THEN** SHALL 以涵蓋各 kind 的對照表呈現,SHALL NOT 以渲染此檔的工具做條件分支——那是被驅動的 pane 的 TUI 行為,與協調者自己跑在哪個 agent 上無關
 
+#### Scenario: 軸的宣告有機械守衛
+- **WHEN** 共用 skill body 新增一個依 `.n.tool` 的條件分支
+- **THEN** 該分支上一行 SHALL 帶 `axis: reader` 標記並說明為何這是讀者自身的性質
+- **AND** `tests/skill-name-map-axis.test.sh` SHALL 在缺少該標記時失敗——這一族三次都不是不小心,而是兩個軸在該位置看起來都合理,所以 SHALL NOT 只靠散文提醒
+
 #### Scenario: 依線的 kind 而定的事實不得依讀者的 kind 條件化
 - **WHEN** 內容描述的是「被派出的線是哪一種 agent」所決定的事實(例如某個 kind 有沒有關閉發問管道的機械手段)
 - **THEN** SHALL 以涵蓋各 kind 的對照表呈現,SHALL NOT 以渲染此檔的工具做條件分支——協調者派得出多種 kind,依它自己的 kind 分支會讓它讀到與手上那條線無關的答案(Claude 協調者派 codex 線會誤以為有保障,反之會誤以為沒有)
