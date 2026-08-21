@@ -13,9 +13,29 @@
 # rather than by remembering). Two of the three sat within ten lines of prose
 # stating the correct axis, so "be careful" demonstrably does not hold here.
 #
+# That closeness is the point, not an embarrassing detail. The usual way a
+# document goes wrong is that its text goes stale and nobody updates it. This is
+# the other kind: the text was correct the whole time and the practice drifted
+# away from it. Stale text can be caught by reading the text. This kind surfaces
+# only when someone reads the text and the practice at the same moment — which
+# is why it survived two audits. The guard is what turns that from "someone
+# happens to read both" into something a machine can check.
+#
+# WHAT THIS DOES NOT CHECK. It catches the wrong SHAPE — a branch where a table
+# belongs. It cannot catch wrong CONTENT: a table keyed on the line's kind can
+# still list the wrong kinds, omit one, or attribute a flag to an agent that
+# does not have it, and this test stays green. There is no mechanical source of
+# truth for that table, so no guard is proposed for it. The reason to say so
+# here rather than leave it implied: a green light with no stated population
+# reads to the next person as "this family is handled".
+#
 # The rule this enforces: content that depends on ANOTHER agent's kind must be a
-# TABLE covering the kinds, never a branch — the other agent's kind is a runtime
-# value, and render time cannot know it. A branch is therefore legitimate only
+# TABLE covering the kinds, never a branch. The reason is structural, not
+# stylistic, and it has to be stated or the next person will read the table as a
+# formatting preference and turn it back into a branch: the other agent's kind is
+# a RUNTIME value — which agent a coordinator drives or dispatches is decided
+# long after this file renders — so render time cannot know it, and a branch can
+# only ever ask about the reader. A branch is therefore legitimate only
 # for facts about the reader, and every such branch must say so on the line
 # above:
 #
