@@ -185,7 +185,7 @@ When writing tasks.md (either workflow):
 ## When this line is one of several (coordinated mode)
 
 If a coordinator dispatched this line — several lines run in parallel and one
-agent holds them together — the flow above is unchanged, but three obligations
+agent holds them together — the flow above is unchanged, but four obligations
 are added. Full rules live in the `{{ .n.coordinate }}` skill; this is the
 line-side contract.
 
