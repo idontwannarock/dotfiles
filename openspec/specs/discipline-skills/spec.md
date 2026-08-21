@@ -1,10 +1,10 @@
 # discipline-skills Specification
 
 ## Purpose
-定義自家開發紀律 skills(grill/tdd/diagnose/verify-done/worktree/finish-branch)的跨工具(Claude/Codex)部署方式與各自行為契約。
+定義自家開發紀律 skills(grill/tdd/diagnose/verify-done/worktree/finish-branch/coordinating-lines)的跨工具(Claude/Codex)部署方式與各自行為契約。
 ## Requirements
 ### Requirement: 跨工具部署
-六個自家流程/紀律 skills(`grill`、`tdd`、`diagnose`、`verify-done`、`worktree`、`finish-branch`)SHALL 以 chezmoi shared-body(`home/.chezmoitemplates/skills/<name>.md`)+ per-tool name-map wrapper 部署,Claude 與 Codex 共用同一份身體。
+七個自家流程/紀律 skills(`grill`、`tdd`、`diagnose`、`verify-done`、`worktree`、`finish-branch`、`coordinating-lines`)SHALL 以 chezmoi shared-body(`home/.chezmoitemplates/skills/<name>.md`)+ per-tool name-map wrapper 部署,Claude 與 Codex 共用同一份身體。
 
 #### Scenario: chezmoi apply 後雙工具可用
 - **WHEN** `chezmoi apply` 完成
@@ -119,3 +119,24 @@
 - **WHEN** 有人主張為 Push + PR 收尾的 `git branch -D` 補上使用者確認,或反過來移除 Discard 的確認 gate
 - **THEN** SHALL NOT 採納。兩者風險不同:Discard 銷毀的是未合併的成果,Push + PR 收尾在此之前已有內容比對把關
 - **AND** 為每次例行清理加設確認會使該 gate 被學會忽略,而被學會忽略的 gate 比沒有 gate 更糟
+
+### Requirement: coordinating-lines 協調者契約
+`coordinating-lines` SHALL 定義**協調者**角色:自己不寫程式,產出是裁決、跨線事實、handoff。它 SHALL 明示自己是 wayfinder 的延伸,處理 wayfinder 排除的那半——多條線同時解票——並以對應表把既有載體對上 wayfinder 概念(map↔handoff、decision ticket↔線＋編號、fog↔待認領清單、blocking↔解鎖條件)。
+
+skill 內文 SHALL 分兩層:**主體為平台中立的協調原則**,**附錄收平台／工具相依的機制**。分層判準 SHALL 為「換一個 repo、換一個 merge 平台、或換一個 agent kind 之後,這句話會不會靜默失效」——會的進附錄並標明前提,不會的留主體。
+
+#### Scenario: 主體不綁定部署平台
+- **WHEN** 讀者所在的 repo 其 merge 方式不是 ff + squash
+- **THEN** 主體的排程規則 SHALL 仍然可讀且不誤導——凡依賴該設定的句子 SHALL 標明前提或位於附錄
+
+#### Scenario: 不得指向 repo-scoped memory
+- **WHEN** skill 內文要引用某條經驗的來源
+- **THEN** SHALL NOT 以裸 slug 指向任一 repo-scoped memory;操作性事實 SHALL 內聯於 skill 內文本身
+
+#### Scenario: agent 專屬機制走 name-map
+- **WHEN** 內容只在特定 agent 成立(如 `/rename`、`-n`、`--remote-control` 等 Claude CLI 旗標)
+- **THEN** SHALL 經 per-tool name-map 或 gap 字串呈現,渲染出來的 Codex 版 SHALL NOT 指向 Codex 不存在的旗標或 skill
+
+#### Scenario: 來源軼事保留
+- **WHEN** 內文含帶日期的實戰軼事(某日某線報了什麼數字、回收了哪個編號)
+- **THEN** SHALL 保留於主體——軼事是時間戳記的事實,換平台不會使其為假,且為規則提供唯一無法從別處推導的證據
