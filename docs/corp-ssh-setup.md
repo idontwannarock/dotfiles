@@ -30,7 +30,8 @@ After setup:
 | `oathtool` | Pulled in as dep; useful for ad-hoc TOTP debugging | `sudo apt install oathtool` |
 
 No cloud account required. The credential store is local-only, encrypted with
-your GPG key, decrypted on demand via gpg-agent (8-hour passphrase cache).
+your GPG key, decrypted on demand via gpg-agent (cached until a full day
+idle — see the TTL notes below).
 
 ## One-time setup
 
@@ -68,18 +69,36 @@ an `ed25519` (sign+cert) primary key with a `cv25519` (encrypt) subkey;
 Note the fingerprint from the output (40-char hex on the second line). You
 can also retrieve it later with `gpg --list-secret-keys`.
 
-**Tune gpg-agent cache TTL** (so a single passphrase entry lasts a working
-session, aligned with ssh `ControlPersist 8h`):
+**Tune gpg-agent cache TTL.** These are two timers with different meanings, and
+giving them the same value silently disables the first one:
+
+- `default-cache-ttl` is an **idle** timer. Per `man gpg-agent`: *"Each time a
+  cache entry is accessed, the entry's timer is reset."* Continuous work
+  extends it indefinitely.
+- `max-cache-ttl` is an **absolute** ceiling measured from the moment the
+  passphrase was entered: *"expired even if it has been accessed recently."*
+
+Set to the same value, the ceiling always wins — the idle timer can never fire,
+because any day you are still working is a day you kept resetting it. The
+symptom is a prompt that interrupts you at the same elapsed mark regardless of
+what you are doing. Give the ceiling plenty of room and let the idle timer
+decide:
 
 ```bash
 mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
 cat > ~/.gnupg/gpg-agent.conf <<'EOF'
-default-cache-ttl 28800
-max-cache-ttl 28800
+default-cache-ttl 86400     # idle: a full day untouched forces a re-entry
+max-cache-ttl 2592000       # ceiling: 30 days, a backstop rather than a limit
+pinentry-timeout 30         # abandoned prompts die instead of blocking the agent
 EOF
 chmod 600 ~/.gnupg/gpg-agent.conf
 gpg-connect-agent reloadagent /bye
 ```
+
+`pinentry-timeout` matters because gpg-agent keeps exactly **one** pinentry
+child: a prompt nobody answers blocks every later passphrase request until it is
+killed by hand. Note that `reloadagent` clears every cached passphrase, so run
+it when you do not mind re-entering.
 
 **Back up the GPG private key.** If you lose it, every secret in `pass` is
 unrecoverable. Recommended:
@@ -317,8 +336,9 @@ credential is retried until `MaxAuthTries` is hit. When it happens:
 
 ### When the GPG passphrase needs re-entry
 
-The 8-hour `default-cache-ttl` covers a typical working session. If you want
-to force a re-prompt (e.g., before stepping away from the machine):
+`default-cache-ttl` is an idle timer that every decrypt resets, so a working
+stretch never expires mid-flow. To force a re-prompt anyway (e.g. before
+stepping away from the machine):
 
 ```bash
 gpg-connect-agent reloadagent /bye   # clears all cached passphrases
