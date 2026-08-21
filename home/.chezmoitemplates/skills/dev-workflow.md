@@ -207,7 +207,7 @@ frame is wrong. Likewise refuse instructions that would corrupt your own evidenc
 you are reporting on.
 
 At `{{ .n.finishBranch }}`, report **four independent signals** and expect the
-coordinator to verify them itself: MR merged, handoff archived, worktree/branch
+coordinator to verify them itself: MR/PR merged, handoff archived, worktree/branch
 disposed, `active_workflows.md` row removed (anchored on the change name).
 Verify "merged" with a scoped diff, not `git branch -d` — under squash merges
 that command answers the same for "merged" and "never merged".
