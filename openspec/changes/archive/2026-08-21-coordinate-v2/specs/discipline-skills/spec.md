@@ -235,3 +235,12 @@
 - **WHEN** 一條線從未建立 handoff 檔
 - **THEN** 該訊號 SHALL 判定為「不適用」並明說,SHALL NOT 讓協調者去找一個不存在的檔案
 - **AND** 判準 SHALL 為「有沒有那個載體」,不是「有沒有做那個動作」——「還沒歸檔」與「不需要歸檔」的處置完全相反
+
+## MODIFIED Requirements
+
+### Requirement: coordinate 派線時關閉線的直接發問管道
+新增一個 Scenario:pane 的按鍵行為與「依線的 kind 而定的事實」屬同一族,SHALL NOT 依讀者的 kind 條件化。其餘內容不變。
+
+#### Scenario: pane 的按鍵行為依被驅動的 pane 而定
+- **WHEN** 內容描述協調者對某條線的 pane 送按鍵的後果(方向鍵、選單操作)
+- **THEN** SHALL 以涵蓋各 kind 的對照表呈現,SHALL NOT 以渲染此檔的工具做條件分支——那是被驅動的 pane 的 TUI 行為,與協調者自己跑在哪個 agent 上無關
