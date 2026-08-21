@@ -34,7 +34,7 @@
 - [x] 4.2 限縮 `chezmoi apply --source <worktree>/home` 並點名 target **目錄**
 - [x] 4.3 `chezmoi status` 對四個 target 乾淨
 - [x] 4.4 `openspec validate --specs --strict` 全過
-- [ ] 4.5 開 PR
+- [x] 4.5 開 PR
 
 ## 5. 覆核
 
