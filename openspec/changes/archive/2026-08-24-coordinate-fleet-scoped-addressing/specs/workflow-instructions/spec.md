@@ -11,7 +11,7 @@
 
 #### Scenario: 投遞前驗收件人的艦隊歸屬
 - **WHEN** 線要送出回報
-- **THEN** SHALL 先確認該名字的 `cwd` 落在自己所屬的 repo 工作樹範圍內
+- **THEN** SHALL 先確認該名字的 `cwd` 落在自己所屬的 repo 工作樹範圍內,比對值 SHALL 取自 `realpath "$(git rev-parse --path-format=absolute --git-common-dir)"`——旗標置後會靜默無效
 - **AND** 不符時 SHALL NOT 投遞——這是位址過期或派線訊息有誤時唯一攔得住誤投的檢查
 
 #### Scenario: 跨線事實即時回報

@@ -198,9 +198,11 @@ delivering your report to another repo's coordinator. If the dispatch message ca
 address, that dispatch is broken: report it as fog rather than guessing a name.
 
 **Verify the recipient before sending.** `herdr agent list` carries a `cwd` per agent;
-confirm that name's cwd is inside your own repo's working-tree set (compare
-`git rev-parse --git-common-dir`, not a path prefix — worktrees share no prefix with the
-main checkout). Mismatch means do not send. This is the only check that catches a stale
+confirm that name's cwd is inside your own repo's working-tree set. Compare the git common
+dir, not a path prefix — worktrees share no prefix with the main checkout — and take it as
+`realpath "$(git rev-parse --path-format=absolute --git-common-dir)"`. The flag only affects
+the options that follow it: placed after `--git-common-dir` it silently does nothing and
+still exits 0, leaving you comparing a cwd-relative `.git`. Mismatch means do not send. This is the only check that catches a stale
 or wrong address, because both ends of a misdelivery look completely normal.
 
 **Report cross-line facts immediately, not at the end.** Anything another line

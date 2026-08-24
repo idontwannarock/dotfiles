@@ -40,11 +40,17 @@
 
 #### Scenario: cwd 不等於 repo
 - **WHEN** 被協調的 repo 是 bare+worktree 佈局
-- **THEN** 判準 SHALL 寫成「在本艦隊 repo 的工作樹範圍內」並以 `git rev-parse --git-common-dir` 為準
+- **THEN** 判準 SHALL 寫成「在本艦隊 repo 的工作樹範圍內」並以 git common dir 為準
 - **AND** SHALL NOT 寫成對 repo 路徑做字串前綴比對——線的 cwd 是 worktree 路徑,不是 main repo 路徑
 
+#### Scenario: 取 common dir 的指令形式要完整
+- **WHEN** skill 給出比對用的指令
+- **THEN** SHALL 為 `realpath "$(git rev-parse --path-format=absolute --git-common-dir)"`——路徑格式旗標 SHALL 置於它所影響的選項**之前**,且結果 SHALL 再經 `realpath`
+- **AND** SHALL 標明裸指令回傳的是 **cwd 相對路徑**,而旗標置後會**靜默無效且 exit code 為 0**
+- **AND** SHALL 標明寫錯的後果是另一個 worktree 上的合法對象被判成別的 repo,使守衛變成通訊中斷
+
 ### Requirement: coordinate 艦隊名冊
-`coordinate` SHALL 要求協調者維護一份艦隊名冊,記錄這支艦隊**該有**哪些 session。名冊 SHALL 只記「session 被換掉時不會變的東西」——名字、agent kind、cwd、開線旗標與角色、這條線是幹嘛的——SHALL NOT 記 status、pane、進度或換手任數。
+`coordinate` SHALL 要求協調者維護一份艦隊名冊,記錄這支艦隊**該有**哪些 session。名冊 SHALL 只記「session 被換掉時不會變的東西」——名字、agent kind、**指派的工作樹**、開線旗標與角色、這條線是幹嘛的——SHALL NOT 記 status、pane、進度或換手任數。
 
 #### Scenario: 立論要建立在 herdr 答不出的那一格上
 - **WHEN** skill 說明為什麼要有名冊
@@ -56,6 +62,12 @@
 - **WHEN** 協調者要盤點艦隊
 - **THEN** SHALL 以名冊與 `herdr agent list` 的**差集**判讀:名冊有而 herdr 無 = 漏掉或被關掉,可依名冊上的 cwd＋kind＋旗標原地重開;herdr 有而名冊無 = 不屬於本艦隊
 - **AND** skill SHALL 指出後者補掉了「三態使分母不可知」的一半——分母不可知是因為沒有分子
+
+#### Scenario: 記的是指派的工作樹,不是觀測到的 cwd
+- **WHEN** 協調者要在名冊上記一條線的落點
+- **THEN** SHALL 記**指派的工作樹**(不可變),SHALL NOT 記從 agent 清單觀測到的 cwd——pane 的 cwd 跟著 `cd` 走,且線可能從主 checkout 起手後才開 worktree
+- **AND** 依名冊重開一條線之前 SHALL 再與 `active_workflows.md` 的落點欄核對
+- **AND** skill SHALL 寫明拿過期落點重開的後果:**在錯的工作樹上開出一條名字完全正常的線**
 
 #### Scenario: 不得複寫別處的事實
 - **WHEN** 有人要在名冊上加「跑到第幾步」「目前狀態」
@@ -76,6 +88,11 @@
 - **THEN** SHALL 寫明兩者生命週期不同:`active_workflows.md` 跨所有艦隊且沒有艦隊時照樣存在,而名冊與 map 與艦隊同生同滅
 - **AND** SHALL 寫明混放會使拆艦隊變成「刪二留一」,分開之後拆艦隊就是刪一個目錄
 
+#### Scenario: 目錄名可重用,開艦隊時要處置
+- **WHEN** 開一支艦隊而該 `<fleet>` 目錄已經存在
+- **THEN** SHALL 停下來要求裁決(接續這支艦隊,或確認是殘留後清空),SHALL NOT 直接沿用
+- **AND** skill SHALL 寫明成因:前綴只在**活著的 agent 之間**唯一而非跨時間唯一,整支艦隊異常關閉時目錄不會被刪
+
 #### Scenario: map 站在 workflow 之上
 - **WHEN** 有人提議把 map 收進 workflow 目錄
 - **THEN** SHALL 指出 map 明文要求「一條線自己的狀態指回 `active_workflows.md`」,它跨越多個 workflow,收進去是降一層且會使目錄名說謊
@@ -91,6 +108,11 @@
 #### Scenario: 共用池的失敗形狀
 - **WHEN** skill 描述兩支艦隊共用一個池會怎樣
 - **THEN** SHALL 寫明兩邊各自的登記處都會顯示「乾淨」,因為它們互相看不見——**兩份都對,合起來錯**,與跨線量測合併值同一形狀
+
+#### Scenario: 艦隊限定定址使撞號更難被察覺
+- **WHEN** skill 說明為什麼這條不變量是必須而非最好有
+- **THEN** SHALL 寫明艦隊限定定址讓兩支艦隊的訊息不再交錯,**而訊息交錯原本是撞號唯一會露出來的地方**
+- **AND** SHALL 寫明隔離之後兩邊的登記處各自內部一致,衝突只在合併時才炸
 
 #### Scenario: 合法的例外要答得出來
 - **WHEN** 兩支艦隊打不同的 base branch
@@ -132,3 +154,24 @@ skill 內文 SHALL 分兩層:**主體為平台中立的協調原則**,**附錄�
 #### Scenario: 來源軼事保留
 - **WHEN** 內文含帶日期的實戰軼事(某日某線報了什麼數字、回收了哪個編號)
 - **THEN** SHALL 保留於主體——軼事是時間戳記的事實,換平台不會使其為假,且為規則提供唯一無法從別處推導的證據
+
+### Requirement: coordinate 收尾的第六項
+`coordinate` SHALL 在四訊號與編號回收之外,加上**「還有什麼只有你知道?」** 該項 SHALL 與編號回收同性質——只能問、查不到。收尾清單中 SHALL NOT 以序號指涉某一項,序號 SHALL 僅為呈現順序。
+
+#### Scenario: 序號不得承重
+- **WHEN** 收尾清單中插入新的一項
+- **THEN** 既有條文 SHALL 不因此失效——指涉 SHALL 以該項的內容命名(如「編號回收」),SHALL NOT 以「第五項」這類序號
+- **AND** 理由 SHALL 為:序號是位置不是身分,插入一項就會讓所有指涉它的文字同時變假,而且沒有任何東西會轉紅
+
+#### Scenario: 產出落地與未決事項是兩件事
+- **WHEN** 一條線的四訊號全齊、產出全在檔案裡
+- **THEN** 協調者 SHALL 仍然問一次還有沒有未決事項——四訊號量的是「產出有沒有落地」,未決事項是「有沒有問題還掛著」,兩者可以同時為真,而只有線自己知道後者
+
+#### Scenario: 順手解掉的小坑要有住址
+- **WHEN** 一條線回報它順手解決了一個小坑
+- **THEN** 協調者 SHALL 問它有沒有住址——活在某個人操作習慣裡的知識在那個人收線之後就不存在,而小坑正是重複成本最高的一類
+
+#### Scenario: 名冊列的移除屬於收尾
+- **WHEN** 一條線在語意上退出艦隊(收尾或取消)
+- **THEN** 收尾清單 SHALL 含「名冊那一列已移除」,且 SHALL 標明它由協調者自己查
+- **AND** SHALL 明文區隔:**行程意外死亡不刪列**——留著才叫得出「有一條線不見了」,把兩者混為一談等於關掉偵測器

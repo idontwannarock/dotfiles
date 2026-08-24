@@ -188,7 +188,14 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 
 #### Scenario: 以名字定址協調者
 - **WHEN** 一條線要回報給協調者
-- **THEN** SHALL 以名字定址(`coordinator`),SHALL NOT 以 pane id 定址——pane id 在換手時會變,名字不會
+- **THEN** SHALL 以名字定址,SHALL NOT 以 pane id 定址——pane id 在換手時會變,名字不會
+- **AND** 該名字 SHALL 來自**派線訊息**,SHALL NOT 是內文寫死的固定字串——herdr 名稱是全機扁平命名空間,固定字串會把回報靜默投給別支艦隊的協調者
+- **AND** 派線訊息未給位址時,線 SHALL 當作 fog 回報,SHALL NOT 自行猜一個名字
+
+#### Scenario: 投遞前驗收件人的艦隊歸屬
+- **WHEN** 線要送出回報
+- **THEN** SHALL 先確認該名字的 `cwd` 落在自己所屬的 repo 工作樹範圍內,比對值 SHALL 取自 `realpath "$(git rev-parse --path-format=absolute --git-common-dir)"`——旗標置後會靜默無效
+- **AND** 不符時 SHALL NOT 投遞——這是位址過期或派線訊息有誤時唯一攔得住誤投的檢查
 
 #### Scenario: 跨線事實即時回報
 - **WHEN** 線撞到任何別條線也可能動到的東西(共用 fixture、兩條線都斷言的量測、migration 版本、編號區間、落在兩者影響半徑內的檔案)
@@ -197,14 +204,6 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 #### Scenario: 前提錯誤的裁決應被推翻
 - **WHEN** 協調者給的裁決其問題框架本身不成立
 - **THEN** 線 SHALL 指出框架不對,SHALL NOT 只在給定選項內作答——只在框內作答會把協調者的錯誤放大成決策;同理 SHALL 拒絕會汙染自身證據的指令(例如在自己 session 裡執行會打斷當前回合的實驗)
-
-#### Scenario: finish-branch 回報四訊號
-- **WHEN** 線走到 `finish-branch`
-- **THEN** SHALL 回報四個獨立訊號(MR/PR 已合併、handoff 已歸檔、worktree/branch 已處置、`active_workflows.md` 該列已移除),且 SHALL 預期協調者自行查證而非採信回報
-
-#### Scenario: 合併驗證不用 branch -d
-- **WHEN** 要確認一條 branch 是否真的合併了
-- **THEN** SHALL 以 scoped diff 驗證,SHALL NOT 以 `git branch -d` 判斷——squash 合併下該指令對「已合併」與「從未合併」給同一個答案
 
 ### Requirement: 協調模式下線無發問管道時的升級義務
 當一條線由協調者派出且其直接詢問真人的管道已被關閉時,線 SHALL 在撞到自己做不了的決策時**具名回報協調者並停下**,SHALL NOT 挑一個合理預設值繼續執行。
@@ -222,3 +221,4 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 #### Scenario: 推翻錯誤前提改走文字回報
 - **WHEN** 線認為協調者給的問題框架本身不成立,而它已無選單可用
 - **THEN** SHALL 以文字回報指出框架不對,該管道 SHALL 仍然有效——關閉的是攔截真人的介面,不是線的異議權
+

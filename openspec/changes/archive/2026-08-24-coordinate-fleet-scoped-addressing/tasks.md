@@ -35,37 +35,52 @@
 
 ## 6. 〈不要另建一份艦隊名冊〉改寫成〈鏡子 vs 帳本〉
 
-- [ ] 6.1 判準保留(有沒有更新的權威來源),結論反轉:live 狀態不鏡像,**「該存在」必須自己記**
-- [ ] 6.2 立論改建立在 herdr 答不出的那一格:`herdr agent` 無 history 子命令、名字在退出時清除,
+- [x] 6.1 判準保留(有沒有更新的權威來源),結論反轉:live 狀態不鏡像,**「該存在」必須自己記**
+- [x] 6.2 立論改建立在 herdr 答不出的那一格:`herdr agent` 無 history 子命令、名字在退出時清除,
       **已死的 session 與從未存在的完全無法區分**;herdr 只有「在」沒有「應該在」
-- [ ] 6.3 前綴／cwd 那張正交表補進〈兩端都驗 cwd〉節首(目前只寫 cwd,把它講成艦隊判準不準確)
+- [x] 6.3 前綴／cwd 那張正交表補進〈兩端都驗 cwd〉節首(目前只寫 cwd,把它講成艦隊判準不準確)
 - 驗證:該節讀完答得出「什麼該記、什麼不該記」,而不是「不要記」
 
 ## 7. 艦隊名冊 `fleet.md`
 
-- [ ] 7.1 欄位:名字、kind、cwd、開線旗標與角色、這條線是幹嘛的;**明文禁止** status／pane／進度／任數
-- [ ] 7.2 差集偵測器那張三列表(名冊有/herdr 有 → 判讀與處置),含「原地重開」所需的最小集合
-- [ ] 7.3 寫入時機限於派線(增列)與收尾(刪列);點明自我交接名字不變故一列都不用改
-- [ ] 7.4 刪列掛進既有收尾清單(四訊號 ＋ 第五項編號回收 ＋ 第六項)
+- [x] 7.1 欄位:名字、kind、cwd、開線旗標與角色、這條線是幹嘛的;**明文禁止** status／pane／進度／任數
+- [x] 7.2 差集偵測器那張三列表(名冊有/herdr 有 → 判讀與處置),含「原地重開」所需的最小集合
+- [x] 7.3 寫入時機限於派線(增列)與收尾(刪列);點明自我交接名字不變故一列都不用改
+- [x] 7.4 刪列掛進既有收尾清單(四訊號 ＋ 第五項編號回收 ＋ 第六項)
 - 驗證:名冊欄位表與 `active_workflows.md` 欄位無重疊
 
 ## 8. 落點與資源池不變量
 
-- [ ] 8.1 附錄 B／〈map〉標明艦隊產物落 `~/.agent/fleets/<repo-slug>/<fleet>/`,slug 用正典定義
-- [ ] 8.2 寫明為何不與 `active_workflows.md` 混放(生命週期不同;拆艦隊 = 刪一個目錄)
-- [ ] 8.3 寫入「一支艦隊必須完整擁有它所仲裁的稀缺資源池」,理由立在 domain 不在 cwd
-- [ ] 8.4 合法例外(不同 base branch)＋ 但書(逐項判;migration 版號常仍是同一條序列)
+- [x] 8.1 附錄 B／〈map〉標明艦隊產物落 `~/.agent/fleets/<repo-slug>/<fleet>/`,slug 用正典定義
+- [x] 8.2 寫明為何不與 `active_workflows.md` 混放(生命週期不同;拆艦隊 = 刪一個目錄)
+- [x] 8.3 寫入「一支艦隊必須完整擁有它所仲裁的稀缺資源池」,理由立在 domain 不在 cwd
+- [x] 8.4 合法例外(不同 base branch)＋ 但書(逐項判;migration 版號常仍是同一條序列)
 - 驗證:全文找不到「一個 repo 只能有一支艦隊」這種寫法
 
 ## 9. map 的層級與對齊表斷點
 
-- [ ] 9.1 開頭對齊表 `map issue → handoff` 改成「裂成 handoff ＋ map 兩個載體」,理由:拓撲不屬於任何一個 session
-- [ ] 9.2 〈map〉節標明它是與艦隊同生同滅的工作面,不升進長青 context;殘留走既有晉升閘門
-- [ ] 9.3 載體表從三格變四格(handoff／`active_workflows.md`／map／`fleet.md`)
+- [x] 9.1 開頭對齊表 `map issue → handoff` 改成「裂成 handoff ＋ map 兩個載體」,理由:拓撲不屬於任何一個 session
+- [x] 9.2 〈map〉節標明它是與艦隊同生同滅的工作面,不升進長青 context;殘留走既有晉升閘門
+- [x] 9.3 載體表從三格變四格(handoff／`active_workflows.md`／map／`fleet.md`)
 - 驗證:`grep -n 'map' ` 全文,「map」不再同時指 handoff 與線間拓撲
 
 ## 10. 重新驗證與套用
 
-- [ ] 10.1 `bash tests/skill-name-map-axis.test.sh`
-- [ ] 10.2 `openspec validate coordinate-fleet-scoped-addressing`
-- [ ] 10.3 `chezmoi apply` 只套四個 skill 子樹,再讀回渲染成品確認
+- [x] 10.1 `bash tests/skill-name-map-axis.test.sh`
+- [x] 10.2 `openspec validate coordinate-fleet-scoped-addressing`
+- [x] 10.3 `chezmoi apply` 只套四個 skill 子樹,再讀回渲染成品確認
+
+## 11. Cross-model design review 折進來的修正（2026-08-24）
+
+- [x] 11.1 **C1** `git rev-parse --git-common-dir` 回傳 cwd 相對路徑，且 `--path-format=absolute`
+      置後會靜默無效（exit 0）。兩支 body 改為 `realpath "$(git rev-parse --path-format=absolute --git-common-dir)"`，
+      並在 coordinate 附上三列反例表
+- [x] 11.2 **C2** 名冊記「指派的工作樹」而非觀測到的 `cwd`（herdr 存的是 pane 當下 cwd，跟著 `cd` 走），
+      重開前與 `active_workflows.md` 落點欄核對
+- [x] 11.3 **C3** argv ＋ 角色的家從 handoff 改為 `fleet.md`，兩處指示同時改，並明寫「不要同時抄一份到 handoff」
+- [x] 11.4 **C4** 開艦隊時目錄已存在要停下來裁決（前綴只在活著的 agent 之間唯一，非跨時間唯一）
+- [x] 11.5 新增風險：艦隊限定定址讓撞號**更難被察覺**（訊息交錯原本是它唯一會露出來的地方）→
+      寫進 skill，成為「這條不是最好有、是必須有」的理由
+- [x] 11.6 序號不得承重：收尾清單插入一項使既有 spec 的「第五項／第六項」失效 →
+      MODIFIED 該 requirement 改為以內容命名，並加一條 scenario
+- 驗證：`bash tests/skill-name-map-axis.test.sh` 綠、`openspec validate` 通過、四份渲染成品讀回確認
