@@ -78,11 +78,12 @@ routinely have unpushed commits.
 
 The `dev-workflow` skill keeps a per-machine `~/.agent/workflow-registry.md`
 mapping each repo to a **Main Repo Path** and **Active-workflows Path**. Its
-auto-derivation (`git rev-parse --git-common-dir` → slug →
-`~/.agent/workflows/<slug>/active_workflows.md`) assumes a normal checkout
-and is **wrong for a bare+worktree repo** — `--git-common-dir` yields `.bare`,
-and the derived slug does not match the intended repo slug. Set the row by
-hand:
+**Active-workflows Path** auto-derives correctly here: the anchor in
+`~/.agent/reference/repo-identity.md` ends in `dirname`, which strips the `.bare`
+component and leaves the container — exactly the canonical root slug this layout
+wants. **Main Repo Path** is the half that genuinely diverges, because it is the
+`main/` worktree rather than the container the anchor names. Set the row by
+hand for that reason, not because the slug is wrong:
 
 - **Active-workflows Path** = `~/.agent/workflows/<slug>/active_workflows.md`,
   where `<slug>` is the same id used as the `autoMemoryDirectory` key (i.e.

@@ -187,9 +187,32 @@ kind-specific 的啟動參數與結束指令 SHALL 外置於 tool-neutral 的 re
 
 理由:`blocked` 意為對造停在等待輸入(權限提示或澄清問題),其工作並未完成;而 herdr 的預設等待條件把 `blocked` 也算作收斂。
 
+herdr 回報的是 **pane 的狀態**,不是工作的狀態。因此任何收斂狀態 SHALL NOT 單獨作為工作已完成的證據,findings 檔的存在與內容 SHALL 為唯一證據。
+
+「對造停在自身的信任／授權提示」與「對造什麼都沒做」在外顯訊號上完全相同——皆為收斂狀態加上沒有 findings 檔。因此退化理由 SHALL 由一次明確的分類讀取決定,SHALL NOT 由讀者無從觀測的事實決定:重送一次後仍無檔案時,SHALL 以 `herdr agent read` **僅為分類**讀取一次。此用途屬既有的診斷例外,與「SHALL NOT 以 `agent read` 收割結果」不衝突——分界在於讀來當結果或讀來分類失敗。
+
 #### Scenario: 對造停在等待輸入
 - **WHEN** 對造的最終狀態為 `blocked`
 - **THEN** SHALL 視為未完成,SHALL NOT 讀取並採信其 findings
+
+#### Scenario: 收斂狀態但沒有 findings 檔
+- **WHEN** 最終狀態為 `idle` 或 `done`,而 findings 檔不存在
+- **THEN** SHALL 先重送該 prompt 一次(見〈收斂狀態不等於 prompt 已送達〉)
+- **AND** 仍無檔案時 SHALL 以 `herdr agent read` 分類一次:pane 上可見對造自身的信任／授權／目錄確認提示 → 退化理由 SHALL 為 `counterpart blocked on input`;否則 → SHALL 為 `counterpart produced no findings file`
+- **AND** SHALL NOT 在未分類的情況下任選其一 —— 兩者的可修復性不同,收斂成單一理由會丟掉唯一能讓人修好它的資訊
+
+#### Scenario: 對造停在自身的信任或授權提示
+- **WHEN** 對造 CLI 停在它自己的信任／授權／目錄確認提示上,而 herdr 回報的狀態為 `done`
+- **THEN** SHALL 視為未完成並走 blocked 處置,退化原因 SHALL 為 `counterpart blocked on input`
+- **AND** SHALL NOT 因狀態為 `done` 而採信其結果 —— 該提示屬對造自身的啟動流程,herdr 無從分辨它與工作結束後的閒置
+
+#### Scenario: agent 已退出但狀態仍回報 idle
+- **WHEN** 對造 agent 已從 pane 退出
+- **THEN** `herdr agent get` SHALL NOT 被當作存活或完成的判準 —— 實測其於 agent 退出後仍回報 `idle`
+
+#### Scenario: 步驟開頭的敘述不得與其判定表相斥
+- **WHEN** 本步驟同時以散文與表格陳述收斂判定
+- **THEN** 兩者 SHALL 一致 —— 由上而下閱讀者可能停在散文而未讀到表格,故散文 SHALL NOT 宣稱任何收斂狀態本身即為成功
 
 #### Scenario: 送出前確認 pane 仍由 agent 佔用
 - **WHEN** 準備送出任一 prompt(含重送)
@@ -200,7 +223,6 @@ kind-specific 的啟動參數與結束指令 SHALL 外置於 tool-neutral 的 re
 #### Scenario: 收斂狀態不等於 prompt 已送達
 - **WHEN** 對造回報收斂狀態但 findings 檔不存在
 - **THEN** SHALL 重送該 prompt **一次**後才退化 —— 啟動後的首個 prompt 可能被 agent 自身的啟動通知吞掉,而 herdr 仍回報收斂狀態(兩個受測 kind 皆再現)
-- **AND** SHALL NOT 將收斂狀態本身當作工作已執行的證據
 
 ### Requirement: 退化必須顯式可見
 
@@ -253,3 +275,32 @@ pane id SHALL 取自建立時的回應,SHALL NOT 自行推導。SHALL NOT 關閉
 #### Scenario: 不碰他人資源
 - **WHEN** 執行收尾
 - **THEN** SHALL 僅關閉自己建立的 pane,SHALL NOT 關閉使用者或其他 client 的 pane,SHALL NOT 停止 herdr server
+
+### Requirement: 一個情境只對應一個退化理由
+
+退化理由的集合 SHALL 為互斥:任一實際情境 SHALL 恰好對應一個理由。當某步驟以「比照前一步驟」承接另一步驟的程序時,SHALL 明述承接的範圍,並 SHALL 釘死該情境自身的退化理由。
+
+理由:理由的唯一用途是讓人知道要去修什麼。三個理由競逐同一個條件時,報告寫哪一個變成任意的,而「跨模型 review 失敗」這種收斂寫法丟掉的正是唯一能讓人修好它的資訊。
+
+#### Scenario: rebuttal 檔缺失
+
+- **WHEN** 一輪反駁後 `counterpart-rebuttal.md` 不存在
+- **THEN** 退化理由 SHALL 為 `rebuttal exchange incomplete`
+- **AND** SHALL NOT 沿用 findings 檔缺失時的分類程序所產生的理由 —— 該程序的兩個出口皆針對 findings 檔
+
+#### Scenario: 步驟間的「比照前一步驟」
+
+- **WHEN** 某步驟以「confirm as in <前一步驟>」承接程序
+- **THEN** SHALL 明述承接的是等待與存活確認,SHALL NOT 連同該步驟專屬的退化理由一併承接
+
+### Requirement: 空的 findings 檔等同於沒有檔案
+
+findings 檔存在但內容為空 SHALL 與檔案不存在等同處置。判定表與逐步程序 SHALL 各自涵蓋此情形,SHALL NOT 僅於散文中提及。
+
+理由:讀者照著表格與編號程序執行。一個只寫在收尾散文裡的規則,對停在表格第一列的讀者不生效——而該列若只判「檔案存在」,零位元組的檔案就會被讀成「沒有發現問題」,正是檔案通道要防的那個混同。
+
+#### Scenario: 收斂但檔案為空
+
+- **WHEN** 最終狀態為 `idle` 或 `done`,findings 檔存在但為空
+- **THEN** SHALL 走與「檔案不存在」相同的路徑:重送一次,仍為空則以一次分類讀取決定退化理由
+- **AND** SHALL NOT 將其讀為「沒有發現問題」

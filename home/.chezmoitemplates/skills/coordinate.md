@@ -1098,7 +1098,7 @@ theirs=$(realpath "$(git -C "<那個 agent 的 cwd>" rev-parse --path-format=abs
 
 | 寫法 | 從 repo root | 從子目錄 |
 |---|---|---|
-| `git rev-parse --git-common-dir` | `.git` | `../.git` |
+| `git rev-parse --git-common-dir` | `.git` | `../.git` <!-- flag-order: demonstration of the flagless output, not a recipe --> |
 | 旗標**置後**(`--git-common-dir --path-format=absolute`) | `.git` | `../.git` |
 | 旗標**置前**(上面那道) | 絕對路徑 | 絕對路徑 |
 

@@ -24,6 +24,10 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 
 `--path-format=absolute` SHALL NOT 省略:未加時 git 印出的是相對於**呼叫者** cwd 的路徑,搭配 `-C <目標>` 會靜默解析成當前 repo。
 
+`--path-format=absolute` SHALL 置於 `--git-common-dir` **之前**:該旗標僅影響其後的選項,置後靜默無效且 exit code 為 0(自 repo root 得 `.git`,自子目錄得 `../.git`,兩者皆 exit 0)。
+
+`--git-common-dir` 的輸出另有一種合法用法:餵給 `cd "$(…)" && pwd -P`,由該慣用法自行正規化。此形式 SHALL NOT 被要求附帶 `--path-format=absolute`。因此本規則的可驗形狀為「呼叫點屬兩種合法形式之一」,而非「凡出現必附旗標」。
+
 此規則與 `context/glossary.md` 記載的 auto-memory path-slug 規則一致,兩個系統對「同一個 repo」的定義 SHALL 對齊。
 
 #### Scenario: normal 佈局
@@ -40,6 +44,50 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 
 - **WHEN** 在 bare+worktree 佈局的 worktree A 寫出 handoff 後,於同一 repo 的 worktree B 開新 session 執行 `pickup`
 - **THEN** `pickup` SHALL 解析得到該 handoff
+
+#### Scenario: 旗標置後
+
+- **WHEN** 算式寫成 `git rev-parse --git-common-dir --path-format=absolute`
+- **THEN** git SHALL 印出相對路徑並以 exit code 0 結束 —— 失敗不出聲
+- **AND** 該寫法 SHALL 視為錯誤,SHALL NOT 因外層另有 `realpath` 而保留
+
+#### Scenario: 一致性由測試強制,不由散文提醒
+
+- **WHEN** `home/` 下任一 skill body 或 reference 出現 `--git-common-dir` 的呼叫點
+- **THEN** `tests/path-format-flag-order.test.sh` SHALL 斷言它是兩種合法形式之一,並在兩者皆不符時失敗
+- **AND** 非呼叫點(散文提及旗標名)與刻意的反例 SHALL 以行內標記顯式豁免並註明理由,SHALL NOT 由測試以啟發式猜測
+- **AND** 觸發該測試的 CI workflow 其 `paths:` filter SHALL 涵蓋它所掃描的目錄 —— 守衛不在它所守的檔案變動時執行,與沒有守衛等價
+
+#### Scenario: 判定以 invocation 為單位,不以行為單位
+
+- **WHEN** 同一行出現多個 `--git-common-dir`,或出現屬於其他選項的 `--path-format`,或另一格含正規化慣用法
+- **THEN** 判定 SHALL 對每個 `--git-common-dir` 各取「最近的前一個 `rev-parse` 至該處」為窗口,並在窗口內判形式
+- **AND** SHALL 走完行內所有出現處,SHALL NOT 只判第一個
+- **AND** 找不到前置 `rev-parse` 的出現處 SHALL 視為非呼叫點 —— 保守方向為少管一行,SHALL NOT 誤判為正確
+
+#### Scenario: 豁免標記不得被自身的說明文件觸發
+
+- **WHEN** 某行同時含真實呼叫點與豁免標記,或標記無理由,或標記僅出現於句中作為範例引用
+- **THEN** 豁免比對 SHALL 於 `rev-parse` 閘門之後才進行,SHALL 要求非空理由與收尾 `-->`,且 SHALL 錨定於行尾
+- **AND** 守衛印出的修正建議本身 SHALL NOT 構成可解除該守衛的字串
+
+#### Scenario: 母體縮減即失敗
+
+- **WHEN** 掃描因權限、改名、`.chezmoiignore` 變更或壞掉的 checkout 而讀不到部分檔案
+- **THEN** `find`／`grep` 的 stderr 有內容 SHALL 使測試失敗,SHALL NOT 以 `2>/dev/null` 吞掉
+- **AND** grep 的 exit code 大於 1 SHALL 視為錯誤
+- **AND** SHALL 對每個掃描根各設呼叫點下限並斷言掃到的檔案數 —— 全域的「大於零」只能分辨全毀與其他
+
+#### Scenario: 守衛 SHALL 明述自己的母體邊界
+
+- **WHEN** 有 `--git-common-dir` 的呼叫點位於掃描母體之外(如 `home/dot_local/bin/`、`home/dot_config/git/hooks/`)
+- **THEN** 測試檔 SHALL 明寫可執行程式不在母體內及其理由 —— 沒有標明母體的綠燈會被讀成「這一族已處理」
+- **AND** 該類呼叫點若採「原始捕捉 ＋ 呼叫者控制的 cwd」形式 SHALL 視為安全,SHALL NOT 因不在母體內而被描述為未查證
+
+#### Scenario: 省略與置後是兩種錯誤
+
+- **WHEN** 以 grep 驗證本規則
+- **THEN** 只搜尋置後寫法的 grep SHALL NOT 被當作充分驗證 —— 它對「整個省略旗標」結構性失明,而該形式在 2026-08-24 實際存在於 `pickup` 中並通過了那次驗證
 
 #### Scenario: 非 git 目錄
 
@@ -290,3 +338,47 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 
 - **WHEN** 主目錄與兩個 legacy 位置皆不存在或無未封存項
 - **THEN** SHALL 明確回報無項目,SHALL NOT 報錯
+
+### Requirement: 守衛的診斷 SHALL 指認實際的錯誤形狀
+
+`tests/path-format-flag-order.test.sh` 存在的理由是分辨兩種靜默失敗——旗標置後與旗標省略。因此它的失敗訊息 SHALL 指認實際踩到的那一種,SHALL NOT 將其一報成其二。
+
+其驗證 SHALL 斷言**訊息內容**,SHALL NOT 只斷言測試變紅。只斷言顏色的驗證對「兩種錯誤都紅但診斷互換」完全失明,而那正是 2026-08-24 該缺陷連續存活三輪 review 的原因。
+
+#### Scenario: 置後與省略各自的診斷
+
+- **WHEN** 掃到旗標置於 `--git-common-dir` 之後的呼叫點
+- **THEN** 訊息 SHALL 指出旗標置後,SHALL NOT 指出旗標缺失
+- **AND** 掃到完全沒有 `--path-format` 的呼叫點時 SHALL 指出旗標缺失
+
+#### Scenario: 判定值不得被中介指令覆寫
+
+- **WHEN** 判定函式以 exit status 回傳結果
+- **THEN** 該值 SHALL 於函式返回後立即存入變數,SHALL NOT 在經過 `case`、`if` 等會重設 `$?` 的指令之後才讀取
+
+### Requirement: 反斜線接續的呼叫在母體之內
+
+以反斜線接續跨越多個實體行的單一 `rev-parse` 呼叫 SHALL 進入守衛的母體。此類接續是**一個語法上的呼叫**,不屬於「不做跨行變數流分析」所排除的範圍。
+
+掃描 SHALL 先將反斜線接續行併為邏輯行後再判定,且回報的行號 SHALL 為該邏輯行的**第一個實體行** —— 使用者要編輯的是呼叫的起點,不是恰好含 `--git-common-dir` 的那一行。
+
+#### Scenario: 跨行的省略
+
+- **WHEN** 呼叫寫成 `git rev-parse \` 換行 `  --git-common-dir` 且無 `--path-format=absolute`
+- **THEN** 測試 SHALL 失敗,並 SHALL 指向該呼叫的起始行
+
+### Requirement: 掃到的檔案數 SHALL 被斷言
+
+守衛 SHALL 對掃到的檔案數設下限並斷言之,SHALL NOT 僅於成功訊息中列印。
+
+理由:per-root 的呼叫點下限會隨樹成長而相對寬鬆,其緩解正是同時斷言檔案數。一個寫在 design 裡卻未實作的緩解,比沒有緩解更糟——它讓讀 design 的人以為那個方向已經被守住。
+
+#### Scenario: 檔案數低於下限
+
+- **WHEN** 掃到的檔案數低於下限
+- **THEN** 測試 SHALL 失敗
+
+#### Scenario: 計數用的走訪同樣不得吞錯誤
+
+- **WHEN** 計算檔案數的 `find` 遇到讀取錯誤
+- **THEN** SHALL 與主掃描適用同一規則:stderr 有內容即失敗,SHALL NOT 以 `2>/dev/null` 丟棄

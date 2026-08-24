@@ -14,7 +14,7 @@ under two keys that cannot see each other.
 ## The anchor — agreed by every mechanism
 
 ```
-anchor = dirname(realpath(git rev-parse --git-common-dir --path-format=absolute))
+anchor = dirname(realpath(git rev-parse --path-format=absolute --git-common-dir))
 ```
 
 Four parts, all load-bearing:
@@ -25,6 +25,19 @@ Four parts, all load-bearing:
 | `--path-format=absolute` | without it the output is relative to **your** cwd, not the target's — so any `-C <path>` / `--repo <path>` invocation silently yields *your* repo's slug |
 | `realpath` | resolves symlinks |
 | `dirname` | strips the `.git` / `.bare` component — **the raw path is not the repo root** |
+
+**The order is load-bearing too.** `--path-format` affects only the options that
+follow it, so `--git-common-dir --path-format=absolute` is silently equivalent to
+omitting the flag: `.git` from the repo root, `../.git` from a subdirectory, exit
+code 0 either way. Put the flag first, always.
+
+`realpath` stays regardless: it guards symlinks and `..`, not flag order. That it
+also happens to mask a misordered flag is why this line went wrong for so long
+without anyone noticing.
+
+Both mistakes — the flag misordered, and the flag missing altogether — are caught
+by `tests/path-format-flag-order.test.sh`. A grep for one of the two shapes is not
+a check for this rule; that is how the missing-flag case shipped once already.
 
 If there is no git repo, fall back to `$PWD` (or `CLAUDE_PROJECT_DIR` where the
 mechanism defines one) and slugify that instead.

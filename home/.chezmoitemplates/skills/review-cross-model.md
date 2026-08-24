@@ -114,23 +114,31 @@ herdr agent prompt <name> "<prompt>" --wait --timeout <ms>
 
 ## Step 4 -- confirm it actually finished
 
-`--wait` settles on `idle`, `done`, **or `blocked`** -- and `blocked` means it stopped at a permission prompt or a clarifying question with the work unfinished. Treat only `idle` and `done` as success.
+`--wait` settles on `idle`, `done`, **or `blocked`**. A settled state is necessary but not sufficient -- work through the table; do not stop at this sentence.
 
 | Final state | Action |
 |-------------|--------|
-| `idle` / `done` | Read the findings file |
+| `idle` / `done`, and the findings file is non-empty | Read the findings file |
+| `idle` / `done`, findings file missing **or empty** | Resubmit once, then classify -- see below |
 | `blocked` | Degrade -- reason: `counterpart blocked on input` |
 | timeout / `agent_prompt_stalled` | Degrade -- reason: `counterpart timed out` |
 
-Then read the findings **file**. If it is missing or empty, degrade with reason `counterpart produced no findings file`. Do **not** read it as "no issues found" -- that conflation is the whole reason the file channel exists.
+**herdr reports the state of the pane, not the state of the work.** A counterpart CLI stopped on its own trust prompt reports `done`, because herdr cannot tell that prompt apart from an agent idling after finishing. And `herdr agent get` still returns `idle` for an agent that has already exited. Both observed once this round. A settled state therefore never establishes that anything ran; only the findings file does.
 
-`herdr agent read` is for diagnosing a failure, never for harvesting results.
+A file that exists but is empty counts as no file, everywhere in this step. A counterpart that creates its output and writes nothing into it is the same failure as one that never wrote, and reading a zero-byte file as "no issues found" is the exact conflation the file channel exists to prevent.
+
+That leaves two failures wearing one signature -- settled, and nothing in the file -- and they are not equally fixable. A counterpart parked on an authorization prompt is a configuration problem someone can go and fix; one that produced nothing after a resubmission is not. Choosing a reason without looking discards the only information that tells them apart:
+
+1. **Resubmit once**, per Step 3 -- the first prompt after launch can be swallowed by the agent's own startup notice.
+2. Still nothing in the file? **`herdr agent read` the pane once, to classify and nothing else.** A visible trust / authorization / directory-confirmation prompt → degrade with `counterpart blocked on input`. Anything else → `counterpart produced no findings file`.
+
+That single read is the diagnostic use `agent read` has always been for. The line it must not cross is harvesting: read to classify a failure, never to collect a result. A missing or empty file is never "no issues found" -- that conflation is the whole reason the file channel exists.
 
 ## Step 5 -- one round of rebuttal, each way
 
 Score the counterpart's findings through the same confidence filter your own side passed, so the two sets are comparable. Then, exactly once each way:
 
-- Give the counterpart your findings and ask it to refute them, **writing its rebuttal to `counterpart-rebuttal.md`**. Its rebuttal is a result, so it travels by file like every other result -- `agent read` is still not a data channel. Wait and confirm as in Step 4; a missing rebuttal file means that half of the exchange did not happen, and the report says so rather than silently grading as if it had.
+- Give the counterpart your findings and ask it to refute them, **writing its rebuttal to `counterpart-rebuttal.md`**. Its rebuttal is a result, so it travels by file like every other result -- `agent read` is still not a data channel. Wait and confirm as in Step 4 -- the waiting and the liveness check carry over, the two degrade reasons do not. A missing rebuttal file is `rebuttal exchange incomplete`, whatever the settled state was: that half of the exchange did not happen, and the report says so rather than silently grading as if it had. Do not run Step 4's classification here; both of its outcomes name the findings file.
 - Refute the counterpart's findings yourself, honestly -- you are looking for the ones you missed, not defending your first pass.
 
 Stop there. Do not open a second round, and do not extend on the grounds that "there is still something to say". Two models can disagree indefinitely; the splits are for the user.

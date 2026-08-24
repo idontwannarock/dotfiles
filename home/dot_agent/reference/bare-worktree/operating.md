@@ -23,7 +23,7 @@ directory contains a `.bare/` folder** alongside sibling worktree directories:
 └── add-<feature-2>/        # ...
 ```
 
-Cross-check: `git rev-parse --git-common-dir` resolves to `.../.bare`, and
+Cross-check: `git rev-parse --git-common-dir` resolves to `.../.bare`, and <!-- flag-order: naming what the common dir points at, not deriving a slug -->
 `git rev-parse --is-inside-work-tree` is true.
 
 ## Operating rules

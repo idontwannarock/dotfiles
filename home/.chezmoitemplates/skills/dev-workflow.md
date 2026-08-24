@@ -38,7 +38,7 @@ esac
 | Divergence point | `ARCH=normal` | `ARCH=bare-worktree` |
 |------------------|---------------|----------------------|
 | **New-branch workspace** (2c) | `git checkout -b <branch>` in the main repo; or `{{ .n.worktree }}` if another workflow is active | always create via `{{ .n.worktree }}` (worktree off `main`, one branch per worktree) |
-| **Registry / active-workflows path** (2b) | auto-derive the canonical repo slug, then `~/.agent/workflows/<slug>/active_workflows.md` | manual — Main Repo Path = `<repo>/main`, Active-workflows Path = `~/.agent/workflows/<slug>/active_workflows.md` (slug from `autoMemoryDirectory` key). See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & active-workflows path". |
+| **Registry / active-workflows path** (2b) | auto-derive the canonical repo slug, then `~/.agent/workflows/<slug>/active_workflows.md` | same slug derivation (the anchor's `dirname` strips `.bare`, leaving the container) — but **Main Repo Path** = `<repo>/main`, not the container, so that half is manual. See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & active-workflows path". |
 
 ### 2a. Sync main
 
@@ -48,7 +48,7 @@ Run `{{ .n.gitSync }}` unless already on a worktree.
 
 Look up `~/.agent/workflow-registry.md` for this repo's main repo path, active-workflows path, and `Doc Target` (the team-doc step below reads it; carry it forward, do not act on it here). If no entry: derive the repo's canonical slug per `~/.agent/reference/repo-identity.md` — read it rather than reconstructing the rule from memory; the two plausible shortcuts both name a different directory and fail silently — set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row with `Doc Target` left blank — **do not ask the user about it now**. Registry is per-machine, not synced, and its rows are append-only: never drop a row because a workflow ended.
 
-> **Architecture-specific:** follow the **Registry / active-workflows path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
+> **Architecture-specific:** follow the **Registry / active-workflows path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the slug still derives correctly; it is **Main Repo Path** that must be set by hand per `claude-state.md`.
 
 ### 2c. Check active workflows
 
@@ -84,7 +84,7 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 {{ .n.ensureScript }}
 → {{ .n.sk }}openspec-new-change → {{ .n.sk }}openspec-continue-change (loop until artifacts ready)
 → {{ .n.sk }}openspec-apply-change → openspec validate
-→ [{{ .n.sk }}openspec-sync-specs — ask if implementation drifted from specs; promote design.md evergreen-candidates → context/] → {{ .n.sk }}openspec-archive-change
+→ [{{ .n.sk }}openspec-sync-specs — ask if implementation drifted from specs; promote design.md evergreen-candidates → the repo-root `context/`] → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewQuick }}
 → Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from {{ .n.sk }}openspec-new-change)
 → No fixes → [team-doc step] → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
@@ -100,7 +100,7 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 → {{ .n.sk }}openspec-apply-change   (tasks with a testable seam agreed in design → {{ .n.tdd }})
 → {{ .n.verifyDone }} (run tests / verify commands — hard evidence)
 → {{ .n.sk }}openspec-verify-change (three-dimension spec/code coherence report)
-→ openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → context/) → {{ .n.sk }}openspec-archive-change
+→ openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → the repo-root `context/`) → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewFull }} → {{ .n.reviewCrossModel }}
 → Fixes needed? → Confirm scope, start a new change round
 → No fixes → [team-doc step] → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
@@ -136,7 +136,7 @@ Otherwise, just before `{{ .n.finishBranch }}`, ask one question:
 
 The signal is bound to **who the readers are**, not to diff size, so both
 workflows run it: a three-line change can produce the switchover procedure
-another team has to follow. The content boundary below (under *`context/`
+another team has to follow. The content boundary below (under *repo-root `context/`
 evergreen promotion*) lists three carriers whose readers all sit inside the
 repo; this step covers the fourth reader, the one outside.
 
@@ -156,20 +156,22 @@ they know what the change produced.
 Every outcome here, degraded or skipped or declined, still ends at
 `{{ .n.finishBranch }}`: this step reports, it never blocks.
 
-### `context/` evergreen promotion (at sync/archive)
+### Repo-root `context/` evergreen promotion (at sync/archive)
 
-`context/` is the evergreen, human-readable project-context bundle
-consulted during requirement analysis (grill reads it; it is NOT auto-loaded
-like CLAUDE.md). It is written only here, at `openspec-sync-specs`/archive —
-never during grill, so every promoted line has shipped-implementation backing.
+`context/` sits at the **repo root**, never `openspec/context/`. It is the
+evergreen, human-readable project-context bundle consulted during requirement
+analysis (grill reads it; it is NOT auto-loaded like CLAUDE.md). It is written
+only here, at `openspec-sync-specs`/archive — never during grill, so every
+promoted line has shipped-implementation backing.
 
 At sync/archive, scan `design.md` for `<!-- evergreen-candidate -->` markers.
 For each, check it against what was actually implemented, then apply the
 elevation gate: only **reusable, cross-change** principles and new domain
 terms/glossary get promoted into `context/`, each into the concept file whose
 kind it matches. One-off decisions stay in the archived `design.md`. Content
-boundary: `specs/` = WHAT (behavior), `design.md` = one-off decisions,
-`context/` = domain model + glossary + reusable principles.
+boundary: `openspec/specs/` = WHAT (behavior), `design.md` = one-off decisions,
+repo-root `context/` = domain model + glossary + reusable principles, `docs/` =
+operating steps, troubleshooting, and rationale that explains only one case.
 
 ### tasks.md slicing conventions
 
