@@ -4,9 +4,9 @@ Boot a new session from a previously saved handoff file. Reads the file, invokes
 
 ## Resolve the handoff file
 
-Compute the **repo slug** from the current working repo: take `dirname(realpath(git rev-parse --git-common-dir))` (falling back to `$PWD` if that fails) and replace every `:`, `\`, `/`, and `.` with `-`. Example: `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`.
+Compute the **repo slug** from the current working repo: take `dirname(realpath(git rev-parse --path-format=absolute --git-common-dir))` (falling back to `$PWD` if that fails) and replace every `:`, `\`, `/`, and `.` with `-`. Example: `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`.
 
-Use `git-common-dir`, **not** `git rev-parse --show-toplevel` -- under a bare+worktree layout the latter returns the current worktree path, which would make handoffs written from a sibling worktree unreachable. `handoff` derives its slug the same way; the two must agree.
+Use `git-common-dir`, **not** `git rev-parse --show-toplevel` -- under a bare+worktree layout the latter returns the current worktree path, which would make handoffs written from a sibling worktree unreachable. `--path-format=absolute` goes **before** `--git-common-dir`: the flag affects only the options that follow it, so placed last it silently does nothing and still exits 0. `handoff` derives its slug the same way; the two must agree.
 
 Then look in `~/.agent/handoffs/<repo-slug>/`. Resolution order, given the user's argument:
 

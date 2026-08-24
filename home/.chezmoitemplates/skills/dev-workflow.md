@@ -158,19 +158,20 @@ Every outcome here, degraded or skipped or declined, still ends at
 
 ### Repo-root `context/` evergreen promotion (at sync/archive)
 
-`context/` at the **repo root** — never `openspec/context/` — is the evergreen,
-human-readable project-context bundle
-consulted during requirement analysis (grill reads it; it is NOT auto-loaded
-like CLAUDE.md). It is written only here, at `openspec-sync-specs`/archive —
-never during grill, so every promoted line has shipped-implementation backing.
+`context/` sits at the **repo root**, never `openspec/context/`. It is the
+evergreen, human-readable project-context bundle consulted during requirement
+analysis (grill reads it; it is NOT auto-loaded like CLAUDE.md). It is written
+only here, at `openspec-sync-specs`/archive — never during grill, so every
+promoted line has shipped-implementation backing.
 
 At sync/archive, scan `design.md` for `<!-- evergreen-candidate -->` markers.
 For each, check it against what was actually implemented, then apply the
 elevation gate: only **reusable, cross-change** principles and new domain
-terms/glossary get promoted into the repo-root `context/`, each into the concept file whose
+terms/glossary get promoted into `context/`, each into the concept file whose
 kind it matches. One-off decisions stay in the archived `design.md`. Content
 boundary: `openspec/specs/` = WHAT (behavior), `design.md` = one-off decisions,
-repo-root `context/` = domain model + glossary + reusable principles.
+repo-root `context/` = domain model + glossary + reusable principles, `docs/` =
+operating steps, troubleshooting, and rationale that explains only one case.
 
 ### tasks.md slicing conventions
 

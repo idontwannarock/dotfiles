@@ -114,22 +114,23 @@ herdr agent prompt <name> "<prompt>" --wait --timeout <ms>
 
 ## Step 4 -- confirm it actually finished
 
-`--wait` settles on `idle`, `done`, **or `blocked`** -- and `blocked` means it stopped at a permission prompt or a clarifying question with the work unfinished. Treat only `idle` and `done` as success.
+`--wait` settles on `idle`, `done`, **or `blocked`**. A settled state is necessary but not sufficient -- work through the table; do not stop at this sentence.
 
 | Final state | Action |
 |-------------|--------|
-| `idle` / `done`, **and** the findings file exists | Read the findings file |
-| `done`, but the pane is sitting on the counterpart's own trust / authorization / directory-confirmation prompt | Degrade -- reason: `counterpart blocked on input` |
+| `idle` / `done`, and the findings file exists | Read the findings file |
+| `idle` / `done`, no findings file | Resubmit once, then classify -- see below |
 | `blocked` | Degrade -- reason: `counterpart blocked on input` |
 | timeout / `agent_prompt_stalled` | Degrade -- reason: `counterpart timed out` |
 
-The second row is not a corner case: a counterpart CLI that opens a trust prompt on first launch in a new directory is reported by herdr as `done`, because herdr cannot tell that prompt apart from an agent idling after finishing. Observed once this round.
+**herdr reports the state of the pane, not the state of the work.** A counterpart CLI stopped on its own trust prompt reports `done`, because herdr cannot tell that prompt apart from an agent idling after finishing. And `herdr agent get` still returns `idle` for an agent that has already exited. Both observed once this round. A settled state therefore never establishes that anything ran; only the findings file does.
 
-**What herdr reports is the state of the pane, not the state of the work.** `herdr agent get` still returns `idle` for an agent that has already exited -- also observed once this round -- so no settled state, on its own, is evidence that anything ran. The findings file is the only evidence.
+That leaves two failures wearing one signature -- settled, no file -- and they are not equally fixable. A counterpart parked on an authorization prompt is a configuration problem someone can go and fix; one that produced nothing after a resubmission is not. Choosing a reason without looking discards the only information that tells them apart:
 
-Then read the findings **file**. If it is missing or empty, degrade with reason `counterpart produced no findings file`. Do **not** read it as "no issues found" -- that conflation is the whole reason the file channel exists.
+1. **Resubmit once**, per Step 3 -- the first prompt after launch can be swallowed by the agent's own startup notice.
+2. Still no file? **`herdr agent read` the pane once, to classify and nothing else.** A visible trust / authorization / directory-confirmation prompt → degrade with `counterpart blocked on input`. Anything else → `counterpart produced no findings file`.
 
-`herdr agent read` is for diagnosing a failure, never for harvesting results.
+That single read is the diagnostic use `agent read` has always been for. The line it must not cross is harvesting: read to classify a failure, never to collect a result. A missing or empty file is never "no issues found" -- that conflation is the whole reason the file channel exists.
 
 ## Step 5 -- one round of rebuttal, each way
 

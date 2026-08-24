@@ -26,16 +26,18 @@ Four parts, all load-bearing:
 | `realpath` | resolves symlinks |
 | `dirname` | strips the `.git` / `.bare` component — **the raw path is not the repo root** |
 
-**Flag order is load-bearing too.** `--path-format` affects only the options that
-follow it, so `--git-common-dir --path-format=absolute` silently does nothing and
-still exits 0 — you get a cwd-relative path back with no error to notice. Write it
-first, always.
+**The order is load-bearing too.** `--path-format` affects only the options that
+follow it, so `--git-common-dir --path-format=absolute` is silently equivalent to
+omitting the flag: `.git` from the repo root, `../.git` from a subdirectory, exit
+code 0 either way. Put the flag first, always.
 
-Keep `realpath` even so. It guards a different failure (symlinks, `..`), and it
-happens to mask a misplaced flag — which is exactly why the misplaced flag can sit
-in a file this long without anyone seeing it. Removing it would make the next
-ordering mistake fail loudly at the call site instead, but at the cost of the guard
-it was actually there for.
+`realpath` stays regardless: it guards symlinks and `..`, not flag order. That it
+also happens to mask a misordered flag is why this line went wrong for so long
+without anyone noticing.
+
+Both mistakes — the flag misordered, and the flag missing altogether — are caught
+by `tests/path-format-flag-order.test.sh`. A grep for one of the two shapes is not
+a check for this rule; that is how the missing-flag case shipped once already.
 
 If there is no git repo, fall back to `$PWD` (or `CLAUDE_PROJECT_DIR` where the
 mechanism defines one) and slugify that instead.

@@ -78,9 +78,9 @@ routinely have unpushed commits.
 
 The `dev-workflow` skill keeps a per-machine `~/.agent/workflow-registry.md`
 mapping each repo to a **Main Repo Path** and **Active-workflows Path**. Its
-auto-derivation (`git rev-parse --git-common-dir` → slug →
+auto-derivation (the anchor in `~/.agent/reference/repo-identity.md` → slug →
 `~/.agent/workflows/<slug>/active_workflows.md`) assumes a normal checkout
-and is **wrong for a bare+worktree repo** — `--git-common-dir` yields `.bare`,
+and is **wrong for a bare+worktree repo** — the common dir yields `.bare`,
 and the derived slug does not match the intended repo slug. Set the row by
 hand:
 

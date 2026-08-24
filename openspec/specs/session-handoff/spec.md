@@ -24,7 +24,9 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 
 `--path-format=absolute` SHALL NOT 省略:未加時 git 印出的是相對於**呼叫者** cwd 的路徑,搭配 `-C <目標>` 會靜默解析成當前 repo。
 
-`--path-format=absolute` SHALL 置於 `--git-common-dir` **之前**:該旗標僅影響其後的選項,置後靜默無效且 exit code 為 0。記載此算式的參考文件與各 skill body SHALL 一致採用置前寫法。
+`--path-format=absolute` SHALL 置於 `--git-common-dir` **之前**:該旗標僅影響其後的選項,置後靜默無效且 exit code 為 0(自 repo root 得 `.git`,自子目錄得 `../.git`,兩者皆 exit 0)。
+
+`--git-common-dir` 的輸出另有一種合法用法:餵給 `cd "$(…)" && pwd -P`,由該慣用法自行正規化。此形式 SHALL NOT 被要求附帶 `--path-format=absolute`。因此本規則的可驗形狀為「呼叫點屬兩種合法形式之一」,而非「凡出現必附旗標」。
 
 此規則與 `context/glossary.md` 記載的 auto-memory path-slug 規則一致,兩個系統對「同一個 repo」的定義 SHALL 對齊。
 
@@ -48,6 +50,18 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 - **WHEN** 算式寫成 `git rev-parse --git-common-dir --path-format=absolute`
 - **THEN** git SHALL 印出相對路徑並以 exit code 0 結束 —— 失敗不出聲
 - **AND** 該寫法 SHALL 視為錯誤,SHALL NOT 因外層另有 `realpath` 而保留
+
+#### Scenario: 一致性由測試強制,不由散文提醒
+
+- **WHEN** `home/` 下任一 skill body 或 reference 出現 `--git-common-dir` 的呼叫點
+- **THEN** `tests/path-format-flag-order.test.sh` SHALL 斷言它是兩種合法形式之一,並在兩者皆不符時失敗
+- **AND** 非呼叫點(散文提及旗標名)與刻意的反例 SHALL 以行內標記顯式豁免並註明理由,SHALL NOT 由測試以啟發式猜測
+- **AND** 觸發該測試的 CI workflow 其 `paths:` filter SHALL 涵蓋它所掃描的目錄 —— 守衛不在它所守的檔案變動時執行,與沒有守衛等價
+
+#### Scenario: 省略與置後是兩種錯誤
+
+- **WHEN** 以 grep 驗證本規則
+- **THEN** 只搜尋置後寫法的 grep SHALL NOT 被當作充分驗證 —— 它對「整個省略旗標」結構性失明,而該形式在 2026-08-24 實際存在於 `pickup` 中並通過了那次驗證
 
 #### Scenario: 非 git 目錄
 

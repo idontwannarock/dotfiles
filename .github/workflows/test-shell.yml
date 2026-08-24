@@ -11,6 +11,13 @@ on:
     paths:
       - 'tests/*.test.sh'
       - 'home/dot_local/bin/**'
+      # The shared skill bodies and the cross-tool reference tree are subjects
+      # too: path-format-flag-order.test.sh reads them rather than any script
+      # under bin/. A guard that does not run when the files it guards change is
+      # equivalent to no guard, and that is the exact failure this test exists
+      # to catch — so its scan roots and this filter must move together.
+      - 'home/.chezmoitemplates/skills/**'
+      - 'home/dot_agent/reference/**'
       - '.github/workflows/test-shell.yml'
   workflow_dispatch:
 
