@@ -189,8 +189,19 @@ agent holds them together — the flow above is unchanged, but four obligations
 are added. Full rules live in the `{{ .n.coordinate }}` skill; this is the
 line-side contract.
 
-**Address the coordinator by name, never by pane id.** Report with
-`herdr agent prompt coordinator "..."`. Pane ids change on handover; the name does not.
+**Address the coordinator by the name your dispatch message gave you, never by pane
+id and never by a fixed string.** Report with `herdr agent prompt <that-name> "..."`.
+Pane ids change on handover; the name does not. But the name is **fleet-scoped**
+(`<fleet>-coordinator`), because herdr names live in one flat machine-wide namespace —
+a hardcoded `coordinator` resolves to whichever fleet claimed it first, silently
+delivering your report to another repo's coordinator. If the dispatch message carried no
+address, that dispatch is broken: report it as fog rather than guessing a name.
+
+**Verify the recipient before sending.** `herdr agent list` carries a `cwd` per agent;
+confirm that name's cwd is inside your own repo's working-tree set (compare
+`git rev-parse --git-common-dir`, not a path prefix — worktrees share no prefix with the
+main checkout). Mismatch means do not send. This is the only check that catches a stale
+or wrong address, because both ends of a misdelivery look completely normal.
 
 **Report cross-line facts immediately, not at the end.** Anything another line
 could also touch: shared fixtures, a measurement both lines assert on, migration

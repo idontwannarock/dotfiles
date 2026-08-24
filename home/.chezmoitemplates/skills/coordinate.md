@@ -30,14 +30,61 @@
 | claim before work | `active_workflows.md` 那一列 |
 | HITL vs AFK | 「要使用者裁決」vs「我自己判斷」 |
 
-## 定址：一律用名字
+## 定址：艦隊限定的名字
 
-**協調者的位址是名字（`coordinator`），不是 pane id。** 換手時 pane id 會變、名字不會。
-交接＝舊的讓名，新的接走。
+**協調者的位址是 `<fleet>-coordinator`，不是 pane id、也不是光禿禿的 `coordinator`。**
+`<fleet>` 是這支艦隊開場時選定的前綴，線一律叫 `<fleet>-<change>`（命名規則見〈附錄 B〉）。
+換手時 pane id 會變、名字不會；交接＝舊的讓名，新的接走。
 
-**接手後第一件事，三項，逐條核對：**
+**為什麼不能是固定字串**：herdr 的名字是**整台機器一個扁平命名空間**，
+且在活著的 agent 之間唯一。固定叫 `coordinator` 等於宣告全機只能有一支艦隊。撞上了有兩種形狀：
 
-1. agent 清單裡 `coordinator` 這個名字指著**你自己**
+| 發生方式 | 後果 |
+|---|---|
+| 兩支艦隊同時跑 | 後來的搶不到名字；而它派出的線契約上仍寫著 `coordinator`，**回報投給先搶到的那一支** |
+| 先佔用的那支退場 | 名字被釋放、由後來者接走，**原本那批線的回報自此全部改道** |
+
+⚠️ **這不是解析失敗。** 唯一性約束**保證**那個名字解得開——投遞端不報錯，
+收訊端讀到的是一則格式正確、署名也正確的回報。與〈誰有資格說這句話〉同一族：**下游分辨不出來。**
+所以「沒人回報投錯」不能當作沒發生過。
+
+### 兩端都驗 cwd
+
+**前綴是慣例，cwd 是機械後盾。** 派線訊息可能漏給位址、可能過期，
+已經在跑的線也不會回頭改名——那時擋得住誤投的只有這一項。`herdr agent list` 每筆都有 `cwd`：
+
+| 端 | 檢查 | 不符時 |
+|---|---|---|
+| 你要定址一條線**之前** | 那個 name 的 `cwd` 在本艦隊的工作樹範圍內 | **不投遞**，先查清楚它是誰 |
+| 你**收到**一則回報 | 署名的那條線是**你派出的** | **不處理**，退回並告訴對方投錯了 |
+
+只驗投遞端擋不住別支艦隊投進來的東西，只驗收報端擋不住你自己打擾別人。**兩端都要。**
+
+⚠️ **`cwd` 不等於 repo 路徑。** 被協調的 repo 常是 bare ＋ worktree 佈局，
+線的 cwd 是 worktree 路徑，與主 checkout 沒有共同前綴。
+判準是「同一個 repo 的工作樹範圍內」，以 `git rev-parse --git-common-dir` 為準，
+**不要拿 repo 路徑做字串前綴比對**——那會把每一條 worktree 上的線都判成不符。
+
+### 不要另建一份艦隊名冊
+
+**`herdr agent list` 是 live 的權威來源**（name、cwd、pane、status 隨時查得到），
+任何落檔的 session 名冊都是它的鏡子，而鏡子會過期——正是〈你是量的還是記的〉要擋的東西。
+推導不出來、真的必須落檔的只有兩項，而兩項的宿主都已經是 handoff：
+
+| 要落檔的 | 為什麼查不到 | 落在哪 |
+|---|---|---|
+| **`<fleet>` 這個前綴** | 32 字元上限逼它是人選的，推導不出來 | handoff〈本輪產生的裁決〉 |
+| **各 session 的 argv** | `ps` 查得到，但 **pane 一關就永久消失** | handoff（見〈附錄 B〉） |
+
+⚠️ 別拿機器層的 workflow 登錄檔類比——**那種檔案記的是推導不出來的 per-machine 路徑映射，
+不是 live 狀態的鏡像。** 判準永遠是「這份資料有沒有一個更新的權威來源」，有就別鏡像它。
+
+### 接手後第一件事
+
+**三項，逐條核對：**
+
+1. agent 清單裡 `<fleet>-coordinator` 這個名字指著**你自己**，且 `<fleet>` 與 handoff 裡
+   繼承來的那個**相同**——前綴是前任的裁決，不是你重新選的
 2. **你手上有沒有直接詢問真人的工具**——查你自己的 process cmdline（不經顯示層的證據），
    看有沒有被帶上關閉發問管道的旗標。**沒有就立刻說**，見〈派線時關掉線的發問管道〉
 3. 廣播一次
@@ -301,11 +348,11 @@ git diff --stat <base> <head> -- <path>
 | pipeline 狀態 | 上一個 commit（force-push 後） |
 | `git status` 乾淨 | 「還沒被搬」的那一刻 |
 | 一個 idle pane 的畫面快照 | 上一次重繪（見附錄 A） |
-| **你對 `coordinator` 這個名字提問得到的回答** | **當下那一任**——而你不會知道那是第幾任 |
+| **你對 `<fleet>-coordinator` 這個名字提問得到的回答** | **當下那一任**——而你不會知道那是第幾任 |
 
 **規則：先確認答案屬於哪一個時刻，再看它的內容。** 順序不能反——內容單獨看永遠有答案。
 
-⚠️ **最後那一列的受害者是「你問的那個人是誰」。** `coordinator` 是名字不是 session
+⚠️ **最後那一列的受害者是「你問的那個人是誰」。** `<fleet>-coordinator` 是名字不是 session
 （〈定址〉那節寫著），所以**同一個問題在今天不同時刻問，會得到不同任的答案，而回答者不會提醒你**。
 
 > **2026-08-21 實例：本檔的作者自己犯的。** 起草時去問「你這個 session（第四任）手上有沒有某個工具」，
@@ -793,9 +840,13 @@ git diff origin/<base> <branch> -- $paths   # 要是 0 bytes
 `{{ .n.devWorkflow }}` 是**一條線內部**的流程（grill → spec → implement → verify → review → merge）。
 本 skill 是**線與線之間**的角色。兩者不重疊，但要接得上：
 
-- 被協調的線在 {{ .n.devWorkflow }} 的 **{{ .n.finishBranch }} 階段**要回報四訊號給 `coordinator`
+- 被協調的線在 {{ .n.devWorkflow }} 的 **{{ .n.finishBranch }} 階段**要回報四訊號給 `<fleet>-coordinator`
 - 線在任何階段撞到**跨線事實**（別條線也會動到的檔案、共用的量測、編號衝突）要立刻回報，不要等收尾
 - 線收到裁決時，**若覺得前提不對就推翻它**，不要只在給定選項裡挑
+
+**位址是派線訊息給線的，不是線自己查來的。** 線不讀你的 handoff，所以 `<fleet>-coordinator`
+這個字串必須隨派線訊息送達——與升級契約同一則（見〈派線時關掉線的發問管道〉）。
+**訊息裡沒給位址，就是這次派線壞了**：線該把它當 fog 回報，而不是猜一個名字投出去。
 
 ---
 
@@ -952,16 +1003,29 @@ herdr agent read <name> --source visible --format ansi
 ## 附錄 B：開線與命名
 
 **名字要符合 herdr 的 `[a-z][a-z0-9_-]{0,31}` 且在活著的 agent 之間唯一。**
-慣例是**用 change 名稱**，協調者固定叫 `coordinator`。
+那個唯一性是**整台機器一個池**，所以慣例是**艦隊前綴 ＋ change 名稱**：
+協調者叫 `<fleet>-coordinator`，線叫 `<fleet>-<change>`。理由見主體〈定址〉。
+
+**開艦隊時選定 `<fleet>`，這是一個裁決，不是一個推導。**
+
+- **不能由 repo 名推導**：上限 32 字元，`mms_product_grouping_api-coordinator` 是 **36**，塞不進去。
+  任何「自動 slug ＋ 截斷」的方案都會讓兩個長 repo 名截成同一段——
+  **那是把撞名從一個看得見的選擇，換成一個看不見的碰撞。**
+- **算得出可用長度**：`<fleet>-coordinator` 佔掉 12 個字元，所以 `<fleet>` **最長 20**。
+  而線名是 `<fleet>-<change>`，change 名稱可用的是 `31 - len(<fleet>)` 個字元——
+  艦隊前綴取得越長，你的 change 名字就越短。**在命名當下算，不要等 `agent start` 失敗才知道。**
+- **選完查一次有沒有撞**：`herdr agent list` 看有沒有活著的 agent 以 `<fleet>-` 開頭。
+  完全同名 herdr 會在 `agent start` 當下擋下，但**前綴撞而尾巴不同它不會擋**——那正是最難查的那種。
+- **寫進 handoff 的〈本輪產生的裁決〉**，接班協調者繼承它，不重選。
 
 **兩道指令，不是一道。** 派線與開接班協調者的差別不是「記得砍掉一段」——見主體〈第二種形狀〉：
 
 ```bash
 # ① 派一條線：帶關閉發問管道的旗標（依線的 kind 而定，見下表）＋ 升級契約
-herdr agent start <name> --kind <line-kind> --pane <pane-id> -- <關閉發問管道的旗標>
+herdr agent start <fleet>-<change> --kind <line-kind> --pane <pane-id> -- <關閉發問管道的旗標>
 
 # ② 開接班協調者：不帶那個旗標。它是唯一該升級到真人的角色
-herdr agent start coordinator --kind <line-kind> --pane <pane-id>
+herdr agent start <fleet>-coordinator --kind <line-kind> --pane <pane-id>
 ```
 
 **開完 ② 之後把 argv 落檔**（跟 handoff 放一起）——`cmdline` 是唯一的硬證據，
@@ -981,7 +1045,7 @@ herdr agent start coordinator --kind <line-kind> --pane <pane-id>
 | 其餘 kind | **目前未知／多半沒有** | 只有 prompt 約束——升級契約照給，但線在技術上仍攔得到真人 |
 
 ```bash
-herdr agent start <name> --kind claude --pane <pane-id> -- --disallowedTools AskUserQuestion
+herdr agent start <fleet>-<change> --kind claude --pane <pane-id> -- --disallowedTools AskUserQuestion
 ```
 
 **這個旗標是啟動參數，不寫進任何設定檔**，隨 session 結束消失——那正是主體要的範圍。
@@ -1024,10 +1088,12 @@ Claude 的設定檔三層分別是使用者層 `~/.claude/settings.json`、專�
 開一條 `claude` 線時，一行讓三層同名：
 
 ```bash
-herdr agent start <name> --kind claude --pane <pane-id> -- --remote-control "<name>" -n "<name>"
+herdr agent start <fleet>-<change> --kind claude --pane <pane-id> \
+  -- --remote-control "<fleet>-<change>" -n "<fleet>-<change>"
 ```
 
 herdr 把 `--` 之後的參數原樣透傳給 agent，於是同一個字串貫穿三層。
+**前綴套的是那個字串本身**，所以三層自然一起帶著它——不需要為前綴再加任何機制。
 
 **已經在跑的 session 補不了 `--remote-control`**（那是啟動旗標，橋接要在 session 建立時做）。
 只能用 `/rename` 釘死本機那層，手機那層**從下一批新線開始**。
