@@ -62,30 +62,19 @@
 
 | 端 | 檢查 | 不符時 |
 |---|---|---|
-| 你要定址一條線**之前** | 那個 name 的 `cwd` 在本艦隊的工作樹範圍內 | **不投遞**，先查清楚它是誰 |
+| 你要定址一條線**之前** | ①名字以 `<fleet>-` 開頭 ②它的 `cwd` 與你在同一個 repo | **不投遞**，先查清楚它是誰 |
 | 你**收到**一則回報 | 署名的那條線在**你的名冊上** | **不處理**，退回並告訴對方投錯了 |
 
 只驗投遞端擋不住別支艦隊投進來的東西，只驗收報端擋不住你自己打擾別人。**兩端都要。**
 
+⚠️ **前綴那一項不能省。** 同一個 repo 底下可以有第二支艦隊（見〈資源池〉），
+**它的 cwd 會跟你完全一樣** —— 只比 repo 的話，打錯字的同 repo 位址會整個通過。
+
 ⚠️ **`cwd` 不等於 repo 路徑。** 被協調的 repo 常是 bare ＋ worktree 佈局，
 線的 cwd 是 worktree 路徑，與主 checkout 沒有共同前綴。
-判準是「同一個 repo 的工作樹範圍內」，**不要拿 repo 路徑做字串前綴比對**。取值只有一種正確寫法：
-
-```bash
-realpath "$(git rev-parse --path-format=absolute --git-common-dir)"
-```
-
-⚠️ **三個字都不能少，而且錯了不會報錯：**
-
-| 寫法 | 從 repo root | 從子目錄 |
-|---|---|---|
-| `git rev-parse --git-common-dir` | `.git` | `../.git` |
-| 旗標**置後**(`--git-common-dir --path-format=absolute`) | `.git` | `../.git` |
-| 旗標**置前**(上面那道) | 絕對路徑 | 絕對路徑 |
-
-`--path-format` **只影響它後面的選項**，置後**靜默無效且 exit code 為 0**。
-寫錯的後果不是報錯，是**另一個 worktree 上合法的協調者被判成別的 repo**——
-於是這道守衛變成通訊中斷，而 worktree 正是這套規則要支援的佈局。
+判準是「同一個 repo 的工作樹範圍內」，**不要拿 repo 路徑做字串前綴比對**，
+而且要拿**對方的** cwd 去算，不是在你自己的目錄下跑一次。
+（怎麼算、以及三個會靜默出錯的寫法，見〈附錄 B〉。）
 
 ### 艦隊名冊：herdr 答得出「在」，答不出「應該在」
 
@@ -100,10 +89,10 @@ realpath "$(git rev-parse --path-format=absolute --git-common-dir)"
 
 | 記 | 不記 |
 |---|---|
-| 名字(`<fleet>-<change>`)、agent kind | status、pane id |
+| 名字（`<fleet>-<change>`）、agent kind | status、pane id |
 | **指派的工作樹** | 跑到第幾步、tasks n/m |
 | 開線旗標**與角色** | 換過幾手 |
-| 這條線是幹嘛的(change 名稱) | |
+| 這條線是幹嘛的（change 名稱） | |
 
 ⚠️ **記「指派的工作樹」，不是從清單觀測到的 `cwd`。** pane 的 cwd **跟著 `cd` 走**，
 而線可能從主 checkout 起手、之後才開 worktree。拿過期的落點重開，
@@ -122,26 +111,19 @@ realpath "$(git rev-parse --path-format=absolute --git-common-dir)"
 
 **第三列補掉了「三態使分母不可知」的一半**——分母不可知是因為沒有分子，**名冊就是分子**。
 
-**寫入只有兩個時機**:派線時增一列、**線在語意上退出艦隊時**刪一列(刪列掛在〈收尾〉那份清單上)。
+**寫入只有兩個時機**：派線時增一列、**線在語意上退出艦隊時**刪一列（刪列掛在〈收尾〉那份清單上）。
 線自我交接時名字不變，**名冊一列都不用改**——所以這份檔案沒有並行 append 的問題。
 
-⚠️ **行程意外死亡不刪列。** 那一列留著正是偵測器要的:重開之後兩邊又都在，警報自動解除。
+⚠️ **行程意外死亡不刪列。** 那一列留著正是偵測器要的：重開之後兩邊又都在，警報自動解除。
 **只有「這條線不再屬於這支艦隊」才刪。**
 
 ### 鏡子與帳本
 
-**名冊看起來像在鏡射 herdr，但它不是**，而這個分界值得記住，因為它會反覆出現：
-
-| | 答的問題 | 誰是權威 |
-|---|---|---|
-| `herdr agent list` | **現在誰持有這個名字** | 它自己，永遠是當下的 |
-| 名冊 | **該有哪些名字** | 你，而且交接時不變 |
-
-兩個問題不重疊，所以它們不是兩套命名系統，**交接時只有前者變**。
-
-**判準**:一份資料該不該落檔，先問「有沒有一個更新的權威來源」。有，就別鏡像它——
+**一份資料該不該落檔，先問「有沒有一個更新的權威來源」。有，就別鏡像它。**
 `:167` 那次把某條線的基底與 tasks n/m 抄進 map，就是這樣被外部檢視當場抓到的。
-**但「查得到現在」不等於「查得到應該」**:只列活體的來源答不出缺席，那一格必須自己記。
+
+**但「查得到現在」不等於「查得到應該」** —— 只列活體的來源答不出缺席，那一格必須自己記。
+名冊之所以不算鏡子，就在這裡：它與 `herdr agent list` 答的是不同的問題，**交接時只有後者變**。
 
 ⚠️ 別拿機器層的 workflow 登錄檔類比——**那種檔案記的是推導不出來的 per-machine 路徑映射，
 不是 live 狀態的鏡像。**
@@ -495,7 +477,7 @@ git diff --stat <base> <head> -- <path>
 **前五項你要自己查，不是信回報**——回報是線的視角，可能漏、可能過期。
 **後兩項查不到，而它們有時間窗：線收工之後就沒有人知道了。**
 
-> **第⑤項只在這裡刪，不要在別的地方刪。** `fleet.md` 那一列是「這條線該存在」的唯一記錄，
+> **名冊那一列只在這裡刪，不要在別的地方刪。** `fleet.md` 那一列是「這條線該存在」的唯一記錄，
 > 而**行程意外死亡時它必須留著**——留著才叫得出「有一條線不見了」。
 > **只有語意上的退出（收尾、取消）才刪列。** 把「意外死了」跟「不再屬於這支艦隊」混為一談，
 > 就等於把偵測器關掉。
@@ -516,7 +498,7 @@ grep 不到、配額表只記得配了多少，**只有線自己知道**。
 所以編號對帳要**三邊都問**：`grep`（會低估也會高估）、配額表（會高估已用量）、
 **以及線本身**。前兩者查得到，第三者只能在它還活著的時候問。
 
-**⑥ 還有什麼只有你知道。**
+**⑦ 還有什麼只有你知道。**
 
 **四訊號量的是「產出有沒有落地」，未決事項是「有沒有問題還掛著」——兩者可以同時為真，
 而只有線自己知道後者。**
@@ -551,7 +533,7 @@ paths=$(git diff --name-only $(git merge-base origin/<base> <branch>) <branch>)
 git diff origin/<base> <branch> -- $paths   # 要是 0 bytes
 ```
 
-**六項齊了才關 pane。** 一段 handoff 一個 session，收尾**之後**才有權關
+**七項齊了才關 pane。** 一段 handoff 一個 session，收尾**之後**才有權關
 ——那是「不要關別人 tab」的明示例外，但授權範圍是「收尾後」。
 **關 tab 前先查 tab 裡有幾個 pane**，別的線可能跟它同住。
 
@@ -1099,6 +1081,31 @@ herdr agent read <name> --source visible --format ansi
 
 ## 附錄 B：開線與命名
 
+### 判斷兩個 agent 在不在同一個 repo
+
+**判準是「同一個 repo 的工作樹範圍內」**（主體〈兩道檢查〉）。取值：
+
+⚠️ **而且要拿*對方的* cwd 去算，不是在你自己的目錄下跑一次。**
+少了 `-C`，你算的是自己的 common dir，然後跟自己比——**這道守衛就什麼都沒守到**：
+
+```bash
+mine=$(realpath "$(git rev-parse --path-format=absolute --git-common-dir)")
+theirs=$(realpath "$(git -C "<那個 agent 的 cwd>" rev-parse --path-format=absolute --git-common-dir)")
+[ "$mine" = "$theirs" ]
+```
+
+⚠️ **三個字都不能少，而且錯了不會報錯：**
+
+| 寫法 | 從 repo root | 從子目錄 |
+|---|---|---|
+| `git rev-parse --git-common-dir` | `.git` | `../.git` |
+| 旗標**置後**(`--git-common-dir --path-format=absolute`) | `.git` | `../.git` |
+| 旗標**置前**(上面那道) | 絕對路徑 | 絕對路徑 |
+
+`--path-format` **只影響它後面的選項**，置後**靜默無效且 exit code 為 0**。
+寫錯的後果不是報錯，是**另一個 worktree 上合法的協調者被判成別的 repo**——
+於是這道守衛變成通訊中斷，而 worktree 正是這套規則要支援的佈局。
+
 **艦隊的產物落在 `~/.agent/fleets/<repo-slug>/<fleet>/`**，裡面兩個檔：`fleet.md`（名冊）與 `map.md`。
 
 `<repo-slug>` 用正典的 repo slug 定義（與 handoff、workflow 狀態同一個 key，不要另立一套）。
@@ -1120,7 +1127,7 @@ herdr agent read <name> --source visible --format ansi
 - **不能由 repo 名推導**：上限 32 字元，`mms_product_grouping_api-coordinator` 是 **36**，塞不進去。
   任何「自動 slug ＋ 截斷」的方案都會讓兩個長 repo 名截成同一段——
   **那是把撞名從一個看得見的選擇，換成一個看不見的碰撞。**
-- **算得出可用長度**：`<fleet>-coordinator` 佔掉 12 個字元，所以 `<fleet>` **最長 20**。
+- **算得出可用長度**：`-coordinator` 這個尾巴佔掉 12 個字元，所以 `<fleet>` **最長 20**。
   而線名是 `<fleet>-<change>`，change 名稱可用的是 `31 - len(<fleet>)` 個字元——
   艦隊前綴取得越長，你的 change 名字就越短。**在命名當下算，不要等 `agent start` 失敗才知道。**
 - **選完查一次有沒有撞**：`herdr agent list` 看有沒有活著的 agent 以 `<fleet>-` 開頭。
@@ -1134,12 +1141,15 @@ herdr agent read <name> --source visible --format ansi
 herdr agent start <fleet>-<change> --kind <line-kind> --pane <pane-id> -- <關閉發問管道的旗標>
 
 # ② 開接班協調者：不帶那個旗標。它是唯一該升級到真人的角色
-herdr agent start <fleet>-coordinator --kind <line-kind> --pane <pane-id>
+herdr agent start <fleet>-coordinator --kind <coordinator-kind> --pane <pane-id>
 ```
 
-**開完 ② 之後把 argv ＋ 角色寫進 `fleet.md` 那一列**——`cmdline` 是唯一的硬證據，
+**開完 ② 之後把 agent 自己的 cmdline（`ps` 讀得到的那一份，不是上面那道含 `--pane` 的 herdr 指令）＋ 角色寫進 `fleet.md` 那一列**——`cmdline` 是唯一的硬證據，
 **pane 一關就沒了**，事後沒有任何地方查得到接班人當初是怎麼被開出來的。
 （名冊是它唯一的家。**不要同時也抄一份到 handoff**——同一個事實兩處維護，其中一份遲早會是舊的。）
+
+**`<coordinator-kind>` 與 `<line-kind>` 是兩個不同的值。** 前者是接班協調者要跑什麼，
+後者是那條線要跑什麼——**兩道指令各有各的**，別把同一個佔位符抄過去。
 
 **`<line-kind>` 是那條線要跑什麼，不是你在跑什麼。** 你派得出 21 種——
 把它渲染成你自己的 kind 會讓「線跟我同種」變成預設值，而那是一個沒有人會去質疑的預設值。

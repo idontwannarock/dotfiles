@@ -288,7 +288,7 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 - **THEN** skill SHALL 記下這種形狀:兩條線各自都正確,而兩者的組合產生第三個效果,且雙方都看不見
 - **AND** SHALL 給出限縮該工具作用範圍的做法,SHALL NOT 只提醒小心
 
-### Requirement: coordinate 收尾的第六項
+### Requirement: coordinate 收尾要問「還有什麼只有你知道」
 `coordinate` SHALL 在四訊號與編號回收之外,加上**「還有什麼只有你知道?」** 該項 SHALL 與編號回收同性質——只能問、查不到。收尾清單中 SHALL NOT 以序號指涉某一項,序號 SHALL 僅為呈現順序。
 
 #### Scenario: 序號不得承重
@@ -482,7 +482,7 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 - **THEN** SHALL NOT 加——從外部查不到某個 pane 的 agent 手上有哪些 tool,唯一能驗的是該 session 自己
 
 #### Scenario: 對名字提問得到的答案只對當下有效
-- **WHEN** 協調者以名字向另一個角色(如 `coordinator`)提問其當下狀態
+- **WHEN** 協調者以名字向另一個角色(如 `<fleet>-coordinator`)提問其當下狀態
 - **THEN** SHALL 把時間或 pane 釘住,或明確接受該答案只對當下有效——名字不是 session,同一個問題在不同時刻問會得到不同任的答案,而回答者不會提醒提問者
 
 ### Requirement: coordinate 角色不在 argv 裡
@@ -601,7 +601,7 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 
 #### Scenario: 名冊與 herdr 的差集是偵測器
 - **WHEN** 協調者要盤點艦隊
-- **THEN** SHALL 以名冊與 `herdr agent list` 的**差集**判讀:名冊有而 herdr 無 = 漏掉或被關掉,可依名冊上的 cwd＋kind＋旗標原地重開;herdr 有而名冊無 = 不屬於本艦隊
+- **THEN** SHALL 以名冊與 `herdr agent list` 的**差集**判讀:名冊有而 herdr 無 = 漏掉或被關掉,可依名冊上的**指派工作樹**＋kind＋旗標原地重開;herdr 有而名冊無 = 不屬於本艦隊
 - **AND** skill SHALL 指出後者補掉了「三態使分母不可知」的一半——分母不可知是因為沒有分子
 
 #### Scenario: 記的是指派的工作樹,不是觀測到的 cwd

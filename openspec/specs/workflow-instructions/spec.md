@@ -184,7 +184,7 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 - **THEN** task 切分 SHALL 符合上述慣例,SHALL NOT 按層橫切
 
 ### Requirement: 協調模式下的線側契約
-當一條線是由協調者派出的多條平行線之一時,`dev-workflow` 的核心流程 SHALL 不變,但 SHALL 附加三項義務。完整規則屬於 `coordinate`;`dev-workflow` 內文 SHALL 只放**線側**契約,並以 name-map 指向該 skill,SHALL NOT 寫死 skill 名。
+當一條線是由協調者派出的多條平行線之一時,`dev-workflow` 的核心流程 SHALL 不變,但 SHALL 附加五項義務。完整規則屬於 `coordinate`;`dev-workflow` 內文 SHALL 只放**線側**契約,並以 name-map 指向該 skill,SHALL NOT 寫死 skill 名。
 
 #### Scenario: 以名字定址協調者
 - **WHEN** 一條線要回報給協調者
@@ -204,6 +204,14 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 #### Scenario: 前提錯誤的裁決應被推翻
 - **WHEN** 協調者給的裁決其問題框架本身不成立
 - **THEN** 線 SHALL 指出框架不對,SHALL NOT 只在給定選項內作答——只在框內作答會把協調者的錯誤放大成決策;同理 SHALL 拒絕會汙染自身證據的指令(例如在自己 session 裡執行會打斷當前回合的實驗)
+
+#### Scenario: finish-branch 回報四訊號
+- **WHEN** 線走到 `finish-branch`
+- **THEN** SHALL 回報四個獨立訊號(MR/PR 已合併、handoff 已歸檔、worktree/branch 已處置、`active_workflows.md` 該列已移除),且 SHALL 預期協調者自行查證而非採信回報
+
+#### Scenario: 合併驗證不用 branch -d
+- **WHEN** 要確認一條 branch 是否真的合併了
+- **THEN** SHALL 以 scoped diff 驗證,SHALL NOT 以 `git branch -d` 判斷——squash 合併下該指令對「已合併」與「從未合併」給同一個答案
 
 ### Requirement: 協調模式下線無發問管道時的升級義務
 當一條線由協調者派出且其直接詢問真人的管道已被關閉時,線 SHALL 在撞到自己做不了的決策時**具名回報協調者並停下**,SHALL NOT 挑一個合理預設值繼續執行。
