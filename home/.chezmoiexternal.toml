@@ -300,7 +300,7 @@
 # downgrade from the currently-installed 1.24.13. The Unix tarball var sits at
 # 1.24.4; the two Go pins are allowed to drift (both >= goMinVersion).
 # renovate: datasource=golang-version depName=go
-{{- $goVersion    := "1.26.6" }}
+{{- $goVersion    := "1.27.0" }}
 # renovate: datasource=maven depName=org.apache.maven:maven-core
 {{- $mavenVersion := "3.9.16" }}
 # major segment of the archive path is derived so a 3->4 bump can't 404 (maven-3/ vs maven-4/)
