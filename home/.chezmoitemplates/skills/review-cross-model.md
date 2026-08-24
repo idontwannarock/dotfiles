@@ -136,7 +136,7 @@ That single read is the diagnostic use `agent read` has always been for. The lin
 
 Score the counterpart's findings through the same confidence filter your own side passed, so the two sets are comparable. Then, exactly once each way:
 
-- Give the counterpart your findings and ask it to refute them, **writing its rebuttal to `counterpart-rebuttal.md`**. Its rebuttal is a result, so it travels by file like every other result -- `agent read` is still not a data channel. Wait and confirm as in Step 4; a missing rebuttal file means that half of the exchange did not happen, and the report says so rather than silently grading as if it had.
+- Give the counterpart your findings and ask it to refute them, **writing its rebuttal to `counterpart-rebuttal.md`**. Its rebuttal is a result, so it travels by file like every other result -- `agent read` is still not a data channel. Wait and confirm as in Step 4 -- the waiting and the liveness check carry over, the two degrade reasons do not. A missing rebuttal file is `rebuttal exchange incomplete`, whatever the settled state was: that half of the exchange did not happen, and the report says so rather than silently grading as if it had. Do not run Step 4's classification here; both of its outcomes name the findings file.
 - Refute the counterpart's findings yourself, honestly -- you are looking for the ones you missed, not defending your first pass.
 
 Stop there. Do not open a second round, and do not extend on the grounds that "there is still something to say". Two models can disagree indefinitely; the splits are for the user.

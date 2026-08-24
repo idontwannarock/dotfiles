@@ -58,6 +58,32 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 - **AND** 非呼叫點(散文提及旗標名)與刻意的反例 SHALL 以行內標記顯式豁免並註明理由,SHALL NOT 由測試以啟發式猜測
 - **AND** 觸發該測試的 CI workflow 其 `paths:` filter SHALL 涵蓋它所掃描的目錄 —— 守衛不在它所守的檔案變動時執行,與沒有守衛等價
 
+#### Scenario: 判定以 invocation 為單位,不以行為單位
+
+- **WHEN** 同一行出現多個 `--git-common-dir`,或出現屬於其他選項的 `--path-format`,或另一格含正規化慣用法
+- **THEN** 判定 SHALL 對每個 `--git-common-dir` 各取「最近的前一個 `rev-parse` 至該處」為窗口,並在窗口內判形式
+- **AND** SHALL 走完行內所有出現處,SHALL NOT 只判第一個
+- **AND** 找不到前置 `rev-parse` 的出現處 SHALL 視為非呼叫點 —— 保守方向為少管一行,SHALL NOT 誤判為正確
+
+#### Scenario: 豁免標記不得被自身的說明文件觸發
+
+- **WHEN** 某行同時含真實呼叫點與豁免標記,或標記無理由,或標記僅出現於句中作為範例引用
+- **THEN** 豁免比對 SHALL 於 `rev-parse` 閘門之後才進行,SHALL 要求非空理由與收尾 `-->`,且 SHALL 錨定於行尾
+- **AND** 守衛印出的修正建議本身 SHALL NOT 構成可解除該守衛的字串
+
+#### Scenario: 母體縮減即失敗
+
+- **WHEN** 掃描因權限、改名、`.chezmoiignore` 變更或壞掉的 checkout 而讀不到部分檔案
+- **THEN** `find`／`grep` 的 stderr 有內容 SHALL 使測試失敗,SHALL NOT 以 `2>/dev/null` 吞掉
+- **AND** grep 的 exit code 大於 1 SHALL 視為錯誤
+- **AND** SHALL 對每個掃描根各設呼叫點下限並斷言掃到的檔案數 —— 全域的「大於零」只能分辨全毀與其他
+
+#### Scenario: 守衛 SHALL 明述自己的母體邊界
+
+- **WHEN** 有 `--git-common-dir` 的呼叫點位於掃描母體之外(如 `home/dot_local/bin/`、`home/dot_config/git/hooks/`)
+- **THEN** 測試檔 SHALL 明寫可執行程式不在母體內及其理由 —— 沒有標明母體的綠燈會被讀成「這一族已處理」
+- **AND** 該類呼叫點若採「原始捕捉 ＋ 呼叫者控制的 cwd」形式 SHALL 視為安全,SHALL NOT 因不在母體內而被描述為未查證
+
 #### Scenario: 省略與置後是兩種錯誤
 
 - **WHEN** 以 grep 驗證本規則
