@@ -179,7 +179,7 @@
 # renovate: datasource=github-releases depName=docker/cli extractVersion=^v(?<version>.+)$
 {{- $dockerVersion        := "29.5.2" }}
 # renovate: datasource=github-releases depName=docker/compose extractVersion=^v(?<version>.+)$
-{{- $dockerComposeVersion := "5.4.0" }}
+{{- $dockerComposeVersion := "5.5.0" }}
 
 # Docker Inc. official static binary archive (NOT GitHub release — first-party
 # CDN at download.docker.com). Archive ships docker/docker.exe + docker/dockerd.exe;
