@@ -14,7 +14,7 @@ under two keys that cannot see each other.
 ## The anchor — agreed by every mechanism
 
 ```
-anchor = dirname(realpath(git rev-parse --git-common-dir --path-format=absolute))
+anchor = dirname(realpath(git rev-parse --path-format=absolute --git-common-dir))
 ```
 
 Four parts, all load-bearing:
@@ -25,6 +25,17 @@ Four parts, all load-bearing:
 | `--path-format=absolute` | without it the output is relative to **your** cwd, not the target's — so any `-C <path>` / `--repo <path>` invocation silently yields *your* repo's slug |
 | `realpath` | resolves symlinks |
 | `dirname` | strips the `.git` / `.bare` component — **the raw path is not the repo root** |
+
+**Flag order is load-bearing too.** `--path-format` affects only the options that
+follow it, so `--git-common-dir --path-format=absolute` silently does nothing and
+still exits 0 — you get a cwd-relative path back with no error to notice. Write it
+first, always.
+
+Keep `realpath` even so. It guards a different failure (symlinks, `..`), and it
+happens to mask a misplaced flag — which is exactly why the misplaced flag can sit
+in a file this long without anyone seeing it. Removing it would make the next
+ordering mistake fail loudly at the call site instead, but at the cost of the guard
+it was actually there for.
 
 If there is no git repo, fall back to `$PWD` (or `CLAUDE_PROJECT_DIR` where the
 mechanism defines one) and slugify that instead.

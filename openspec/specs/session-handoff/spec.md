@@ -24,6 +24,8 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 
 `--path-format=absolute` SHALL NOT 省略:未加時 git 印出的是相對於**呼叫者** cwd 的路徑,搭配 `-C <目標>` 會靜默解析成當前 repo。
 
+`--path-format=absolute` SHALL 置於 `--git-common-dir` **之前**:該旗標僅影響其後的選項,置後靜默無效且 exit code 為 0。記載此算式的參考文件與各 skill body SHALL 一致採用置前寫法。
+
 此規則與 `context/glossary.md` 記載的 auto-memory path-slug 規則一致,兩個系統對「同一個 repo」的定義 SHALL 對齊。
 
 #### Scenario: normal 佈局
@@ -40,6 +42,12 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 
 - **WHEN** 在 bare+worktree 佈局的 worktree A 寫出 handoff 後,於同一 repo 的 worktree B 開新 session 執行 `pickup`
 - **THEN** `pickup` SHALL 解析得到該 handoff
+
+#### Scenario: 旗標置後
+
+- **WHEN** 算式寫成 `git rev-parse --git-common-dir --path-format=absolute`
+- **THEN** git SHALL 印出相對路徑並以 exit code 0 結束 —— 失敗不出聲
+- **AND** 該寫法 SHALL 視為錯誤,SHALL NOT 因外層另有 `realpath` 而保留
 
 #### Scenario: 非 git 目錄
 

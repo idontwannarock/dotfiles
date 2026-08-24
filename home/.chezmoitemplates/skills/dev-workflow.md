@@ -84,7 +84,7 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 {{ .n.ensureScript }}
 → {{ .n.sk }}openspec-new-change → {{ .n.sk }}openspec-continue-change (loop until artifacts ready)
 → {{ .n.sk }}openspec-apply-change → openspec validate
-→ [{{ .n.sk }}openspec-sync-specs — ask if implementation drifted from specs; promote design.md evergreen-candidates → context/] → {{ .n.sk }}openspec-archive-change
+→ [{{ .n.sk }}openspec-sync-specs — ask if implementation drifted from specs; promote design.md evergreen-candidates → the repo-root `context/`] → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewQuick }}
 → Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from {{ .n.sk }}openspec-new-change)
 → No fixes → [team-doc step] → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
@@ -100,7 +100,7 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 → {{ .n.sk }}openspec-apply-change   (tasks with a testable seam agreed in design → {{ .n.tdd }})
 → {{ .n.verifyDone }} (run tests / verify commands — hard evidence)
 → {{ .n.sk }}openspec-verify-change (three-dimension spec/code coherence report)
-→ openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → context/) → {{ .n.sk }}openspec-archive-change
+→ openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → the repo-root `context/`) → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewFull }} → {{ .n.reviewCrossModel }}
 → Fixes needed? → Confirm scope, start a new change round
 → No fixes → [team-doc step] → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
@@ -136,7 +136,7 @@ Otherwise, just before `{{ .n.finishBranch }}`, ask one question:
 
 The signal is bound to **who the readers are**, not to diff size, so both
 workflows run it: a three-line change can produce the switchover procedure
-another team has to follow. The content boundary below (under *`context/`
+another team has to follow. The content boundary below (under *repo-root `context/`
 evergreen promotion*) lists three carriers whose readers all sit inside the
 repo; this step covers the fourth reader, the one outside.
 
@@ -156,9 +156,10 @@ they know what the change produced.
 Every outcome here, degraded or skipped or declined, still ends at
 `{{ .n.finishBranch }}`: this step reports, it never blocks.
 
-### `context/` evergreen promotion (at sync/archive)
+### Repo-root `context/` evergreen promotion (at sync/archive)
 
-`context/` is the evergreen, human-readable project-context bundle
+`context/` at the **repo root** — never `openspec/context/` — is the evergreen,
+human-readable project-context bundle
 consulted during requirement analysis (grill reads it; it is NOT auto-loaded
 like CLAUDE.md). It is written only here, at `openspec-sync-specs`/archive —
 never during grill, so every promoted line has shipped-implementation backing.
@@ -166,10 +167,10 @@ never during grill, so every promoted line has shipped-implementation backing.
 At sync/archive, scan `design.md` for `<!-- evergreen-candidate -->` markers.
 For each, check it against what was actually implemented, then apply the
 elevation gate: only **reusable, cross-change** principles and new domain
-terms/glossary get promoted into `context/`, each into the concept file whose
+terms/glossary get promoted into the repo-root `context/`, each into the concept file whose
 kind it matches. One-off decisions stay in the archived `design.md`. Content
-boundary: `specs/` = WHAT (behavior), `design.md` = one-off decisions,
-`context/` = domain model + glossary + reusable principles.
+boundary: `openspec/specs/` = WHAT (behavior), `design.md` = one-off decisions,
+repo-root `context/` = domain model + glossary + reusable principles.
 
 ### tasks.md slicing conventions
 

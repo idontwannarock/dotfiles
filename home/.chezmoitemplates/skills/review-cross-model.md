@@ -118,9 +118,14 @@ herdr agent prompt <name> "<prompt>" --wait --timeout <ms>
 
 | Final state | Action |
 |-------------|--------|
-| `idle` / `done` | Read the findings file |
+| `idle` / `done`, **and** the findings file exists | Read the findings file |
+| `done`, but the pane is sitting on the counterpart's own trust / authorization / directory-confirmation prompt | Degrade -- reason: `counterpart blocked on input` |
 | `blocked` | Degrade -- reason: `counterpart blocked on input` |
 | timeout / `agent_prompt_stalled` | Degrade -- reason: `counterpart timed out` |
+
+The second row is not a corner case: a counterpart CLI that opens a trust prompt on first launch in a new directory is reported by herdr as `done`, because herdr cannot tell that prompt apart from an agent idling after finishing. Observed once this round.
+
+**What herdr reports is the state of the pane, not the state of the work.** `herdr agent get` still returns `idle` for an agent that has already exited -- also observed once this round -- so no settled state, on its own, is evidence that anything ran. The findings file is the only evidence.
 
 Then read the findings **file**. If it is missing or empty, degrade with reason `counterpart produced no findings file`. Do **not** read it as "no issues found" -- that conflation is the whole reason the file channel exists.
 
