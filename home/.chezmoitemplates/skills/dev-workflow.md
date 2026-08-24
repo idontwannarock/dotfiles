@@ -38,7 +38,7 @@ esac
 | Divergence point | `ARCH=normal` | `ARCH=bare-worktree` |
 |------------------|---------------|----------------------|
 | **New-branch workspace** (2c) | `git checkout -b <branch>` in the main repo; or `{{ .n.worktree }}` if another workflow is active | always create via `{{ .n.worktree }}` (worktree off `main`, one branch per worktree) |
-| **Registry / active-workflows path** (2b) | auto-derive the canonical repo slug, then `~/.agent/workflows/<slug>/active_workflows.md` | manual — Main Repo Path = `<repo>/main`, Active-workflows Path = `~/.agent/workflows/<slug>/active_workflows.md` (slug from `autoMemoryDirectory` key). See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & active-workflows path". |
+| **Registry / active-workflows path** (2b) | auto-derive the canonical repo slug, then `~/.agent/workflows/<slug>/active_workflows.md` | same slug derivation (the anchor's `dirname` strips `.bare`, leaving the container) — but **Main Repo Path** = `<repo>/main`, not the container, so that half is manual. See `~/.agent/reference/bare-worktree/claude-state.md` → "Workflow registry & active-workflows path". |
 
 ### 2a. Sync main
 
@@ -48,7 +48,7 @@ Run `{{ .n.gitSync }}` unless already on a worktree.
 
 Look up `~/.agent/workflow-registry.md` for this repo's main repo path, active-workflows path, and `Doc Target` (the team-doc step below reads it; carry it forward, do not act on it here). If no entry: derive the repo's canonical slug per `~/.agent/reference/repo-identity.md` — read it rather than reconstructing the rule from memory; the two plausible shortcuts both name a different directory and fail silently — set active-workflows path to `~/.agent/workflows/<repo-slug>/active_workflows.md`, add a row with `Doc Target` left blank — **do not ask the user about it now**. Registry is per-machine, not synced, and its rows are append-only: never drop a row because a workflow ended.
 
-> **Architecture-specific:** follow the **Registry / active-workflows path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the auto-derivation is wrong — set the row by hand per `claude-state.md`.
+> **Architecture-specific:** follow the **Registry / active-workflows path** row of the dispatch table above for your `ARCH`. Under `bare-worktree` the slug still derives correctly; it is **Main Repo Path** that must be set by hand per `claude-state.md`.
 
 ### 2c. Check active workflows
 

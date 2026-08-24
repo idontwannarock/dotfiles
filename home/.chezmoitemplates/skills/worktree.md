@@ -39,9 +39,10 @@ dev-workflow Step 2b):
 - `normal`: auto-derive the canonical slug per
   `~/.agent/reference/repo-identity.md` — read it rather than restating the
   anchor here — then `~/.agent/workflows/<slug>/active_workflows.md`.
-- `bare-worktree`: auto-derivation is WRONG here (the slug would end in
-  `-.bare`) — look up the repo's row in `~/.agent/workflow-registry.md`
-  (slug from the `autoMemoryDirectory` key). See
+- `bare-worktree`: the same derivation applies — the anchor's `dirname` strips
+  `.bare`, so the slug is the container's, which is what this layout wants. Look
+  up the repo's row in `~/.agent/workflow-registry.md` anyway for **Main Repo
+  Path**, which is the `main/` worktree and not the container. See
   `~/.agent/reference/bare-worktree/claude-state.md`.
 
 `mkdir -p` the directory if this is the repo's first workflow, then add

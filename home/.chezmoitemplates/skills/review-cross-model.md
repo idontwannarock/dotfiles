@@ -118,17 +118,19 @@ herdr agent prompt <name> "<prompt>" --wait --timeout <ms>
 
 | Final state | Action |
 |-------------|--------|
-| `idle` / `done`, and the findings file exists | Read the findings file |
-| `idle` / `done`, no findings file | Resubmit once, then classify -- see below |
+| `idle` / `done`, and the findings file is non-empty | Read the findings file |
+| `idle` / `done`, findings file missing **or empty** | Resubmit once, then classify -- see below |
 | `blocked` | Degrade -- reason: `counterpart blocked on input` |
 | timeout / `agent_prompt_stalled` | Degrade -- reason: `counterpart timed out` |
 
 **herdr reports the state of the pane, not the state of the work.** A counterpart CLI stopped on its own trust prompt reports `done`, because herdr cannot tell that prompt apart from an agent idling after finishing. And `herdr agent get` still returns `idle` for an agent that has already exited. Both observed once this round. A settled state therefore never establishes that anything ran; only the findings file does.
 
-That leaves two failures wearing one signature -- settled, no file -- and they are not equally fixable. A counterpart parked on an authorization prompt is a configuration problem someone can go and fix; one that produced nothing after a resubmission is not. Choosing a reason without looking discards the only information that tells them apart:
+A file that exists but is empty counts as no file, everywhere in this step. A counterpart that creates its output and writes nothing into it is the same failure as one that never wrote, and reading a zero-byte file as "no issues found" is the exact conflation the file channel exists to prevent.
+
+That leaves two failures wearing one signature -- settled, and nothing in the file -- and they are not equally fixable. A counterpart parked on an authorization prompt is a configuration problem someone can go and fix; one that produced nothing after a resubmission is not. Choosing a reason without looking discards the only information that tells them apart:
 
 1. **Resubmit once**, per Step 3 -- the first prompt after launch can be swallowed by the agent's own startup notice.
-2. Still no file? **`herdr agent read` the pane once, to classify and nothing else.** A visible trust / authorization / directory-confirmation prompt → degrade with `counterpart blocked on input`. Anything else → `counterpart produced no findings file`.
+2. Still nothing in the file? **`herdr agent read` the pane once, to classify and nothing else.** A visible trust / authorization / directory-confirmation prompt → degrade with `counterpart blocked on input`. Anything else → `counterpart produced no findings file`.
 
 That single read is the diagnostic use `agent read` has always been for. The line it must not cross is harvesting: read to classify a failure, never to collect a result. A missing or empty file is never "no issues found" -- that conflation is the whole reason the file channel exists.
 

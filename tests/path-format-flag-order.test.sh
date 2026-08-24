@@ -45,6 +45,22 @@
 # a flag bound to another option counted, the third because one cell's idiom
 # absolved every other cell on the row.
 #
+# Judging an occurrence needs the text on BOTH sides of it. The prefix says what
+# wraps the invocation and whether the flag precedes it; the suffix is the only
+# place the MISORDERED form can appear, since that flag sits after the option it
+# fails to modify. A first draft passed the prefix alone and could therefore only
+# ever report a misordered flag as an absent one — the two shapes this file
+# exists to tell apart, told apart wrongly, and green through three rounds of
+# review because every check asserted that the test went red, never what it said.
+# The regression checks below assert the message.
+#
+# Backslash continuations are folded into one logical line before matching, so an
+# invocation spread over several physical lines is judged as the one invocation
+# it is; without the fold the line carrying `--git-common-dir` has no `rev-parse`
+# on it and is skipped as prose. Reported line numbers are therefore the FIRST
+# physical line of a fold — where the invocation starts and where the reader has
+# to edit.
+#
 # EXEMPTIONS ARE EXPLICIT, never inferred. Deliberate counter-examples showing
 # the broken form have to be skipped. The tempting shortcut is a heuristic ("skip
 # lines inside a table", "skip lines with CJK"), but a heuristic re-decides itself
@@ -80,7 +96,13 @@
 #    correctly, and in every worktree layout `--git-common-dir` returns an
 #    absolute path with or without the flag.
 #
-# Both are stated rather than left implied for the same reason: a green light
+# 3. Cross-line variable flow. The fold above covers a backslash continuation,
+#    which is one syntactic command. It does not follow a common dir captured
+#    into a variable on one line and consumed on another — that is what the three
+#    scripts in (2) do, and it is why they are out of the population rather than
+#    merely unscanned.
+#
+# All three are stated rather than left implied for the same reason: a green light
 # with no declared population reads to the next person as "this family is
 # handled".
 #
@@ -107,6 +129,20 @@ repo_root=$(dirname "$self_dir")
 # Written as `<root>:<floor>` so a root and its floor cannot drift apart, and so
 # adding a root is one edit here plus one in the CI filter — nowhere else.
 scan_roots='home/.chezmoitemplates/skills:15 home/dot_agent/reference:5'
+# Set only by the message self-check below, which re-invokes this script against
+# a throwaway fixture directory. Floors are zero there because the fixture is two
+# files by construction.
+if [ -n "${PFFO_FIXTURE_DIR:-}" ]; then
+    repo_root=$(dirname "$PFFO_FIXTURE_DIR")
+    scan_roots="$(basename "$PFFO_FIXTURE_DIR"):0"
+fi
+# The file count is the other half of that guard, and it is ASSERTED, not merely
+# printed. An earlier design named "also assert the number of files scanned" as
+# the mitigation for floors going stale as the tree grows, while the code only
+# displayed it — a mitigation that exists in the design and not in the code is
+# worse than none, because it stops anyone looking again.
+floor_files=35
+[ -z "${PFFO_FIXTURE_DIR:-}" ] || floor_files=0
 
 failures=0
 call_sites=0
@@ -143,9 +179,36 @@ done
 # "nothing wrong in it". A CI runner with an odd umask, an unreadable directory,
 # or a broken symlink would otherwise silently shrink the population.
 err_file=$(mktemp) || { fail "cannot create temp file"; finish; }
+
+# Backslash continuations are folded into one logical line BEFORE matching, so a
+# single invocation spread over several physical lines is judged as the one
+# invocation it is. `grep` alone would hand `judge_segment` a line with no
+# `rev-parse` on it and the occurrence would be skipped as prose — the omission
+# shape, invisible to the guard built to catch it.
+#
+# The line number reported is the FIRST physical line of the fold: that is where
+# the invocation starts and where the reader has to edit. Anything else points
+# at a continuation and reads as an off-by-N.
+#
+# Not cross-line variable flow, which stays out of scope: a continuation is one
+# syntactic command, and the shell joins it before the command ever runs.
+fold_prog='
+    FNR == 1 { buf = ""; start = 0 }
+    {
+        line = $0
+        if (buf == "") start = FNR
+        sub(/\\[ \t]*$/, "", line)
+        buf = buf line
+        if ($0 ~ /\\[ \t]*$/) next
+        if (buf ~ /--git-common-dir/) print FILENAME ":" start ":" buf
+        buf = ""
+    }
+    END { if (buf != "" && buf ~ /--git-common-dir/) print FILENAME ":" start ":" buf }
+'
+
 # shellcheck disable=SC2086
 matches=$(find $roots_abs -type f \( -name '*.md' -o -name '*.md.tmpl' \) \
-    -exec grep -Hn -- '--git-common-dir' {} + 2>"$err_file")
+    -exec awk "$fold_prog" {} + 2>"$err_file")
 grep_status=$?
 
 if [ -s "$err_file" ]; then
@@ -157,8 +220,17 @@ fi
 [ "$grep_status" -le 1 ] || fail "grep exited $grep_status — the scan is incomplete"
 rm -f "$err_file"
 
-files_seen=$(find $roots_abs -type f \( -name '*.md' -o -name '*.md.tmpl' \) 2>/dev/null | wc -l)
+count_err=$(mktemp) || { fail "cannot create temp file"; finish; }
+# shellcheck disable=SC2086
+files_seen=$(find $roots_abs -type f \( -name '*.md' -o -name '*.md.tmpl' \) 2>"$count_err" | wc -l)
 files_seen=$((files_seen))
+if [ -s "$count_err" ]; then
+    fail "the file-count traversal wrote to stderr — same rule as the main scan:"
+    sed 's/^/  /' "$count_err" >&2
+fi
+rm -f "$count_err"
+[ "$files_seen" -ge "$floor_files" ] || \
+    fail "only $files_seen files scanned (floor $floor_files) — the population shrank"
 
 # Judge one occurrence of `--git-common-dir`, given the segment of the line that
 # runs from the END OF THE PREVIOUS OCCURRENCE (or the line start) up to this
@@ -170,6 +242,12 @@ files_seen=$((files_seen))
 # invocation" (no `rev-parse` in the segment, so this occurrence is prose).
 judge_segment() {
     seg=$1
+    # Everything AFTER this occurrence, bounded at the next `rev-parse` so a
+    # later invocation's flag cannot be read as this one's. Without this the
+    # misordered form is undetectable in principle: the flag sits after the
+    # option it fails to modify, which is outside `seg` entirely, so the guard
+    # could only ever report it as absent.
+    rest=${2%%rev-parse*}
     case "$seg" in
         *rev-parse*) ;;
         *) return 3 ;;
@@ -195,9 +273,91 @@ judge_segment() {
     case "$inv" in
         *--path-format=absolute*) return 0 ;;
         *--path-format*) return 1 ;;
-        *) return 2 ;;
+    esac
+    case "$rest" in
+        *--path-format*) return 1 ;;
+    esac
+    return 2
+}
+
+# Self-check, before the repo is judged at all.
+#
+# `judge_segment` distinguishing the two shapes IS the reason this file exists,
+# and that discrimination broke once while every check still passed, because the
+# checks asserted that the guard went red and never which defect it named. So the
+# classifier is exercised against known inputs and its VERDICT asserted — not the
+# colour of some downstream run. Cheap: pure string operations, no I/O.
+#
+# verdict 0 = a correct form, 1 = misordered, 2 = missing, 3 = not an invocation.
+self_check() {
+    sc_fail=0
+    # Each case is: <expected> <prefix-before-the-occurrence>@@<rest-after-it>.
+    # `@@` rather than a single `|`, because half these fixtures are markdown
+    # table rows and a delimiter that occurs in the data it delimits silently
+    # truncates it — the first draft did exactly that and mis-set one case.
+    while IFS= read -r spec; do
+        [ -n "$spec" ] || continue
+        want=${spec%% *}
+        both=${spec#* }
+        sc_pre=${both%%@@*}
+        sc_rest=${both#*@@}
+        judge_segment "$sc_pre" "$sc_rest"
+        got=$?
+        [ "$got" -eq "$want" ] || {
+            printf 'FAIL: self-check — expected verdict %s, got %s, for: %s\n' \
+                "$want" "$got" "$both" >&2
+            sc_fail=$((sc_fail + 1))
+        }
+    done <<'SELFCHECK'
+0 `git rev-parse --path-format=absolute @@` and on
+1 `git rev-parse @@ --path-format=absolute` misordered
+2 take `git rev-parse @@` and slugify
+3 prose naming the flag with no invocation@@, nothing more
+0 x=$(cd "$(git rev-parse @@)" && pwd -P)
+0 keys on `basename "$(git rev-parse @@)"`
+0 `git -C "$p" rev-parse --path-format=absolute @@` cross-repo
+2 | `basename "$(git rev-parse --show-toplevel)"` | `git rev-parse @@` |
+2 `git rev-parse --path-format=absolute --show-toplevel; git rev-parse @@` second call
+2 `git rev-parse --path-format=absolute --git-common-dir` then `git rev-parse @@` second call
+SELFCHECK
+    [ "$sc_fail" -eq 0 ] || fail "the classifier misjudges known inputs — every verdict below is untrustworthy"
+}
+self_check
+[ "$failures" -eq 0 ] || finish
+
+# Second layer: assert what the guard SAYS, not merely that it fails.
+#
+# The classifier check above exercises `judge_segment` directly, so it cannot see
+# a fault in the reporting path between the classifier and the message — and that
+# is precisely where the 2026-08-24 defect lived: `case $?` consumed the verdict,
+# every misordered flag was announced as a missing one, and no check noticed
+# because none of them read the message. This runs the whole script against a
+# two-file fixture and asserts both diagnostics appear, each for its own defect.
+message_check() {
+    mc_dir=$(mktemp -d) || { fail "cannot create temp dir"; return; }
+    printf 'x `git rev-parse --git-common-dir --path-format=absolute` y\n' > "$mc_dir/misordered.md"
+    printf 'x `git rev-parse --git-common-dir` y\n' > "$mc_dir/missing.md"
+
+    mc_out=$(PFFO_FIXTURE_DIR="$mc_dir" "$SHELL_UNDER_TEST" "$0" 2>&1)
+    rm -rf "$mc_dir"
+
+    case "$mc_out" in
+        *misordered.md*'places --path-format after'*) ;;
+        *) fail "message self-check: a misordered flag was not reported as misordered. Got:"
+           printf '%s\n' "$mc_out" | sed 's/^/  /' >&2 ;;
+    esac
+    case "$mc_out" in
+        *missing.md*'with no --path-format=absolute'*) ;;
+        *) fail "message self-check: a missing flag was not reported as missing. Got:"
+           printf '%s\n' "$mc_out" | sed 's/^/  /' >&2 ;;
     esac
 }
+# Skipped inside the fixture run itself, or this would recurse forever.
+if [ -z "${PFFO_FIXTURE_DIR:-}" ]; then
+    SHELL_UNDER_TEST=${SEED_SH:-sh}
+    message_check
+    [ "$failures" -eq 0 ] || finish
+fi
 
 while IFS= read -r record; do
     [ -n "$record" ] || continue
@@ -224,12 +384,18 @@ while IFS= read -r record; do
         # Advance past this occurrence; the next segment starts here.
         tail_text=${tail_text#*--git-common-dir}
 
-        judge_segment "$segment"
-        case $? in
+        judge_segment "$segment" "$tail_text"
+        # Captured on the very next line, before anything else can reset `$?`.
+        # An earlier draft read it after a `case $?`, which returns its own
+        # status when no arm matches — so `verdict` was always 0 and the
+        # misordered diagnostic below was unreachable. The guard reported every
+        # misordered flag as a missing one: the two shapes this file exists to
+        # tell apart, told apart wrongly.
+        verdict=$?
+        case "$verdict" in
             0) call_sites=$((call_sites + 1)); continue ;;
             3) continue ;;
         esac
-        verdict=$?
 
         # Only now does the exemption marker get a say: this occurrence is a
         # real invocation in a wrong form. The marker must close, carry a
