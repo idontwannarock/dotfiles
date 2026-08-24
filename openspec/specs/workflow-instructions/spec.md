@@ -184,11 +184,18 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 - **THEN** task 切分 SHALL 符合上述慣例,SHALL NOT 按層橫切
 
 ### Requirement: 協調模式下的線側契約
-當一條線是由協調者派出的多條平行線之一時,`dev-workflow` 的核心流程 SHALL 不變,但 SHALL 附加三項義務。完整規則屬於 `coordinate`;`dev-workflow` 內文 SHALL 只放**線側**契約,並以 name-map 指向該 skill,SHALL NOT 寫死 skill 名。
+當一條線是由協調者派出的多條平行線之一時,`dev-workflow` 的核心流程 SHALL 不變,但 SHALL 附加五項義務。完整規則屬於 `coordinate`;`dev-workflow` 內文 SHALL 只放**線側**契約,並以 name-map 指向該 skill,SHALL NOT 寫死 skill 名。
 
 #### Scenario: 以名字定址協調者
 - **WHEN** 一條線要回報給協調者
-- **THEN** SHALL 以名字定址(`coordinator`),SHALL NOT 以 pane id 定址——pane id 在換手時會變,名字不會
+- **THEN** SHALL 以名字定址,SHALL NOT 以 pane id 定址——pane id 在換手時會變,名字不會
+- **AND** 該名字 SHALL 來自**派線訊息**,SHALL NOT 是內文寫死的固定字串——herdr 名稱是全機扁平命名空間,固定字串會把回報靜默投給別支艦隊的協調者
+- **AND** 派線訊息未給位址時,線 SHALL 當作 fog 回報,SHALL NOT 自行猜一個名字
+
+#### Scenario: 投遞前驗收件人的艦隊歸屬
+- **WHEN** 線要送出回報
+- **THEN** SHALL 先確認該名字的 `cwd` 落在自己所屬的 repo 工作樹範圍內,比對值 SHALL 取自 `realpath "$(git rev-parse --path-format=absolute --git-common-dir)"`——旗標置後會靜默無效
+- **AND** 不符時 SHALL NOT 投遞——這是位址過期或派線訊息有誤時唯一攔得住誤投的檢查
 
 #### Scenario: 跨線事實即時回報
 - **WHEN** 線撞到任何別條線也可能動到的東西(共用 fixture、兩條線都斷言的量測、migration 版本、編號區間、落在兩者影響半徑內的檔案)
@@ -222,3 +229,4 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 #### Scenario: 推翻錯誤前提改走文字回報
 - **WHEN** 線認為協調者給的問題框架本身不成立,而它已無選單可用
 - **THEN** SHALL 以文字回報指出框架不對,該管道 SHALL 仍然有效——關閉的是攔截真人的介面,不是線的異議權
+
