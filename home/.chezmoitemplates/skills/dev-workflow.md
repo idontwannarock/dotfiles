@@ -271,16 +271,22 @@ coordinator's copy is the one being read by whoever writes the rules, and this c
 is the one actually being executed — report the mismatch rather than picking one.
 
 **Every report picks a carrier, and there are three, not two.** The test is *when*
-the content has to take effect for the reader: **now only** → a message; **at some
-future moment** → a file, with the message saying only that something is there;
-**now AND re-readable later** → **a file plus a short prompt pointing at it — both,
-not either**. A cross-line fact is always the third kind: it has to reach the
-coordinator now, but it is data, and whoever takes over has to re-verify it against
-the original wording.
+the content has to take effect for the reader: **now only** → **the message
+carrier**; **at some future moment** → **the file carrier**, with the message saying
+only that something is there; **now AND re-readable later** → **the file-plus-notice
+carrier**: a file plus a short prompt pointing at it — both, not either. A cross-line
+fact always rides the file-plus-notice carrier: it has to reach the coordinator now,
+but it is data, and whoever takes over has to re-verify it against the original
+wording.
 
-**One escalation rule, two triggers.** A message that would otherwise be the
-first kind moves to the third if it contains a backtick, `$` or `!`,
-**or** runs past **5 lines or 500 characters**. Those three characters are the ones
+**Name the three, never number them.** "The first kind" and "the third kind" are <!-- positional-ref: rule self-statement; quotes the banned form as its own counter-example -->
+positions, not identities — reorder the list or add a fourth and every sentence
+pointing at a position goes false at once, with nothing turning red. Both copies of
+this contract are guarded by `tests/carrier-positional-reference.test.sh`.
+
+**One escalation rule, two triggers.** A message that would otherwise ride the
+message carrier moves to the file-plus-notice carrier if it contains a backtick,
+`$` or `!`, **or** runs past **5 lines or 500 characters**. Those three characters are the ones
 the shell actually eats; a bare parenthesis inside a quoted argument is a literal,
 and listing it would escalate nearly every sentence of ordinary technical prose. The character limit is not
 redundant — a single three-thousand-character line floods the reader and a

@@ -18,6 +18,14 @@ on:
       # to catch — so its scan roots and this filter must move together.
       - 'home/.chezmoitemplates/skills/**'
       - 'home/dot_agent/reference/**'
+      # Same rule, second subject: carrier-positional-reference.test.sh,
+      # coordinate-section-xref.test.sh and carrier-contract-sync.test.sh
+      # declare openspec/specs and context/ in their scan roots. A guard whose
+      # population includes a tree this filter does not list is silent on
+      # exactly the PR that only touches that tree — and on CI, silence and
+      # passing are indistinguishable.
+      - 'openspec/specs/**'
+      - 'context/**'
       - '.github/workflows/test-shell.yml'
   workflow_dispatch:
 
