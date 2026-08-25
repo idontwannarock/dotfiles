@@ -647,7 +647,8 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 #### Scenario: 接班者上任自檢,偵測並回報而非自行代償
 - **WHEN** 一個接班 session 上任
 - **THEN** SHALL 查自己的 process cmdline 並與名冊那一列的形狀比對
-- **AND** 處置 SHALL 依角色分流:**線**具名回報協調者;**協調者**立刻對使用者說並請使用者重開一個沒帶旗標的 session——因為接班協調者的失效態正是升級鏈已斷,它沒有上級可報
+- **AND** 處置 SHALL 依角色分流:**線**具名回報協調者;**協調者**立刻對使用者說並請使用者**依名冊那一列的形狀**重開——因為接班協調者的失效態正是升級鏈已斷,它沒有上級可報
+- **AND** 處置 SHALL 涵蓋形狀的**兩格**(kind 與旗標),SHALL NOT 只講旗標——kind 錯而旗標對時,只修旗標會重開出同樣錯的 kind,於是自檢每次都報同一件事而處置永遠修不到它
 - **AND** SHALL NOT 自行繞過、SHALL NOT 改設定檔補旗標——那是啟動參數,跑到一半補不回來
 - **AND** 「**名冊上沒有我這一列**」SHALL 本身即是一個 finding 並被回報,SHALL NOT 被當成「沒事可查」
 - **AND** skill SHALL 區分兩個半邊:**旗標**補不回來,**升級契約**由協調者重發即可
@@ -672,6 +673,7 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 #### Scenario: 線側義務要有投遞路徑
 - **WHEN** skill 對**線**課予任何義務
 - **THEN** 該義務 SHALL 進派線訊息的酬載(與位址、升級契約同一則),因為沒有任何機制會讓實作線載入本 skill
+- **AND** 酬載 SHALL 一併給出履行該義務所需的座標(自檢需要 `fleet.md` 的路徑),因為線推導不出 `<repo-slug>` 與 `<fleet>`,而記載該路徑的正是它不會載入的那份 skill
 - **AND** SHALL 同步寫進 `dev-workflow` 的線側契約
 - **AND** SHALL NOT 僅以「線不讀你的 handoff」立論——那句講的是 handoff,不是 skill
 
