@@ -293,7 +293,7 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 
 #### Scenario: 序號不得承重
 - **WHEN** 收尾清單中插入新的一項
-- **THEN** 既有條文 SHALL 不因此失效——指涉 SHALL 以該項的內容命名(如「編號回收」),SHALL NOT 以「第五項」這類序號 <!-- positional-ref: 規則自述，引「第五項」作為反例，是 mention 不是 use -->
+- **THEN** 既有條文 SHALL 不因此失效——指涉 SHALL 以該項的內容命名(如「編號回收」),SHALL NOT 以「第五項」這類序號 <!-- positional-ref: 第五項: 規則自述，引它作為反例，是 mention 不是 use -->
 - **AND** 理由 SHALL 為:序號是位置不是身分,插入一項就會讓所有指涉它的文字同時變假,而且沒有任何東西會轉紅
 
 #### Scenario: 產出落地與未決事項是兩件事
@@ -440,7 +440,7 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 
 #### Scenario: 三格,而檔案＋通知格是兩者皆是
 - **WHEN** skill 呈現載體判準
-- **THEN** SHALL 以清單或表格列出三格:「只是現在要對方知道」→ 訊息;「要在對方未來某個時刻生效」→ 檔案,訊息只說有一份東西在那裡;「**現在要知道,且未來要能重讀**」→ **檔案 ＋ 帶摘要的 prompt,兩個都要**
+- **THEN** SHALL 以清單或表格列出三格:「只是現在要對方知道」→ 訊息;「要在對方未來某個時刻生效」→ 檔案,訊息只說有一份東西在那裡;「**現在要知道,且未來要能重讀**」→ **檔案 ＋ 通知,兩個都要**(通知要帶摘要)
 - **AND** 三格 SHALL 各有一個**內容命名**(`訊息格` / `檔案格` / `檔案＋通知格`),且該名字 SHALL 印在表上。指涉 SHALL 用名字,SHALL NOT 用「第N格」這類位置序號
 - **AND** 名字 SHALL 與被命名者的用詞一致——表格那一格寫「檔案 ＋ 通知」,「帶摘要的 prompt」SHALL 退為說明,SHALL NOT 讓名字與格內文字用不同的詞
 - **AND** SHALL 寫明檔案＋通知格**不是二選一**,SHALL NOT 讓讀者以為寫了檔就不必通知
@@ -881,8 +881,12 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 #### Scenario: 位置指涉由測試擋下
 - **WHEN** 有人在 skill body 或 spec 裡寫下「第N項」或「第N格」
 - **THEN** `tests/carrier-positional-reference.test.sh` SHALL 轉紅,SHALL NOT 只靠散文告誡
-- **AND** 母體 SHALL 明文宣告,豁免 SHALL 逐條寫理由
-- **AND** 規則自述(引用「第五項」作為反例的那句)SHALL 豁免,理由 SHALL 是那是 mention 不是 use <!-- positional-ref: 規則自述，引「第五項」作為反例來定義豁免本身，是 mention 不是 use -->
+- **AND** 禁止的字元集 SHALL 涵蓋 Arabic 數字、超過十的數、大小寫變體,英文側 SHALL 涵蓋線側契約實際使用的名詞(`carrier`),SHALL NOT 只涵蓋 `kind`——`kind` 在該檔另有 agent kind 的意思,而 `carrier` 才是改名後的用詞
+- **AND** 母體 SHALL 明文宣告,豁免 SHALL 逐條寫理由,理由 SHALL NOT 為純空白
+- **AND** 豁免 SHALL 綁**它所豁免的那個 token**,SHALL NOT 豁免整行。該行其餘命中 SHALL 照舊轉紅
+- **AND** 理由 SHALL 是:一行同時帶著合法豁免與另一個真違規,是這族最可能發生的形狀——合法帶標記的行正是規則說明行,而那種行日後最常被加上新的子句
+- **AND** 行尾判定 SHALL 容忍尾隨空白(markdown 的兩空格換行會讓合法豁免誤紅),且標記之後 SHALL NOT 允許另一個 HTML 註解
+- **AND** 規則自述(引用「第五項」作為反例的那句)SHALL 豁免,理由 SHALL 是那是 mention 不是 use <!-- positional-ref: 第五項: 規則自述，引它作為反例來定義豁免本身，是 mention 不是 use -->
 
 #### Scenario: 帶遞進語意的分層不在禁令範圍
 - **WHEN** 判斷「第①層」「第四層」這類序號是否違反本禁令
@@ -894,10 +898,12 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 - **THEN** `tests/coordinate-section-xref.test.sh` SHALL 驗證 `X` 是同檔某個標題的**子字串**,SHALL NOT 要求等值
 - **AND** 比對 SHALL 針對**原始文字**而非渲染後的文字,理由 SHALL 是引用與標題兩邊都可能帶模板語法
 - **AND** 指向本檔以外的目標(handoff 檔、內文標記)SHALL 逐條豁免並寫明指向何處
+- **AND** 豁免 SHALL 以**出現位置**(檔案＋名字)為鍵,SHALL NOT 以名字全域比對——否則為一處外部指涉給的豁免會永久豁免整棵樹裡同名的每一處
 
 #### Scenario: 兩份 body 的機械判準由測試同步
 - **WHEN** 任何機械判準同時出現在協調者 skill 與線側契約
-- **THEN** `tests/carrier-contract-sync.test.sh` SHALL 比對兩份的**門檻值與觸發字元集**,SHALL NOT 比對措辭——兩份用不同語言撰寫,比對措辭必然誤報
+- **THEN** `tests/carrier-contract-sync.test.sh` SHALL 比對兩份的**門檻值、觸發字元集、以及規則指名的來源與目的載體**,SHALL NOT 比對措辭——兩份用不同語言撰寫,比對措辭必然誤報
+- **AND** 觸發字元 SHALL 以**帶界定符**的形狀偵測(如帶反引號的 `` `$` ``),SHALL NOT 在整個窗裡搜尋裸的單一字元——`$` 與 `!` 在模板與散文裡到處都是,裸搜尋讓「移除一個觸發字元」被同窗的一句散文掩蓋
 - **AND** 該測試 SHALL 以「改一側 → 證明另一側轉紅 → 改回」實際驗證,SHALL NOT 以推理代替
 
 #### Scenario: 守衛的母體與 CI 觸發路徑要同時改
@@ -914,4 +920,26 @@ skill SHALL 標明此機制在哪些 agent 有機械保障:Claude 端以 `--disa
 - **THEN** SHALL 指出 handoff / pickup 工具鏈裡沒有任何東西會刪該目錄(`pickup` 只把 handoff `mv` 進 `archive/`)
 - **AND** SHALL NOT 以「某 repo 底下 N 個檔案、M 天」這類計數立論
 - **AND** 理由 SHALL 是:一個有限的觀測窗**證偽不了一個比它長的 TTL**,而計數會腐爛且讀者在別的機器上無法重驗
+
+### Requirement: coordinate 守衛要有一層斷言自己輸出的檢查
+穩態為零匹配的守衛,它的回報路徑在健康 repo 上**從不執行**。`coordinate` 的守衛 SHALL 有一層拿 fixture 跑整支腳本、斷言它**說了什麼**的檢查,SHALL NOT 只斷言判別式,也 SHALL NOT 只斷言它轉紅。
+
+#### Scenario: 判別式檢查擋不住回報路徑的缺陷
+- **WHEN** 一支守衛的正常狀態是零匹配
+- **THEN** SHALL 有一層 fixture 檢查,以已知的違規／豁免／乾淨三種輸入跑整支腳本
+- **AND** 該層 SHALL 斷言違規的那一行被點名、**豁免的那一行不被點名**、以及建議文字有出現
+- **AND** 理由 SHALL 是:把「違規」改判成「豁免」這種一行變更,會讓判別式的每一條斷言照樣通過而整支測試印綠
+
+#### Scenario: 宣稱了保證卻不提供保證的檢查要移除
+- **WHEN** 一段檢查在任何情況下都不會觸發(如把 `find` 的離開碼當成 `grep` 的)
+- **THEN** SHALL 移除它,SHALL NOT 留著並加註解說明它的限制
+- **AND** 理由 SHALL 是:一盞永遠不亮的燈會讓讀者以為那一族已經有人看著
+
+### Requirement: coordinate 多直譯器覆蓋要驗證 harness 真的換了
+宣稱「在兩個直譯器下都跑過」時,SHALL 確認**執行測試的那個程式**換了,SHALL NOT 只把直譯器名字傳進環境變數。
+
+#### Scenario: 迴圈變數換了值不等於直譯器換了
+- **WHEN** CI 以迴圈跑多個直譯器
+- **THEN** harness SHALL 以該直譯器執行測試檔本身
+- **AND** 理由 SHALL 是:只把名字傳進環境變數而 harness 寫死,不讀該變數的測試會被同一個直譯器跑兩遍,而 job log 顯示兩行綠
 

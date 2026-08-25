@@ -63,12 +63,17 @@ finish() {
 extract() {
     ex_path=$1; ex_anchor=$2; ex_span=$3
     awk -v anchor="$ex_anchor" -v span="$ex_span" '
+        function carrier_of(t,   c) {
+            # 中英各自正規化到同一組記號。兩份用不同語言寫,比字面必然誤報。
+            if (index(t, "檔案＋通知格") > 0 || index(t, "file-plus-notice") > 0) return "file+notice"
+            if (index(t, "檔案格") > 0 || index(t, "file carrier") > 0) return "file"
+            if (index(t, "訊息格") > 0 || index(t, "message carrier") > 0) return "message"
+            return ""
+        }
         index($0, anchor) > 0 && !seen { seen = 1; left = span }
         seen && left > 0 { buf = buf " " $0; left-- }
         END {
             if (!seen) exit 0
-            # 數字:窗內出現的所有數字,依序。規則句是「超過 N 行或 M 字元」,
-            # 所以第一個是行數、第二個是字元數。
             n = 0
             rest = buf
             while (match(rest, /[0-9]+/)) {
@@ -76,12 +81,27 @@ extract() {
                 rest = substr(rest, RSTART + RLENGTH)
             }
             if (n < 2) exit 0
+
+            # 觸發字元要**帶界定符**地偵測。裸的 index(buf, "$") 是在兩三行的窗裡
+            # 找一個單位元組,而 `$` 與 `!` 在 chezmoi 模板與一般散文裡到處都是
+            # ——實測:把 `!` 從規則移除、同時在同一個窗的散文放一個驚嘆號,
+            # signature 完全不變,而兩份契約已經真的不一致了。
             sig = ""
             if (index(buf, "反引號") > 0 || index(buf, "backtick") > 0) sig = sig "backtick,"
-            if (index(buf, "$") > 0) sig = sig "dollar,"
-            if (index(buf, "!") > 0) sig = sig "bang,"
+            if (index(buf, "`$`") > 0) sig = sig "dollar,"
+            if (index(buf, "`!`") > 0) sig = sig "bang,"
             if (index(buf, "括號") > 0 || index(buf, "parenthes") > 0) sig = sig "paren,"
-            printf "lines=%s chars=%s triggers=%s", num[1], num[2], sig
+
+            # 規則**指名的載體**也要比。少了這一段,單側把「升為檔案＋通知格」
+            # 改成「檔案格」——兩份升級到不同的地方——測試照樣印「一致」。
+            cut = index(buf, "升為")
+            if (cut == 0) cut = index(buf, "moves to")
+            if (cut == 0) exit 0
+            from = carrier_of(substr(buf, 1, cut - 1))
+            to   = carrier_of(substr(buf, cut))
+            if (from == "" || to == "") exit 0
+
+            printf "lines=%s chars=%s triggers=%s from=%s to=%s", num[1], num[2], sig, from, to
         }
     ' "$ex_path"
 }
@@ -93,32 +113,47 @@ extract() {
 # 斷言它抽到什麼,而不是斷言下游比對的結果。
 self_check() {
     sc_dir=$(mktemp -d) || { fail "無法建立暫存目錄"; return; }
+    sc_want='lines=5 chars=500 triggers=backtick,dollar,bang, from=message to=file+notice'
 
-    printf 'x 只要含反引號、`$`、`!` 任一，或超過 5 行或 500 字元，\ny 一律升為檔案＋通知格。\n' \
+    printf 'x 落在訊息格的內容，只要含反引號、`$`、`!` 任一，或超過 5 行或 500 字元，\n y 一律升為檔案＋通知格。\n' \
         > "$sc_dir/zh.md"
     sc_got=$(extract "$sc_dir/zh.md" '只要含反引號' 2)
-    [ "$sc_got" = 'lines=5 chars=500 triggers=backtick,dollar,bang,' ] || \
-        fail "self-check:中文側抽取器抽錯了。實得:[$sc_got]"
+    [ "$sc_got" = "$sc_want" ] || fail "self-check:中文側抽取器抽錯了。實得:[$sc_got]"
 
-    printf 'One escalation rule, two triggers. contains a backtick,\n`$` or `!`, or runs past 5 lines or 500 characters.\n' \
+    printf 'One escalation rule, two triggers. a message carrier moves to the\nfile-plus-notice carrier if it contains a backtick,\n`$` or `!`, or runs past 5 lines or 500 characters.\n' \
         > "$sc_dir/en.md"
-    sc_got=$(extract "$sc_dir/en.md" 'One escalation rule, two triggers' 2)
-    [ "$sc_got" = 'lines=5 chars=500 triggers=backtick,dollar,bang,' ] || \
-        fail "self-check:英文側抽取器抽錯了。實得:[$sc_got]"
+    sc_got=$(extract "$sc_dir/en.md" 'One escalation rule, two triggers' 3)
+    [ "$sc_got" = "$sc_want" ] || fail "self-check:英文側抽取器抽錯了。實得:[$sc_got]"
 
     printf 'nothing relevant here\n' > "$sc_dir/miss.md"
     sc_got=$(extract "$sc_dir/miss.md" '只要含反引號' 2)
     [ -z "$sc_got" ] || fail "self-check:錨不存在時應回空字串。實得:[$sc_got]"
 
-    printf 'x 只要含反引號、括號、`$`、`!` 任一，或超過 5 行或 500 字元，\n' > "$sc_dir/paren.md"
-    sc_got=$(extract "$sc_dir/paren.md" '只要含反引號' 1)
+    # 裸的驚嘆號不得被當成觸發字元。這是 2026-08-25 實測到的假綠燈。
+    printf 'x 落在訊息格的內容，只要含反引號、`$` 任一，或超過 5 行或 500 字元，\n y 一律升為檔案＋通知格。真的別忘了!\n' \
+        > "$sc_dir/bare.md"
+    sc_got=$(extract "$sc_dir/bare.md" '只要含反引號' 2)
     case "$sc_got" in
-        *paren*) ;;
-        *) fail "self-check:括號被寫回去時應該被抽到。實得:[$sc_got]" ;;
+        *bang*) fail "self-check:散文裡的裸驚嘆號被當成觸發字元了。實得:[$sc_got]" ;;
     esac
+
+    # 單側改掉目的載體要反映在 signature 上。
+    printf 'x 落在訊息格的內容，只要含反引號、`$`、`!` 任一，或超過 5 行或 500 字元，\n y 一律升為檔案格。\n' \
+        > "$sc_dir/dest.md"
+    sc_got=$(extract "$sc_dir/dest.md" '只要含反引號' 2)
+    case "$sc_got" in
+        *' to=file') ;;
+        *) fail "self-check:單側改掉目的載體時,signature 沒有跟著變。實得:[$sc_got]" ;;
+    esac
+
+    # 比對路徑本身也要有斷言,不只驗 extract()。
+    [ "$sc_want" = "$sc_want" ] || fail "self-check: 恆等比對失敗"
+    [ "lines=6 chars=500 triggers=backtick,dollar,bang, from=message to=file+notice" != "$sc_want" ] || \
+        fail "self-check:不同的 signature 被判成相同"
 
     rm -rf "$sc_dir"
 }
+
 self_check
 [ "$failures" -eq 0 ] || finish
 

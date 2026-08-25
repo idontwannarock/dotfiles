@@ -268,7 +268,9 @@ skill** — the trigger characters, the two thresholds, the create guard, the fi
 shape. You cannot load that skill, which is why they are restated here; but it means
 a change to either side has to be made twice. If you find the two disagreeing, the
 coordinator's copy is the one being read by whoever writes the rules, and this copy
-is the one actually being executed — report the mismatch rather than picking one.
+is the one actually being executed — report the mismatch rather than picking one. The two copies are compared by
+`tests/carrier-contract-sync.test.sh`, which checks the thresholds, the trigger set and
+the carriers the rule names -- not the wording, which is in two different languages.
 
 **Every report picks a carrier, and there are three, not two.** The test is *when*
 the content has to take effect for the reader: **now only** → **the message
@@ -279,7 +281,7 @@ fact always rides the file-plus-notice carrier: it has to reach the coordinator 
 but it is data, and whoever takes over has to re-verify it against the original
 wording.
 
-**Name the three, never number them.** "The first kind" and "the third kind" are <!-- positional-ref: rule self-statement; quotes the banned form as its own counter-example -->
+**Name the three, never number them.** "The first kind" and "the third kind" are <!-- positional-ref: first kind/third kind: rule self-statement; quotes the banned forms as its own counter-examples -->
 positions, not identities — reorder the list or add a fourth and every sentence
 pointing at a position goes false at once, with nothing turning red. Both copies of
 this contract are guarded by `tests/carrier-positional-reference.test.sh`.

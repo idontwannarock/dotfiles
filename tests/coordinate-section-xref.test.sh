@@ -1,8 +1,9 @@
 #!/bin/sh
 # coordinate-section-xref.test.sh — 〈X〉 要指得到一個真的章節。
 #
-# `coordinate.md` 用〈X〉這個標記交叉引用自己的章節,而它有 33 個引用、56 個標題,
-# 全部靠人腦維持一致。改一個標題的措辭,指向它的每一處引用同時變成死連結
+# `coordinate.md` 用〈X〉這個標記交叉引用自己的章節:33 個**不重複的名字**、
+# 70 **處**引用、56 個標題,全部靠人腦維持一致。
+# (下限守的是「處」,不是「名字」——抽取器壞掉時掉的是處數。)改一個標題的措辭,指向它的每一處引用同時變成死連結
 # ——**而且沒有任何東西會轉紅**。這是〈序號不得承重〉的同族失敗:
 # 指涉的目標改了名,指涉本身不會知道。
 #
@@ -15,8 +16,10 @@
 # 這種引用兩邊都帶著模板;先渲染再比對會引入一個「用哪組變數渲染」的問題,
 # 而那個問題沒有唯一答案(同一份 body 有兩個 tool 分支)。原始文字有。
 #
-# 豁免是明文的,不是推導的。下面七條指向的不是本檔章節而是 handoff 檔的段落
-# 或內文標記,每條寫明指向何處。它們用一張表宣告,不是用啟發式規則
+# 豁免是明文的,不是推導的,而且**綁出現位置**(檔案＋名字),不是只綁名字。
+# 只綁名字的話,因 `coordinate.md` 指向 handoff 標題而給的豁免,會永久豁免整棵樹裡
+# 同名的每一處——包括另一個檔案裡一個真正壞掉的連結。實測過會漏。
+# 下面七條指向的不是本檔章節而是 handoff 檔的段落或內文標記,每條寫明指向何處。它們用一張表宣告,不是用啟發式規則
 # ——啟發式(「跳過 code fence」「跳過表格」)會在措辭被改寫時自己重新判一次,
 # 而措辭被改寫正是這種漂移發生的時候。
 #
@@ -25,8 +28,10 @@
 # 沒有機械的真值來源可以判那個。
 #
 # 抽取用 index()／substr(),不用正規表示式,也不用寫死的位元組偏移量。
-# `[^〉]*` 這種否定字元集在 C locale 下是「排除〉那三個位元組」,遇到任何 CJK 字
-# 就提早停——整支測試會靜默漏抓,印出綠燈。而 index() 與 substr() 在同一次執行裡
+# `[^〉]*` 這種否定字元集在 C locale 下是「排除〉那三個位元組」(`E3 80 89`),
+# 所以它在**含有那三個位元組之一**的字上提早停——不是「任何 CJK 字」:
+# 一 = `E4 B8 80` 會停(含 `80`),見 = `E8 A6 8B` 不會。結論仍是別用它,
+# 但理由是「停在哪裡取決於位元組巧合」,不是「一律停」。而 index() 與 substr() 在同一次執行裡
 # 用同一種模式(字元或位元組),所以**彼此一致**,兩種 locale 下都對。
 # 標題比對也避開 `{2,4}` 這種 interval:CI 的 ubuntu-latest 預設 awk 是 mawk。
 #
@@ -42,7 +47,7 @@ scan_root='home/.chezmoitemplates/skills'
 # 下限:掃到的檔案數,與抽出的引用數。引用數的下限守的是「抽取本身壞掉」
 # ——正規表示式失手時結果是 0 個引用、0 個失敗,那會印出一個漂亮的綠燈。
 floor_files=20
-floor_refs=28
+floor_refs=60
 
 # fixture 模式:message_check 用它把整支腳本跑在一個丟棄式目錄上。
 if [ -n "${XREF_FIXTURE_DIR:-}" ]; then
@@ -77,28 +82,26 @@ finish() {
 exemptions=$(
     [ -n "${XREF_FIXTURE_DIR:-}" ] && exit 0
     cat <<'EXEMPT'
-Open / unresolved	指向 handoff 檔的段落標題,不是本檔章節
-待認領	指向 handoff 檔的段落標題,不是本檔章節
-實例甲	內文標記(一則軼事的代號),不是章節
-本輪產生的裁決	指向 handoff 檔的段落標題,不是本檔章節
-本輪產生的裁決（不要重新討論）	指向 handoff 檔的段落標題,不是本檔章節
-動工前重跑 `git fetch`	指向收尾清單裡的一項,不是章節
-資源池	指向名冊表的一個欄位,不是章節
+home/.chezmoitemplates/skills/coordinate.md	Open / unresolved	指向 handoff 檔的段落標題,不是本檔章節
+home/.chezmoitemplates/skills/coordinate.md	待認領	指向 handoff 檔的段落標題,不是本檔章節
+home/.chezmoitemplates/skills/coordinate.md	實例甲	內文標記(一則軼事的代號),不是章節
+home/.chezmoitemplates/skills/coordinate.md	本輪產生的裁決	指向 handoff 檔的段落標題,不是本檔章節
+home/.chezmoitemplates/skills/coordinate.md	本輪產生的裁決（不要重新討論）	指向 handoff 檔的段落標題,不是本檔章節
+home/.chezmoitemplates/skills/coordinate.md	動工前重跑 `git fetch`	指向收尾清單裡的一項,不是章節
+home/.chezmoitemplates/skills/coordinate.md	資源池	指向名冊表的一個欄位,不是章節
 EXEMPT
 )
 
-# 迴圈跑在 subshell 裡,所以用**離開碼**回話——而 `while` 正常跑完也是 0,
-# 於是「找到了」與「找完了都沒找到」在管線的離開碼上長得一模一樣。
-# 所以迴圈之後要明確 `exit 1`。少了那一行,空的豁免表會把每一條引用都判成豁免,
-# 印出一盞漂亮的綠燈;self-check 就是這樣抓到它的。
 is_exempt() {
-    ie_name=$1
+    ie_file=$1
+    ie_name=$2
     printf '%s\n' "$exemptions" | {
-        while IFS='	' read -r ie_ref ie_reason; do
-            [ -n "$ie_ref" ] || continue
-            [ "$ie_ref" = "$ie_name" ] || continue
+        while IFS='	' read -r ex_file ex_ref ex_reason; do
+            [ -n "$ex_file" ] || continue
+            [ "$ex_file" = "$ie_file" ] || continue
+            [ "$ex_ref" = "$ie_name" ] || continue
             # 理由為空的豁免等於靜音鈕,不算數。
-            [ -n "$ie_reason" ] && exit 0
+            [ -n "$ex_reason" ] && exit 0
         done
         exit 1
     }
@@ -200,7 +203,7 @@ while IFS='	' read -r file lineno status name; do
     refs_seen=$((refs_seen + 1))
     [ "$status" = "unresolved" ] || continue
     rel=${file#"$repo_root"/}
-    if is_exempt "$name"; then
+    if is_exempt "$rel" "$name"; then
         exempt=$((exempt + 1))
         continue
     fi

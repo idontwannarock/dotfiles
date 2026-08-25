@@ -18,12 +18,12 @@ on:
       # to catch — so its scan roots and this filter must move together.
       - 'home/.chezmoitemplates/skills/**'
       - 'home/dot_agent/reference/**'
-      # Same rule, second subject: carrier-positional-reference.test.sh,
-      # coordinate-section-xref.test.sh and carrier-contract-sync.test.sh
-      # declare openspec/specs and context/ in their scan roots. A guard whose
-      # population includes a tree this filter does not list is silent on
-      # exactly the PR that only touches that tree — and on CI, silence and
-      # passing are indistinguishable.
+      # Same rule, second subject: carrier-positional-reference.test.sh declares
+      # openspec/specs and context/ among its scan roots. (The other two new
+      # guards scan only the skill bodies covered above — do not read this pair
+      # of entries as applying to them.) A guard whose population includes a
+      # tree this filter does not list is silent on exactly the PR that only
+      # touches that tree — and on CI, silence and passing are indistinguishable.
       - 'openspec/specs/**'
       - 'context/**'
       - '.github/workflows/test-shell.yml'
@@ -54,9 +54,14 @@ jobs:
       - name: Run tests
         run: |
           set -e
+          # The harness itself must BE the interpreter under test. Passing the
+          # name only through SEED_SH left every test that does not read that
+          # variable running under /bin/sh twice, while the log printed two
+          # green lines per file and implied coverage that never happened.
+          # SEED_SH stays: the tests that drive a *subject* shell still read it.
           for shell in sh bash; do
             for t in tests/*.test.sh; do
               echo "== $shell $t"
-              SEED_SH="$shell" sh "$t"
+              SEED_SH="$shell" "$shell" "$t"
             done
           done
