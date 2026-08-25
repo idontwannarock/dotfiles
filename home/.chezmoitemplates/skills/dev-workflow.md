@@ -257,6 +257,38 @@ Your local view is never the whole truth — a number you measured is true only 
 the base you measured it on, and the coordinator is the only one merging those
 into one answer. Waiting until merge means the wrong number already shipped.
 
+**Every report picks a carrier, and there are three, not two.** The test is *when*
+the content has to take effect for the reader: **now only** → a message; **at some
+future moment** → a file, with the message saying only that something is there;
+**now AND re-readable later** → **a file plus a short prompt pointing at it — both,
+not either**. A cross-line fact is always the third kind: it has to reach the
+coordinator now, but it is data, and whoever takes over has to re-verify it against
+the original wording.
+
+**One escalation rule, two triggers.** A message that would otherwise be the
+first kind moves to the third if it contains a backtick, `$`, `!`, or parentheses,
+**or** runs past **5 lines or 500 characters**. The character limit is not
+redundant — a single three-thousand-character line floods the reader and a
+line-count test cannot see it. This is a guard, not a reminder: messages sent
+through `herdr agent prompt` pass through a shell, and the characters above get
+eaten silently, so a report can arrive complete-looking and missing exactly the
+identifiers it existed to carry.
+
+**Files go in `<fleet-dir>/msgs/`, one message per file, created never appended.**
+⚠️ **You cannot derive that path** — it contains the repo slug and the fleet name,
+neither of which you hold, and the skill that documents it is the coordinator's,
+which nothing makes you load. **The dispatch message must carry it**, alongside the
+roster path and the escalation contract. If your dispatch carried no such path,
+report that as fog rather than inventing one — the same way a missing roster path
+is itself the finding.
+
+**When you act on a ruling, name the message file it came from in your next report.**
+Not an acknowledgement — there is deliberately no receipt mechanism, because a
+receipt only ever proves you read it, never that you acted. It rides on a report you
+were going to send anyway, so it adds no message and cannot recurse. Its value is
+that **citing the wrong file is visible**, which turns a silent miss into an
+inconsistency someone can see.
+
 **A ruling with a wrong premise should be pushed back on, not executed.** The
 coordinator's question frame can itself be wrong, and answering only within the
 options offered turns its error into a decision. If the frame is wrong, say the
