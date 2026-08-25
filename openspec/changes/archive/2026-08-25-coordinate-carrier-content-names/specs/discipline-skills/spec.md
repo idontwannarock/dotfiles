@@ -105,7 +105,7 @@
 - **WHEN** 有人在 skill body 或 spec 裡寫下「第N項」或「第N格」
 - **THEN** `tests/carrier-positional-reference.test.sh` SHALL 轉紅,SHALL NOT 只靠散文告誡
 - **AND** 母體 SHALL 明文宣告,豁免 SHALL 逐條寫理由
-- **AND** 規則自述(引用「第五項」作為反例的那句)SHALL 豁免,理由 SHALL 是那是 mention 不是 use
+- **AND** 規則自述(引用「第五項」作為反例的那句)SHALL 豁免,理由 SHALL 是那是 mention 不是 use <!-- positional-ref: 規則自述，引「第五項」作為反例來定義豁免本身，是 mention 不是 use -->
 
 #### Scenario: 帶遞進語意的分層不在禁令範圍
 - **WHEN** 判斷「第①層」「第四層」這類序號是否違反本禁令
