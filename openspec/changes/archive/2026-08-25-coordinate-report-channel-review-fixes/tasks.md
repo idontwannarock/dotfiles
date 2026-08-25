@@ -35,6 +35,7 @@
 - [x] 4.1 三支 shell 測試 × `sh`／`bash` 全綠
 - [x] 4.2 `openspec validate --all` 與 `--changes` 全過
 - [x] 4.3 **逐條列舉** 18 條 scenario,對照 body 實際文字分類。⚠️ 上一輪 14/14 全綠而本輪找出 12 項缺陷——**列舉法證明的是「有對應文字」,不是「那段文字說得對」**
-- [ ] 4.4 **`code:review-cross-model`**(上一輪未跑)。這是本輪唯一能抓「同一批先驗的共同盲點」的關卡,**列舉法結構上抓不到那一族**
+- [x] 4.4 **`code:review-cross-model`**(上一輪未跑)。這是本輪唯一能抓「同一批先驗的共同盲點」的關卡,**列舉法結構上抓不到那一族**
 - [x] 4.5 `chezmoi diff` 限縮到本次子樹、逐行歸因刪除行、確認無退版後再 `chezmoi apply` 同一組路徑
   - blocked by 1-3 全部
+  - 結果:counterpart=`codex`(不同 kind、writes 侷限於 repo、teardown 後樹比對無越界寫入)。**5 條 findings 全部由我方複驗,4 條成立 1 條降級;12 條我方 findings 全被判 Real,但 6 條被指「修得不完整」;並推翻我方一條支持論證。** 產出移交 Round 3。
