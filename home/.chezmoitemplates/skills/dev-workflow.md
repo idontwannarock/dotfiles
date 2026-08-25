@@ -187,9 +187,41 @@ When writing tasks.md (either workflow):
 ## When this line is one of several (coordinated mode)
 
 If a coordinator dispatched this line — several lines run in parallel and one
-agent holds them together — the flow above is unchanged, but five obligations
-are added. Full rules live in the `{{ .n.coordinate }}` skill; this is the
-line-side contract.
+agent holds them together — the flow above is unchanged, but the obligations
+below are added. Full rules live in the `{{ .n.coordinate }}` skill; this is the
+line-side contract. Do not count them: a count in the prose goes false the moment
+one is added, and nothing turns red when it does.
+
+**On arrival after a handover, check your own startup shape before doing anything
+else.** Read your own process cmdline — not a display layer — and compare it against
+the shape the fleet roster records for your name: the agent kind, and whether you
+should be carrying the flag that closes your ask-the-human channel. A handover must
+preserve that shape; a successor opened at a different one is a line whose name is
+perfectly normal and whose startup shape is wrong. **This check is the only thing that
+catches it** — the coordinator's roster-versus-herdr difference sees both the old and
+the new session under the same name and reads the pair as normal, so nothing upstream
+turns red.
+
+**The dispatch message must give you the roster's path.** It is not derivable from
+anything you hold, and the skill that documents its location is the coordinator's, which
+nothing makes you load. If your dispatch carried no path, report that as fog rather than
+guessing one — a guessed path that happens not to exist reads exactly like a roster with
+no row for you.
+
+Mismatch means **report it to the coordinator by name and stop** — the escalation
+contract already covers the stopping. Say which half is wrong, the kind or the flag:
+a remedy aimed at the flag alone leaves a wrong kind in place and the same mismatch
+comes back on the next arrival. Never compensate on your own, and never edit a config
+file to add the flag: it is a startup argument, unrecoverable mid-run, and the
+config-file route closes the same channel for every other session in scope, including
+the coordinator's. If the roster has no row for your name at all, that is itself the
+finding — report it rather than reading it as "nothing to check".
+
+Two halves fail differently. The **flag** cannot be restored mid-run. The **escalation
+contract** can: the coordinator re-sends it, no restart needed — and the contract is the
+half that actually changes behaviour. Whether the flag is even mechanically achievable
+depends on your agent kind; where it is not, say so explicitly rather than passing the
+check silently, or "not applicable" and "checked, fine" become indistinguishable.
 
 **Address the coordinator by the name your dispatch message gave you, never by pane
 id and never by a fixed string.** Report with `herdr agent prompt <that-name> "..."`.
