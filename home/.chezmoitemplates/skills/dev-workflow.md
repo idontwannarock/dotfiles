@@ -208,6 +208,12 @@ nothing makes you load. If your dispatch carried no path, report that as fog rat
 guessing one — a guessed path that happens not to exist reads exactly like a roster with
 no row for you.
 
+**Read `msgs/` for anything addressed to your name before you do anything else.**
+Rulings and merged cross-line facts are written there for you, and the duty to cite
+them rides on your next report — so a handover that lands before that report leaves
+you unaware a ruling exists, while your name, your worktree and everything else look
+entirely normal.
+
 Mismatch means **report it to the coordinator by name and stop** — the escalation
 contract already covers the stopping. Say which half is wrong, the kind or the flag:
 a remedy aimed at the flag alone leaves a wrong kind in place and the same mismatch
@@ -256,6 +262,73 @@ version numbers, decision-number ranges, a port or test file in both blast radii
 Your local view is never the whole truth — a number you measured is true only for
 the base you measured it on, and the coordinator is the only one merging those
 into one answer. Waiting until merge means the wrong number already shipped.
+
+⚠️ **The mechanical parts of this section are duplicated from the coordinator's own
+skill** — the trigger characters, the two thresholds, the create guard, the filename
+shape. You cannot load that skill, which is why they are restated here; but it means
+a change to either side has to be made twice. If you find the two disagreeing, the
+coordinator's copy is the one being read by whoever writes the rules, and this copy
+is the one actually being executed — report the mismatch rather than picking one.
+
+**Every report picks a carrier, and there are three, not two.** The test is *when*
+the content has to take effect for the reader: **now only** → a message; **at some
+future moment** → a file, with the message saying only that something is there;
+**now AND re-readable later** → **a file plus a short prompt pointing at it — both,
+not either**. A cross-line fact is always the third kind: it has to reach the
+coordinator now, but it is data, and whoever takes over has to re-verify it against
+the original wording.
+
+**One escalation rule, two triggers.** A message that would otherwise be the
+first kind moves to the third if it contains a backtick, `$` or `!`,
+**or** runs past **5 lines or 500 characters**. Those three characters are the ones
+the shell actually eats; a bare parenthesis inside a quoted argument is a literal,
+and listing it would escalate nearly every sentence of ordinary technical prose. The character limit is not
+redundant — a single three-thousand-character line floods the reader and a
+line-count test cannot see it. This is a guard, not a reminder: messages sent
+through `herdr agent prompt` pass through a shell, and the characters above get
+eaten silently, so a report can arrive complete-looking and missing exactly the
+identifiers it existed to carry.
+
+**Files go one per message in the fleet's `msgs/` directory, created never
+appended, named `<ts>-<from>-<to>-<topic>.md` with `<topic>` restricted to
+`[a-z0-9-]+`.** The character restriction is not tidiness: the path itself travels
+through a shell, and an MR number like `!53` in a filename is eaten silently, so
+the recipient gets a path that does not exist while the file does — which reads as
+the sender having lied about writing it.
+
+⚠️ **"Created" has to be enforced, not just stated.** A redirect, a heredoc or a
+write tool overwrites an existing path in silence, and nothing under `~/.agent/` is
+in version control. Guard the write:
+
+```sh
+[ -e "$f" ] && { echo "COLLISION: $f"; exit 1; }
+```
+
+⚠️ **That directory dies with the fleet.** Anything of yours that has to outlive it
+must be moved out before you close down — and you are the only one who knows which
+of your messages qualifies, so expect to be asked at closeout rather than checked.
+
+⚠️ **You cannot derive that path** — it contains the repo slug and the fleet name,
+neither of which you hold, and the skill that documents it is the coordinator's,
+which nothing makes you load. **The dispatch message must carry it**, alongside the
+roster path and the escalation contract — the ask-a-human one, not the carrier
+rule above; they share the word and mean different things. If your dispatch carried no such path,
+report that as fog rather than inventing one — the same way a missing roster path
+is itself the finding.
+
+**In your next report, name every ruling file you received and say whether you
+acted on it — and if not, why.** Not when you act on one: unconditionally. Making
+the obligation conditional on acting exempts the case of opening a ruling and
+judging no action needed, which is the one case the coordinator otherwise cannot
+tell apart from never having opened it — a rule must not exclude the thing it
+exists to detect. This is not an acknowledgement: there is deliberately no receipt
+mechanism, because a receipt only ever proves you read something, never that you
+acted. It rides on a report you were going to send anyway, so it adds no message
+and cannot recurse. It buys two things — **citing the wrong file is visible**, and
+two silences become two visibly different reports.
+
+A one-line ruling that arrived as a plain message has no file; do not cite one that
+does not exist.
 
 **A ruling with a wrong premise should be pushed back on, not executed.** The
 coordinator's question frame can itself be wrong, and answering only within the
