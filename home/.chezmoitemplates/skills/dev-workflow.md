@@ -208,6 +208,12 @@ nothing makes you load. If your dispatch carried no path, report that as fog rat
 guessing one — a guessed path that happens not to exist reads exactly like a roster with
 no row for you.
 
+**Read `msgs/` for anything addressed to your name before you do anything else.**
+Rulings and merged cross-line facts are written there for you, and the duty to cite
+them rides on your next report — so a handover that lands before that report leaves
+you unaware a ruling exists, while your name, your worktree and everything else look
+entirely normal.
+
 Mismatch means **report it to the coordinator by name and stop** — the escalation
 contract already covers the stopping. Say which half is wrong, the kind or the flag:
 a remedy aimed at the flag alone leaves a wrong kind in place and the same mismatch
@@ -257,6 +263,13 @@ Your local view is never the whole truth — a number you measured is true only 
 the base you measured it on, and the coordinator is the only one merging those
 into one answer. Waiting until merge means the wrong number already shipped.
 
+⚠️ **The mechanical parts of this section are duplicated from the coordinator's own
+skill** — the trigger characters, the two thresholds, the create guard, the filename
+shape. You cannot load that skill, which is why they are restated here; but it means
+a change to either side has to be made twice. If you find the two disagreeing, the
+coordinator's copy is the one being read by whoever writes the rules, and this copy
+is the one actually being executed — report the mismatch rather than picking one.
+
 **Every report picks a carrier, and there are three, not two.** The test is *when*
 the content has to take effect for the reader: **now only** → a message; **at some
 future moment** → a file, with the message saying only that something is there;
@@ -266,8 +279,10 @@ coordinator now, but it is data, and whoever takes over has to re-verify it agai
 the original wording.
 
 **One escalation rule, two triggers.** A message that would otherwise be the
-first kind moves to the third if it contains a backtick, `$`, `!`, or parentheses,
-**or** runs past **5 lines or 500 characters**. The character limit is not
+first kind moves to the third if it contains a backtick, `$` or `!`,
+**or** runs past **5 lines or 500 characters**. Those three characters are the ones
+the shell actually eats; a bare parenthesis inside a quoted argument is a literal,
+and listing it would escalate nearly every sentence of ordinary technical prose. The character limit is not
 redundant — a single three-thousand-character line floods the reader and a
 line-count test cannot see it. This is a guard, not a reminder: messages sent
 through `herdr agent prompt` pass through a shell, and the characters above get
@@ -276,10 +291,18 @@ identifiers it existed to carry.
 
 **Files go one per message in the fleet's `msgs/` directory, created never
 appended, named `<ts>-<from>-<to>-<topic>.md` with `<topic>` restricted to
-`[a-z0-9-]`.** The character restriction is not tidiness: the path itself travels
+`[a-z0-9-]+`.** The character restriction is not tidiness: the path itself travels
 through a shell, and an MR number like `!53` in a filename is eaten silently, so
 the recipient gets a path that does not exist while the file does — which reads as
 the sender having lied about writing it.
+
+⚠️ **"Created" has to be enforced, not just stated.** A redirect, a heredoc or a
+write tool overwrites an existing path in silence, and nothing under `~/.agent/` is
+in version control. Guard the write:
+
+```sh
+[ -e "$f" ] && { echo "COLLISION: $f"; exit 1; }
+```
 
 ⚠️ **That directory dies with the fleet.** Anything of yours that has to outlive it
 must be moved out before you close down — and you are the only one who knows which
