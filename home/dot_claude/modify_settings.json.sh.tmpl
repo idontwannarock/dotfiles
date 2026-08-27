@@ -8,6 +8,7 @@
 # 同步的欄位：
 # - model = claude-opus-5（200K context 變體，非 [1m] 1M variant）
 # - effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
+# - outputStyle = ELI5（output style 本體在 output-styles/ELI5.md）
 # - permissions.defaultMode = bypassPermissions
 # - permissions.allow 併入 "Skill(*)"（union + unique，不覆蓋現有 entries）
 # - statusLine（跨平台處理執行檔路徑）
@@ -55,6 +56,7 @@ echo "$input" | jq \
   '
     .model = "claude-opus-5"
     | .effortLevel = "high"
+    | .outputStyle = "ELI5"
     | .autoUpdatesChannel = "latest"
     | .skipDangerousModePermissionPrompt = true
     | .skillListingBudgetFraction = 0.02
