@@ -16,13 +16,14 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 │   ├── git/                # Git 操作簡寫指令
 │   └── code/               # Code Review 指令
 ├── skills/                 # 自家 discipline skills（非 exact_）
+├── output-styles/          # Output styles（非 exact_）
 ├── hooks/                  # Hook 腳本
 └── exact_agents/           # Agents（exact_：自動清理移除的檔案）
 ```
 
-`commands/` 與 `skills/` 刻意**不用** `exact_` 前綴——這兩個目錄天生會有 plugin 寫入的、機器專屬的、或實驗中的檔案（本機實測即有 3 個未受管理的 command）。`exact_agents/` 則是 chezmoi 獨佔，用 `exact_` 才對。
+`commands/`、`skills/` 與 `output-styles/` 刻意**不用** `exact_` 前綴——這幾個目錄天生會有 plugin 寫入的、機器專屬的、或實驗中的檔案（本機實測即有 3 個未受管理的 command）。`exact_agents/` 則是 chezmoi 獨佔，用 `exact_` 才對。
 
-因此退役一個 command/skill 時，必須在 `home/.chezmoiremove` 點名該路徑，移除才會傳播到每台機器。
+因此退役一個 command/skill/output style 時，必須在 `home/.chezmoiremove` 點名該路徑，移除才會傳播到每台機器。
 
 ## Global Instructions (CLAUDE.md)
 
