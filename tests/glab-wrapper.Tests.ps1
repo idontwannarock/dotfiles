@@ -20,6 +20,32 @@ BeforeAll {
     $script:MockDir = Join-Path ([IO.Path]::GetTempPath()) ("glab-wrapper-" + [Guid]::NewGuid())
     New-Item -ItemType Directory -Path $MockDir -Force | Out-Null
 
+    # Config-store fixtures for the token-in-config guard. `token:` with no value is
+    # what glab leaves behind for a host it has never authenticated, and the comment
+    # lines are verbatim from glab's own generated config -- both must pass.
+    $script:EmptyConfigDir = Join-Path $MockDir 'cfg-empty-dir'
+    New-Item -ItemType Directory -Path $EmptyConfigDir -Force | Out-Null
+
+    $script:TokenConfigDir = Join-Path $MockDir 'cfg-token'
+    New-Item -ItemType Directory -Path $TokenConfigDir -Force | Out-Null
+    "hosts:`n    gitlab.example.com:`n        token: glpat-PLAINTEXT`n" |
+        Set-Content -Path (Join-Path $TokenConfigDir 'config.yml') -Encoding utf8
+
+    $script:BlankConfigDir = Join-Path $MockDir 'cfg-blank'
+    New-Item -ItemType Directory -Path $BlankConfigDir -Force | Out-Null
+    "hosts:`n    gitlab.example.com:`n        token:`n        job_token:`n" |
+        Set-Content -Path (Join-Path $BlankConfigDir 'config.yml') -Encoding utf8
+
+    $script:CommentConfigDir = Join-Path $MockDir 'cfg-comment'
+    New-Item -ItemType Directory -Path $CommentConfigDir -Force | Out-Null
+    "        # Your GitLab access token. To get one, read https://example`n        #   value: Bearer token123`n        token:`n" |
+        Set-Content -Path (Join-Path $CommentConfigDir 'config.yml') -Encoding utf8
+
+    $script:JobTokenConfigDir = Join-Path $MockDir 'cfg-jobtoken'
+    New-Item -ItemType Directory -Path $JobTokenConfigDir -Force | Out-Null
+    "hosts:`n    gitlab.example.com:`n        job_token:  ci-job-token`n" |
+        Set-Content -Path (Join-Path $JobTokenConfigDir 'config.yml') -Encoding utf8
+
     # Echoes one line per argument so the test can assert on argv boundaries and
     # order, which `echo %*` would flatten away.
     @'
@@ -50,7 +76,8 @@ exit /b 1
             [string]$Token = 'faketoken',
             [string]$VaultToken = '',
             [string]$Path = '',
-            [string]$Trailer = ''
+            [string]$Trailer = '',
+            [string]$ConfigDir = ''
         )
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = (Get-Process -Id $PID).Path
@@ -72,6 +99,10 @@ exit /b 1
         else { $psi.EnvironmentVariables.Remove('GITLAB_HOST') | Out-Null }
         if ($Token) { $psi.EnvironmentVariables['GITLAB_TOKEN'] = $Token }
         else { $psi.EnvironmentVariables.Remove('GITLAB_TOKEN') | Out-Null }
+        # Pinned on every call, never inherited: the config-store guard reads this
+        # path, and an unpinned run would consult the developer's real glab config
+        # and fail (or pass) for reasons that have nothing to do with the test.
+        $psi.EnvironmentVariables['GLAB_CONFIG_DIR'] = if ($ConfigDir) { $ConfigDir } else { $EmptyConfigDir }
         $proc   = [System.Diagnostics.Process]::Start($psi)
         $stdout = $proc.StandardOutput.ReadToEnd()
         $stderr = $proc.StandardError.ReadToEnd()
@@ -170,6 +201,55 @@ Describe '26-glab.ps1' {
             $r = Invoke-Glab -Arguments 'api version' -Path 'C:\Windows\System32'
             $r.Stderr | Should -Match '^glab: binary not on PATH'
             $r.ExitCode | Should -Be 127
+        }
+
+        # The leak this guard exists for: `glab auth login` bypasses the wrapper and
+        # writes the token as plaintext YAML that survives forever. Found by hand on
+        # 2026-08-28, which is exactly the discovery path this replaces.
+        It 'refuses when the config store holds a plaintext token' {
+            $r = Invoke-Glab -Arguments 'api version' -ConfigDir $TokenConfigDir
+            $r.Stderr | Should -Match '^glab: config store'
+            $r.Stderr | Should -Not -Match 'glab: glab:'
+            $r.ExitCode | Should -Be 1
+            $r.Argv.Count | Should -Be 0
+        }
+
+        # ASCII-only assertions on purpose. The child runs with -NoProfile, so
+        # 00-encoding.ps1 never sets the console to UTF-8 and the CJK half of the
+        # message arrives mojibake -- which the file header already states is out of
+        # the mirror guarantee. Asserting on it would test the console, not the guard.
+        It 'names the offending file and the clearing command in the message' {
+            $r = Invoke-Glab -Arguments 'api version' -ConfigDir $TokenConfigDir
+            $r.Stderr | Should -Match ([regex]::Escape((Join-Path $TokenConfigDir 'config.yml')))
+            $r.Stderr | Should -Match 'glab config set token "" --host'
+            $r.Stderr | Should -Match 'docs/gitlab-corp-access.md'
+        }
+
+        # job_token is a credential too, and `^token:` does not match it.
+        It 'refuses on a plaintext job_token as well' {
+            $r = Invoke-Glab -Arguments 'api version' -ConfigDir $JobTokenConfigDir
+            $r.ExitCode | Should -Be 1
+            $r.Argv.Count | Should -Be 0
+        }
+
+        # A guard that fires on the empty key glab leaves for unauthenticated hosts
+        # would block every call, so this is the case that decides whether it ships.
+        It 'allows a config store whose token key has no value' {
+            $r = Invoke-Glab -Arguments 'api version' -ConfigDir $BlankConfigDir
+            $r.Argv | Should -Be @('api', 'version')
+            $r.ExitCode | Should -Be 0
+        }
+
+        It 'does not mistake glab own comment lines for a token' {
+            $r = Invoke-Glab -Arguments 'api version' -ConfigDir $CommentConfigDir
+            $r.Argv | Should -Be @('api', 'version')
+            $r.ExitCode | Should -Be 0
+        }
+
+        It 'allows a config store that does not exist' {
+            $r = Invoke-Glab -Arguments 'api version' -ConfigDir $EmptyConfigDir
+            $r.Argv | Should -Be @('api', 'version')
+            $r.ExitCode | Should -Be 0
         }
 
         It 'writes guard messages to stderr and not to stdout' {
