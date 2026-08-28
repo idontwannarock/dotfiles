@@ -85,7 +85,7 @@ Both wrappers emit the same two strings, on purpose:
 | `config store 內有明文 token（…）` | Something wrote a token into `glab`'s own config file. See below. |
 
 To reach gitlab.com deliberately, bypass the wrapper: `command glab …` in bash,
-or `& (Get-Command glab -CommandType Application).Source …` in PowerShell.
+or `& (Get-Command glab -CommandType Application | Select-Object -First 1).Source …` in PowerShell.
 
 ## The config store is off-limits, and the wrapper enforces it
 
@@ -125,7 +125,7 @@ command glab config set token "" --host gitlab.example.com
 ```powershell
 # Windows: same two steps, and the same bypass
 gopass insert gitlab/corp-token
-& (Get-Command glab -CommandType Application).Source config set token "" --host gitlab.example.com
+& (Get-Command glab -CommandType Application | Select-Object -First 1).Source config set token "" --host gitlab.example.com
 ```
 
 `glab` drops the key entirely when the value is empty, so nothing is left behind.

@@ -41,6 +41,17 @@ BeforeAll {
     # Windows guard fires here and the bash guard does not.
     $script:MixedCaseConfigDir = New-ConfigFixture 'cfg-mixedcase' "hosts:`n    gitlab.example.com:`n        Token: glpat-PLAINTEXT`n"
 
+    # The repo-local store lives under .git, so this fixture needs a real repository:
+    # `git rev-parse --absolute-git-dir` is what the guard uses to find it, and that
+    # fails outside one. Every other test runs from $MockDir, which is not a repo, so
+    # without this the second half of the guard is never executed at all.
+    $script:RepoFixtureDir = Join-Path $MockDir 'repo-local'
+    New-Item -ItemType Directory -Path $RepoFixtureDir -Force | Out-Null
+    & git -C $RepoFixtureDir init -q 2>$null
+    New-Item -ItemType Directory -Path (Join-Path $RepoFixtureDir '.git\\glab-cli') -Force | Out-Null
+    Set-Content -Path (Join-Path $RepoFixtureDir '.git\\glab-cli\\config.yml') `
+                -Value "hosts:`n    gitlab.example.com:`n        token: glpat-REPOLOCAL`n" -Encoding utf8
+
     # Echoes one line per argument so the test can assert on argv boundaries and
     # order, which `echo %*` would flatten away.
     @'
@@ -72,7 +83,8 @@ exit /b 1
             [string]$VaultToken = '',
             [string]$Path = '',
             [string]$Trailer = '',
-            [string]$ConfigDir = ''
+            [string]$ConfigDir = '',
+            [string]$WorkingDirectory = ''
         )
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = (Get-Process -Id $PID).Path
@@ -86,7 +98,7 @@ exit /b 1
         $psi.StandardErrorEncoding  = [Text.Encoding]::UTF8
         # cmd.exe refuses a UNC working directory, which would break the mocks when
         # the suite is launched from \\wsl.localhost\...
-        $psi.WorkingDirectory       = $MockDir
+        $psi.WorkingDirectory       = if ($WorkingDirectory) { $WorkingDirectory } else { $MockDir }
         $psi.EnvironmentVariables['PATH'] = if ($Path) { $Path } else { "$MockDir;$env:PATH" }
         if ($VaultToken) { $psi.EnvironmentVariables['MOCK_GOPASS_TOKEN'] = $VaultToken }
         else { $psi.EnvironmentVariables.Remove('MOCK_GOPASS_TOKEN') | Out-Null }
@@ -119,6 +131,30 @@ AfterAll {
 }
 
 Describe '26-glab.ps1' {
+
+    # The file header promises the message text matches the bash mirror byte-for-byte.
+    # Nothing enforced that -- and an unenforced claim of parity is worse than no claim,
+    # because readers trust it and the drift only shows up when it bites. This compares
+    # two source files, so it needs no bash: it runs here like any other assertion.
+    Context 'mirror parity with the bash wrapper' {
+        It 'emits the byte-identical config-store message the header promises' {
+            $bashSrc = Get-Content -Raw -Encoding utf8 `
+                -LiteralPath (Join-Path $RepoRoot 'home\\.chezmoitemplates\\shell-common\\base')
+            $psSrc   = Get-Content -Raw -Encoding utf8 -LiteralPath $FragmentPath
+
+            # Both messages sit inside a single-quoted literal and contain no quote of
+            # their own, so [^']* is an exact delimiter. The bash one carries a trailing
+            # literal \n that printf consumes; the pwsh one does not.
+            $bashMsg = ([regex]::Match($bashSrc, '(?<=printf >&2 '')glab: config store[^'']*').Value) -replace '\\n$', ''
+            $psMsg   =  [regex]::Match($psSrc,   '(?<=WriteLine\(\('')glab: config store[^'']*').Value
+
+            $bashMsg | Should -Not -BeNullOrEmpty
+            $psMsg   | Should -Not -BeNullOrEmpty
+            # %s vs {0} is the one licensed difference: the two languages spell the
+            # placeholder differently and neither reaches the reader.
+            $bashMsg.Replace('（%s）', '（{0}）') | Should -BeExactly $psMsg
+        }
+    }
 
     Context 'argument pass-through' {
         # Regression: [CmdletBinding()] bound -d to -Debug and dropped it, so glab
@@ -251,6 +287,15 @@ Describe '26-glab.ps1' {
             $r = Invoke-Glab -Arguments 'api version' -ConfigDir $EmptyConfigDir
             $r.Argv | Should -Be @('api', 'version')
             $r.ExitCode | Should -Be 0
+        }
+
+        It 'refuses on a token in the repo-local store' {
+            $r = Invoke-Glab -Arguments 'api version' -ConfigDir $EmptyConfigDir `
+                             -WorkingDirectory $RepoFixtureDir
+            $r.Stderr | Should -Match '^glab: config store'
+            $r.Stderr | Should -Match ([regex]::Escape('glab-cli'))
+            $r.ExitCode | Should -Be 1
+            $r.Argv.Count | Should -Be 0
         }
 
         It 'writes guard messages to stderr and not to stdout' {
