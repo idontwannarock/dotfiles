@@ -218,10 +218,10 @@ Describe '26-glab.ps1' {
         # 00-encoding.ps1 never sets the console to UTF-8 and the CJK half of the
         # message arrives mojibake -- which the file header already states is out of
         # the mirror guarantee. Asserting on it would test the console, not the guard.
-        It 'names the offending file and the clearing command in the message' {
+        It 'names the offending file, the likely writer, and where the remedy is' {
             $r = Invoke-Glab -Arguments 'api version' -ConfigDir $TokenConfigDir
             $r.Stderr | Should -Match ([regex]::Escape((Join-Path $TokenConfigDir 'config.yml')))
-            $r.Stderr | Should -Match 'glab config set token "" --host'
+            $r.Stderr | Should -Match 'glab auth login'
             $r.Stderr | Should -Match 'docs/gitlab-corp-access.md'
         }
 

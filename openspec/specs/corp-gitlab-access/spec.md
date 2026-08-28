@@ -114,11 +114,11 @@ PowerShell 的 `[CmdletBinding()]` 加 `ValueFromRemainingArguments` 會先做�
 
 檢查範圍 SHALL 同時涵蓋 global store(`${GLAB_CONFIG_DIR:-~/.config/glab-cli}/config.yml`)與 repo-local store(`<git-dir>/glab-cli/config.yml`)。只涵蓋其一的守衛,其宣稱在另一半為假。
 
-wrapper SHALL NOT 自動清除該權杖。清除會讓「權杖曾經明文落地、必須輪替」這個唯一重要的後果無聲消失。訊息 SHALL 同時載明清除指令與輪替的要求。
+wrapper SHALL NOT 自動清除該權杖。清除會讓「權杖曾經明文落地、必須輪替」這個唯一重要的後果無聲消失。訊息 SHALL 載明輪替的要求,並 SHALL 指出清除必須繞過 wrapper —— 守衛擋下的是**每一次**呼叫,包含清除用的那一次。清除指令本身 SHALL 留在 `docs/gitlab-corp-access.md`,不寫進訊息:兩個平台的繞過語法不同,而訊息又被要求逐字相同,兩者無法同時成立。
 
 #### Scenario: global store 有權杖
 - **WHEN** `${GLAB_CONFIG_DIR:-~/.config/glab-cli}/config.yml` 內有非空的 `token:` 或 `job_token:`
-- **THEN** wrapper 印出含該檔案路徑、清除指令與輪替指示的訊息,以 1 結束
+- **THEN** wrapper 印出含該檔案路徑、輪替要求,以及「清除要繞過 wrapper、指令見文件」的訊息,以 1 結束
 - **AND** SHALL NOT 呼叫 `glab`,SHALL NOT 讀取 vault(因此不觸發 gpg pinentry)
 
 #### Scenario: repo-local store 有權杖

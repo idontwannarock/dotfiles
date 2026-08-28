@@ -117,12 +117,24 @@ text and has to be rotated. Do both, in this order:
 # 1. rotate: revoke the old token in the GitLab UI, create a new one, then
 printf '%s\n' '<new token>' | pass insert -m gitlab/corp-token
 
-# 2. clear the store (--host, not -h; -h is help)
-glab config set token "" --host gitlab.example.com
+# 2. clear the store. `command` is load-bearing -- the guard refuses every call
+#    through the wrapper, including this one. `--host`, not `-h`; `-h` is help.
+command glab config set token "" --host gitlab.example.com
+```
+
+```powershell
+# Windows: same two steps, and the same bypass
+gopass insert gitlab/corp-token
+& (Get-Command glab -CommandType Application).Source config set token "" --host gitlab.example.com
 ```
 
 `glab` drops the key entirely when the value is empty, so nothing is left behind.
-For the repo-local store, delete `<git-dir>/glab-cli/config.yml`.
+For the repo-local store, delete `<git-dir>/glab-cli/config.yml` — no bypass
+needed for that one.
+
+The message the guard prints does **not** carry the command, on purpose: the two
+platforms need different bypass syntax, and the two wrappers are required to emit
+byte-identical strings. It points here instead.
 
 > **Do not run `glab auth login`.** It is the one command that reintroduces this,
 > and it buys nothing here — the wrapper already supplies the token on every

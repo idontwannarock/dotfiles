@@ -73,7 +73,7 @@ function glab {
         # job_token 要單獨列出 —— `^token:` 匹配不到它，而 CI job token 一樣是憑證。
         if (-not (Select-String -LiteralPath $store -Pattern '^\s*(token|job_token):\s*\S' -Quiet)) { continue }
         $global:LASTEXITCODE = 1
-        [Console]::Error.WriteLine(('glab: config store 內有明文 token（{0}）。wrapper 於呼叫當下自 vault 取，config store 不該存 —— 這顆是 glab auth login 或 glab config set 寫的。清除：glab config set token "" --host <host>；該 token 已明文落地，請一併輪替。見 docs/gitlab-corp-access.md' -f $store))
+        [Console]::Error.WriteLine(('glab: config store 內有明文 token（{0}）。wrapper 於呼叫當下自 vault 取，config store 不該存 —— 這顆是 glab auth login 或 glab config set 寫的。該 token 已明文落地，請輪替；清除指令要繞過本 wrapper（否則被這道守衛自己擋下），見 docs/gitlab-corp-access.md' -f $store))
         return
     }
 
