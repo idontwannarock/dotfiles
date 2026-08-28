@@ -23,28 +23,23 @@ BeforeAll {
     # Config-store fixtures for the token-in-config guard. `token:` with no value is
     # what glab leaves behind for a host it has never authenticated, and the comment
     # lines are verbatim from glab's own generated config -- both must pass.
-    $script:EmptyConfigDir = Join-Path $MockDir 'cfg-empty-dir'
-    New-Item -ItemType Directory -Path $EmptyConfigDir -Force | Out-Null
+    function New-ConfigFixture([string]$Name, [string]$Content) {
+        $dir = Join-Path $MockDir $Name
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+        if ($Content) { Set-Content -Path (Join-Path $dir 'config.yml') -Value $Content -Encoding utf8 }
+        return $dir
+    }
 
-    $script:TokenConfigDir = Join-Path $MockDir 'cfg-token'
-    New-Item -ItemType Directory -Path $TokenConfigDir -Force | Out-Null
-    "hosts:`n    gitlab.example.com:`n        token: glpat-PLAINTEXT`n" |
-        Set-Content -Path (Join-Path $TokenConfigDir 'config.yml') -Encoding utf8
-
-    $script:BlankConfigDir = Join-Path $MockDir 'cfg-blank'
-    New-Item -ItemType Directory -Path $BlankConfigDir -Force | Out-Null
-    "hosts:`n    gitlab.example.com:`n        token:`n        job_token:`n" |
-        Set-Content -Path (Join-Path $BlankConfigDir 'config.yml') -Encoding utf8
-
-    $script:CommentConfigDir = Join-Path $MockDir 'cfg-comment'
-    New-Item -ItemType Directory -Path $CommentConfigDir -Force | Out-Null
-    "        # Your GitLab access token. To get one, read https://example`n        #   value: Bearer token123`n        token:`n" |
-        Set-Content -Path (Join-Path $CommentConfigDir 'config.yml') -Encoding utf8
-
-    $script:JobTokenConfigDir = Join-Path $MockDir 'cfg-jobtoken'
-    New-Item -ItemType Directory -Path $JobTokenConfigDir -Force | Out-Null
-    "hosts:`n    gitlab.example.com:`n        job_token:  ci-job-token`n" |
-        Set-Content -Path (Join-Path $JobTokenConfigDir 'config.yml') -Encoding utf8
+    $script:EmptyConfigDir    = New-ConfigFixture 'cfg-empty-dir' ''
+    $script:TokenConfigDir    = New-ConfigFixture 'cfg-token'     "hosts:`n    gitlab.example.com:`n        token: glpat-PLAINTEXT`n"
+    $script:BlankConfigDir    = New-ConfigFixture 'cfg-blank'     "hosts:`n    gitlab.example.com:`n        token:`n        job_token:`n"
+    $script:CommentConfigDir  = New-ConfigFixture 'cfg-comment'   "        # Your GitLab access token. To get one, read https://example`n        #   value: Bearer token123`n        token:`n"
+    $script:JobTokenConfigDir = New-ConfigFixture 'cfg-jobtoken'  "hosts:`n    gitlab.example.com:`n        job_token:  ci-job-token`n"
+    # glab only ever writes lowercase keys, so this fixture pins the two mirrors to
+    # the SAME answer rather than to a particular one: Select-String is
+    # case-insensitive by default and grep -E is not, so without -CaseSensitive the
+    # Windows guard fires here and the bash guard does not.
+    $script:MixedCaseConfigDir = New-ConfigFixture 'cfg-mixedcase' "hosts:`n    gitlab.example.com:`n        Token: glpat-PLAINTEXT`n"
 
     # Echoes one line per argument so the test can assert on argv boundaries and
     # order, which `echo %*` would flatten away.
@@ -242,6 +237,12 @@ Describe '26-glab.ps1' {
 
         It 'does not mistake glab own comment lines for a token' {
             $r = Invoke-Glab -Arguments 'api version' -ConfigDir $CommentConfigDir
+            $r.Argv | Should -Be @('api', 'version')
+            $r.ExitCode | Should -Be 0
+        }
+
+        It 'matches the token key case-sensitively, as grep -E does' {
+            $r = Invoke-Glab -Arguments 'api version' -ConfigDir $MixedCaseConfigDir
             $r.Argv | Should -Be @('api', 'version')
             $r.ExitCode | Should -Be 0
         }
