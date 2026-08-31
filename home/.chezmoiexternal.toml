@@ -320,7 +320,7 @@
 # `versioning` for these lives in renovate.json packageRules (the +build suffix
 # needs a regex versioning; jdk-8's scheme needs a different one).
 # renovate: datasource=github-releases depName=adoptium/temurin8-binaries extractVersion=^jdk(?<version>.+)$
-{{- $jdk8Version := "8u502-b07" }}
+{{- $jdk8Version := "8u504-b01" }}
 {{- $jdk8Asset := $jdk8Version | replace "-" "" }}
 [".local/opt/jdk-8"]
     type = "archive"
