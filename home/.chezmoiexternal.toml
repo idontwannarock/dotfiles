@@ -32,7 +32,7 @@
 # URL tag 帶 v 前綴、asset 檔名不帶，兩處注入同一變數（同 golangci-lint 慣例）；
 # extractVersion 讓 Renovate 從 tag 剝掉 v 再比對。
 # renovate: datasource=gitlab-releases depName=gitlab-org/cli extractVersion=^v(?<version>.+)$
-{{- $glabVersion := "1.114.0" }}
+{{- $glabVersion := "1.115.0" }}
 
 [".local/bin/glab{{ $ext }}"]
     type = "archive-file"
