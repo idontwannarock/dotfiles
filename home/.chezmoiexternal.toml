@@ -405,7 +405,7 @@
 # .sh CRLF in install-03). Source is the upstream dos2unix Windows build site
 # (same as scoop's manifest), not GitHub. Bump $dos2unixVersion to upgrade.
 # renovate: ignore — mirrored by mirror-externals.yml (waterlander.net HTML page, no datasource; the single dos2unix.exe is re-hosted at a stable URL, so this is now a plain `type = "file"`).
-{{- $dos2unixVersion := "7.5.6" }}
+{{- $dos2unixVersion := "7.5.7" }}
 
 [".local/bin/dos2unix.exe"]
     type = "file"
