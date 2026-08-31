@@ -44,6 +44,36 @@ function glab {
         return
     }
 
+    # config store 是 glab 的第二條憑證來源，明文 YAML 且永久落地。`glab auth login`
+    # 與不帶 --global 的 `glab config set token …` 都繞過這個 wrapper 直接寫它，所以
+    # 「刻意不使用 config store」這條約定被破壞時，沒有任何東西會發出聲音 —— 2026-08-28
+    # 就是靠人工翻檔才發現一顆躺了不知多久的明文權杖。
+    #
+    # 只擋不改：自動清掉會讓「權杖曾經落地、必須輪替」這個唯一重要的後果無聲消失。
+    # 位置在 vault 讀取之前，讓一個注定被拒絕的呼叫不觸發 gopass 的密碼提示。
+    $configDir = if ($env:GLAB_CONFIG_DIR) { $env:GLAB_CONFIG_DIR }
+                 else { Join-Path (Join-Path $HOME '.config') 'glab-cli' }
+    $stores = @(Join-Path $configDir 'config.yml')
+    # --absolute-git-dir 而非 --git-dir：後者回相對路徑，訊息裡的檔案位置會隨當下的
+    # cwd 而變，貼給別人時失去意義。git 不在 PATH 上時只查 global store —— repo-local
+    # store 位於 .git 之下，沒有 git 也就沒有那個目錄。
+    $gitDir = if (Get-Command git -CommandType Application -ErrorAction SilentlyContinue) {
+        & git rev-parse --absolute-git-dir 2>$null
+    }
+    if ($gitDir) { $stores += (Join-Path (Join-Path $gitDir 'glab-cli') 'config.yml') }
+    foreach ($store in $stores) {
+        if (-not (Test-Path -LiteralPath $store -PathType Leaf)) { continue }
+        # 冒號後必須有非空白字元：glab 對未設定的 host 會留下空的 `token:`，而它自帶的
+        # 說明註解（`# Your GitLab access token…`）去除前導空白後以 # 開頭，兩者都不命中。
+        # job_token 要單獨列出 —— `^token:` 匹配不到它，而 CI job token 一樣是憑證。
+        # -CaseSensitive 不可省：Select-String 預設不分大小寫，而 bash 版的 grep -E 分，
+        # 少了它兩邊對 `Token:` 給出相反的答案，而沒有任何測試釘得住這個差異。
+        if (-not (Select-String -LiteralPath $store -Pattern '^\s*(token|job_token):\s*\S' -CaseSensitive -Quiet)) { continue }
+        $global:LASTEXITCODE = 1
+        [Console]::Error.WriteLine(('glab: config store 內有明文 token（{0}）。wrapper 於呼叫當下自 vault 取，config store 不該存 —— 這顆是 glab auth login 或 glab config set 寫的。該 token 已明文落地，請輪替；清除指令要繞過本 wrapper（否則被這道守衛自己擋下），見 docs/gitlab-corp-access.md' -f $store))
+        return
+    }
+
     $token = $null
     if (Get-Command gopass -CommandType Application -ErrorAction SilentlyContinue) {
         $token = & gopass show -o gitlab/corp-token 2>$null
