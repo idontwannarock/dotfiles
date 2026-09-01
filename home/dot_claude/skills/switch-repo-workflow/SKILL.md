@@ -5,36 +5,36 @@ description: "Use when one repo should run a different development workflow from
 
 # Switch one repo to a different development workflow
 
-Claude Code decides which skills are live per repo through two settings files and a plugin
-scope. This skill is the procedure for driving that, plus the mechanics that are not
-obvious from the docs.
+## Order of work
 
-Every mechanic below was established by direct experiment during the `shoalter-ai-toolkit`
-switchover (OpenSpec `dev-workflow` → the `mattpocock-skills` plugin), not read off a
-reference page. Two of them contradict a reasonable prior and are flagged where they
-appear. Official reference: <https://code.claude.com/docs/en/skills>.
+1. Install the incoming plugin at project scope, and register its marketplace.
+2. Disable the outgoing **plugin** skills — `enabledPlugins`, not `skillOverrides`.
+3. Disable the outgoing **repo** skills in `.claude/settings.json`.
+4. Disable the outgoing **personal** skills in `.claude/settings.local.json`.
+5. Make `.gitignore` stop hiding step 3's file.
+6. Edit the `CLAUDE.md` prose that names the old workflow.
+7. Verify in a new session.
 
-## The layering rule
+Each step is one section below.
 
-Two settings files, and the split is by **who owns the decision**, not by what is being
-disabled.
+## Steps 1–4: where each decision is written
+
+The split is by **who owns the decision**, not by what is being disabled.
 
 | Decision | File | Tracked by git? |
 |---|---|---|
-| Which plugins this repo uses | `.claude/settings.json` | yes — it is a team decision |
-| Skills living in the repo's own `.claude/skills/` | `.claude/settings.json` | yes |
-| Skills living in your personal `~/.claude/skills/` | `.claude/settings.local.json` | no — nobody else has them |
+| Plugins, and skills in the repo's own `.claude/skills/` | `.claude/settings.json` | yes — a team decision |
+| Skills in your personal `~/.claude/skills/` | `.claude/settings.local.json` | no — nobody else has them |
 
-**Layers merge per key, not per file.** This is the fact the split depends on: a
-`skillOverrides` block in `settings.local.json` does **not** replace the one in
-`settings.json`. Verified — ten `openspec-*` entries in the tracked file and five personal
-entries in the local file were simultaneously in effect.
-
-Working example:
+⚠️ **Layers merge per key, not per file.** A `skillOverrides` block in
+`settings.local.json` does **not** replace the one in `settings.json`. This is the fact the
+split depends on; without it the local file would silently wipe the tracked one. Verified:
+entries in both files were in effect at the same time.
 
 ```jsonc
 // .claude/settings.json          — travels with the repo
 {
+  "extraKnownMarketplaces": { /* see step 1 */ },
   "enabledPlugins": { "mattpocock-skills@claude-plugins-official": true },
   "skillOverrides": { "openspec-new-change": "off", "openspec-apply-change": "off" }
 }
@@ -45,36 +45,48 @@ Working example:
 { "skillOverrides": { "dev-workflow": "off", "tdd": "off", "grill": "off" } }
 ```
 
-Install a plugin at repo scope with:
+**Step 1.** `claude plugin install <plugin>@<marketplace> --scope project` writes
+`enabledPlugins` in the repo's `.claude/settings.json` and nothing else. That is enough for
+your machine but **not** for a teammate's clone: without the marketplace registered, Claude
+Code reports the plugin as enabled-but-not-installed. The CLI's settings schema names
+`extraKnownMarketplaces` as the repo-level key for exactly this — add it if the switch is
+meant to travel. (Schema-sourced, unlike everything else here; not tested on a second
+machine.)
 
-```
-claude plugin install <plugin>@<marketplace> --scope project
-```
+**Step 2.** Turning a plugin skill off is a different mechanism — see below.
 
-That writes `enabledPlugins` in the repo's `.claude/settings.json` and nothing else.
+## Step 2: `skillOverrides` cannot touch plugin skills
 
-## `skillOverrides`: four states, and what it cannot reach
+`skillOverrides` states: `on` · `name-only` · `user-invocable-only` (hidden from the model,
+still on the `/` menu) · `off`.
 
-States: `on` · `name-only` · `user-invocable-only` · `off`.
+⚠️ **None of them apply to plugin skills.** The lookup returns `on` for anything whose
+source is a plugin *before* it consults `skillOverrides` at all. So `{"tdd": "off"}`
+disables `~/.claude/skills/tdd` while `mattpocock-skills:tdd` keeps running. Verified in a
+fresh session.
 
-**It does not apply to plugin skills.** ⚠️ This is the one that surprises people. Setting
-`{"tdd": "off"}` disables `~/.claude/skills/tdd`; `mattpocock-skills:tdd` keeps running.
-The upside: a plugin skill colliding with one of yours needs **no rename** — turn yours
-off and the plugin's takes over the name. Verified in a fresh session.
+Two consequences:
 
-It also cannot reach skill copies under `.agent/` or `.codex/`. Those are other tools'
-trees; Claude's overrides never touch them.
+- A plugin skill colliding with one of yours needs **no rename**. Turn yours off and the
+  plugin's takes the name.
+- To disable a plugin skill you must disable **the plugin**:
+  `"enabledPlugins": { "<plugin>@<marketplace>": false }`. Precedence runs
+  user < project < local < flag < policy, so `settings.local.json` can switch off a plugin
+  that `settings.json` enabled.
 
-**A skill with `disable-model-invocation: true` is absent from the model's skill listing
-on purpose** — it lives only in the `/` menu. Do not read that absence as a failed
-install. All four of Pocock's `wayfinder` / `to-spec` / `to-tickets` / `implement` are of
-this kind.
+`skillOverrides` also cannot reach skill copies under `.agent/` or `.codex/` — other tools'
+trees.
 
-## Two traps settings cannot cover
+**A skill declaring `disable-model-invocation: true` is absent from the model's listing on
+purpose**; it lives only in the `/` menu. Do not read that absence as a failed install.
+Pocock's `wayfinder` / `to-spec` / `to-tickets` / `implement` are all of this kind — which
+matters for step 7.
 
-**1. `.gitignore` swallowing the tracked settings file.** A pattern like `/.claude/*`
-excludes `settings.json` along with everything else, so the workflow decision silently
-stays local. Add the negation:
+## Steps 5–6: the two traps settings cannot cover
+
+**`.gitignore` hiding the tracked settings file.** A pattern like `/.claude/*` excludes
+`settings.json` along with everything else, so the team decision silently stays local. Add
+the negation:
 
 ```gitignore
 /.claude/*
@@ -82,29 +94,27 @@ stays local. Add the negation:
 !/.claude/settings.json
 ```
 
-**2. `CLAUDE.md` prose naming the old workflow.** Settings disable a *skill*; they cannot
+**`CLAUDE.md` prose naming the old workflow.** Settings disable a *skill*; they cannot
 disable a sentence. A line like "implementation tasks go through the OpenSpec flow" keeps
-steering the model after every relevant skill is off. Grep the repo's `CLAUDE.md` (and
-`.claude/CLAUDE.md`) for the old workflow's name and edit it as part of the switch.
+steering the model after every relevant skill is off. Grep the repo's `CLAUDE.md` and
+`.claude/CLAUDE.md` for the old workflow's name and edit it.
 
-## Verify — in a **new** session
+## Step 7: verify in a new session
 
-Changed settings load at session start. The session that made the edits will never reflect
-them, no matter how long you wait.
+Do not trust the current session's listing — it was built from the settings as they were at
+startup. Re-check in a fresh one.
+
+**Pick a name that is model-invocable.** Querying the listing for `wayfinder` proves
+nothing: it carries `disable-model-invocation: true`, so an empty answer is the expected
+result either way. Query a name that should visibly change.
 
 ```bash
 cd <the repo>
-claude -p "List the skills in your listing whose name contains 'wayfinder'."
+# should now be GONE — a user skill you turned off
+claude -p "List the skills in your listing whose name contains 'openspec'. Names only."
+# should still be THERE — the plugin's copy, surviving the override on your own
+claude -p "List the skills in your listing whose name contains 'tdd'. Names only."
 ```
 
-Run it twice if needed — once for what should now be present, once for what should now be
-gone. Absence of a `disable-model-invocation: true` skill is expected, not a failure.
-
-## Order of work
-
-1. Install the target plugin at project scope (if the new workflow is a plugin).
-2. Turn off the outgoing repo-level and plugin-level skills in `.claude/settings.json`.
-3. Turn off the outgoing personal skills in `.claude/settings.local.json`.
-4. Fix `.gitignore` so step 2's file is tracked.
-5. Edit `CLAUDE.md` prose that names the old workflow.
-6. Verify in a new session.
+The second command is the check for step 2: a name that survives being switched `off` is
+the plugin's copy, and that is what you want.
