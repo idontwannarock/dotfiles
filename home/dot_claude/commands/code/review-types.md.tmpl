@@ -7,8 +7,8 @@
     "reviewTypes" "code:review-types"
     "reviewLinus" "code:review-linus" -}}
 ---
-allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(git branch:*)
-description: Review uncommitted changes with change-aware lens selection — use during development to check work before committing
+allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*)
+description: Type design review — encapsulation, invariant expression, enforcement
 ---
 
-{{ template "skills/review-uncommitted.md" (dict "n" $n) -}}
+{{ template "skills/review-types.md" (dict "n" $n) -}}

@@ -1,49 +1,47 @@
----
-name: review-linus
-description: Linus Torvalds-style architecture review — simplicity, good taste, eliminating special cases, backward compatibility
----
-
-## Context
-
-First, gather context by running these commands:
-
-- `git status --short` — working tree state
-- `git branch --show-current` — current branch
-
+{{ template "skills/code-review-context.md" . }}
 {{ template "skills/code-review-scope.md" . }}
-## Task
+## Lens
 
-After obtaining the diff, dispatch **1 review task**:
+One lens: `design.md`, under `~/.agent/reference/review-lenses/`.
 
-- **Agent type**: `linus-torvalds`
-- **Focus**: Review with Linus Torvalds' philosophy:
-  - **Good taste** — is the code elegant? Can special cases be eliminated through better data structures or abstractions?
-  - **Simplicity** — any unnecessary complexity? Over-engineering?
-  - **Pragmatism** — solving a real problem or a theoretical one?
-  - **Backward compatibility** — does it break existing behavior? Never break userspace.
-  - **Data structures** — are the choices correct? Good data structures + simple algorithms > bad data structures + clever algorithms.
+It asks whether the structure is right and whether it could be simpler —
+special cases that a better data structure would erase, complexity that buys
+nothing, invariants left to discipline, and compatibility with what already
+depends on this code.
 
+This flow and `{{ .n.reviewTypes }}` run the same lens and differ only in the
+report: this one delivers a verdict on the change as a whole, that one a
+per-type breakdown. Run one, not both.
+
+{{ template "skills/code-review-dispatch.md" . }}
 ## Output
 
+Deliver it in the register the lens deserves: direct, specific, unsentimental.
+Criticise the code, never the person who wrote it, and never soften a real
+finding to be pleasant. Praise is worth something only when it is rare.
+
 ---
 
-**Linus Review**
+**Design Review**
 
 **Scope**: [reviewed what]
 
 **Verdict**: [one sentence — direct, unforgiving but fair]
 
-**Architecture & Taste**
-[assessment of overall design]
+**Structure & Data Model**
+[what the core data is, who owns it, and whether the shape fits the problem]
 
 **Unnecessary Complexity**
-[what's over-complicated and how to simplify]
+[what is over-built, and what removing it costs]
 
 **Special Cases That Should Disappear**
-[if/else branches or special handling that better design would eliminate]
+[the branch, and the structural change that erases it — not just that it exists]
 
-**Backward Compatibility**
-[risk of breaking existing behavior]
+**Invariants**
+[what must always be true, and whether anything but discipline enforces it]
+
+**Compatibility**
+[what already depends on this, and what a caller outside this repo would see break]
 
 **What's Actually Good**
 [design decisions worth keeping]
@@ -53,5 +51,7 @@ After obtaining the diff, dispatch **1 review task**:
 ## Guardrails
 
 - **Do not modify code** — this is a read-only review
-- **Full diff** — the task must receive the full diff
-- **Tone** — direct and constructive; point out problems while suggesting improvements
+- **Full diff** — the reviewer must receive the full diff
+- **Earn every suggestion** — name the branch that collapses or the invalid state that stops being representable; a restructuring that only moves code sideways is not an improvement
+- **Pragmatism wins** — if the honest answer is "leave it", say that
+

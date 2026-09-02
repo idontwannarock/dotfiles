@@ -1,37 +1,43 @@
-Personal agents for Claude Code, deployed by chezmoi from `home/dot_claude/exact_agents/`.
+Personal agents for Claude Code, deployed by chezmoi from
+`home/dot_claude/exact_agents/`.
 
 `exact_agents/` is chezmoi-exclusive: deleting a file here removes it from
-`~/.claude/agents/` on the next apply. No `.chezmoiremove` entry needed.
+`~/.claude/agents/` on the next apply. `exact_` is **single-level**, so any
+subdirectory added here needs the prefix too (`exact_engineering/`), or
+deletions inside it are silently never pruned.
 
-# Agent Catalog
+# What is here
 
-Seven agents, all serving the `/code:review-*` commands. Each agent's trigger
-conditions live in its frontmatter `description`.
+One agent: `reviewer`. It is read-only by construction — `tools: Read, Grep,
+Glob` — and the `review-*` flows dispatch it once per lens.
 
-| Agent | Used by |
-| --- | --- |
-| `code-review/code-reviewer` | comprehensive, uncommitted, spec, security, surgical |
-| `engineering/linus-torvalds` | comprehensive, uncommitted, spec, linus |
-| `code-review/pr-test-analyzer` | comprehensive, uncommitted, spec |
-| `code-review/silent-failure-hunter` | comprehensive, uncommitted, security |
-| `code-review/type-design-analyzer` | comprehensive, types |
-| `code-review/code-simplifier` | surgical |
-| `code-review/comment-analyzer` | comprehensive |
+It is not meant to be routed to directly, and its description says so. The
+flows name it; you do not.
 
-`/code:review-cross-model` uses none of these — it dispatches a different model
-through herdr.
+# Why there is only one
 
-# Cost model
+An agent's `description` is preloaded into every session's system prompt, so
+the model can decide when to route to it. Only the body is lazy. An agent that
+is never invoked therefore still costs tokens on every session, and the cost
+scales with how well its description is written.
 
-An agent's `description` is preloaded into every session's system prompt so the
-model can route to it; only the body is lazy. Agents therefore cost tokens even
-when never invoked. Keep this directory to agents that something actually calls.
+This directory once held 31 agents costing roughly 14k tokens per session, 24
+of which nothing referenced. The seven that were referenced held the review
+perspectives for the `/code:review-*` commands — real content, in the wrong
+place: preloaded whether or not a review ran, and invisible to Codex, which has
+no agents at all.
 
-The 24 agents from [contains-studio/agents](https://github.com/contains-studio/agents)
-that shipped here originally were retired for that reason — nothing referenced
-them, and they cost roughly 14k tokens per session.
+Those seven are now lens files under `~/.agent/reference/review-lenses/`, in
+the tool-agnostic tree both Claude and Codex read. A plain file costs nothing
+until something opens it, and the flows on both sides name the same paths.
+
+What did not survive the move: five incompatible severity scales in one report,
+three lenses asserting another project's house rules (Sentry error ids, React
+component conventions), and a "read-only review" guardrail that was prose only —
+every one of those seven agents could write to the tree it was reviewing.
 
 # Reference
 
-- [contains-studio/agents](https://github.com/contains-studio/agents)
+- [contains-studio/agents](https://github.com/contains-studio/agents) — where
+  the retired 24 came from
 - [kingkongshot/prompts](https://github.com/kingkongshot/prompts)

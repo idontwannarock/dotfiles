@@ -18,10 +18,12 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 ├── skills/                 # 自家 discipline skills（非 exact_）
 ├── output-styles/          # Output styles（非 exact_）
 ├── hooks/                  # Hook 腳本
-└── exact_agents/           # Agents（exact_：自動清理移除的檔案）
+└── exact_agents/           # Agents（exact_：自動清理移除的檔案）——只有 reviewer 一個
 ```
 
 `commands/`、`skills/` 與 `output-styles/` 刻意**不用** `exact_` 前綴——這幾個目錄天生會有 plugin 寫入的、機器專屬的、或實驗中的檔案（本機實測即有 3 個未受管理的 command）。`exact_agents/` 則是 chezmoi 獨佔，用 `exact_` 才對。
+
+注意 `exact_` 是**單層**語意：`exact_agents/` 只管 `~/.claude/agents/` 的直接子項。底下若加子目錄，子目錄本身也要帶 `exact_`，否則其中被刪除的檔案永遠不會被修剪，而且是靜默的——apply 退出碼 0、`chezmoi diff` 空白、`chezmoi status` 也不列出。
 
 因此退役一個 command/skill/output style 時，必須在 `home/.chezmoiremove` 點名該路徑，移除才會傳播到每台機器。
 
@@ -137,7 +139,7 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 
 | 名稱 | 來源 | 說明 |
 |------|------|------|
-| code-review | `claude-plugins-official` | `/code-review` 指令與 review agents |
+| code-review | `claude-plugins-official` | `/code-review` 指令與其自帶的 review agents（與自家 `code:review-*` 無關） |
 
 **已退役**（腳本以 `$retiredPlugins` 資料表驅動，在每台機器上主動 `plugin uninstall` 並清除殘留 cache，使移除收斂）：
 
@@ -145,7 +147,7 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 |--------|----------|
 | superpowers | workflow skills 已由 `~/.claude/skills/` 自家 discipline skills 取代 |
 | claude-md-management、context7、playwright、commit-commands、security-guidance、pyright-lsp、jdtls-lsp、claude-code-setup | 未使用 |
-| code-simplifier、pr-review-toolkit | 未使用；同名的 `code-simplifier` / `code-reviewer` **agent** 來自 repo 的 `exact_agents/code-review/`，與這兩個 plugin 無關，退役後仍可用 |
+| code-simplifier、pr-review-toolkit | 未使用；repo 曾有同名 agent，已隨 review lens 改制退役，與這兩個 plugin 始終無關 |
 
 > 退役一個 plugin＝往那張表加一列，**不是**把安裝那行刪掉。刪安裝行不會讓已 apply 過的機器移除它，而 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，每次 apply 還會繼續更新它。
 
@@ -635,6 +637,54 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 
 - `jq` 必須安裝（hooks 依賴）
 - `CLAUDE_HANDOFF_CONTEXT_WINDOW` env var **不要**放進 settings.json — 會破壞 cache-first 的動態性（每次都走 env 就不會讀 cache）
+
+## Code Review（`code:review-*`）
+
+八支指令共用一組 **lens**：`~/.agent/reference/review-lenses/` 下的純檔案，一個
+檔案一個觀點。flow 指名要跑哪幾個，reviewer 自己去讀。
+
+| Flow | Lens |
+|------|------|
+| `code:review-comprehensive` | 全部七個 ＋ confidence 過濾 ＋ cross-model 反駁 |
+| `code:review-uncommitted` | 依變更檔案類型挑選 ＋ confidence 過濾 |
+| `code:review-surgical` | correctness、design |
+| `code:review-security` | security、failure-handling |
+| `code:review-linus` | design（整體裁決式報告） |
+| `code:review-types` | design（逐型別評分報告） |
+| `code:review-spec` | 不用 lens——三個問題都相對於 OpenSpec artifact |
+| `code:review-cross-model` | 不用 lens——把結論丟給別的 model 家族反駁 |
+
+七個 lens：`correctness`、`failure-handling`、`tests`、`design`、`comments`、
+`conventions`、`security`。切法的原則是**一條 finding 只屬於一個 lens**；兩個
+lens 同時回報同一件事是邊界沒切好，不是互相佐證。
+
+### 為什麼是檔案，不是 agent
+
+agent 與 skill 的 `description` 會**預載入每個 session** 的 system prompt——模型
+必須先看見才能決定要不要路由過去。只有 body 是 lazy。所以一個從沒被叫用的 agent
+仍然每個 session 都在收費。
+
+觀點內容曾經是七個 agent，約 12KB description，等於「無論今天有沒有 review 都付
+費」。改成檔案後，flow 已經決定要跑哪個 lens 了，檔案可以躺在磁碟上直到那一刻。
+順帶解決了另一半：Codex 沒有 agent 機制，以前拿到的是一張它派不出去的 agent 表，
+真正的 lens 內容一行都沒有。現在兩邊指向同一批路徑。
+
+### reviewer agent
+
+`~/.claude/agents/reviewer.md` 是唯一留下的 agent，`tools: Read, Grep, Glob`。
+
+這一行是唯讀性的**唯一**強制點。省略 `tools` 等於繼承全部工具，包含 `Write` 與
+`Edit`——舊的七個 agent 全都是這樣，所以指令裡那句 "Do not modify code" 從來只是
+散文。
+
+### 守衛
+
+`tests/review-lens-refs.test.sh` 雙向檢查：flow 指名的 lens 都存在，存在的 lens 都
+有 flow 指名。後者才是關鍵——少一個 lens 第一次跑 flow 就會現形，多一個永遠不會。
+另外掃描所有共用 body，確認七個退役 agent 名字沒有復活。
+
+沒有任何東西在 render 期解析 lens 路徑，所以打錯字的 flow 會 render 成功、apply
+成功，直到 review 當下才在 subagent 裡失敗。
 
 ## Arch Review（`/arch-review`）
 

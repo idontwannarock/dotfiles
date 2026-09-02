@@ -44,6 +44,12 @@ Loaded on demand — read the file you need, not the whole tree.
   friends) available across branches and worktrees, backed by a per-repo
   global store, plus its one-time install.
 
+# Code review
+
+* [Review lenses](review-lenses/) - one file per review perspective, read on
+  demand by the `review-*` flows. Plain reference files rather than agents or
+  skills, so none of them costs anything until a flow names one.
+
 # Testing
 
 * [好測試 / 壞測試](tdd/tests.md) - 判斷一個測試是資產還是負債的準則：走真實

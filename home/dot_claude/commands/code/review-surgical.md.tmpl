@@ -1,48 +1,14 @@
+{{- /* Claude name-map for the shared review bodies */ -}}
+{{- $n := dict
+    "tool" "claude"
+    "reviewFull" "code:review-comprehensive"
+    "reviewCrossModel" "code:review-cross-model"
+    "reviewSpec" "code:review-spec"
+    "reviewTypes" "code:review-types"
+    "reviewLinus" "code:review-linus" -}}
 ---
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*)
-description: Quick lightweight code review — code quality check plus simplification suggestions, no confidence scoring
+description: Quick lightweight code review — correctness and design only, no confidence scoring
 ---
 
-## Context
-
-- Status: !`git status --short`
-- Branch: !`git branch --show-current`
-
-{{ template "skills/code-review-scope.md" . }}
-## Task
-
-After obtaining the diff, dispatch **2 review tasks in parallel**. Each task receives the full diff.
-
-| Review Task | Agent Type | Focus |
-|-------------|-----------|-------|
-| Code quality | `code-reviewer` | Style consistency, best practices, potential bugs, naming conventions |
-| Simplification | `code-simplifier` | Unnecessary complexity, redundant code, opportunities to reduce line count while preserving behavior |
-
-## Output
-
----
-
-**Surgical Review**
-
-**Scope**: [reviewed what — staged / unstaged / HEAD / branch diff / PR #N]
-**Diff size**: [N files changed, +X/-Y lines]
-
-🔴 **Critical Issues** (must fix)
-- [issue]
-
-🟡 **Suggestions** (should consider)
-- [suggestion]
-
-✂️ **Simplification Opportunities**
-- [what can be simplified and how]
-
-🟢 **Good Practices** (well done)
-- [positive observation]
-
----
-
-## Guardrails
-
-- **Do not modify code** — this is a read-only review
-- **Full diff** — every task must receive the full diff
-- **No findings** — if no issues found, state that briefly
+{{ template "skills/review-surgical.md" (dict "n" $n) -}}
