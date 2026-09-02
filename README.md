@@ -365,7 +365,7 @@ dotfiles/
 │   ├── run_onchange_*.tmpl        # 設定更新腳本（變更時重跑）
 │   └── run_after_*.tmpl           # 後置腳本（Windows codex config 合併）
 │
-├── .github/workflows/        # GitHub Actions（工具編譯發佈、PR 階段建置檢查、Pester 測試、externals 驗證）
+├── .github/workflows/        # GitHub Actions（工具編譯發佈、PR 階段建置檢查、Pester 測試、shell 測試、template render、externals 驗證）
 ├── tools/                    # 自建工具原始碼（CI 編譯為 release，經 external 拉回，不部署）
 │   ├── statusline/           #   Go：Claude Code 狀態列
 │   └── passgen/              #   Rust：密碼產生器
