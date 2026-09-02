@@ -1,7 +1,7 @@
 # template-render-ci Specification
 
 ## Purpose
-規範 `home/` 下所有 chezmoi template 的 render 契約：由 GitHub Actions 在三個 OS 上以 `chezmoi apply --dry-run` 建出完整 target state，template 錯誤即讓 workflow 變紅。此檢查的存在理由是「沒有任何東西在 render 期以外解析 template」——壞掉的 template 會通過所有既有測試、正常合進 main，直到某台機器 `chezmoi apply` 才失敗。
+規範 `home/` 下所有 chezmoi template 的 render 契約：由 GitHub Actions 在三個 OS 上、於**未經改動的 checkout** 上以 `chezmoi apply --dry-run` 建出完整 target state，template 錯誤即讓 workflow 變紅。此檢查的存在理由是「沒有任何東西在 render 期以外解析 template」——壞掉的 template 會通過所有既有測試、正常合進 main，直到某台機器 `chezmoi apply` 才失敗。
 
 ## Requirements
 
@@ -29,6 +29,10 @@ Workflow SHALL 在 `ubuntu-latest`、`macos-latest`、`windows-latest` 上各跑
 - **WHEN** 某個被 `.chezmoiignore.tmpl` 在 Linux 上排除的 target，其 template 壞掉
 - **THEN** ubuntu 那格通過，windows 那格失敗，workflow 整體失敗
 
+#### Scenario: template 自身以 OS 分支
+- **WHEN** 某 template 以 `{{ if eq .chezmoi.os "windows" }}` 開頭包住整個 body
+- **THEN** 非 Windows 的 runner 完全不會進入該 body（Go template 的 `if` 不求值 false 分支），其中的 `include`、`fail` 與變數引用一律未被驗證；只有 windows 那格才涵蓋它
+
 ### Requirement: 先產生 config，再 render
 Workflow SHALL 在 render 前執行 `chezmoi init`。
 
@@ -38,16 +42,22 @@ Workflow SHALL 在 render 前執行 `chezmoi init`。
 - **WHEN** 未執行 `chezmoi init` 就 `apply --dry-run`
 - **THEN** 於 `.bashrc` 的 `.isWSL` 失敗；此為誤報，SHALL NOT 被當成 template 缺陷
 
-### Requirement: externals 不參與 dry run
-Workflow SHALL 先以 `chezmoi execute-template` 單獨 render `home/.chezmoiexternal.toml`，再將該檔案自 checkout 移除，然後才執行 `apply --dry-run`。
+### Requirement: render 的是真實佈局，不得移除任何被引用的檔案
+Workflow SHALL 在完整的 checkout 上執行 dry run，SHALL NOT 為了加速或去網路化而刪除、清空或替換 `home/` 下任何檔案。
 
-理由是網路依賴：externals 存在時，建 target state 會抓取全部 archive（約 35 MB），且**不受 `--refresh-externals=never` 影響**，因為那些 entry 供應目錄內容。把網路依賴掛在「每次 template 變動都要跑」的檢查上會讓它變得不穩定。移除後同一個 dry run 為 0.2 秒且零網路。
+`--exclude=externals` 只跳過「套用」archive，**不會**阻止 chezmoi 在建 target state 時抓取它們，`--refresh-externals=never` 同樣無效——那些 entry 供應目錄內容。因此本 workflow 每個 OS 會下載約 35 MB、耗時數秒。此成本為刻意接受。
 
-先單獨 render 該檔案是為了不損失覆蓋：`validate-externals.yml` 也 render 它，但只在該檔案自身變動時觸發。URL 健康度仍由 `validate-externals.yml` 負責，本 workflow SHALL NOT 檢查 URL。
+理由來自一次實測失敗：初版刪除 `home/.chezmoiexternal.toml` 以換取 0.2 秒且零網路，Windows 在第一次 CI 就紅——`run_onchange_before_clear-readonly-externals.ps1.tmpl` 以 `include` 讀該檔案，並斷言其中有五個 `$jdkNNVersion` pin。刪掉被別的 template 讀取的檔案，render 出來的是一個不存在的樹；那個版本會是又快又綠，但驗的是錯的佈局。
+
+保留檔案同時使「單獨 render externals」的步驟成為多餘：在 `--exclude=externals` 之下它仍是 target state 的一部分，其 `{{ }}` 錯誤仍會讓本 job 失敗。
 
 #### Scenario: externals 檔案自身的 template 壞掉
 - **WHEN** `.chezmoiexternal.toml` 的 `{{ }}` 語法錯誤
-- **THEN** 本 workflow 在移除該檔案「之前」的那一步就失敗
+- **THEN** workflow 失敗，錯誤指出該檔案與行號
+
+#### Scenario: 提議刪檔加速
+- **WHEN** 有人為了去除網路依賴而提議在 render 前移除或清空 `.chezmoiexternal.toml`
+- **THEN** SHALL 拒絕；URL 健康度由 `validate-externals.yml` 負責，但**佈局完整性**是本檢查的前提
 
 ### Requirement: 失敗時列舉全部，而非只報第一個
 Workflow SHALL 在 gate 失敗時額外跑一次逐檔 render，列出每一個失敗的 managed file。

@@ -19,9 +19,11 @@ name: Render templates
 #
 # Three OSes because two things branch on the platform. `.chezmoiignore.tmpl`
 # excludes ~31 targets on Linux (the .cmd shims, the Windows-only askpass), so
-# their templates are never rendered there; and `.chezmoi.toml.tmpl` itself has
-# a Windows branch that reads the registry. A single-OS run would report green
-# for templates it never touched.
+# their templates are never rendered there; and templates themselves branch --
+# run_onchange_before_clear-readonly-externals.ps1.tmpl opens with
+# `{{ if eq .chezmoi.os "windows" }}`, so its entire body, including an
+# `include` and a `fail` guard, is dead text on Linux. A single-OS run would
+# report green for templates it never entered.
 
 on:
   pull_request:
@@ -66,28 +68,28 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           chezmoi init --source="$PWD"
 
-      # Rendered on its own, before it is removed below, so this job covers it
-      # unconditionally. validate-externals.yml renders the same file but only
-      # on PRs that touch it -- which misses the case where the file is fine and
-      # something it depends on is not. execute-template is pure rendering: it
-      # resolves the {{ }} and downloads nothing.
-      - name: Render .chezmoiexternal.toml
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          chezmoi execute-template < home/.chezmoiexternal.toml > /dev/null
-
-      # Removed for the dry run. Building the target state with externals
-      # present fetches every archive (~35 MB, and it ignores
-      # --refresh-externals=never because the entries feed directory contents),
-      # which puts a network dependency on the one check that should run for
-      # every template change. Without the file the same dry run takes 0.2s and
-      # touches nothing. URL health is validate-externals.yml's job; template
-      # syntax was covered by the step above.
+      # `--exclude=externals` skips applying the archives; it does not stop
+      # chezmoi fetching them while it builds the target state, and neither does
+      # --refresh-externals=never, because those entries supply directory
+      # contents. So this step downloads ~35 MB and takes a few seconds. That
+      # cost is deliberate.
+      #
+      # The first draft deleted home/.chezmoiexternal.toml to make the run
+      # hermetic and 0.2s. Windows failed on the very first CI run:
+      # run_onchange_before_clear-readonly-externals.ps1.tmpl reads that file
+      # with `include` and asserts it contains five $jdkNNVersion pins. Removing
+      # a file that other templates read renders a tree that does not exist --
+      # the check would have been fast, green, and testing the wrong layout.
+      # Linux and macOS passed, because that script's body sits inside a
+      # windows-only `if` and never opened the file at all.
+      #
+      # Keeping the file also makes a separate execute-template step for it
+      # redundant: with --exclude=externals it is still rendered as part of the
+      # target state, and a `{{ }}` error in it still fails this job.
       - name: Render every template
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          rm home/.chezmoiexternal.toml
-          chezmoi apply --dry-run --source="$PWD"
+          chezmoi apply --dry-run --exclude=externals --source="$PWD"
 
       # chezmoi stops at the first template error, so a PR that broke three
       # templates would need three runs to find them all. This enumerates
@@ -99,7 +101,6 @@ jobs:
         if: failure()
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          rm -f home/.chezmoiexternal.toml
           echo "Rendering managed files one at a time (scripts are not addressable this way):"
           fail=0
           while IFS= read -r target; do
