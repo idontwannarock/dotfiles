@@ -1,70 +1,37 @@
-Personal agents for Claude Code based on below references.
+Personal agents for Claude Code, deployed by chezmoi from `home/dot_claude/exact_agents/`.
 
-# TL;DR
-
-Move this `agents` folder except this README.md file to `~/.claude`, and then you are good to go.
+`exact_agents/` is chezmoi-exclusive: deleting a file here removes it from
+`~/.claude/agents/` on the next apply. No `.chezmoiremove` entry needed.
 
 # Agent Catalog
 
-6 類 24 個 agents：Engineering (8) · Testing (5) · Product (3) · Project Management (3) · Studio Operations (5) · Bonus (1)。各 agent 的使用情境見其 frontmatter `description`。
+Seven agents, all serving the `/code:review-*` commands. Each agent's trigger
+conditions live in its frontmatter `description`.
 
-# Agent Collaboration Patterns
+| Agent | Used by |
+| --- | --- |
+| `code-review/code-reviewer` | comprehensive, uncommitted, spec, security, surgical |
+| `engineering/linus-torvalds` | comprehensive, uncommitted, spec, linus |
+| `code-review/pr-test-analyzer` | comprehensive, uncommitted, spec |
+| `code-review/silent-failure-hunter` | comprehensive, uncommitted, security |
+| `code-review/type-design-analyzer` | comprehensive, types |
+| `code-review/code-simplifier` | surgical |
+| `code-review/comment-analyzer` | comprehensive |
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    DEVELOPMENT WORKFLOW                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  trend-researcher ──► rapid-prototyper ──► test-writer-fixer    │
-│        │                    │                     │              │
-│        ▼                    ▼                     ▼              │
-│  sprint-prioritizer    linus-torvalds      api-tester           │
-│        │                    │                     │              │
-│        ▼                    ▼                     ▼              │
-│  experiment-tracker    devops-automator    project-shipper      │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+`/code:review-cross-model` uses none of these — it dispatches a different model
+through herdr.
 
-Common Pipelines:
+# Cost model
 
-1. New Feature Pipeline:
-   trend-researcher → rapid-prototyper → test-writer-fixer → project-shipper
+An agent's `description` is preloaded into every session's system prompt so the
+model can route to it; only the body is lazy. Agents therefore cost tokens even
+when never invoked. Keep this directory to agents that something actually calls.
 
-2. Code Quality Pipeline:
-   linus-torvalds → test-writer-fixer → api-tester → performance-benchmarker
-
-3. Production Pipeline:
-   devops-automator → infrastructure-maintainer → analytics-reporter
-
-4. Product Planning Pipeline:
-   feedback-synthesizer → sprint-prioritizer → experiment-tracker
-
-5. Launch Pipeline:
-   project-shipper → studio-producer → support-responder
-```
-
-# Nice to have
-
-## MCP Servers
-
-> context7 已透過 plugin 安裝（`/plugin` → context7），不需要手動設定 MCP。
-> spec-workflow-mcp 已由 OpenSpec + 自家 discipline skills 流程取代，不再需要。
-
-- grep mcp setup: `claude mcp add --transport http grep https://mcp.grep.app`
-
-or just add following config in `~/.claude.json` file.
-
-```json
-    "mcpServers": {
-    "grep": {
-      "type": "http",
-      "url": "https://mcp.grep.app"
-    }
-  }
-```
+The 24 agents from [contains-studio/agents](https://github.com/contains-studio/agents)
+that shipped here originally were retired for that reason — nothing referenced
+them, and they cost roughly 14k tokens per session.
 
 # Reference
 
 - [contains-studio/agents](https://github.com/contains-studio/agents)
 - [kingkongshot/prompts](https://github.com/kingkongshot/prompts)
-

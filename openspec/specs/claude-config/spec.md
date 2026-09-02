@@ -10,13 +10,22 @@
 
 `exact_` 的前提是**該目錄的內容完全屬於 chezmoi**；僅在此前提成立時才 SHALL 使用它。`~/.claude/commands/` 與 `~/.claude/skills/` 不滿足此前提（見「退役的 Claude command 由 .chezmoiremove 跨機器修剪」requirement），故 SHALL NOT 改為 `exact_`。
 
+`exact_` 的語意是**單層**，不遞迴：`exact_agents/` 只讓 `~/.claude/agents/` 的直接子項受控。
+`exact_agents/` 底下的每一層子目錄 SHALL 同樣帶 `exact_` 前綴（`exact_engineering/`、
+`exact_code-review/`），否則該子目錄內被刪除的 agent 會永久留在目標機器上。
+此漏失是靜默的——apply 退出碼 0、`chezmoi diff` 空白、`chezmoi status` 也不列出該檔案。
+
 #### Scenario: 新增 agent 後自動部署
-- **WHEN** repo 中新增 `dot_claude/exact_agents/engineering/new-agent.md` 並執行 chezmoi apply
+- **WHEN** repo 中新增 `dot_claude/exact_agents/exact_engineering/new-agent.md` 並執行 chezmoi apply
 - **THEN** `~/.claude/agents/engineering/new-agent.md` 出現在系統
 
 #### Scenario: 移除 agent 後自動清除
-- **WHEN** repo 中刪除 `dot_claude/exact_agents/engineering/old-agent.md` 並執行 chezmoi apply
+- **WHEN** repo 中刪除 `dot_claude/exact_agents/exact_engineering/old-agent.md` 並執行 chezmoi apply
 - **THEN** `~/.claude/agents/engineering/old-agent.md` 從系統移除
+
+#### Scenario: 子目錄漏加 exact_ 則不修剪
+- **WHEN** 子目錄為 `dot_claude/exact_agents/engineering/`（無 `exact_` 前綴），且 repo 中刪除其下某個 agent 但該目錄仍有其他檔案
+- **THEN** `chezmoi status` 不會列出該刪除、apply 後目標檔案仍在系統上；新增子目錄時 SHALL 一律加上 `exact_` 前綴
 
 #### Scenario: commands 不得改為 exact_
 - **WHEN** 有人提議將 `dot_claude/commands/` 或 `dot_claude/skills/` 改為 `exact_` 前綴以取得自動修剪
