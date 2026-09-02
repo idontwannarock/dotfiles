@@ -49,6 +49,9 @@ set -u
 self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 repo_root=$(dirname "$self_dir")
 bodies_dir="$repo_root/home/.chezmoitemplates/skills"
+# The shared user-system-prompt renders through the same name-map, so it is
+# part of the same population and carries the same obligation.
+shared_prompt="$repo_root/home/.chezmoitemplates/user-system-prompt.md"
 
 failures=0
 checked=0
@@ -60,7 +63,7 @@ fail() {
 
 [ -d "$bodies_dir" ] || { fail "no shared skill bodies at $bodies_dir"; exit 1; }
 
-for body in "$bodies_dir"/*.md; do
+for body in "$bodies_dir"/*.md "$shared_prompt"; do
     [ -f "$body" ] || continue
     rel=${body#"$repo_root"/}
 
@@ -84,10 +87,10 @@ for body in "$bodies_dir"/*.md; do
     checked=$((checked + 1))
 done
 
-[ "$checked" -gt 0 ] || fail "no skill bodies were checked — glob matched nothing"
+[ "$checked" -gt 0 ] || fail "no shared bodies were checked — glob matched nothing"
 
 if [ "$failures" -eq 0 ]; then
-    printf 'ok: %d shared skill bodies, every .n.tool branch declares its axis\n' "$checked"
+    printf 'ok: %d shared bodies, every .n.tool branch declares its axis\n' "$checked"
     exit 0
 fi
 
