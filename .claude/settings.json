@@ -1,3 +1,18 @@
 {
-  "effortLevel": "medium"
+  "effortLevel": "medium",
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": true
+  },
+  "skillOverrides": {
+    "openspec-new-change": "off",
+    "openspec-continue-change": "off",
+    "openspec-ff-change": "off",
+    "openspec-apply-change": "off",
+    "openspec-verify-change": "off",
+    "openspec-explore": "off",
+    "openspec-sync-specs": "off",
+    "openspec-archive-change": "off",
+    "openspec-bulk-archive-change": "off",
+    "openspec-onboard": "off"
+  }
 }
