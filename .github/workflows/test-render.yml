@@ -1,0 +1,118 @@
+name: Render templates
+
+# Third sibling of test-shell.yml and test-pester.yml, one workflow per concern.
+#
+# The gap this closes: nothing resolved a template until `chezmoi apply` ran on
+# a real machine. `validate-externals.yml` renders exactly one file
+# (.chezmoiexternal.toml) and only when that file changes; every other template
+# in home/ -- the shared skill bodies, the command and skill shells, the
+# CLAUDE.md/AGENTS.md prompts, every run_* install script -- reached main
+# unrendered. A typo in a shared body is invisible to the shell tests, renders
+# nothing on its own, and surfaces later as a failed apply on whichever machine
+# updated first.
+#
+# `apply --dry-run` is the whole check. It builds the full target state, which
+# means rendering every template including the run_* scripts, and exits 1 with
+# the source file and line on the first template error. It writes nothing and
+# executes no script -- verified, not assumed: a dry run against an empty
+# destination leaves it empty.
+#
+# Three OSes because two things branch on the platform. `.chezmoiignore.tmpl`
+# excludes ~31 targets on Linux (the .cmd shims, the Windows-only askpass), so
+# their templates are never rendered there; and `.chezmoi.toml.tmpl` itself has
+# a Windows branch that reads the registry. A single-OS run would report green
+# for templates it never touched.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      # The subject is the whole deployed tree. Anything under home/ can be a
+      # template or can be included by one, and a fragment under
+      # .chezmoitemplates/ has no path relationship to the shells that pull it
+      # in -- so there is no narrower filter that stays correct. Per
+      # test-shell.yml: a guard that does not run when its subject changes is
+      # equivalent to no guard.
+      - 'home/**'
+      - '.github/workflows/test-render.yml'
+  workflow_dispatch:
+
+jobs:
+  render:
+    name: Render every template
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install chezmoi
+        run: sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+
+      # Required, not optional. `.chezmoi.toml.tmpl` supplies [data] -- isWSL,
+      # goMinVersion, the Go tarball pin -- and without a generated config those
+      # keys are absent, so the first template that reads one fails for a reason
+      # that has nothing to do with the PR. `init` alone renders the config; it
+      # applies nothing and runs no script.
+      - name: Generate the chezmoi config
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          chezmoi init --source="$PWD"
+
+      # Rendered on its own, before it is removed below, so this job covers it
+      # unconditionally. validate-externals.yml renders the same file but only
+      # on PRs that touch it -- which misses the case where the file is fine and
+      # something it depends on is not. execute-template is pure rendering: it
+      # resolves the {{ }} and downloads nothing.
+      - name: Render .chezmoiexternal.toml
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          chezmoi execute-template < home/.chezmoiexternal.toml > /dev/null
+
+      # Removed for the dry run. Building the target state with externals
+      # present fetches every archive (~35 MB, and it ignores
+      # --refresh-externals=never because the entries feed directory contents),
+      # which puts a network dependency on the one check that should run for
+      # every template change. Without the file the same dry run takes 0.2s and
+      # touches nothing. URL health is validate-externals.yml's job; template
+      # syntax was covered by the step above.
+      - name: Render every template
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          rm home/.chezmoiexternal.toml
+          chezmoi apply --dry-run --source="$PWD"
+
+      # chezmoi stops at the first template error, so a PR that broke three
+      # templates would need three runs to find them all. This enumerates
+      # instead: it renders each managed file separately and reports every one
+      # that fails. Diagnostic only -- the gate is the step above, which is also
+      # the only one of the two that covers run_* scripts, since a script has no
+      # target path for `cat` to address.
+      - name: List every failing template
+        if: failure()
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          rm -f home/.chezmoiexternal.toml
+          echo "Rendering managed files one at a time (scripts are not addressable this way):"
+          fail=0
+          while IFS= read -r target; do
+            [ -n "$target" ] || continue
+            # $HOME/ prefix is load-bearing: `chezmoi managed` prints paths
+            # relative to the destination, but `chezmoi cat` resolves a relative
+            # argument against the CWD -- which here is the checkout. Without it
+            # every file reports "not in destination directory" and the real
+            # failures are buried in 126 lines of noise.
+            if ! err=$(chezmoi cat --source="$PWD" "$HOME/$target" 2>&1 >/dev/null); then
+              echo "FAIL $target"
+              echo "     $err"
+              fail=1
+            fi
+          done < <(chezmoi managed --source="$PWD" --include=files)
+          [ "$fail" -eq 1 ] || echo "No managed file failed on its own — the error is in a run_* script; see the step above."
