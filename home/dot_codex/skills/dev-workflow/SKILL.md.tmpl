@@ -17,7 +17,7 @@
     "reviewCrossModel" "$review-cross-model"
     "teamDoc" "confluence-team-doc"
     "teamDocGap" "This end has no Atlassian MCP and no `confluence-team-doc` skill, so it cannot run the step at all — when the answer is yes, say so plainly and ask the user to write it up from the Claude end. Never leave the step out silently."
-    "reviewList" "`$review-surgical`, `$review-comprehensive`, `$review-cross-model`, `$review-linus`, `$review-uncommitted`" -}}
+    "reviewList" "`$review-surgical`, `$review-comprehensive`, `$review-uncommitted`, `$review-cross-model`, `$review-spec`, `$review-linus`, `$review-security`, `$review-types`" -}}
 ---
 name: dev-workflow
 description: "Use when receiving any implementation task — adding features, fixing bugs, refactoring code, or modifying behavior beyond trivial one-line changes. Also use when the user asks about the development workflow, process, or OpenSpec flow. Handles requests in any language (e.g. 加功能、修 bug、重構). Orchestrates the full OpenSpec lifecycle with built-in discipline skills: workflow selection, worktree isolation decisions, grill → spec → implement (tdd) → verify → review → merge. Make sure to invoke this skill whenever a real implementation task arrives, even if the user doesn't explicitly ask for a \"workflow\" — skipping it risks losing spec tracking and review gates."

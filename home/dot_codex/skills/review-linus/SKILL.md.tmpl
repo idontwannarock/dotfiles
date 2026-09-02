@@ -1,1 +1,14 @@
-{{ template "skills/review-linus.md" . -}}
+{{- /* Codex name-map for the shared review bodies */ -}}
+{{- $n := dict
+    "tool" "codex"
+    "reviewFull" "$review-comprehensive"
+    "reviewCrossModel" "$review-cross-model"
+    "reviewSpec" "$review-spec"
+    "reviewTypes" "$review-types"
+    "reviewLinus" "$review-linus" -}}
+---
+name: review-linus
+description: "Design review in the Linus register — simplicity, good taste, eliminating special cases, backward compatibility"
+---
+
+{{ template "skills/review-linus.md" (dict "n" $n) -}}

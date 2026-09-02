@@ -1,0 +1,14 @@
+{{- /* Claude name-map for the shared review bodies */ -}}
+{{- $n := dict
+    "tool" "claude"
+    "reviewFull" "code:review-comprehensive"
+    "reviewCrossModel" "code:review-cross-model"
+    "reviewSpec" "code:review-spec"
+    "reviewTypes" "code:review-types"
+    "reviewLinus" "code:review-linus" -}}
+---
+allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*), Bash(openspec:*), AskUserQuestion
+description: Spec-driven code review — uses OpenSpec artifacts to verify the implementation matches what was agreed
+---
+
+{{ template "skills/review-spec.md" (dict "n" $n) -}}

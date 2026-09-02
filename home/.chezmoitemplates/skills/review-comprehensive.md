@@ -1,35 +1,30 @@
----
-name: review-comprehensive
-description: Comprehensive code review of commit ranges, branches, or entire codebase — all agents, confidence scoring
----
-
-## Context
-
-First, gather context by running these commands:
-
-- `git status --short` — working tree state
-- `git branch --show-current` — current branch
-
+{{ template "skills/code-review-context.md" . }}
 {{ template "skills/code-review-scope.md" . }}
-## Task
+## Lenses
 
-After obtaining the diff, dispatch **all review tasks in parallel**. Each task receives the full diff.
+Run all seven. Each is a file under `~/.agent/reference/review-lenses/`.
 
-| Review Task | Agent Type | Focus |
-|-------------|-----------|-------|
-| Code quality + security | `code-reviewer` | Style, best practices, bugs, naming. **Also**: injection attacks (SQL/command/XSS), auth/authz issues, sensitive data exposure, OWASP Top 10 |
-| Silent failures | `silent-failure-hunter` | Error handling, swallowed exceptions, inappropriate fallback, data loss paths |
-| Test coverage | `pr-test-analyzer` | Missing tests, edge cases, test quality and maintainability |
-| Architecture | `linus-torvalds` | Simplicity, unnecessary complexity, good taste, special cases that should disappear, backward compatibility |
-| Type design | `type-design-analyzer` | Encapsulation, invariant expression, type safety, enforcement quality |
-| Comment accuracy | `comment-analyzer` | Comment accuracy vs actual code behavior, stale comments, missing critical comments |
+| Lens | File | The question |
+|------|------|--------------|
+| correctness | `correctness.md` | Does this code do the wrong thing? |
+| failure-handling | `failure-handling.md` | When something goes wrong, does anyone find out? |
+| tests | `tests.md` | If this change broke, would a test go red? |
+| design | `design.md` | Is the structure right — and could it be simpler? |
+| comments | `comments.md` | Does the prose still describe the code? |
+| conventions | `conventions.md` | Does this follow the rules this repo wrote down? |
+| security | `security.md` | Can someone make this do something it should not? |
 
+The lenses were split so a finding belongs to exactly one of them. If the same
+issue arrives from two lenses, that is a defect in the lens boundary, not a
+corroboration — report it once and say which two lenses produced it.
+
+{{ template "skills/code-review-dispatch.md" . }}
 {{ template "skills/code-review-confidence.md" . }}
 ## Cross-model rebuttal
 
-The six lenses above and the confidence pass all run on one model family. They differ by prompt, not by priors, and each of them read evidence you selected. That structure is good at rejecting misjudgements and blind to shared omissions.
+The seven lenses above and the confidence pass all run on one model family. They differ by prompt, not by priors, and each of them read evidence you selected. That structure is good at rejecting misjudgements and blind to shared omissions.
 
-So the filtered findings are not the verdict yet -- they are one side of an exchange. Run `review-cross-model` with them.
+So the filtered findings are not the verdict yet -- they are one side of an exchange. Run `{{ .n.reviewCrossModel }}` with them.
 
 Its inputs and outputs:
 
@@ -59,10 +54,10 @@ If the cross-model leg does not run, say so in the report and grade on confidenc
 **Summary**: [one sentence on overall quality and most important finding]
 
 🔴 **Critical Issues** (must fix)
-- [issue] — _source: [agent], upheld by: [both sides / rebuttal failed]_
+- [issue] — _lens: [lens], upheld by: [both sides / rebuttal failed]_
 
 🟡 **Suggestions** (should consider)
-- [suggestion] — _source: [agent]_
+- [suggestion] — _lens: [lens]_
 
 ⚖️ **Split** (the two models disagree — your call)
 - [finding] — _raised by: [side]. Their position: [...]. The other side: [...]_
@@ -76,32 +71,19 @@ If the cross-model leg does not run, say so in the report and grade on confidenc
 🟢 **Good Practices**
 - [positive observation]
 
-**Details by Perspective**
+**Details by Lens**
 
-_Code Quality & Security_ (code-reviewer)
-...
+_Correctness_ · _Failure handling_ · _Tests_ · _Design_ · _Comments_ · _Conventions_ · _Security_
 
-_Error Handling_ (silent-failure-hunter)
-...
-
-_Test Coverage_ (pr-test-analyzer)
-...
-
-_Architecture & Simplicity_ (linus-torvalds)
-...
-
-_Type Design_ (type-design-analyzer)
-...
-
-_Comment Accuracy_ (comment-analyzer)
-...
+One block per lens that produced findings. Omit a lens that found nothing after
+naming it in a single line, so the reader can tell it ran.
 
 ---
 
 ## Guardrails
 
 - **Do not modify code** — this is a read-only review
-- **Full diff** — every task must receive the full diff, not a summary
+- **Full diff** — every reviewer must receive the full diff, not a summary
 - **Large diffs** — if over 500 lines changed, note at the top that the user may want to split the review
-- **No findings** — if a task finds no issues, state that briefly; do not fabricate issues
-- **Spec alignment** — if the project has an active OpenSpec change, mention that `review-spec` (in the OpenSpec workflow) can check requirement alignment
+- **No findings** — if a lens finds no issues, state that briefly; do not fabricate issues
+- **Spec alignment** — if the project has an active OpenSpec change, mention that `{{ .n.reviewSpec }}` can check requirement alignment

@@ -1,1 +1,14 @@
-{{ template "skills/review-uncommitted.md" . -}}
+{{- /* Codex name-map for the shared review bodies */ -}}
+{{- $n := dict
+    "tool" "codex"
+    "reviewFull" "$review-comprehensive"
+    "reviewCrossModel" "$review-cross-model"
+    "reviewSpec" "$review-spec"
+    "reviewTypes" "$review-types"
+    "reviewLinus" "$review-linus" -}}
+---
+name: review-uncommitted
+description: "Review uncommitted changes with change-aware lens selection — use during development to check work before committing"
+---
+
+{{ template "skills/review-uncommitted.md" (dict "n" $n) -}}

@@ -31,6 +31,27 @@
 - **WHEN** 有人提議將 `dot_claude/commands/` 或 `dot_claude/skills/` 改為 `exact_` 前綴以取得自動修剪
 - **THEN** SHALL 拒絕，因該目錄存在非 chezmoi 管理的檔案，`exact_` 會靜默刪除它們；退役修剪 SHALL 改用 `.chezmoiremove` 點名
 
+### Requirement: review 觀點以 lens 檔案承載，不以 agent 承載
+Code review 的每個觀點 SHALL 是 `~/.agent/reference/review-lenses/` 下的一個純檔案，由 `review-*` flow 指名路徑後交給 reviewer 讀取；SHALL NOT 是一個 agent 定義。
+
+理由是載入時機：agent 與 skill 的 `description` 都會預載入每個 session 的 system prompt（模型必須看見才能決定要不要路由過去），普通檔案不會。觀點內容放在 agent 裡等於「無論有沒有跑 review 都付費」。此樹為 tool-agnostic，Claude 與 Codex 的 flow 指向同一批路徑。
+
+`~/.claude/agents/` SHALL 只保留 `reviewer` 一個 agent，其 `tools` SHALL 明列為唯讀（`Read, Grep, Glob`）。省略 `tools` 欄位等於繼承全部工具（含 `Write`、`Edit`），review 的唯讀性 SHALL NOT 僅以散文宣告。
+
+每個 lens SHALL 只回答一個問題，且 SHALL NOT 自帶評分尺——嚴重度由 flow 事後以單一尺度給定，lens 自帶尺度會讓跨 lens 的排序失效。lens SHALL NOT 主張其他專案的規範；判斷需要在地規則時，SHALL 指示讀取當前 repo 的 `CLAUDE.md` / `AGENTS.md` 與鄰近程式碼。
+
+#### Scenario: 新增觀點
+- **WHEN** 需要一個新的 review 觀點
+- **THEN** 在 `dot_agent/reference/review-lenses/` 新增一個檔案並由 flow 指名，SHALL NOT 新增 agent 定義
+
+#### Scenario: lens 改名或刪除
+- **WHEN** 某 lens 檔案改名，而 flow 仍指向舊路徑
+- **THEN** `tests/review-lens-refs.test.sh` 失敗；render 不會失敗，因為沒有任何東西在 render 期解析 lens 路徑
+
+#### Scenario: 孤兒 lens
+- **WHEN** `review-lenses/` 下存在沒有任何 flow 指名的檔案
+- **THEN** 同一測試失敗——缺少的 lens 在第一次執行 flow 時就會現形，多出來的永遠不會
+
 ### Requirement: Claude plugin 安裝透過 run_onchange_ 腳本
 superpowers marketplace 與所需 plugins 的安裝 SHALL 由 chezmoi `run_onchange_` 腳本處理，腳本內容改變時自動重新執行。所需 plugins 為 episodic-memory 與 elements-of-style（均來自 `obra/superpowers-marketplace`），以及 official marketplace 的 slack 與 explanatory-output-style。
 
@@ -43,11 +64,11 @@ superpowers marketplace 與所需 plugins 的安裝 SHALL 由 chezmoi `run_oncha
 | `superpowers@claude-plugins-official` | workflow skills 已由 `~/.claude/skills/` 自家 discipline skills 取代 |
 | `claude-md-management@claude-plugins-official` | 未使用 |
 | `context7@claude-plugins-official` | 未使用 |
-| `code-simplifier@claude-plugins-official` | 未使用；同名 agent 由 repo 的 `exact_agents/code-review/` 提供，與此 plugin 無關 |
+| `code-simplifier@claude-plugins-official` | 未使用；repo 曾有同名 agent，已隨 review lens 改制退役，與此 plugin 始終無關 |
 | `playwright@claude-plugins-official` | 未使用 |
 | `commit-commands@claude-plugins-official` | 未使用 |
 | `security-guidance@claude-plugins-official` | 未使用 |
-| `pr-review-toolkit@claude-plugins-official` | 未使用；`code-reviewer` 等 agent 由 repo 的 `exact_agents/` 提供 |
+| `pr-review-toolkit@claude-plugins-official` | 未使用；repo 的 review 能力來自自家 `review-*` 指令，與此 plugin 無關 |
 | `pyright-lsp@claude-plugins-official` | 未使用 |
 | `jdtls-lsp@claude-plugins-official` | 未使用 |
 | `claude-code-setup@claude-plugins-official` | 未使用 |
@@ -80,9 +101,9 @@ uninstall 與 cache 清除 SHALL 各自冪等，在 plugin 或 cache 不存在�
 - **WHEN** 機器上退役 plugin 早已不存在且腳本再次執行
 - **THEN** 跳過 uninstall 並印出 skip，cache 清除為 no-op，腳本繼續執行後續步驟並正常結束
 
-#### Scenario: 退役不影響 repo 自有的同名 agent
+#### Scenario: 退役不影響 repo 自有的 review 流程
 - **WHEN** `code-simplifier` 與 `pr-review-toolkit` plugin 被移除
-- **THEN** `~/.claude/agents/code-review/` 下由 chezmoi 部署的 `code-simplifier.md`、`code-reviewer.md` 不受影響，兩個 agent 仍可使用
+- **THEN** `code:review-*` 指令不受影響——它們派工給 repo 自有的 `reviewer` agent，讀 `~/.agent/reference/review-lenses/` 下的 lens 檔案，兩者都不來自 plugin
 
 #### Scenario: 移除 superpowers plugin 後 episodic-memory 不受影響
 - **WHEN** superpowers plugin 已從系統移除，但 marketplace 與 episodic-memory 保留
