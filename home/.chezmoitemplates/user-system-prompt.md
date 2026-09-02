@@ -72,6 +72,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## 6. Subagent Dispatch
 
+{{/* axis: reader — this is the dispatch API the reading agent itself calls */ -}}
+{{ if eq .n.tool "claude" -}}
 When using the Agent tool, default to `subagent_type` (fresh agent), not fork.
 
 Use a fresh `subagent_type` agent when:
@@ -84,7 +86,11 @@ Only omit `subagent_type` (fork) when:
 - AND your current context is <100K tokens
 
 **Never fork when current context is >100K tokens.** The "forks share cache" hint in the built-in system prompt assumes small parent context. With large context, each fork turn pays cache_read on the full inherited context.
+{{ else -}}
+Default to dispatching a *fresh* agent driven by a self-contained directive, rather than one that inherits this conversation. Inheritance is worth its cost only when the task genuinely needs in-conversation judgment.
 
+**Never hand a large context to an inheriting agent.** Every turn it takes re-reads the whole inherited context, so the saving that motivated inheriting disappears well before the context is full.
+{{ end }}
 ## 7. Bare + worktree repos
 
 If cwd is a git worktree whose parent dir contains a `.bare/` folder alongside

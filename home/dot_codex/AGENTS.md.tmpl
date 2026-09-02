@@ -1,3 +1,6 @@
+{{- /* Codex name-map for the shared user-system-prompt body */ -}}
+{{- $n := dict
+    "tool" "codex" -}}
 # AGENTS.md
 
-{{ template "user-system-prompt.md" . -}}
+{{ template "user-system-prompt.md" (dict "n" $n "chez" .chezmoi) -}}

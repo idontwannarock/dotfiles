@@ -1,5 +1,9 @@
+{{- /* Claude name-map for the shared pickup body */ -}}
+{{- $n := dict
+    "memoryDir" "~/.claude/memory"
+    "cli" "claude" -}}
 ---
 description: Continue a prior session from a handoff file under ~/.agent/handoffs/. Pass the handoff ID, slug, or date prefix as the argument; bare /pickup uses the most recent handoff.
 ---
 
-{{ template "skills/pickup.md" . -}}
+{{ template "skills/pickup.md" (dict "n" $n "chez" .chezmoi) -}}
