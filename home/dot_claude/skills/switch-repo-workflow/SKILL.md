@@ -12,7 +12,7 @@ description: "Use when one repo should run a different development workflow from
 3. Disable the outgoing **repo** skills in `.claude/settings.json`.
 4. Disable the outgoing **personal** skills in `.claude/settings.local.json`.
 5. Make `.gitignore` stop hiding step 3's file.
-6. Edit the `CLAUDE.md` prose that names the old workflow.
+6. Edit the prose the switch made **false** — usually only `CLAUDE.md`.
 7. Verify in a new session.
 
 Each step is one section below.
@@ -94,10 +94,33 @@ the negation:
 !/.claude/settings.json
 ```
 
-**`CLAUDE.md` prose naming the old workflow.** Settings disable a *skill*; they cannot
-disable a sentence. A line like "implementation tasks go through the OpenSpec flow" keeps
-steering the model after every relevant skill is off. Grep the repo's `CLAUDE.md` and
-`.claude/CLAUDE.md` for the old workflow's name and edit it.
+**Prose that steers the model.** Settings disable a *skill*; they cannot disable a
+sentence. A line like "implementation tasks go through the OpenSpec flow" keeps steering
+the model after every relevant skill is off.
+
+⚠️ **Grepping for the old workflow's name finds far more than you must change, and
+rewriting the surplus is the expensive mistake here.** A mature repo names its old workflow
+in a glossary, an architecture overview, a spec tree, a README. None of that is an
+instruction.
+
+Apply one test to each hit — **is this sentence now false?**
+
+| Hit | False after the switch? | Do |
+|---|---|---|
+| "implementation tasks go through the OpenSpec flow" | yes — no such flow runs here now | edit |
+| "`openspec/specs/` holds the behaviour contracts" | no — the files are still there | leave |
+| A glossary entry defining `dev-workflow` | no — the skill still exists | leave |
+| "this repo also carries a home-grown workflow system" | no — it still does | leave |
+
+Only sentences that became false are in scope, and they cluster in the files an agent
+actually reads as instruction: `CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md`. **Leave
+`README.md`, `docs/`, and any spec or context tree alone.** Those record what the repo
+contains, and a routing change does not make a record wrong. Switching this dotfiles repo
+turned up hits in four `context/` files, a README and a docs page — and under the test,
+**not one of them needed editing**.
+
+A spec tree that stops being maintained is a separate decision, taken later, on evidence
+that the new workflow stuck. It is not part of flipping the routing.
 
 ## Step 7: verify in a new session
 
