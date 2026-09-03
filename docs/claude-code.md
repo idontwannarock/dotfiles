@@ -561,6 +561,8 @@ go build -o ~/.claude/statusline .       # macOS/Linux
 
 **使用時間** 由 Claude Code stdin JSON 的 `cost.total_duration_ms` 直接提供，statusline 不再自行維護心跳。
 
+**Effort 等級** 優先取 stdin JSON 的 `effort.level`（per-session，跟著 `/effort` 即時變動）；欄位不存在時退回環境變數 `CLAUDE_EFFORT`，再退回 `~/.claude/settings.json` 的 `effortLevel` 靜態預設。
+
 **活躍 Session 數量**（排除非 conversation 進程）：
 - Windows: `golang.org/x/sys/windows` 的 Toolhelp32 + `QueryFullProcessImageName`，過濾全路徑必須在 `~/.local/bin/claude.exe`（擋 Claude Desktop 與 chrome-native-host）。2026-04-24 從 WMI `Get-CimInstance Win32_Process` 換掉，冷啟動從 ~900 ms 降到 ~10 ms。
 - macOS/Linux: `ps aux | grep claude`，排除 `--chrome-native-host` 等輔助進程。

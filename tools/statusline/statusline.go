@@ -68,6 +68,9 @@ type ClaudeData struct {
 		Name   string `json:"name"`
 		Branch string `json:"branch"`
 	} `json:"worktree"`
+	Effort *struct {
+		Level string `json:"level"`
+	} `json:"effort"`
 }
 
 // Version 由 CI 透過 ldflags 注入，格式為 YYYYMMDD
@@ -218,9 +221,15 @@ func readClaudeSettings() claudeSettings {
 	return s
 }
 
-func getEffortLevel(s claudeSettings) string {
-	// CLAUDE_EFFORT reflects the session's current effort and updates with
-	// runtime toggles like /effort. Prefer it over the static settings.json value.
+// getEffortLevel resolves effort from the most authoritative source available.
+// Claude Code sends effort.level on stdin for models that support the reasoning
+// effort parameter; that value is per-session and tracks runtime /effort
+// toggles. CLAUDE_EFFORT is the fallback for older Claude Code builds that omit
+// the field, and settings.json is the last resort static default.
+func getEffortLevel(stdinEffort string, s claudeSettings) string {
+	if v := strings.TrimSpace(stdinEffort); v != "" {
+		return v
+	}
 	if v := strings.TrimSpace(os.Getenv("CLAUDE_EFFORT")); v != "" {
 		return v
 	}
@@ -342,7 +351,11 @@ func main() {
 	emoji := modelEmoji(model)
 	dir := filepath.Base(data.Workspace.CurrentDir)
 	settings := readClaudeSettings()
-	effort := getEffortLevel(settings)
+	stdinEffort := ""
+	if data.Effort != nil {
+		stdinEffort = data.Effort.Level
+	}
+	effort := getEffortLevel(stdinEffort, settings)
 
 	ctxPercent := 0.0
 	if data.ContextWindow.UsedPercentage != nil {
