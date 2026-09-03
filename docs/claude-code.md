@@ -131,15 +131,8 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | 名稱 | 來源 | 說明 |
 |------|------|------|
 | slack | `claude-plugins-official` | Slack 讀寫、搜尋、Block Kit |
-| explanatory-output-style | `claude-plugins-official` | 教育性 ★ Insight 解說輸出模式（腳本同時取消安裝 `learning-output-style`） |
 | episodic-memory | `superpowers-marketplace` | 跨 session 對話記憶 |
 | elements-of-style | `superpowers-marketplace` | Strunk 寫作風格改善 |
-
-手動安裝、未納入腳本（換機時需自行補裝）：
-
-| 名稱 | 來源 | 說明 |
-|------|------|------|
-| code-review | `claude-plugins-official` | `/code-review` 指令與其自帶的 review agents（與自家 `code:review-*` 無關） |
 
 **已退役**（腳本以 `$retiredPlugins` 資料表驅動，在每台機器上主動 `plugin uninstall` 並清除殘留 cache，使移除收斂）：
 
@@ -148,6 +141,8 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | superpowers | workflow skills 已由 `~/.claude/skills/` 自家 discipline skills 取代 |
 | claude-md-management、context7、playwright、commit-commands、security-guidance、pyright-lsp、jdtls-lsp、claude-code-setup | 未使用 |
 | code-simplifier、pr-review-toolkit | 未使用；repo 曾有同名 agent，已隨 review lens 改制退役，與這兩個 plugin 始終無關 |
+| explanatory-output-style、learning-output-style | 兩者都靠 SessionStart hook 注入輸出風格；explanatory 那段寫「可以超過長度限制」，與 `output-styles/ELI5.md` 的「短句、只給必要的」直接對衝。輸出風格單一來源＝ELI5.md |
+| code-review | 唯一入口是 `/code-review`，與自家 `code:review-*` 重疊；508 份 transcript 中自家版用 61 次、它 0 次 |
 
 > 退役一個 plugin＝往那張表加一列，**不是**把安裝那行刪掉。刪安裝行不會讓已 apply 過的機器移除它，而 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，每次 apply 還會繼續更新它。
 
@@ -358,6 +353,55 @@ Codex CLI 沒有 command 概念，只有 skill。要讓「Claude 這邊轉 comma
 4. 刪 `dot_claude/skills/<name>/`（chezmoi 不會自動清 deployed orphan，需手動 `rm -rf ~/.claude/skills/<name>`）
 
 實例：`handoff`、`worklog-daily`、`worklog-team-status` 走這個模式（commit `7a555e8` / 2026-05-06）。
+
+### System prompt 佔用與精簡（2026-09-03 實測）
+
+`/context` 把開場佔用拆成 System prompt／System tools／Skills／Memory files 幾塊。
+精簡前 27.3K/200K，**最大一塊是 System tools 的 15.3K**——不是 skill，也不是 CLAUDE.md。
+
+#### 量測方法
+
+估不準，要量。跑一次無害的 headless session，讀 API 回報的真實數字：
+
+```bash
+claude -p "say ok $RANDOM" --output-format json --settings /tmp/probe.json \
+  | jq '.usage | .cache_creation_input_tokens + .cache_read_input_tokens'
+```
+
+**`cache_creation` 與 `cache_read` 必須相加。** 只看其中一個會被 prompt cache 誤導——
+第二次跑同樣設定時 creation 幾乎歸零，看起來像「省了 2 萬」，其實只是命中快取。
+`$RANDOM` 是為了讓每次的 user message 不同，避免整段命中。
+
+#### 旋鈕一：`permissions.deny` 會剝掉工具 schema
+
+deny 不只是執行期攔截，**它會把該工具的完整說明從 system prompt 移除**。
+
+| 設定 | prompt tokens |
+|------|---------------|
+| baseline | 29,135 |
+| deny `Workflow` 一個 | 21,029 |
+| deny 現行四個 | **18,513** |
+
+`Workflow` 一個工具就佔 ~8,100 token。四個合計省 10,622。
+
+`ListAgents` **刻意不 deny**：`coordinate` skill 靠它做艦隊定址。
+
+> settings.json 放頂層 `"tools": [...]` **會被忽略**（實測 29,134，與 baseline 相同）。
+> CLI 的 `--tools` 旗標有效，但那要改啟動方式，不如用 `deny`。
+
+#### 旋鈕二：`skillOverrides`
+
+已被 `skillOverrides` 關掉的 skill **不會**出現在 system prompt，也不占 listing budget。
+現行 13 個 off 的判準是使用次數，不是「看起來沒用」：
+
+```bash
+find ~/.claude/projects -name '*.jsonl' -print0 \
+  | xargs -0 grep -hoE '"skill":"[^"]+"' | sed 's/"skill":"//;s/"//' \
+  | sort | uniq -c | sort -rn
+```
+
+508 份 transcript 的統計裡，自家 `code:review-*` 合計 61 次、內建 `code-review` 0 次，
+所以內建那支關掉、自家的留著。兩張表都在 `dot_claude/modify_settings.json.sh.tmpl`。
 
 #### 字元語言對 token 的影響（次要）
 
