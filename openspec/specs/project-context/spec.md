@@ -116,7 +116,7 @@
 
 ### Requirement: auto-memory 不承載 repo-level 長青知識
 
-agent 的 auto-memory(`~/.claude/memory/<repo-slug>/`)SHALL NOT 作為 repo-level 長青知識的唯一載體。凡某條事實同時滿足「以本 repo 為範圍」與「跨 change 反覆適用」,它 SHALL 於 `openspec-sync-specs`／archive 階段被晉升進 `context/` 下性質相符的 concept 檔,並於晉升後回收該 memory。
+agent 的 auto-memory(`~/.agent/memory/<repo-slug>/`)SHALL NOT 作為 repo-level 長青知識的唯一載體。凡某條事實同時滿足「以本 repo 為範圍」與「跨 change 反覆適用」,它 SHALL 於 `openspec-sync-specs`／archive 階段被晉升進 `context/` 下性質相符的 concept 檔,並於晉升後回收該 memory。
 
 理由是載體性質而非內容品質:auto-memory 是 point-in-time 觀察、不受版控、不在需求分析的閱讀路徑上,且無人審閱。同一條事實留在那裡會隨程式碼漂移而無從察覺,也不會被 `grill`／`arch-review` 讀到。
 

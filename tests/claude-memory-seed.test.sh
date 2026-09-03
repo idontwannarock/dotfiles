@@ -162,9 +162,9 @@ describe 'normal repo'
 new_sandbox; repo="$s/proj"
 make_repo "$repo"
 id=$(id_of "$repo")
-assert_eq "~/.claude/memory/$id" "$(run_where "$repo" "$h")" 'where prints the path-slug target'
+assert_eq "~/.agent/memory/$id" "$(run_where "$repo" "$h")" 'where prints the path-slug target'
 run_apply "$repo" "$h"
-assert_eq "~/.claude/memory/$id" "$(amd "$repo/.claude/settings.local.json")" \
+assert_eq "~/.agent/memory/$id" "$(amd "$repo/.claude/settings.local.json")" \
     'apply writes autoMemoryDirectory into the repo toplevel'
 
 describe 'worktree shares the id but keeps its own settings file'
@@ -173,13 +173,13 @@ make_repo "$repo"
 git -C "$repo" worktree add -q -b feature "$wt" 2>/dev/null
 id=$(id_of "$repo")
 # Both sides asserted against the expected literal, never against each other:
-# `where` prints `~/.claude/memory/-` and exits 0 when the anchor cannot be
+# `where` prints `~/.agent/memory/-` and exits 0 when the anchor cannot be
 # resolved, so comparing two invocations stays green even if id derivation is
 # completely broken.
-assert_eq "~/.claude/memory/$id" "$(run_where "$repo" "$h")" 'main checkout resolves to the id'
-assert_eq "~/.claude/memory/$id" "$(run_where "$wt" "$h")" 'the worktree resolves to the same id'
+assert_eq "~/.agent/memory/$id" "$(run_where "$repo" "$h")" 'main checkout resolves to the id'
+assert_eq "~/.agent/memory/$id" "$(run_where "$wt" "$h")" 'the worktree resolves to the same id'
 run_apply "$wt" "$h"
-assert_eq "~/.claude/memory/$id" "$(amd "$wt/.claude/settings.local.json")" \
+assert_eq "~/.agent/memory/$id" "$(amd "$wt/.claude/settings.local.json")" \
     'worktree settings point at the shared id'
 assert_absent "$repo/.claude/settings.local.json" \
     'applying in the worktree does not write into the main checkout'
@@ -192,6 +192,27 @@ printf '{"autoMemoryDirectory":"~/somewhere/custom"}' >"$repo/.claude/settings.l
 run_apply "$repo" "$h"
 assert_eq '~/somewhere/custom' "$(amd "$repo/.claude/settings.local.json")" \
     'a value outside the managed roots is left alone'
+
+describe 'the retired ~/.claude/memory value is upgraded, not respected'
+new_sandbox; repo="$s/proj"
+make_repo "$repo"
+id=$(id_of "$repo")
+mkdir -p "$repo/.claude"
+printf '{"autoMemoryDirectory":"~/.claude/memory/%s"}' "$id" >"$repo/.claude/settings.local.json"
+run_apply "$repo" "$h"
+assert_eq "~/.agent/memory/$id" "$(amd "$repo/.claude/settings.local.json")" \
+    'a machine still on the old root is moved forward on next apply'
+
+describe 'migration from the retired ~/.claude/memory root'
+new_sandbox; repo="$s/proj"
+make_repo "$repo"
+id=$(id_of "$repo")
+mkdir -p "$h/.claude/memory/$id"
+printf 'remembered\n' >"$h/.claude/memory/$id/MEMORY.md"
+run_apply "$repo" "$h"
+assert_exists "$h/.agent/memory/$id/MEMORY.md" \
+    'memory under the retired root is moved to the new home'
+assert_absent "$h/.claude/memory/$id" 'nothing is left behind at the retired root'
 
 describe 'unrelated keys survive'
 new_sandbox; repo="$s/proj"
@@ -220,18 +241,18 @@ mkdir -p "$h/.claude/projects/$id/memory"
 printf 'remembered\n' >"$h/.claude/projects/$id/memory/MEMORY.md"
 printf 'transcript\n' >"$h/.claude/projects/$id/session.jsonl"
 run_apply "$repo" "$h"
-assert_exists "$h/.claude/memory/$id/MEMORY.md" 'memory/ is moved to the shared home'
+assert_exists "$h/.agent/memory/$id/MEMORY.md" 'memory/ is moved to the shared home'
 assert_exists "$h/.claude/projects/$id/session.jsonl" 'transcripts stay behind'
 
 describe 'populated target is never clobbered'
 new_sandbox; repo="$s/proj"
 make_repo "$repo"
 id=$(id_of "$repo")
-mkdir -p "$h/.claude/memory/$id" "$h/.claude/projects/$id/memory"
-printf 'new\n' >"$h/.claude/memory/$id/MEMORY.md"
+mkdir -p "$h/.agent/memory/$id" "$h/.claude/projects/$id/memory"
+printf 'new\n' >"$h/.agent/memory/$id/MEMORY.md"
 printf 'old\n' >"$h/.claude/projects/$id/memory/MEMORY.md"
 run_apply "$repo" "$h"
-assert_eq 'new' "$(cat "$h/.claude/memory/$id/MEMORY.md")" \
+assert_eq 'new' "$(cat "$h/.agent/memory/$id/MEMORY.md")" \
     'existing memory wins over the migration source'
 
 describe 'bare+worktree layout'
@@ -242,7 +263,7 @@ mkdir -p "$box"
 git clone --bare -q "$seed" "$box/.bare"
 git --git-dir="$box/.bare" worktree add -q "$box/$branch" "$branch" 2>/dev/null
 id=$(id_of "$box")
-assert_eq "~/.claude/memory/$id" "$(run_where "$box/$branch" "$h")" \
+assert_eq "~/.agent/memory/$id" "$(run_where "$box/$branch" "$h")" \
     'the id is the container path, not the worktree path'
 
 describe 'legacy basename dir is upgraded'
@@ -252,7 +273,7 @@ id=$(id_of "$repo")
 mkdir -p "$h/.claude/memory/proj"
 printf 'remembered\n' >"$h/.claude/memory/proj/MEMORY.md"
 run_apply "$repo" "$h"
-assert_exists "$h/.claude/memory/$id/MEMORY.md" \
+assert_exists "$h/.agent/memory/$id/MEMORY.md" \
     'the retired basename dir is renamed to the path slug'
 assert_absent "$h/.claude/memory/proj" 'nothing is left behind at the old name'
 
@@ -261,7 +282,7 @@ new_sandbox; repo="$s/real"; link="$s/link"
 make_repo "$repo"
 ln -s "$repo" "$link"
 id=$(id_of "$repo")
-assert_eq "~/.claude/memory/$id" "$(run_where "$link" "$h")" \
+assert_eq "~/.agent/memory/$id" "$(run_where "$link" "$h")" \
     'reaching a repo through a symlink resolves to the real path id'
 
 # ================================================================ GUARDS
@@ -317,10 +338,10 @@ describe 'non-git project dir'
 new_sandbox; proj="$s/devops"
 mkdir -p "$proj"
 id=$(id_of "$proj")
-assert_eq "~/.claude/memory/$id" "$(run_where "$proj" "$h")" \
+assert_eq "~/.agent/memory/$id" "$(run_where "$proj" "$h")" \
     'where derives the id from the project dir itself'
 run_apply "$proj" "$h"
-assert_eq "~/.claude/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
+assert_eq "~/.agent/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
     'apply seeds a non-git project dir'
 
 describe 'CLAUDE_PROJECT_DIR wins over cwd'
@@ -328,7 +349,7 @@ new_sandbox; proj="$s/devops"
 mkdir -p "$proj/sub"
 id=$(id_of "$proj")
 run_apply "$proj/sub" "$h" "$proj"
-assert_eq "~/.claude/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
+assert_eq "~/.agent/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
     'settings land on the project root, not the subdir'
 assert_absent "$proj/sub/.claude/settings.local.json" \
     'the subdir gets nothing'
@@ -338,7 +359,7 @@ new_sandbox; proj="$s/devops"
 mkdir -p "$proj"
 id=$(id_of "$proj")
 run_apply "$proj" "$h"
-assert_eq "~/.claude/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
+assert_eq "~/.agent/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
     'a missing CLAUDE_PROJECT_DIR is not an error'
 
 describe 'symlinked non-git project dir'
@@ -346,7 +367,7 @@ new_sandbox; proj="$s/real"; link="$s/link"
 mkdir -p "$proj"
 ln -s "$proj" "$link"
 id=$(id_of "$proj")
-assert_eq "~/.claude/memory/$id" "$(run_where "$link" "$h")" \
+assert_eq "~/.agent/memory/$id" "$(run_where "$link" "$h")" \
     'the symlink resolves to the real path bucket'
 
 describe 'non-git migration from the Claude default location'
@@ -356,7 +377,7 @@ id=$(id_of "$proj")
 mkdir -p "$h/.claude/projects/$id/memory"
 printf 'remembered\n' >"$h/.claude/projects/$id/memory/MEMORY.md"
 run_apply "$proj" "$h"
-assert_exists "$h/.claude/memory/$id/MEMORY.md" \
+assert_exists "$h/.agent/memory/$id/MEMORY.md" \
     'a non-git project migrates like a repo does'
 
 # ================================================================ MIGRATION LOOKUP
@@ -378,7 +399,7 @@ bucket=$(claude_bucket "$id")
 mkdir -p "$h/.claude/projects/$bucket/memory"
 printf 'remembered\n' >"$h/.claude/projects/$bucket/memory/MEMORY.md"
 run_apply "$proj" "$h"
-assert_exists "$h/.claude/memory/$id/MEMORY.md" \
+assert_exists "$h/.agent/memory/$id/MEMORY.md" \
     "a '-' bucket is matched against our '_' id"
 
 describe 'missing projects dir'
@@ -386,7 +407,7 @@ new_sandbox; proj="$s/devops"
 mkdir -p "$proj"
 id=$(id_of "$proj")
 run_apply "$proj" "$h"
-assert_eq "~/.claude/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
+assert_eq "~/.agent/memory/$id" "$(amd "$proj/.claude/settings.local.json")" \
     'an absent ~/.claude/projects is not an error'
 
 describe 'folded match still respects a populated target'
@@ -394,11 +415,11 @@ new_sandbox; proj="$s/mms_chat_api"
 mkdir -p "$proj"
 id=$(id_of "$proj")
 bucket=$(claude_bucket "$id")
-mkdir -p "$h/.claude/memory/$id" "$h/.claude/projects/$bucket/memory"
-printf 'new\n' >"$h/.claude/memory/$id/MEMORY.md"
+mkdir -p "$h/.agent/memory/$id" "$h/.claude/projects/$bucket/memory"
+printf 'new\n' >"$h/.agent/memory/$id/MEMORY.md"
 printf 'old\n' >"$h/.claude/projects/$bucket/memory/MEMORY.md"
 run_apply "$proj" "$h"
-assert_eq 'new' "$(cat "$h/.claude/memory/$id/MEMORY.md")" \
+assert_eq 'new' "$(cat "$h/.agent/memory/$id/MEMORY.md")" \
     'the folded lookup does not bypass the never-clobber rule'
 
 # ================================================================ HARDENING

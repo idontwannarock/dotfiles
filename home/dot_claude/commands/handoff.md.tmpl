@@ -1,6 +1,6 @@
 {{- /* Claude name-map for the shared handoff body */ -}}
 {{- $n := dict
-    "memoryDir" "~/.claude/memory"
+    "memoryDir" "~/.agent/memory"
     "cli" "claude" -}}
 ---
 description: Save current session state to a handoff file under ~/.agent/handoffs/. The file ends with the exact /pickup <id> command to revive it later. Pass --repo <path> to hand off to a different repo.

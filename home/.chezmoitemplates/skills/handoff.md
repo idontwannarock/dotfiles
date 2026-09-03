@@ -42,7 +42,7 @@ All of this is a snapshot, and composing the file takes many more turns. A paral
   - `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`
   - `\\wsl.localhost\Ubuntu\home\me\proj` becomes `--wsl-localhost-Ubuntu-home-me-proj`
 
-  Use `git-common-dir`, **not** `git rev-parse --show-toplevel`. Under bare+worktree the latter returns the current worktree path, so handoffs written from different worktrees of one repo land in different directories and become invisible to each other. This slug rule is the same one Claude auto-memory uses for `~/.claude/memory/<id>/`, so both systems agree on what "the same repo" means.
+  Use `git-common-dir`, **not** `git rev-parse --show-toplevel`. Under bare+worktree the latter returns the current worktree path, so handoffs written from different worktrees of one repo land in different directories and become invisible to each other. This slug rule is the same one Claude auto-memory uses for `~/.agent/memory/<id>/`, so both systems agree on what "the same repo" means.
 - **Path**: `~/.agent/handoffs/<repo-slug>/<ID>.md`. Create the directory if missing.
 
 **Handing off to a different repo.** Working in repo A and finding something that belongs to repo B is normal, and the handoff belongs in B's directory. This only happens when the user names the target -- `--repo <path>` in the wrapper, or plainly saying so in the args. The target is always a path: if the user gives a bare repo name, ask which path they mean rather than searching for it.

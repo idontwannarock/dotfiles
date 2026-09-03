@@ -99,6 +99,21 @@ follow it (branch creation, never `git switch` in-place, never operate at the
 container level, per-repo memory/worktree settings). The `finish-branch` skill
 handles merging + disposing in this layout natively.
 
+## 8. Memory Index Lines Point, They Do Not Summarize
+
+The memory index (`MEMORY.md`) loads in full at the start of every session; the
+individual memory files do not. So the index is the only layer where wording costs
+tokens on every turn, and the only layer worth trimming.
+
+- Write each index line as a **hook**, not a summary: enough to decide "open this
+  file or not", nothing more. Aim for ~60 characters after the title.
+- The body carries the content. Never restate it in the index.
+- When you update a memory, prune the index in the same pass — delete lines whose
+  file is gone, and merge lines that now say the same thing.
+- A fat index has two causes and this rule fixes one. If lines are wordy, rewrite
+  them. If there are simply too many, the fix is retiring stale memories, not
+  shortening the survivors.
+
 ---
 
 **Worklog repo:** `idontwannarock/worklogs`
