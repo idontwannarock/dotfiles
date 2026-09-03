@@ -444,7 +444,6 @@ MCP: ✓ context7, atlassian, playwright, chrome-devtools │ ✗ github
 - Git 分支（有未提交變更時顯示 `*`）
 - Context 使用量進度條與百分比
 - 今日累計使用時數
-- 活躍 session 數量（同時開多個 Claude Code 時顯示）
 
 #### 第二行
 - Burn Rate（每小時消耗）
@@ -507,8 +506,6 @@ ccusage 不需要預先安裝，`bunx ccusage` 會自動下載並執行。首次
 #### 2. 複製並編譯
 
 ```bash
-# 整包編譯：statusline.go 依賴 build-tag 分流的 count_unix.go / count_windows.go，
-# 單獨編譯 statusline.go 會 undefined: countClaudeProcesses。
 cd tools/statusline
 go build -o ~/.claude/statusline.exe .   # Windows
 go build -o ~/.claude/statusline .       # macOS/Linux
@@ -550,12 +547,11 @@ go build -o ~/.claude/statusline .       # macOS/Linux
 
 ### 平行化與 timeout
 
-主流程用 goroutine 平行跑兩個慢源 + 1 秒 `asyncTimeout`：
+主流程用 goroutine 平行跑慢源 + 1 秒 `asyncTimeout`：
 
 - `getGitInfo()` — 內部再分 3 個 goroutine：`git branch --show-current` / `git status --porcelain` / `git diff --shortstat`。Wall time = max(spawn) 而非 sum，Windows warm 中位數 428 ms（2026-04-24 平行化前為 1111 ms，常超時導致 branch/diff 段被吞掉）。
-- `countClaudeProcesses()` — 計算活躍 CLI session 數。
 
-兩支 goroutine 都未在 1 秒內完成時，對應段落會以空字串呈現（不阻塞 statusline 渲染）。
+未在 1 秒內完成時，對應段落會以空字串呈現（不阻塞 statusline 渲染）。
 
 ### Session 追蹤
 
@@ -563,9 +559,7 @@ go build -o ~/.claude/statusline .       # macOS/Linux
 
 **Effort 等級** 優先取 stdin JSON 的 `effort.level`（per-session，跟著 `/effort` 即時變動）；欄位不存在時退回環境變數 `CLAUDE_EFFORT`，再退回 `~/.claude/settings.json` 的 `effortLevel` 靜態預設。
 
-**活躍 Session 數量**（排除非 conversation 進程）：
-- Windows: `golang.org/x/sys/windows` 的 Toolhelp32 + `QueryFullProcessImageName`，過濾全路徑必須在 `~/.local/bin/claude.exe`（擋 Claude Desktop 與 chrome-native-host）。2026-04-24 從 WMI `Get-CimInstance Win32_Process` 換掉，冷啟動從 ~900 ms 降到 ~10 ms。
-- macOS/Linux: `ps aux | grep claude`，排除 `--chrome-native-host` 等輔助進程。
+**活躍 session 數量** 曾以 `[N]` 徽章顯示在第二行，2026-09-03 移除。連同 `count_unix.go`／`count_windows.go` 與 `golang.org/x/sys` 相依一併刪除。
 
 ### 參考
 

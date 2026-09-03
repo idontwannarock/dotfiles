@@ -375,16 +375,11 @@ func main() {
 	done := make(chan struct{})
 
 	var gitInfo GitInfo
-	var activeSessions int
 
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		gitInfo = getGitInfo(data.Workspace.CurrentDir)
-	}()
-	go func() {
-		defer wg.Done()
-		activeSessions = countClaudeProcesses()
 	}()
 
 	go func() {
@@ -433,7 +428,7 @@ func main() {
 	// === 第二行：Session │ Cost │ Rate Limits ===
 	var line2Parts []string
 
-	// Session info: #id ⏱ Xm [N]
+	// Session info: #id ⏱ Xm
 	sessionPart := ""
 	if data.SessionID != "" {
 		shortID := data.SessionID
@@ -443,9 +438,6 @@ func main() {
 		sessionPart = fmt.Sprintf("%s#%s%s", cDim, shortID, cReset)
 	}
 	sessionPart += fmt.Sprintf(" ⏱ %s%s%s", cWhite, formatDuration(data.Cost.TotalDurationMs), cReset)
-	if activeSessions > 1 {
-		sessionPart += fmt.Sprintf(" %s[%d]%s", cDim, activeSessions, cReset)
-	}
 	line2Parts = append(line2Parts, strings.TrimSpace(sessionPart))
 
 	// Session cost
