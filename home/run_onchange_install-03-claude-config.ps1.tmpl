@@ -37,18 +37,7 @@ try {
     Log-Step "[plugins] installing elements-of-style"
     claude plugin install elements-of-style@superpowers-marketplace 2>&1 | Out-Null
 
-    Log-Section "swap output style to explanatory — learning demands scaffolding, explanatory only adds insight notes"
     $installedPlugins = claude plugin list 2>$null | Out-String
-    if ($installedPlugins -notmatch "explanatory-output-style@claude-plugins-official") {
-        Log-Step "[plugins] installing explanatory-output-style"
-        claude plugin install explanatory-output-style@claude-plugins-official 2>&1 | Out-Null
-    } else {
-        Log-Skip "[plugins] explanatory-output-style already installed"
-    }
-    if ($installedPlugins -match "learning-output-style@claude-plugins-official") {
-        Log-Step "[plugins] removing learning-output-style (superseded by explanatory)"
-        claude plugin uninstall learning-output-style@claude-plugins-official 2>&1 | Out-Null
-    }
 
     # Retired plugins. Dropping the install line is NOT enough: machines that already
     # applied it keep the plugin, and run_update-claude-plugins iterates enabledPlugins
@@ -68,6 +57,9 @@ try {
         @{ Id = "pyright-lsp@claude-plugins-official";           Reason = "unused" }
         @{ Id = "jdtls-lsp@claude-plugins-official";             Reason = "unused" }
         @{ Id = "claude-code-setup@claude-plugins-official";     Reason = "unused" }
+        @{ Id = "learning-output-style@claude-plugins-official";   Reason = "output styles are served by ~/.claude/output-styles/ELI5.md; the plugin variants only fight it" }
+        @{ Id = "explanatory-output-style@claude-plugins-official"; Reason = "its SessionStart hook injects 'you may exceed typical length constraints', which contradicts the ELI5 output style" }
+        @{ Id = "code-review@claude-plugins-official";             Reason = "its only surface is /code-review, duplicated by the repo's own code:review-* commands" }
     )
 
     Log-Section "uninstall retired plugins so their removal converges on every machine"

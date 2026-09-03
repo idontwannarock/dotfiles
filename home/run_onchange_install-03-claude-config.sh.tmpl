@@ -31,18 +31,7 @@ claude plugin install episodic-memory@superpowers-marketplace 2>&1 || true
 log_step "[plugins] installing elements-of-style"
 claude plugin install elements-of-style@superpowers-marketplace 2>&1 || true
 
-log_section "swap output style to explanatory — learning demands scaffolding, explanatory only adds insight notes"
 INSTALLED_PLUGINS="$(claude plugin list 2>/dev/null || true)"
-if ! echo "$INSTALLED_PLUGINS" | grep -q "explanatory-output-style@claude-plugins-official"; then
-    log_step "[plugins] installing explanatory-output-style"
-    claude plugin install explanatory-output-style@claude-plugins-official 2>&1 || true
-else
-    log_skip "[plugins] explanatory-output-style already installed"
-fi
-if echo "$INSTALLED_PLUGINS" | grep -q "learning-output-style@claude-plugins-official"; then
-    log_step "[plugins] removing learning-output-style (superseded by explanatory)"
-    claude plugin uninstall learning-output-style@claude-plugins-official 2>&1 || true
-fi
 
 # Retired plugins. Dropping the install line is NOT enough: machines that already
 # applied it keep the plugin, and run_update-claude-plugins iterates enabledPlugins
@@ -63,6 +52,9 @@ pr-review-toolkit@claude-plugins-official|unused; review lives in the repo's own
 pyright-lsp@claude-plugins-official|unused
 jdtls-lsp@claude-plugins-official|unused
 claude-code-setup@claude-plugins-official|unused
+learning-output-style@claude-plugins-official|output styles are served by ~/.claude/output-styles/ELI5.md; the plugin variants only fight it
+explanatory-output-style@claude-plugins-official|its SessionStart hook injects "you may exceed typical length constraints", which contradicts the ELI5 output style
+code-review@claude-plugins-official|its only surface is /code-review, duplicated by the repo's own code:review-* commands
 "
 
 log_section "uninstall retired plugins so their removal converges on every machine"

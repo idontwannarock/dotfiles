@@ -11,6 +11,12 @@
 # - outputStyle = ELI5（output style 本體在 output-styles/ELI5.md）
 # - permissions.defaultMode = bypassPermissions
 # - permissions.allow 併入 "Skill(*)"（union + unique，不覆蓋現有 entries）
+# - permissions.deny 併入四個內建工具（union + unique）。deny 不只是執行期攔截，
+#   它會把工具 schema 整個從 system prompt 移除：實測 prompt 29,135 → 18,513
+#   token，其中 Workflow 一個就佔 ~8,100。ListAgents 刻意不列 —— coordinate
+#   skill 靠它做艦隊定址。
+# - skillOverrides 併入 13 個 "off"（object merge，不覆蓋其他 entries）：內建
+#   skill 中零使用、且與自訂 code:* / git:* 指令重疊的那些。
 # - statusLine（跨平台處理執行檔路徑）
 # - hooks.UserPromptSubmit（註冊 handoff-reminder.sh，context 用量階梯提醒）
 # - hooks.SessionStart（union-append claude-memory-seed；**不** hard-assign，
@@ -65,6 +71,29 @@ echo "$input" | jq \
     | .permissions = (.permissions // {})
     | .permissions.defaultMode = "bypassPermissions"
     | .permissions.allow = (((.permissions.allow // []) + ["Skill(*)"]) | unique)
+    | .permissions.deny = (
+        ((.permissions.deny // []) + [
+          "ReportFindings",
+          "ScheduleWakeup",
+          "SendFeedback",
+          "Workflow"
+        ]) | unique
+      )
+    | .skillOverrides = ((.skillOverrides // {}) + {
+        "claude-api": "off",
+        "code-review": "off",
+        "dataviz": "off",
+        "fewer-permission-prompts": "off",
+        "init": "off",
+        "keybindings-help": "off",
+        "loop": "off",
+        "run": "off",
+        "schedule": "off",
+        "security-review": "off",
+        "simplify": "off",
+        "update-config": "off",
+        "workflow-authoring": "off"
+      })
     | .statusLine = {
         type: "command",
         command: $statusline_cmd,
