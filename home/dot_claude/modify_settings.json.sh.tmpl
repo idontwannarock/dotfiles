@@ -18,7 +18,8 @@
 # - skillOverrides 併入 13 個 "off"（object merge，不覆蓋其他 entries）：內建
 #   skill 中零使用、且與自訂 code:* / git:* 指令重疊的那些。
 # - statusLine（跨平台處理執行檔路徑）
-# - hooks.UserPromptSubmit（註冊 handoff-reminder.sh，context 用量階梯提醒）
+# - hooks.UserPromptSubmit（註冊兩支階梯提醒：handoff-reminder.sh 看 context 用量、
+#   memory-index-reminder.sh 看該 repo MEMORY.md 索引的位元組數）
 # - hooks.SessionStart（union-append claude-memory-seed；**不** hard-assign，
 #   以保留 herdr / agent-sessions 等工具於 runtime 註冊的 SessionStart entries）
 #
@@ -130,6 +131,10 @@ echo "$input" | jq \
             {
               type: "command",
               command: "bash ~/.claude/hooks/handoff-reminder.sh"
+            },
+            {
+              type: "command",
+              command: "bash ~/.claude/hooks/memory-index-reminder.sh"
             }
           ]
         }
