@@ -433,18 +433,18 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 ### 顯示效果
 
 ```
-💛 Opus │ ●●●●○○○○○○ 44% 88k/200k │ dotfiles main* +2 -43 │ ● high │ ⏳ 5h: 24% ⟳ 3h11m │ 7d: 41% ⟳ 2d4h
+💛 Opus │ ● high │ ●●●●○○○○○○ 44% 88k/200k │ ⏳ 5h: 24% ⟳ 3h11m │ 7d: 41% ⟳ 2d4h │ dotfiles main* +2 -43
 ```
 
-單行輸出，由 `│` 分段：
+單行輸出，由 `│` 分段。段落順序由「多久看一次」決定：session 層級的狀態（模型、effort、額度）在前，隨時在變的工作區狀態在後。
 
 | 段 | 內容 |
 |---|---|
 | 模型 | emoji + 名稱（💛 Opus / 💠 Sonnet / 🌸 Haiku） |
-| Context | 進度條、百分比、`已用/上限` token 數（上限取 stdin JSON 的 `context_window.context_window_size`） |
-| 位置 | 專案目錄名、worktree 名（🌿，僅 worktree session）、git 分支（未提交變更加 `*`）、`+N -N` diff 統計 |
 | Effort | 等級徽章，`ultracode` 為獨立的 ⚡ 徽章 |
+| Context | 進度條、百分比、`已用/上限` token 數（上限取 stdin JSON 的 `context_window.context_window_size`） |
 | Rate limits | ⏳ 5h／7d 使用率與重置倒數（僅 Pro／Max，且首次 API 回應之後才有） |
+| 位置 | 專案目錄名、worktree 名（🌿，僅 worktree session）、git 分支（未提交變更加 `*`）、`+N -N` diff 統計 |
 
 沒有資料的段落整段省略，不留空的 `│`。
 

@@ -381,8 +381,15 @@ func main() {
 	case <-time.After(asyncTimeout):
 	}
 
-	// === Model │ Context bar % tokens/limit │ Dir [worktree] ⚡branch* +N -N │ Effort │ Rate limits ===
+	// === Model │ Effort │ Context bar % tokens/limit │ Rate limits │ Dir [worktree] ⚡branch* +N -N ===
 	line1 := fmt.Sprintf("%s %s%s%s", emoji, cBlue, model, cReset)
+
+	if effort != "" {
+		line1 += sep + formatEffort(effort)
+		if settings.Ultracode {
+			line1 += " " + formatUltracodeBadge()
+		}
+	}
 
 	pctColor := colorForPct(ctxPercent)
 	bar := progressBar(ctxPercent, 10)
@@ -393,6 +400,19 @@ func main() {
 		tokenPart += cDim + "/" + formatTokens(size) + cReset
 	}
 	line1 += fmt.Sprintf("%s%s %s%.0f%%%s %s", sep, bar, pctColor, ctxPercent, cReset, tokenPart)
+
+	if data.RateLimits != nil {
+		var rlParts []string
+		if data.RateLimits.FiveHour != nil {
+			rlParts = append(rlParts, formatRateLimit("5h", data.RateLimits.FiveHour.UsedPercentage, data.RateLimits.FiveHour.ResetsAt))
+		}
+		if data.RateLimits.SevenDay != nil {
+			rlParts = append(rlParts, formatRateLimit("7d", data.RateLimits.SevenDay.UsedPercentage, data.RateLimits.SevenDay.ResetsAt))
+		}
+		if len(rlParts) > 0 {
+			line1 += sep + "⏳ " + strings.Join(rlParts, sep)
+		}
+	}
 
 	line1 += fmt.Sprintf("%s%s%s%s", sep, cCyan, dir, cReset)
 	if data.Worktree != nil && data.Worktree.Name != "" {
@@ -410,26 +430,6 @@ func main() {
 			if gitInfo.Deletions > 0 {
 				line1 += fmt.Sprintf(" %s-%d%s", cRed, gitInfo.Deletions, cReset)
 			}
-		}
-	}
-
-	if effort != "" {
-		line1 += sep + formatEffort(effort)
-		if settings.Ultracode {
-			line1 += " " + formatUltracodeBadge()
-		}
-	}
-
-	if data.RateLimits != nil {
-		var rlParts []string
-		if data.RateLimits.FiveHour != nil {
-			rlParts = append(rlParts, formatRateLimit("5h", data.RateLimits.FiveHour.UsedPercentage, data.RateLimits.FiveHour.ResetsAt))
-		}
-		if data.RateLimits.SevenDay != nil {
-			rlParts = append(rlParts, formatRateLimit("7d", data.RateLimits.SevenDay.UsedPercentage, data.RateLimits.SevenDay.ResetsAt))
-		}
-		if len(rlParts) > 0 {
-			line1 += sep + "⏳ " + strings.Join(rlParts, sep)
 		}
 	}
 
