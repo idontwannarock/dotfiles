@@ -68,6 +68,9 @@ type ClaudeData struct {
 		Name   string `json:"name"`
 		Branch string `json:"branch"`
 	} `json:"worktree"`
+	Effort *struct {
+		Level string `json:"level"`
+	} `json:"effort"`
 }
 
 // Version 由 CI 透過 ldflags 注入，格式為 YYYYMMDD
@@ -176,11 +179,16 @@ func progressBar(pct float64, width int) string {
 }
 
 func formatTokens(tokens int) string {
+	// Trim a trailing ".0" so round figures read as 200k, not 200.0k. The
+	// context window limit is almost always round; the used count rarely is.
+	trim := func(s, unit string) string {
+		return strings.TrimSuffix(s, ".0") + unit
+	}
 	if tokens >= 1000000 {
-		return fmt.Sprintf("%.1fM", float64(tokens)/1000000)
+		return trim(fmt.Sprintf("%.1f", float64(tokens)/1000000), "M")
 	}
 	if tokens >= 1000 {
-		return fmt.Sprintf("%.1fk", float64(tokens)/1000)
+		return trim(fmt.Sprintf("%.1f", float64(tokens)/1000), "k")
 	}
 	return fmt.Sprintf("%d", tokens)
 }
@@ -218,9 +226,15 @@ func readClaudeSettings() claudeSettings {
 	return s
 }
 
-func getEffortLevel(s claudeSettings) string {
-	// CLAUDE_EFFORT reflects the session's current effort and updates with
-	// runtime toggles like /effort. Prefer it over the static settings.json value.
+// getEffortLevel resolves effort from the most authoritative source available.
+// Claude Code sends effort.level on stdin for models that support the reasoning
+// effort parameter; that value is per-session and tracks runtime /effort
+// toggles. CLAUDE_EFFORT is the fallback for older Claude Code builds that omit
+// the field, and settings.json is the last resort static default.
+func getEffortLevel(stdinEffort string, s claudeSettings) string {
+	if v := strings.TrimSpace(stdinEffort); v != "" {
+		return v
+	}
 	if v := strings.TrimSpace(os.Getenv("CLAUDE_EFFORT")); v != "" {
 		return v
 	}
@@ -342,7 +356,11 @@ func main() {
 	emoji := modelEmoji(model)
 	dir := filepath.Base(data.Workspace.CurrentDir)
 	settings := readClaudeSettings()
-	effort := getEffortLevel(settings)
+	stdinEffort := ""
+	if data.Effort != nil {
+		stdinEffort = data.Effort.Level
+	}
+	effort := getEffortLevel(stdinEffort, settings)
 
 	ctxPercent := 0.0
 	if data.ContextWindow.UsedPercentage != nil {
@@ -362,16 +380,11 @@ func main() {
 	done := make(chan struct{})
 
 	var gitInfo GitInfo
-	var activeSessions int
 
-	wg.Add(2)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		gitInfo = getGitInfo(data.Workspace.CurrentDir)
-	}()
-	go func() {
-		defer wg.Done()
-		activeSessions = countClaudeProcesses()
 	}()
 
 	go func() {
@@ -384,12 +397,18 @@ func main() {
 	case <-time.After(asyncTimeout):
 	}
 
-	// === 第一行：Model │ Context bar % tokens │ Dir [worktree] ⚡branch* +N -N │ Effort ===
+	// === 第一行：Model │ Context bar % tokens/limit │ Dir [worktree] ⚡branch* +N -N │ Effort ===
 	line1 := fmt.Sprintf("%s %s%s%s", emoji, cBlue, model, cReset)
 
 	pctColor := colorForPct(ctxPercent)
 	bar := progressBar(ctxPercent, 10)
-	line1 += fmt.Sprintf("%s%s %s%.0f%%%s %s", sep, bar, pctColor, ctxPercent, cReset, formatTokens(totalTokens))
+	tokenPart := formatTokens(totalTokens)
+	// Show the limit the session is measured against; Claude Code caps this at
+	// 200K unless a repo overrides CLAUDE_CODE_DISABLE_1M_CONTEXT.
+	if size := data.ContextWindow.ContextWindowSize; size > 0 {
+		tokenPart += cDim + "/" + formatTokens(size) + cReset
+	}
+	line1 += fmt.Sprintf("%s%s %s%.0f%%%s %s", sep, bar, pctColor, ctxPercent, cReset, tokenPart)
 
 	line1 += fmt.Sprintf("%s%s%s%s", sep, cCyan, dir, cReset)
 	if data.Worktree != nil && data.Worktree.Name != "" {
@@ -420,7 +439,7 @@ func main() {
 	// === 第二行：Session │ Cost │ Rate Limits ===
 	var line2Parts []string
 
-	// Session info: #id ⏱ Xm [N]
+	// Session info: #id ⏱ Xm
 	sessionPart := ""
 	if data.SessionID != "" {
 		shortID := data.SessionID
@@ -430,9 +449,6 @@ func main() {
 		sessionPart = fmt.Sprintf("%s#%s%s", cDim, shortID, cReset)
 	}
 	sessionPart += fmt.Sprintf(" ⏱ %s%s%s", cWhite, formatDuration(data.Cost.TotalDurationMs), cReset)
-	if activeSessions > 1 {
-		sessionPart += fmt.Sprintf(" %s[%d]%s", cDim, activeSessions, cReset)
-	}
 	line2Parts = append(line2Parts, strings.TrimSpace(sessionPart))
 
 	// Session cost
