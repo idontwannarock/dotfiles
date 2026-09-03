@@ -433,26 +433,22 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 ### 顯示效果
 
 ```
-[💛 Opus 4.5] 📂 project ⚡ main* | ██████░░░░ 52.8% 105.6k | 1h30m [2 sessions]
-🔥 $4.00/hr │ 💰 Today: $6.83 │ ⏱ Reset: 2h 25m
-MCP: ✓ context7, atlassian, playwright, chrome-devtools │ ✗ github
+💛 Opus │ ● high │ ●●●●○○○○○○ 44% 88k/200k │ ⏳ 5h: 24% ⟳ 3h11m │ 7d: 41% ⟳ 2d4h │ dotfiles main* +2 -43
 ```
 
-#### 第一行
-- 模型名稱與 emoji（💛 Opus / 💠 Sonnet / 🌸 Haiku）
-- 專案目錄名稱
-- Git 分支（有未提交變更時顯示 `*`）
-- Context 使用量進度條、百分比，與 `已用/上限` token 數（上限取 stdin JSON 的 `context_window.context_window_size`）
-- 今日累計使用時數
+單行輸出，由 `│` 分段。段落順序由「多久看一次」決定：session 層級的狀態（模型、effort、額度）在前，隨時在變的工作區狀態在後。
 
-#### 第二行
-- Burn Rate（每小時消耗）
-- 今日總花費
-- Block Reset 倒數時間
+| 段 | 內容 |
+|---|---|
+| 模型 | emoji + 名稱（💛 Opus / 💠 Sonnet / 🌸 Haiku） |
+| Effort | 等級徽章，`ultracode` 為獨立的 ⚡ 徽章 |
+| Context | 進度條、百分比、`已用/上限` token 數（上限取 stdin JSON 的 `context_window.context_window_size`） |
+| Rate limits | ⏳ 5h／7d 使用率與重置倒數（僅 Pro／Max，且首次 API 回應之後才有） |
+| 位置 | 專案目錄名、worktree 名（🌿，僅 worktree session）、git 分支（未提交變更加 `*`）、`+N -N` diff 統計 |
 
-#### 第三行
-- MCP 伺服器狀態（顯示已連接與失敗的伺服器名稱）
-- Plugin MCP server（`plugin:source:name` 格式）自動取最後一段作為顯示名稱
+沒有資料的段落整段省略，不留空的 `│`。
+
+**2026-09-03 移除**：session id、使用時間、session 花費。三者都拿掉之後第二行只剩 rate limits，於是併回單行。同時移除 stdin 的 `cost` 欄位解析、`formatDuration()` 與 `cWhite`。舊版另有 Burn Rate／今日花費（ccusage）與 MCP 狀態行，早在 simplify-native-data change 就已退役。
 
 ### 依賴
 
@@ -555,11 +551,9 @@ go build -o ~/.claude/statusline .       # macOS/Linux
 
 ### Session 追蹤
 
-**使用時間** 由 Claude Code stdin JSON 的 `cost.total_duration_ms` 直接提供，statusline 不再自行維護心跳。
-
 **Effort 等級** 優先取 stdin JSON 的 `effort.level`（per-session，跟著 `/effort` 即時變動）；欄位不存在時退回環境變數 `CLAUDE_EFFORT`，再退回 `~/.claude/settings.json` 的 `effortLevel` 靜態預設。
 
-**活躍 session 數量** 曾以 `[N]` 徽章顯示在第二行，2026-09-03 移除。連同 `count_unix.go`／`count_windows.go` 與 `golang.org/x/sys` 相依一併刪除。
+**活躍 session 數量** 曾以 `[N]` 徽章顯示，2026-09-03 移除。連同 `count_unix.go`／`count_windows.go` 與 `golang.org/x/sys` 相依一併刪除。
 
 ### 參考
 
