@@ -442,7 +442,7 @@ MCP: ✓ context7, atlassian, playwright, chrome-devtools │ ✗ github
 - 模型名稱與 emoji（💛 Opus / 💠 Sonnet / 🌸 Haiku）
 - 專案目錄名稱
 - Git 分支（有未提交變更時顯示 `*`）
-- Context 使用量進度條與百分比
+- Context 使用量進度條、百分比，與 `已用/上限` token 數（上限取 stdin JSON 的 `context_window.context_window_size`）
 - 今日累計使用時數
 
 #### 第二行

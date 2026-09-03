@@ -179,11 +179,16 @@ func progressBar(pct float64, width int) string {
 }
 
 func formatTokens(tokens int) string {
+	// Trim a trailing ".0" so round figures read as 200k, not 200.0k. The
+	// context window limit is almost always round; the used count rarely is.
+	trim := func(s, unit string) string {
+		return strings.TrimSuffix(s, ".0") + unit
+	}
 	if tokens >= 1000000 {
-		return fmt.Sprintf("%.1fM", float64(tokens)/1000000)
+		return trim(fmt.Sprintf("%.1f", float64(tokens)/1000000), "M")
 	}
 	if tokens >= 1000 {
-		return fmt.Sprintf("%.1fk", float64(tokens)/1000)
+		return trim(fmt.Sprintf("%.1f", float64(tokens)/1000), "k")
 	}
 	return fmt.Sprintf("%d", tokens)
 }
@@ -392,12 +397,18 @@ func main() {
 	case <-time.After(asyncTimeout):
 	}
 
-	// === 第一行：Model │ Context bar % tokens │ Dir [worktree] ⚡branch* +N -N │ Effort ===
+	// === 第一行：Model │ Context bar % tokens/limit │ Dir [worktree] ⚡branch* +N -N │ Effort ===
 	line1 := fmt.Sprintf("%s %s%s%s", emoji, cBlue, model, cReset)
 
 	pctColor := colorForPct(ctxPercent)
 	bar := progressBar(ctxPercent, 10)
-	line1 += fmt.Sprintf("%s%s %s%.0f%%%s %s", sep, bar, pctColor, ctxPercent, cReset, formatTokens(totalTokens))
+	tokenPart := formatTokens(totalTokens)
+	// Show the limit the session is measured against; Claude Code caps this at
+	// 200K unless a repo overrides CLAUDE_CODE_DISABLE_1M_CONTEXT.
+	if size := data.ContextWindow.ContextWindowSize; size > 0 {
+		tokenPart += cDim + "/" + formatTokens(size) + cReset
+	}
+	line1 += fmt.Sprintf("%s%s %s%.0f%%%s %s", sep, bar, pctColor, ctxPercent, cReset, tokenPart)
 
 	line1 += fmt.Sprintf("%s%s%s%s", sep, cCyan, dir, cReset)
 	if data.Worktree != nil && data.Worktree.Name != "" {
