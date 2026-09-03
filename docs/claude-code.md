@@ -672,6 +672,28 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 - `jq` 必須安裝（hooks 依賴）
 - `CLAUDE_HANDOFF_CONTEXT_WINDOW` env var **不要**放進 settings.json — 會破壞 cache-first 的動態性（每次都走 env 就不會讀 cache）
 
+## Auto-memory 索引提醒
+
+每個 repo 的 auto-memory 住在 `~/.agent/memory/<repo-slug>/`，目錄裡的 `MEMORY.md` 是索引，**每個 session 開場全量載入**。超過約 24KB 之後尾端條目不再載入，而「沒載入」與「沒這回事」在讀者那邊輸出完全相同 —— 沒有任何東西會報錯。
+
+### 組件
+
+| 角色 | 檔案 | 觸發 |
+|---|---|---|
+| 目錄解析 | `dot_local/bin/executable_claude-memory-seed`（`where` 子命令） | 與寫 `autoMemoryDirectory` 同一支，兩者不可能對不上 |
+| 提醒 hook | `dot_claude/hooks/executable_memory-index-reminder.sh` | UserPromptSubmit；`MEMORY.md` 達 16／24／30KB 各提醒一次 |
+| 整理準則 | `.chezmoitemplates/user-system-prompt.md` §8 | Claude 與 Codex 共用 body |
+| 註冊 | `dot_claude/modify_settings.json.sh.tmpl` jq patch | chezmoi apply 時生效 |
+
+### 為什麼門檻是位元組不是行數
+
+載入上限是位元組預算。一個 repo 可以有 150 條一句話的 hook，另一個只有 40 條但每條都是段落 —— 行數對兩者給不出同一個答案。
+
+### 兩個實作上的坑
+
+- `claude-memory-seed where` 印的是**字面的 `~`**。bash 不展開變數裡的 tilde，不手動展開的話 `-f` 測試必然為假，hook 會完全靜默地永遠不觸發。
+- sentinel 綁 `(session_id, tier)`，與 `handoff-reminder` 共用 `~/.cache/claude-handoff/`。同一個 session 跨越同一階只講一次。
+
 ## Code Review（`code:review-*`）
 
 八支指令共用一組 **lens**：`~/.agent/reference/review-lenses/` 下的純檔案，一個

@@ -114,6 +114,20 @@ tokens on every turn, and the only layer worth trimming.
   them. If there are simply too many, the fix is retiring stale memories, not
   shortening the survivors.
 
+**When to prune.** Not "when someone notices" — the `memory-index-reminder` hook
+measures `MEMORY.md` on every prompt and speaks up at 16KB / 24KB / 30KB. Past
+roughly 24KB Claude Code stops loading the tail, and an entry that did not load
+is indistinguishable from an entry that does not exist. When the reminder fires,
+tell the user and offer to prune; do not silently absorb it.
+
+**How to prune.** Enumerate every index line first, then classify. A predictive
+grep ("find the ones that say 已結案") is silent on exactly the cases you are
+looking for, and its output is identical to a clean sweep. Judge each entry by
+reading the file, not by reading its own index line — a line saying 已發 can sit
+on a file whose work is still owed. Back up the directory before deleting, and
+reconcile both directions afterwards: every link resolves to a file, and every
+file is reachable from a link.
+
 ---
 
 **Worklog repo:** `idontwannarock/worklogs`
