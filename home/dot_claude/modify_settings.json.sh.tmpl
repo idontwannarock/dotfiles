@@ -30,8 +30,10 @@
 # per-session cache 成為主要來源；這個 env var 只保留給 debug/override 用
 # （需要時手動 export，不進 settings.json）。
 #
-# model 固定為 claude-opus-5（200K context）。需要 1M 時用 /model 臨時切，
-# 或在該機器的 settings.local.json 覆寫；此處 patch 的是各機器的預設值。
+# model 固定為 claude-opus-5。context 上限由 env.CLAUDE_CODE_DISABLE_1M_CONTEXT
+# = "1" 壓到 200K：選單移除 1M 變體，原生 1M 的 model 也當成 200K，session 在
+# 200K auto-compact。需要 1M 時在該 repo 的 .claude/settings.local.json 覆寫
+# 成 "0"；此處 patch 的是各機器的預設值。
 
 set -euo pipefail
 
@@ -70,6 +72,7 @@ echo "$input" | jq \
       }
     | .env = (.env // {})
     | .env.CLAUDE_CODE_NO_FLICKER = "1"
+    | .env.CLAUDE_CODE_DISABLE_1M_CONTEXT = "1"
     | .env |= del(.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS)
 {{- if eq .chezmoi.os "windows" }}
     | .env.CLAUDE_CODE_GIT_BASH_PATH = $git_bash
