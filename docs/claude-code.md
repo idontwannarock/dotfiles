@@ -645,7 +645,7 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 
 落點在 `~/.agent/` 而非 repo 內或工具專屬 dotdir。副作用是不需要動 `.gitignore` — 檔案本來就不在 repo 裡。
 
-`repo-slug` 取 `git rev-parse --path-format=absolute --git-common-dir` 去掉最後一段，再把 `:`、`\`、`/`、`.` 全換成 `-`；與 `~/.claude/memory/<id>/` 的 auto-memory 規則同源。不用 `--show-toplevel` — 那在 bare+worktree 佈局下會依 worktree 分裂成多個目錄，彼此看不見。
+`repo-slug` 取 `git rev-parse --path-format=absolute --git-common-dir` 去掉最後一段，再把 `:`、`\`、`/`、`.` 全換成 `-`；與 `~/.agent/memory/<id>/` 的 auto-memory 規則同源。不用 `--show-toplevel` — 那在 bare+worktree 佈局下會依 worktree 分裂成多個目錄，彼此看不見。
 
 `## Suggested skills` 與 `## Next steps` 是**寫入端**的硬性要求，`handoff` 寫檔前自我檢查；後者每條還要帶可驗證的成功判準。
 

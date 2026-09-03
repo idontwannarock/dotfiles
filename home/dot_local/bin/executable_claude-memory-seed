@@ -1,6 +1,6 @@
 #!/bin/sh
 # claude-memory-seed — unify Claude Code's autoMemoryDirectory across every
-# project so its auto-memory lives at ~/.claude/memory/<id>, a shared path other
+# project so its auto-memory lives at ~/.agent/memory/<id>, a shared path other
 # tools can read, instead of Claude's private projects/ tree. <id> is the slug
 # (path with '/'->'-') of the project's anchor.
 #
@@ -18,15 +18,18 @@
 # and anything under /tmp (throwaway checkouts would leave permanent orphans).
 #
 # On first apply for a project it also MIGRATES existing memory into the new home
-# (old basename scheme, then Claude's own projects/ bucket) by moving the
-# memory/ dir only — transcripts are left in place. Migration runs only when the
+# (the retired ~/.claude/memory root, then its old basename scheme, then Claude's
+# own projects/ bucket) by moving the memory/ dir only — transcripts are left in
+# place. Migration runs only when the
 # target is absent/empty; an already-populated target is never clobbered. The
 # Claude bucket is located by folded comparison, not by string-building the path:
 # its encoding is close to our slug but not identical (it folds '_' to '-' too).
 #
 # Idempotent and self-gating: an unresolvable anchor or missing jq no-op
 # silently; an autoMemoryDirectory pointing outside the managed roots
-# (~/.claude/memory, ~/.claude/projects) is respected and never overwritten.
+# (~/.agent/memory, ~/.claude/memory, ~/.claude/projects) is respected and never
+# overwritten. The two retired roots stay on that list on purpose: that is what
+# lets a machine still holding the old value be migrated forward on next apply.
 #
 # Called from two triggers sharing this single source of truth:
 #   - Claude SessionStart hook  (every session, git or not — the only trigger a
@@ -78,7 +81,7 @@ settings_root=$(physical "$toplevel") || settings_root=$id_root
 #            only genuinely destructive failure mode here.
 #   /      — the same mistake one level up.
 #   /tmp/* — throwaway clones, worktrees and scratchpads. Seeding them leaves
-#            permanent orphans under ~/.claude/memory pointing at paths that are
+#            permanent orphans under ~/.agent/memory pointing at paths that are
 #            gone after a reboot.
 # settings_root arrives from `pwd -P`, so the values it is compared against must
 # be resolved too — a one-sided comparison is never equal once either side holds
@@ -162,24 +165,27 @@ do_apply() {
     id=$(repo_id) || return 0
     command -v jq >/dev/null 2>&1 || return 0 # no jq: no-op, never block caller
 
-    memroot="$HOME/.claude/memory"
+    memroot="$HOME/.agent/memory"
+    oldroot="$HOME/.claude/memory"          # retired root, still a migration source
     target="$memroot/$id"
 
     # Migrate existing memory into the new home — only when target absent/empty.
-    # Sources in order: the retired basename scheme, then Claude's own bucket.
+    # Sources in order: the retired ~/.claude/memory root under the current slug,
+    # then that root's even older basename scheme, then Claude's own bucket.
     if [ ! -d "$target" ] || [ -z "$(ls -A "$target" 2>/dev/null)" ]; then
-        try_migrate "$memroot/$(basename "$id_root")" "$target" \
+        try_migrate "$oldroot/$id" "$target" \
+            || try_migrate "$oldroot/$(basename "$id_root")" "$target" \
             || try_migrate "$(find_claude_memory "$id" || true)" "$target" \
             || true
     fi
 
-    value="~/.claude/memory/$id"
+    value="~/.agent/memory/$id"
     settings="$settings_root/.claude/settings.local.json"
     if [ -f "$settings" ]; then
         cur=$(jq -r '.autoMemoryDirectory // ""' "$settings" 2>/dev/null) || cur=""
         [ "$cur" = "$value" ] && return 0           # already canonical: nothing to do
         case "$cur" in
-            ""|"~/.claude/memory/"*|"~/.claude/projects/"*) ;;  # missing/managed: (re)write
+            ""|"~/.agent/memory/"*|"~/.claude/memory/"*|"~/.claude/projects/"*) ;;  # missing/managed: (re)write
             *) return 0 ;;                          # custom value: respect, never overwrite
         esac
         input=$(cat "$settings")
@@ -214,6 +220,6 @@ case "$cmd" in
     # The SessionStart hook invokes this bare, so a non-zero status here surfaces
     # as a session-startup error. Diagnostics still go to stderr.
     apply) do_apply || true ;;
-    where) id=$(repo_id 2>/dev/null) && [ -n "$id" ] && printf '~/.claude/memory/%s\n' "$id" || echo ;;
+    where) id=$(repo_id 2>/dev/null) && [ -n "$id" ] && printf '~/.agent/memory/%s\n' "$id" || echo ;;
     *)     echo "usage: claude-memory-seed {apply | where}" >&2; exit 1 ;;
 esac

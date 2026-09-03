@@ -67,11 +67,11 @@ concept 檔 SHALL NOT 帶 lifecycle 與 provenance 家族欄位。理由是 meta
 
 ### Requirement: 適用範圍守衛
 
-本規範的適用範圍 SHALL 限於本 repo 明確宣告為 OKF bundle 的目錄。OKF frontmatter SHALL NOT 寫入各 tool 有自身 schema 的位置(`~/.claude/skills/`、`~/.codex/skills/`、`~/.claude/memory/`),因該處要求 `name` + `description` 而與 OKF 的必填 `type` 不交集,混放會導致 skill 被跳過或 Codex 解析錯誤。
+本規範的適用範圍 SHALL 限於本 repo 明確宣告為 OKF bundle 的目錄。OKF frontmatter SHALL NOT 寫入各 tool 有自身 schema 的位置(`~/.claude/skills/`、`~/.codex/skills/`、`~/.agent/memory/`),因該處要求 `name` + `description` 而與 OKF 的必填 `type` 不交集,混放會導致 skill 被跳過或 Codex 解析錯誤。
 
 #### Scenario: 不寫入 tool 自有 schema 位置
 
-- **WHEN** 在 `~/.claude/skills/`、`~/.codex/skills/` 或 `~/.claude/memory/` 下新增或編輯檔案
+- **WHEN** 在 `~/.claude/skills/`、`~/.codex/skills/` 或 `~/.agent/memory/` 下新增或編輯檔案
 - **THEN** SHALL NOT 寫入 OKF frontmatter,SHALL 使用該位置自身的 schema
 
 #### Scenario: 宣告新 bundle

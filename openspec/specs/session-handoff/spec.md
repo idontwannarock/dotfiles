@@ -153,7 +153,7 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 
 ### Requirement: 文件內路徑引用指向現行位置
 
-`handoff` 與 `pickup` 的 body SHALL NOT 引用已作廢的 `~/.claude/projects/<slug>/` 作為 auto-memory 位置。凡需說明 slug 慣例與其他系統的對齊關係時,SHALL 指向現行的 `~/.claude/memory/<id>/`。
+`handoff` 與 `pickup` 的 body SHALL NOT 引用已作廢的 `~/.claude/projects/<slug>/` 作為 auto-memory 位置。凡需說明 slug 慣例與其他系統的對齊關係時,SHALL 指向現行的 `~/.agent/memory/<id>/`。
 
 #### Scenario: body 不含作廢路徑
 
@@ -252,7 +252,7 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 
 `pickup` SHALL 在 `## Next steps` 全數達成時執行收尾步驟:逐條列出達成證據;將需要活過 lookup 的內容先行搬出;詢問使用者是否封存;確認後將檔案移入 `archive/` 子目錄。
 
-「搬出」SHALL 涵蓋兩類:工作期間產生的**裁決** SHALL 先寫入 `~/.claude/memory/<repo-slug>/`;仍具價值的**耐久參考內容** SHALL 由活著的 artifact(後繼 handoff 或 memory)以**歸檔後**的絕對路徑 `~/.agent/handoffs/<repo-slug>/archive/<ID>.md` 指名,SHALL NOT 以當前路徑書寫 —— 以當前路徑寫成的引用會在建立它的同一步失效。
+「搬出」SHALL 涵蓋兩類:工作期間產生的**裁決** SHALL 先寫入 `~/.agent/memory/<repo-slug>/`;仍具價值的**耐久參考內容** SHALL 由活著的 artifact(後繼 handoff 或 memory)以**歸檔後**的絕對路徑 `~/.agent/handoffs/<repo-slug>/archive/<ID>.md` 指名,SHALL NOT 以當前路徑書寫 —— 以當前路徑寫成的引用會在建立它的同一步失效。
 
 詢問步驟 SHALL 在使用者有常設指示(per-repo memory 或本次 session 中明講)時省略。常設指示 SHALL 只取代詢問,SHALL NOT 取代證據列舉;其效力 SHALL 只及於剛完成的該份 handoff,SHALL NOT 及於同目錄的其他 handoff。
 
@@ -278,7 +278,7 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 #### Scenario: 裁決先進 memory 才封存
 
 - **WHEN** 本次工作產生了裁決或刻意留下的未決題
-- **THEN** SHALL 先將其寫入 `~/.claude/memory/<repo-slug>/`,才執行 `mv` —— 歸檔後的檔案不再被任何 lookup 撿到
+- **THEN** SHALL 先將其寫入 `~/.agent/memory/<repo-slug>/`,才執行 `mv` —— 歸檔後的檔案不再被任何 lookup 撿到
 
 #### Scenario: 耐久參考以歸檔後路徑被指名
 

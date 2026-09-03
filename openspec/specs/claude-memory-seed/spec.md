@@ -1,7 +1,7 @@
 # claude-memory-seed Specification
 
 ## Purpose
-把 Claude Code 的 auto-memory 統一到 `~/.claude/memory/<id>` 這個可預期的共享
+把 Claude Code 的 auto-memory 統一到 `~/.agent/memory/<id>` 這個可預期的共享
 路徑,使記憶不再鎖在 Claude 私有的 `projects/` 樹下(model agnostic),且同一 repo 的
 所有 worktree 共用一份記憶。適用於 git repo 與非 git 專案目錄。
 
@@ -29,7 +29,7 @@
 
 #### Scenario: checkout 後種子
 
-- **WHEN** 對任一 git repo 執行 `git worktree add` 或 branch checkout,且其目標 `~/.claude/memory/<id>` 尚未建立
+- **WHEN** 對任一 git repo 執行 `git worktree add` 或 branch checkout,且其目標 `~/.agent/memory/<id>` 尚未建立
 - **THEN** dispatcher 觸發 `claude-memory-seed apply`,完成遷移/種入
 
 #### Scenario: 保留 repo-local hook
@@ -51,7 +51,7 @@
 兩者 SHALL 以 `cd -P` 正規化為 physical path,使 symlink 過來的專案目錄與其實體路徑解析到
 同一 `<id>`。
 
-目標 `autoMemoryDirectory` 值 SHALL 為 `~/.claude/memory/<id>`,其中
+目標 `autoMemoryDirectory` 值 SHALL 為 `~/.agent/memory/<id>`,其中
 `<id> = slug(id_root)`,slug 為把絕對路徑的 `/` 換成 `-`。slug 規則 SHALL NOT 因本需求而
 改變。
 
@@ -63,7 +63,7 @@ worktree 自身的 toplevel,故每個 worktree SHALL 各自持有指向同一 `<
 #### Scenario: 一般 repo 主 checkout 推導路徑 slug
 
 - **WHEN** cwd 為一般 repo(common-dir 為 `<repo>/.git`),執行 `claude-memory-seed where`
-- **THEN** 印出 `~/.claude/memory/<slug(<repo> 絕對路徑)>`
+- **THEN** 印出 `~/.agent/memory/<slug(<repo> 絕對路徑)>`
 
 #### Scenario: 同 repo 的 worktree 解析到同一 id
 
@@ -74,7 +74,7 @@ worktree 自身的 toplevel,故每個 worktree SHALL 各自持有指向同一 `<
 
 - **WHEN** 於 linked worktree 執行 apply
 - **THEN** 寫入的是**該 worktree** 的 `.claude/settings.local.json`(非主 checkout 的),
-  其 `autoMemoryDirectory` 值為共享的 `~/.claude/memory/<id>`
+  其 `autoMemoryDirectory` 值為共享的 `~/.agent/memory/<id>`
 
 #### Scenario: bare+worktree 以容器路徑為 id
 
@@ -121,7 +121,7 @@ symlink 或尾斜線時永遠不相等而靜默失效;此舉亦使 macOS 的 `/t
 
 條件 1 是資料安全需求:該情境下設定路徑會是 `~/.claude/settings.local.json`,即 Claude 的
 **user-level** 設定檔;寫入 `autoMemoryDirectory` 會使**所有**未自訂該值的專案共用同一個記憶
-目錄。條件 3 阻止拋棄式 checkout 與 scratchpad 在 `~/.claude/memory/` 留下永久孤兒目錄
+目錄。條件 3 阻止拋棄式 checkout 與 scratchpad 在 `~/.agent/memory/` 留下永久孤兒目錄
 (`/tmp` 清空後該目錄指向不存在的路徑,永不再被讀取)。
 
 #### Scenario: cwd 為 $HOME 時拒絕寫入
@@ -196,13 +196,14 @@ SHALL NOT 使用「直接重導向到目標檔」的寫法:重導向會在 `jq` 
 
 ### Requirement: apply:自動遷移既有記憶並依覆寫政策寫入
 
-`claude-memory-seed apply` SHALL 在目標 `~/.claude/memory/<id>/` **不存在或為空**時,依序尋找
+`claude-memory-seed apply` SHALL 在目標 `~/.agent/memory/<id>/` **不存在或為空**時,依序尋找
 既有記憶來源並將其 `memory/` 內容 `mv` 進目標(第一個命中即止):
 
-1. 舊 basename 方案 `~/.claude/memory/<basename(id_root)>/`;
-2. Claude 預設的 `~/.claude/projects/<claude-id>/memory/`。
+1. 已退役的根 `~/.claude/memory/<id>/`;
+2. 該退役根下更舊的 basename 方案 `~/.claude/memory/<basename(id_root)>/`;
+3. Claude 預設的 `~/.claude/projects/<claude-id>/memory/`。
 
-來源 ② SHALL NOT 以字串拼接 `<id>` 求得路徑,因為 Claude 的 slug 編碼與本工具不同(實測
+來源 ③ SHALL NOT 以字串拼接 `<id>` 求得路徑,因為 Claude 的 slug 編碼與本工具不同(實測
 Claude 額外把 `_` 轉為 `-`,如 `cashback_api` → `cashback-api`)。改為 SHALL 掃描
 `~/.claude/projects/*/`,將候選目錄 basename 與 `<id>` 兩邊的 `[-_.]` 一律正規化為 `-` 後
 比對,取第一個 `memory/` 非空的命中者,並將實際採用的來源印至 stderr。
@@ -211,15 +212,26 @@ Claude 額外把 `_` 轉為 `-`,如 `cashback_api` → `cashback-api`)。改為 
 遷移 SHALL 只搬 `memory/`,不動同層 transcripts。當目標**已有內容**時 SHALL NOT 搬移或覆蓋,
 僅印警告。`jq` 不可用時 SHALL 安靜 no-op。
 
-寫入 `autoMemoryDirectory` 的覆寫政策:現值**缺**、或現值開頭為受管根(`~/.claude/memory/`
-或 `~/.claude/projects/`)→ SHALL 寫入 canonical 目標(含把舊 basename 值升級為 path-slug);
+寫入 `autoMemoryDirectory` 的覆寫政策:現值**缺**、或現值開頭為受管根(`~/.agent/memory/`、
+`~/.claude/memory/` 或 `~/.claude/projects/`)→ SHALL 寫入 canonical 目標(含把舊 basename 值
+升級為 path-slug,以及把退役根 `~/.claude/memory/` 的值升級為 `~/.agent/memory/`);
 現值指向受管根**以外**(使用者刻意自訂)→ SHALL NOT 覆寫。寫入 SHALL 保留檔內其他 key 並以
 LF 結尾。
 
 #### Scenario: 從 Claude 預設位置遷移
 
-- **WHEN** 首次 apply,`~/.claude/memory/<id>/` 不存在但對應的 `~/.claude/projects/<claude-id>/memory/` 有內容
-- **THEN** 該 `memory/` 內容被搬到 `~/.claude/memory/<id>/`,transcripts 留在 `projects/<claude-id>/`
+- **WHEN** 首次 apply,`~/.agent/memory/<id>/` 不存在但對應的 `~/.claude/projects/<claude-id>/memory/` 有內容
+- **THEN** 該 `memory/` 內容被搬到 `~/.agent/memory/<id>/`,transcripts 留在 `projects/<claude-id>/`
+
+#### Scenario: 從退役的 `~/.claude/memory/` 根遷移
+
+- **WHEN** `~/.agent/memory/<id>/` 不存在或為空,而 `~/.claude/memory/<id>/` 有內容
+- **THEN** apply 將其 rename 為 `~/.agent/memory/<id>/`,退役根下不留殘骸
+
+#### Scenario: 升級退役根的 settings 值
+
+- **WHEN** settings 的 `autoMemoryDirectory` 現值為 `~/.claude/memory/<id>`
+- **THEN** apply 將其改寫為 `~/.agent/memory/<id>` —— 退役根列在受管根內正是為了讓尚未套用的機器能被推進
 
 #### Scenario: 來源路徑含底線仍能命中
 
@@ -235,16 +247,16 @@ LF 結尾。
 #### Scenario: 升級舊 basename 目錄
 
 - **WHEN** 既有 `~/.claude/memory/<basename(id_root)>/` 存在而 path-slug 目標尚不存在
-- **THEN** apply 將其 rename 為 `~/.claude/memory/<id>/`,並把 settings 的舊 basename 值升級為 path-slug
+- **THEN** apply 將其 rename 為 `~/.agent/memory/<id>/`,並把 settings 的舊 basename 值升級為 path-slug
 
 #### Scenario: 目標已有內容則不覆蓋
 
-- **WHEN** `~/.claude/memory/<id>/` 已有內容
+- **WHEN** `~/.agent/memory/<id>/` 已有內容
 - **THEN** apply 不搬移、不覆蓋,僅確保 settings 指向它
 
 #### Scenario: 尊重受管根以外的自訂值
 
-- **WHEN** settings 的 `autoMemoryDirectory` 指向 `~/.claude/memory` 與 `~/.claude/projects` 以外的路徑
+- **WHEN** settings 的 `autoMemoryDirectory` 指向 `~/.agent/memory`、`~/.claude/memory` 與 `~/.claude/projects` 以外的路徑
 - **THEN** apply 保留該值不動
 
 #### Scenario: 保留既有 settings 的其他 key
