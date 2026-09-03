@@ -22,7 +22,6 @@ const (
 	cCyan    = "\033[38;2;86;182;194m"
 	cRed     = "\033[38;2;255;85;85m"
 	cYellow  = "\033[38;2;230;200;0m"
-	cWhite   = "\033[38;2;220;220;220m"
 	cMagenta = "\033[38;2;180;140;255m"
 	cDim     = "\033[2m"
 	cBold    = "\033[1m"
@@ -50,10 +49,6 @@ type ClaudeData struct {
 			CacheReadInputTokens     int `json:"cache_read_input_tokens"`
 		} `json:"current_usage"`
 	} `json:"context_window"`
-	Cost struct {
-		TotalCostUSD    float64 `json:"total_cost_usd"`
-		TotalDurationMs int64   `json:"total_duration_ms"`
-	} `json:"cost"`
 	RateLimits *struct {
 		FiveHour *struct {
 			UsedPercentage float64 `json:"used_percentage"`
@@ -295,17 +290,6 @@ func writeContextWindowCache(sessionID string, size int) {
 	}
 }
 
-func formatDuration(ms int64) string {
-	if ms <= 0 {
-		return "0m"
-	}
-	totalMin := ms / 60000
-	if totalMin < 60 {
-		return fmt.Sprintf("%dm", totalMin)
-	}
-	return fmt.Sprintf("%dh%dm", totalMin/60, totalMin%60)
-}
-
 func formatResetTime(epochSec int64) string {
 	remaining := time.Until(time.Unix(epochSec, 0))
 	if remaining <= 0 {
@@ -397,7 +381,7 @@ func main() {
 	case <-time.After(asyncTimeout):
 	}
 
-	// === 第一行：Model │ Context bar % tokens/limit │ Dir [worktree] ⚡branch* +N -N │ Effort ===
+	// === Model │ Context bar % tokens/limit │ Dir [worktree] ⚡branch* +N -N │ Effort │ Rate limits ===
 	line1 := fmt.Sprintf("%s %s%s%s", emoji, cBlue, model, cReset)
 
 	pctColor := colorForPct(ctxPercent)
@@ -436,27 +420,6 @@ func main() {
 		}
 	}
 
-	// === 第二行：Session │ Cost │ Rate Limits ===
-	var line2Parts []string
-
-	// Session info: #id ⏱ Xm
-	sessionPart := ""
-	if data.SessionID != "" {
-		shortID := data.SessionID
-		if len(shortID) > 8 {
-			shortID = shortID[:8]
-		}
-		sessionPart = fmt.Sprintf("%s#%s%s", cDim, shortID, cReset)
-	}
-	sessionPart += fmt.Sprintf(" ⏱ %s%s%s", cWhite, formatDuration(data.Cost.TotalDurationMs), cReset)
-	line2Parts = append(line2Parts, strings.TrimSpace(sessionPart))
-
-	// Session cost
-	if data.Cost.TotalCostUSD > 0 {
-		line2Parts = append(line2Parts, fmt.Sprintf("💰 %s$%.2f%s", cWhite, data.Cost.TotalCostUSD, cReset))
-	}
-
-	// Rate limits
 	if data.RateLimits != nil {
 		var rlParts []string
 		if data.RateLimits.FiveHour != nil {
@@ -466,13 +429,9 @@ func main() {
 			rlParts = append(rlParts, formatRateLimit("7d", data.RateLimits.SevenDay.UsedPercentage, data.RateLimits.SevenDay.ResetsAt))
 		}
 		if len(rlParts) > 0 {
-			line2Parts = append(line2Parts, "⏳ "+strings.Join(rlParts, sep))
+			line1 += sep + "⏳ " + strings.Join(rlParts, sep)
 		}
 	}
 
-	// 輸出
 	fmt.Println(line1)
-	if len(line2Parts) > 0 {
-		fmt.Println(strings.Join(line2Parts, sep))
-	}
 }
