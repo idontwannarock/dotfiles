@@ -57,6 +57,8 @@ If Phase 1 surfaced more than 5 candidate zones, say so in the report and name t
 
 Write to `~/.agent/handoffs/<repo-slug>/<ID>.md`. This is the same location and convention `handoff` uses, so `pickup` can resume it.
 
+A review report is always `handoff_kind: task`, never `succession`. It is a standalone list of candidates, not a round of a continuing line, so it leaves the todo list only through `pickup`'s `Close out` with the user present. Two reports on the same repo do not supersede each other -- a later checkup does not retire the candidates an earlier one raised.
+
 - **Repo slug**: identical derivation to `handoff` -- take `git rev-parse --path-format=absolute --git-common-dir`, drop the last component, and replace every `:`, `\`, `/`, and `.` with `-`. Fall back to `$PWD` if the git command fails.
   - `/home/user/work/api/.git` becomes `-home-user-work-api`
   - `/home/user/work/api/.bare` becomes `-home-user-work-api` from **any** worktree of that repo
@@ -69,6 +71,11 @@ Write to `~/.agent/handoffs/<repo-slug>/<ID>.md`. This is the same location and 
 Rank candidates by expected payoff over effort -- highest first.
 
 ```markdown
+---
+okf_version: "0.2"
+handoff_kind: task
+---
+
 # Arch Review: <repo name> @ <ISO-8601 timestamp>
 
 - Repo: <absolute path>

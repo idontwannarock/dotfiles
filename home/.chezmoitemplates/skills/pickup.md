@@ -17,6 +17,16 @@ Then look in `~/.agent/handoffs/<repo-slug>/`. Resolution order, given the user'
 
 If nothing matches in `~/.agent/handoffs/<repo-slug>/`, check the legacy locations once, in order: `~/.local/state/handoffs/<repo-slug>/` (the pre-`~/.agent` location), then `<repo>/.claude/handoffs/` (files written before 2026-05-26). If still nothing, sweep every slug directory once: glob `~/.agent/handoffs/*/` for the same pattern. Cross-repo handoffs written before their resume line carried a `cd` are what this catches -- they get invoked from the repo they were written *from* rather than the one they are *for*, and the exact-match rules above have no way to reach them. A hit here is not an ordinary resolution: before reading the file, say which repo it belongs to and that the rest of this session works on that repo's behalf. If the sweep is empty too, report the absolute paths searched and stop -- do not invent a file.
 
+## Read the kind
+
+The file may open with YAML frontmatter carrying `handoff_kind`. Note which kind it is before doing anything else -- it decides how this file leaves the todo list at the end.
+
+- **`succession`** -- one round of a continuing line of work. `handoff` archives its predecessor when it writes the successor, so this file is already the only open one on that line. When you hand off again, `Close out` does not apply: step 4b of `handoff` retires this file.
+- **`task`** -- a distinct piece of outstanding work. `Close out` below applies in full.
+- **No frontmatter, or no `handoff_kind`** -- read it as `task`. Every handoff written before this convention is in that state, and `task` is the reading that never archives anything without the user present.
+
+Do not re-derive the kind from the filename, the slug, or how many same-slug files sit beside it. An unlabelled file is `task`, however continuous the line looks.
+
 ## Apply
 
 1. Read the resolved file in full.
@@ -29,14 +39,19 @@ If nothing matches in `~/.agent/handoffs/<repo-slug>/`, check the legacy locatio
 
 ## Close out
 
+**This section applies to `task` handoffs only.** A `succession` leaves the todo list through `handoff` step 4b when the next round is written -- unconditionally, no question, because the session writing the successor declared the supersession. Running `Close out` on one as well would ask the user to approve a move that already happened.
+
+That does not make a `succession` unfinishable. When the line of work genuinely ends -- the last round meets its criteria and there is no next round -- run `Close out` on it exactly as written. The distinction is *ends* versus *continues*, not the kind.
+
 `~/.agent/handoffs/<repo-slug>/` doubles as a todo list, so a finished handoff has to leave it. Apart from a handoff with no nameable next steps, this is the only step in `pickup` that asks the user anything.
 
 Once **every** item under `## Next steps` has met its success criterion:
 
 1. List the items with the evidence for each -- the merged PR, the passing command and its output, the file that now exists. Evidence, not recollection.
 2. Move out whatever has to outlive the lookup. Archiving discards nothing, but only while something still points back:
-   - **Decisions belong in memory, not in the handoff.** A ruling reached during the work -- an interface shape, a scope call, a question deliberately left open -- vanishes from every lookup the moment the file moves. Write it to `{{ .n.memoryDir }}/<repo-slug>/` first, then archive.
-   - **Durable reference material gets cited by its post-archive path.** Half a finished handoff is spent todos; the other half can be an inventory, a dependency map, a batch plan that the next several sessions still need. Have a living artifact -- the successor handoff, a memory file -- name it as `~/.agent/handoffs/<repo-slug>/archive/<ID>.md`, the path it will hold **after** the move, never the one it holds now. A citation written against the current path breaks in the same step that creates it.
+   - **Route each thing to its home, then cite it.** Decisions (why this path, what was deliberately not done) go to `{{ .n.memoryDir }}/<repo-slug>/`; recurring principles go to the project's `context/` or, if they hold for every project, to the dotfiles repo's `home/dot_agent/reference/`; machine-specific conventions go to `~/.agent/local/`. The four homes and the axes that pick between them are in `handoff`'s Principles. Do this **before** the `mv` -- a ruling left in the handoff vanishes from every lookup the moment the file moves.
+   - **Do not carry material forward in the successor instead.** That defers the loss by one round rather than preventing it, and a `succession` is archived every round with nobody watching.
+   - **Durable reference material gets cited by its post-archive path.** Half a finished handoff is spent todos; the other half can be an inventory, a dependency map, a batch plan that the next several sessions still need. Have a living artifact -- a memory file, the project's `docs/` -- name it as `~/.agent/handoffs/<repo-slug>/archive/<ID>.md`, the path it will hold **after** the move, never the one it holds now. A citation written against the current path breaks in the same step that creates it.
 3. Ask whether to archive this handoff -- unless the user has a standing instruction to archive without asking (a per-repo memory, or something they said earlier in this session). A standing instruction replaces the question, never the evidence in step 1.
 4. If the user agrees, `mv` the file to `~/.agent/handoffs/<repo-slug>/archive/<ID>.md`, creating the directory if missing. `<repo-slug>` is the directory the file was **resolved from** -- the repo the handoff is for -- which is not the current repo's slug when the cross-repo sweep found it. Archiving into the cwd's tree would lose the file from the only directory anyone will look in. The resolved directory is also the destination when the file came from one of the legacy locations -- archiving doubles as the migration out of them.
 
@@ -44,7 +59,8 @@ Hard rules:
 
 - **Never `rm` a handoff.** Archiving is a move. In 2026-08-03 a session judged five handoffs "done" by how similar their slugs looked to finished work and deleted them; two had never been started. `~/.agent/handoffs/` is not under version control, so a wrong call there is unrecoverable, while a wrongly archived file costs one `mv` to bring back.
 - **Never decide "done" yourself.** Unmet or unverifiable criteria mean not done. If you cannot point at evidence for an item, say so and leave the file where it is.
-- **Never move a handoff the user did not agree to move** -- including ones you noticed in the same directory while working. A standing instruction is agreement, and it covers only the handoff you just finished; it never reaches the neighbours.
+- **Never move a handoff the user did not agree to move** -- including ones you noticed in the same directory while working. A standing instruction is agreement, and it covers only the handoff you just finished; it never reaches the neighbours. `handoff` step 4b is the one exception, and a narrow one: it moves exactly the file named in the new handoff's `supersedes` key, and nothing else.
+- **Never archive a `succession` from `pickup` because the round went well.** A round ending is not the line ending. The successor's `supersedes` retires this file; if you archive it here too, the `mv` fails or the file is gone before the successor names it.
 - **Say nothing about archiving while any item is outstanding.** A partially finished handoff is still live.
 
 The archive lives in a subdirectory on purpose: resolution above only globs `<repo-slug>/*.md`, so archived files drop out of every lookup with no change to the matching logic. That is also why step 2 exists -- dropping out of every lookup is exactly what makes an unmoved decision unfindable.

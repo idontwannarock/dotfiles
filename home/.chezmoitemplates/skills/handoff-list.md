@@ -18,8 +18,11 @@ For each file, print one row:
 
 - **ID** -- the filename without `.md`
 - **Date** -- from the ID prefix
+- **Kind** -- `handoff_kind` from the file's YAML frontmatter. Print `task` when the key or the frontmatter is absent; that is what every consumer reads it as, and printing `—` would suggest a third state that does not exist. Report the value as written -- do not infer `succession` from same-slug neighbours.
 - **Task** -- one line, taken from the `## Task` section (first sentence) or the `# Handoff:` heading if there is no Task section
 - **Steps** -- the number of items under `## Next steps`
+
+A `succession` row means a line of work whose earlier rounds were retired by `handoff` as each successor was written. Seeing exactly one open row per line is the expected state, not evidence that history was lost -- the earlier rounds are in `archive/`. Several open `succession` rows sharing a slug is the opposite: they predate this convention or a `supersedes` move failed. Say so; do not fix it.
 
 Sort newest first. If a file is missing `## Next steps`, print `steps: —` and flag it as malformed: `pickup` cannot act on it, and it needs a human to say what was supposed to happen.
 
