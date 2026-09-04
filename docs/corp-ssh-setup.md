@@ -89,16 +89,52 @@ mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
 cat > ~/.gnupg/gpg-agent.conf <<'EOF'
 default-cache-ttl 86400     # idle: a full day untouched forces a re-entry
 max-cache-ttl 2592000       # ceiling: 30 days, a backstop rather than a limit
-pinentry-timeout 30         # abandoned prompts die instead of blocking the agent
+pinentry-program /home/YOU/.local/bin/pinentry-timeout   # absolute path; ~ is not expanded
 EOF
 chmod 600 ~/.gnupg/gpg-agent.conf
 gpg-connect-agent reloadagent /bye
 ```
 
-`pinentry-timeout` matters because gpg-agent keeps exactly **one** pinentry
-child: a prompt nobody answers blocks every later passphrase request until it is
-killed by hand. Note that `reloadagent` clears every cached passphrase, so run
-it when you do not mind re-entering.
+`reloadagent` clears every cached passphrase, so run it when you do not mind
+re-entering.
+
+**Cap abandoned prompts — but not with `pinentry-timeout`.** gpg-agent keeps
+exactly **one** pinentry child, so a prompt nobody answers blocks every later
+passphrase request until it is killed by hand. Worse, it has already painted
+over whatever terminal gpg-agent was told to use, which may be another session.
+
+The obvious knob does not work. gpg-agent does send the Assuan `SETTIMEOUT`
+command and pinentry-curses 1.1.1 answers `OK` — then ignores it. Measured
+2026-09-04: under `SETTIMEOUT 5` a prompt was still waiting at 57 seconds. The
+same binary's command-line `--timeout` flag expired at exactly 5 seconds and
+returned `ERR 83886142 Timeout <Pinentry>`. So `pinentry-timeout` in this file
+is not a loose setting; it is no setting at all, and leaving it in only makes
+you believe you are protected.
+
+`~/.local/bin/pinentry-timeout` (chezmoi-managed, Linux only) injects the flag
+that does work:
+
+```bash
+exec /usr/bin/pinentry-curses --timeout "${PINENTRY_TIMEOUT:-120}" "$@"
+```
+
+Verifying it takes three checks, and the first two alone are a false green:
+
+1. gpg-agent really calls the wrapper — trigger a prompt, then read
+   `/proc/$(pgrep pinentry)/cmdline` and confirm `--timeout 120` is there.
+   Reading `gpg-agent.conf` proves only that you edited a file.
+2. The normal path still works — enter the passphrase, confirm `pass show`
+   succeeds and column 7 of `gpg-connect-agent 'keyinfo --list' /bye` turns `1`.
+3. The timeout path completes — the wrapper is re-read on every exec, so
+   `sed` its default down to 15 seconds *without* reloading the agent (and
+   therefore without clearing the cache), force a prompt with
+   `gpg-connect-agent "GET_PASSPHRASE throwaway-id X Prompt Desc" /bye`, and
+   leave it alone. The prompt must vanish on schedule and a later `pass show`
+   must still succeed, proving the agent's single pinentry slot was released.
+   Restore the default afterwards.
+
+`GET_PASSPHRASE` with a throwaway cache-id is the trick that makes step 3 cheap:
+it touches no keygrip, so a warm key cache survives the test.
 
 **Back up the GPG private key.** If you lose it, every secret in `pass` is
 unrecoverable. Recommended:

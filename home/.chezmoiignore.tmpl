@@ -36,6 +36,14 @@ AppData
 .local/bin/corp-ssh-askpass
 {{- end }}
 
+# ── pinentry-timeout: wraps /usr/bin/pinentry-curses, so Linux/WSL only ──
+# Windows uses pinentry-w32 and macOS pinentry-mac; neither needs the wrapper.
+# It is inert unless ~/.gnupg/gpg-agent.conf names it as pinentry-program, and
+# that file is deliberately machine-local. See docs/corp-ssh-setup.md.
+{{- if ne .chezmoi.os "linux" }}
+.local/bin/pinentry-timeout
+{{- end }}
+
 # ── confluence-team-doc: space coordinates stay machine-local ──────────
 # This repo is public. The skill's site host, cloudId, space key and page-ID
 # map are internal topology, so they live in an untracked .local/ beside the

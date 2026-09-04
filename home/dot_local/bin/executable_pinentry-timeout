@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# pinentry-program wrapper that enforces a real timeout.
+#
+# gpg-agent.conf's `pinentry-timeout` does nothing here. gpg-agent does send the
+# Assuan `SETTIMEOUT` command and pinentry-curses 1.1.1 answers `OK` — then
+# ignores it. Measured 2026-09-04: under `SETTIMEOUT 5` the prompt was still
+# waiting after 57 seconds. The command-line `--timeout` flag, on the same
+# binary, expired at exactly 5 seconds and returned `ERR ... Timeout`.
+#
+# This matters because gpg-agent keeps exactly ONE pinentry child. A prompt
+# nobody answers holds that slot forever, and every later passphrase request
+# hangs silently behind it — while the prompt itself has already painted over
+# whatever terminal gpg-agent was told to use.
+#
+# Override the cap for one agent with PINENTRY_TIMEOUT in gpg-agent's environment.
+exec /usr/bin/pinentry-curses --timeout "${PINENTRY_TIMEOUT:-120}" "$@"
