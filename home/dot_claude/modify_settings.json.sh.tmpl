@@ -6,7 +6,7 @@
 # 等會被 Claude Code runtime 寫入的部分。
 #
 # 同步的欄位：
-# - model = claude-opus-5（200K context 變體，非 [1m] 1M variant）
+# - model = claude-opus-5（1M context；不再壓成 200K）
 # - effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
 # - outputStyle = ELI5（output style 本體在 output-styles/ELI5.md）
 # - permissions.defaultMode = bypassPermissions
@@ -26,6 +26,8 @@
 # 主動刪除（modify_ 是 patch 而非 render，停止寫入不會抹掉既有部署的舊值）：
 # - env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS —— 退役的 handoff-cleanup hook
 #   殘留，跨機器 del 清除。
+# - env.CLAUDE_CODE_DISABLE_1M_CONTEXT —— 曾用來把 context 壓到 200K，實際使用
+#   下太小（幾輪來回就吃掉 40%），已改回 1M；跨機器 del 清除舊值。
 # - hooks.SessionEnd 只**外科式**移除 handoff-cleanup 那一條（該 hook 靠 SessionEnd
 #   做刪檔、會拖慢觸發 timeout，已退役）；保留其餘 SessionEnd entries，尤其
 #   agent-sessions 於 runtime 註冊的 `emit end`（本地 append，不會 timeout）。
@@ -37,10 +39,9 @@
 # per-session cache 成為主要來源；這個 env var 只保留給 debug/override 用
 # （需要時手動 export，不進 settings.json）。
 #
-# model 固定為 claude-opus-5。context 上限由 env.CLAUDE_CODE_DISABLE_1M_CONTEXT
-# = "1" 壓到 200K：選單移除 1M 變體，原生 1M 的 model 也當成 200K，session 在
-# 200K auto-compact。需要 1M 時在該 repo 的 .claude/settings.local.json 覆寫
-# 成 "0"；此處 patch 的是各機器的預設值。
+# model 固定為 claude-opus-5，context 走 1M。若某台機器要壓回 200K，在該 repo 的
+# .claude/settings.local.json 設 env.CLAUDE_CODE_DISABLE_1M_CONTEXT = "1"；
+# 此處 patch 的是各機器的預設值。
 
 set -euo pipefail
 
@@ -102,8 +103,8 @@ echo "$input" | jq \
       }
     | .env = (.env // {})
     | .env.CLAUDE_CODE_NO_FLICKER = "1"
-    | .env.CLAUDE_CODE_DISABLE_1M_CONTEXT = "1"
     | .env |= del(.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS)
+    | .env |= del(.CLAUDE_CODE_DISABLE_1M_CONTEXT)
 {{- if eq .chezmoi.os "windows" }}
     | .env.CLAUDE_CODE_GIT_BASH_PATH = $git_bash
     | .env.CLAUDE_CODE_USE_POWERSHELL_TOOL = "1"
