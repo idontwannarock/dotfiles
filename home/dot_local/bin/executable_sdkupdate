@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+# sdkupdate — 互動式更新 SDKMAN 已安裝的套件（Linux/WSL/macOS）
+#
+# 與 scoopupdate（Windows）同形：先刷新清單，列出可更新項，再逐項 y/N 詢問。
+#
+# 只在「同一條版本線」內升級：major 版號與 flavor（廠商/變體標記）都相同才算
+# 同線。25.0.1-tem → 25.0.4-tem 會提示；25 → 26、tem → zulu、maven 3 → 4.0.0-rc
+# 都不會。跨大版本是人工決定，交給 `sdk install <candidate> <version>`。
+#
+# 「更新」= 裝新版 + 移除舊版。預設版本（current）會在全部處理完後還原，因為
+# sdkman_auto_answer=true 會讓每次 sdk install 靜默把新裝的設成預設 —— 升一個
+# 舊分支的 JDK 就會把預設從 25 換成 21。
+
+# 刻意不用 set -u：sdkman 的內部函式會參照未設定的變數，而 set -u 在
+# non-interactive shell 下不是回傳錯誤而是「立刻終止整個 script」——
+# `sdk update` 會讓這支程式無聲收在第一行輸出之後。
+set -o pipefail
+
+SDKMAN_DIR="${SDKMAN_DIR:-$HOME/.sdkman}"
+if ! command -v sdk >/dev/null 2>&1; then
+    if [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ]; then
+        # shellcheck disable=SC1091
+        . "$SDKMAN_DIR/bin/sdkman-init.sh"
+    else
+        printf >&2 'sdkupdate: 找不到 SDKMAN（%s/bin/sdkman-init.sh）\n' "$SDKMAN_DIR"
+        exit 1
+    fi
+fi
+
+PLATFORM="$(cat "$SDKMAN_DIR/var/platform" 2>/dev/null)"
+if [ -z "$PLATFORM" ]; then
+    printf >&2 'sdkupdate: 讀不到 %s/var/platform，請先跑一次 `sdk update`\n' "$SDKMAN_DIR"
+    exit 1
+fi
+
+# 版本線鍵值：major 版號 + flavor。flavor 是把所有數字段抹掉後剩下的字面標記，
+# 用來區分廠商與變體 —— -tem / -zulu / -librca / -fx…-librca / crac-zulu / -rc-。
+# maven、gradle 這類無廠商後綴的候選 flavor 為空字串，因此 4.0.0-rc-6（flavor
+# "-rc-"）不會被當成 3.9.15（flavor ""）的升級目標，pre-release 自然被擋掉。
+#
+# 用單次 awk 批次處理而非每個版本呼叫一次 sed：java 的遠端清單有上千筆，逐筆
+# 開子行程要跑好幾分鐘。stdin 每行一個版本，stdout 每行 "key<TAB>version"。
+keyer() {
+    awk '
+        NF == 0 { next }
+        {
+            v = $0
+            major = v
+            sub(/[.+-].*$/, "", major)
+            flavor = v
+            gsub(/[0-9]+/, "", flavor)
+            gsub(/[.+]+/, ".", flavor)
+            sub(/^\.+/, "", flavor)
+            sub(/\.+$/, "", flavor)
+            printf "%s|%s\t%s\n", major, flavor, v
+        }
+    '
+}
+
+printf '==> 刷新 SDKMAN 候選清單...\n'
+sdk update >/dev/null 2>&1
+
+# ── 蒐集可更新項 ─────────────────────────────────────────────────────────────
+# 每列格式：candidate<TAB>installed<TAB>latest
+updates=""
+candidates_dir="$SDKMAN_DIR/candidates"
+
+for cdir in "$candidates_dir"/*/; do
+    [ -d "$cdir" ] || continue
+    candidate="$(basename "$cdir")"
+
+    # 不用 `find -printf`：那是 GNU 擴充，macOS 的 BSD find 沒有這個旗標。
+    installed_versions="$(
+        for vdir in "$cdir"*/; do
+            [ -d "$vdir" ] || continue
+            vname="$(basename "$vdir")"
+            [ "$vname" = current ] || printf '%s\n' "$vname"
+        done
+    )"
+    [ -n "$installed_versions" ] || continue
+
+    remote="$(curl -fsS --max-time 20 \
+        "https://api.sdkman.io/2/candidates/$candidate/$PLATFORM/versions/all" 2>/dev/null | tr ',' '\n')"
+    if [ -z "$remote" ]; then
+        printf >&2 'warning: 取不到 %s 的遠端版本清單，略過\n' "$candidate"
+        continue
+    fi
+    remote_keyed="$(printf '%s\n' "$remote" | keyer)"
+
+    while IFS= read -r inst; do
+        [ -n "$inst" ] || continue
+        line="$(printf '%s\n' "$inst" | keyer | cut -f1)"
+        latest="$(awk -F'\t' -v k="$line" '$1 == k { print $2 }' <<<"$remote_keyed" | sort -V | tail -1)"
+        [ -n "$latest" ] || continue
+        [ "$latest" = "$inst" ] && continue
+        # sort -V 保證 latest >= inst；相等已排除，故此處必為較新版
+        updates+="$candidate	$inst	$latest"$'\n'
+    done <<<"$installed_versions"
+done
+
+if [ -z "$updates" ]; then
+    printf '\n✅ 所有已安裝的套件都是同版本線的最新版。\n'
+    exit 0
+fi
+
+printf '\n🔍 偵測到以下可更新的套件（同版本線）：\n'
+while IFS=$'\t' read -r c i l; do
+    [ -n "$c" ] || continue
+    printf -- '- %s %s → %s\n' "$c" "$i" "$l"
+done <<<"$updates"
+printf '\n更新 = 安裝新版並移除舊版。\n'
+
+# ── 逐項確認 ─────────────────────────────────────────────────────────────────
+# 先記下每個候選目前的預設版本，最後還原（見檔頭關於 auto_answer 的說明）。
+# 用換行分隔的 "candidate<TAB>version" 字串當對照表，不用 declare -A：
+# associative array 要 bash 4，而 macOS 內建的 /bin/bash 停在 3.2。
+previous_default=""
+while IFS=$'\t' read -r c i l; do
+    [ -n "$c" ] || continue
+    case "$previous_default" in *"$c"$'\t'*) continue ;; esac
+    previous_default+="$c	$(basename "$(readlink "$candidates_dir/$c/current" 2>/dev/null)" 2>/dev/null)"$'\n'
+done <<<"$updates"
+
+lookup() { awk -F'\t' -v k="$2" '$1 == k { print $2; exit }' <<<"$1"; }
+
+new_default=""
+# 迴圈從 fd 3 讀清單，不是 stdin：用 `done <<<"$updates"` 的話，迴圈內的
+# `read -p` 會接著從同一份 here-string 拿資料，把還沒問的更新項當成使用者
+# 的答案吃掉 —— 六項只會問到三項，而且答案全錯位。
+while IFS=$'\t' read -r c i l <&3; do
+    [ -n "$c" ] || continue
+
+    printf '\n%s (%s → %s)\n' "$c" "$i" "$l"
+    read -r -p "是否要更新 [$c $i]? (y/N) " response
+    case "$response" in
+        y|Y) ;;
+        *) printf '→ 略過 %s %s\n' "$c" "$i"; continue ;;
+    esac
+
+    printf '→ 安裝 %s %s...\n' "$c" "$l"
+    if ! sdk install "$c" "$l"; then
+        printf >&2 '→ %s %s 安裝失敗，保留舊版 %s\n' "$c" "$l" "$i"
+        continue
+    fi
+
+    # 舊版是預設 → 預設改指新版；否則稍後還原成原本那個。
+    if [ "$(lookup "$previous_default" "$c")" = "$i" ]; then
+        new_default+="$c	$l"$'\n'
+    fi
+
+    printf '→ 移除舊版 %s %s...\n' "$c" "$i"
+    sdk uninstall "$c" "$i" || printf >&2 '→ 移除 %s %s 失敗，請手動處理\n' "$c" "$i"
+done 3<<<"$updates"
+
+# ── 還原/更新預設版本 ────────────────────────────────────────────────────────
+while IFS=$'\t' read -r c prev; do
+    [ -n "$c" ] || continue
+    want="$(lookup "$new_default" "$c")"
+    [ -n "$want" ] || want="$prev"
+    [ -n "$want" ] || continue
+    [ -d "$candidates_dir/$c/$want" ] || continue
+    current="$(basename "$(readlink "$candidates_dir/$c/current" 2>/dev/null)" 2>/dev/null)"
+    [ "$current" = "$want" ] && continue
+    printf '→ 將 %s 的預設設回 %s\n' "$c" "$want"
+    sdk default "$c" "$want" >/dev/null
+done <<<"$previous_default"
+
+printf '\n🎉 所有選定的套件已處理完畢。\n'

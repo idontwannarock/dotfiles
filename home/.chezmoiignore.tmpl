@@ -62,6 +62,13 @@ AppData
 .ssh/config.d/corp-multiplex
 {{- end }}
 
+# ── sdkupdate: SDKMAN is Unix-only, so the helper is too ──────────────
+# The Windows counterpart is scoop-interactive-update.ps1 (excluded below on
+# non-Windows). See docs/user-scripts.md.
+{{- if eq .chezmoi.os "windows" }}
+.local/bin/sdkupdate
+{{- end }}
+
 # ── Windows-only manual helpers (see docs/user-scripts.md) ────────────
 # switch-pwsh-to-msi: Store/MSIX pwsh -> official MSI.
 # scoop-interactive-update: reached via the `scoopupdate` alias; scoop is Windows-only.
