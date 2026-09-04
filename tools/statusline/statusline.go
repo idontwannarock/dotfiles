@@ -394,8 +394,8 @@ func main() {
 	pctColor := colorForPct(ctxPercent)
 	bar := progressBar(ctxPercent, 10)
 	tokenPart := formatTokens(totalTokens)
-	// Show the limit the session is measured against; Claude Code caps this at
-	// 200K unless a repo overrides CLAUDE_CODE_DISABLE_1M_CONTEXT.
+	// Show the limit the session is measured against; a repo that sets
+	// CLAUDE_CODE_DISABLE_1M_CONTEXT will report 200K here instead of 1M.
 	if size := data.ContextWindow.ContextWindowSize; size > 0 {
 		tokenPart += cDim + "/" + formatTokens(size) + cReset
 	}
