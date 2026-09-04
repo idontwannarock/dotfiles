@@ -49,6 +49,22 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 
 瑣碎任務（改 typo、一行修改）會自動跳過詢問。
 
+### 工具型 skill：`efk-query`
+
+上面那張表是流程紀律。`efk-query` 是另一類——**只提供機制，不含任何專案語意**：
+`scripts/efk-client.sh`（OpenSearch `_search` / 任意 GET 的薄殼）與 `scripts/efk.py`
+（重試、`search_after` 翻頁、依 traceId 組回整條 trace、index/欄位探勘）。
+專案自己的判讀邏輯留在該 repo 的 skill 裡，shell out 過來即可。
+
+**憑證刻意不進這個 repo。** 解析順序為 `$EFK_ENV_FILE` → cwd 的 `.env.local` /
+`.env.<env>` → `~/.agent/local/efk/.env.<env>`。最後那個是常態：機器層、非公開、
+不受 chezmoi 管。叢集主機名、index pattern、帳號權限這些站台事實同樣不在 repo，
+記在 `~/.agent/local/efk.md`（見 §5 local conventions 的指路）。判準與
+`confluence-team-doc` 的 `.local/` 一致：**機制可共享，座標不可。**
+
+`efk.py fields` 會先試 `_mapping`，被權限擋下時改從實際文件推導欄位——唯讀角色
+常常連 `_cat/indices` 與 `_mapping` 都沒有權限，那是權限牆不是叢集壞掉。
+
 設計討論的結論不寫獨立文件 — `grill` 直接分流進
 `openspec/changes/<change>/` 的 design.md / proposal.md / spec deltas。
 （歷史脈絡:舊流程用 superpowers `brainstorming`/`writing-plans`,需要把
