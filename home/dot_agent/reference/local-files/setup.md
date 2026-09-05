@@ -1,7 +1,7 @@
 ---
 type: Playbook
 title: Local files install & setup
-description: "One-time install of the global core.hooksPath dispatcher and the localfiles helper via chezmoi, plus migration notes for older bare+worktree repos."
+description: "One-time install of the global core.hooksPath dispatcher and the localfiles helper via chezmoi, plus what to do when a repo sets its own core.hooksPath."
 ---
 
 # Local files — install & setup
@@ -45,18 +45,15 @@ printf 'X=1\n' > .env && localfiles backup
 rm .env && git checkout -- . ; localfiles restore   # .env reappears
 ```
 
-## Migrating an existing bare+worktree repo
+## A repo that sets its own core.hooksPath
 
-Older bare setups set a per-repo `core.hooksPath` pointing at `.githooks`,
-which **overrides** the global dispatcher and bypasses local-files restore.
-Drop it so the repo falls back to the global dispatcher (which still chains
-`.githooks/post-checkout`):
+A per-repo `core.hooksPath` pointing at `.githooks` **overrides** the global
+dispatcher and bypasses local-files restore. Drop it so the repo falls back to
+the global dispatcher (which still chains `.githooks/post-checkout`):
 
 ```sh
-git --git-dir=.bare config --unset core.hooksPath
+git config --unset core.hooksPath
 ```
-
-New layouts created per `../bare-worktree/setup.md` no longer set it.
 
 ## Windows notes
 

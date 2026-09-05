@@ -24,7 +24,7 @@ Four parts, all load-bearing:
 | `--git-common-dir` | shared across every worktree of a repo, unlike `--show-toplevel` |
 | `--path-format=absolute` | without it the output is relative to **your** cwd, not the target's — so any `-C <path>` / `--repo <path>` invocation silently yields *your* repo's slug |
 | `realpath` | resolves symlinks |
-| `dirname` | strips the `.git` / `.bare` component — **the raw path is not the repo root** |
+| `dirname` | strips the `.git` component — **the raw path is not the repo root** |
 
 **The order is load-bearing too.** `--path-format` affects only the options that
 follow it, so `--git-common-dir --path-format=absolute` is silently equivalent to
@@ -74,15 +74,15 @@ with `/`, so the slug starts with `-`. A Windows drive letter does not
 
 ## The two shortcuts that look right and are not
 
-**Slugifying the raw `--git-common-dir` output.** It ends in `.git` or `.bare`,
+**Slugifying the raw `--git-common-dir` output.** It ends in `.git`,
 so you get `-home-me-ws-dotfiles-git` — a directory name no other mechanism
 will ever produce. Everything still works: you write a file, you read it back,
 you simply never see what anything else wrote.
 
-**Using `git rev-parse --show-toplevel`.** Identical under a normal checkout, so
-it survives casual testing. Under bare+worktree it returns the *current
-worktree*, so one repo's artifacts scatter across as many directories as it has
-branches. `shoalter-ai-toolkit` once split into three handoff directories this
+**Using `git rev-parse --show-toplevel`.** Identical in the main checkout, so
+it survives casual testing. Inside a linked worktree it returns that *worktree*,
+so one repo's artifacts scatter across as many directories as it has concurrent
+workflows. `shoalter-ai-toolkit` once split into three handoff directories this
 way.
 
 Both failures are silent — nothing errors, nothing is missing, the answer is

@@ -9,9 +9,8 @@ Tool-agnostic reference shared by every AI coding tool on this machine
 one edit takes effect for all of them.
 
 Each tool's prompts and skills link **into this tree by absolute path**, not
-through this file — `CLAUDE.md` / `AGENTS.md` point at
-`bare-worktree/index.md`, and the `tdd` and `worktree` skills link their leaf
-files directly. This index exists to declare `okf_version` and to give the
+through this file — the `tdd` and `worktree` skills link their leaf files
+directly. This index exists to declare `okf_version` and to give the
 tree a place where everything in it is listed; it is not on any load path.
 
 Loaded on demand — read the file you need, not the whole tree.
@@ -21,13 +20,6 @@ Loaded on demand — read the file you need, not the whole tree.
 描述「這個環境長什麼樣」,本質上綁特定機器與平台,即使句子本身看不出是誰的環境;
 本 repo 為公開 repo,那類內容不進這棵樹。此處只記存在性,內容不複述,需要時直接讀
 `~/.agent/local/index.md`(該檔不存在就代表這台機器沒建過)。
-
-# Git layouts
-
-* [Bare + worktree](bare-worktree/) - repos organized as a bare git repo plus
-  per-branch worktrees: how to detect the layout, operate in it day to day,
-  create it, why only this architecture is documented, and how Claude Code's
-  own state behaves under it.
 
 # Workflow
 

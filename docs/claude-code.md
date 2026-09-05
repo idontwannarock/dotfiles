@@ -44,7 +44,7 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 | `tdd` | 實作紀律 — 只在預先同意的 seam 測試、red before green、垂直切片 |
 | `diagnose` | Bug 進入點 — 先建 feedback loop 才准提假設；根因餵進 proposal 的 Why |
 | `verify-done` | 完工前驗證 — 證據先於宣稱 |
-| `worktree` | 隔離 workspace 建立（normal / bare+worktree 雙架構） |
+| `worktree` | 隔離 workspace 建立（`git worktree add`，含移入新目錄的確認） |
 | `finish-branch` | 分支收尾 — merge/PR/處置,雙架構原生支援 |
 
 瑣碎任務（改 typo、一行修改）會自動跳過詢問。
@@ -661,7 +661,7 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 
 落點在 `~/.agent/` 而非 repo 內或工具專屬 dotdir。副作用是不需要動 `.gitignore` — 檔案本來就不在 repo 裡。
 
-`repo-slug` 取 `git rev-parse --path-format=absolute --git-common-dir` 去掉最後一段，再把 `:`、`\`、`/`、`.` 全換成 `-`；與 `~/.agent/memory/<id>/` 的 auto-memory 規則同源。不用 `--show-toplevel` — 那在 bare+worktree 佈局下會依 worktree 分裂成多個目錄，彼此看不見。
+`repo-slug` 取 `git rev-parse --path-format=absolute --git-common-dir` 去掉最後一段，再把 `:`、`\`、`/`、`.` 全換成 `-`；與 `~/.agent/memory/<id>/` 的 auto-memory 規則同源。不用 `--show-toplevel` — 那在 linked worktree 裡會依 worktree 分裂成多個目錄，彼此看不見。
 
 `## Suggested skills` 與 `## Next steps` 是**寫入端**的硬性要求，`handoff` 寫檔前自我檢查；後者每條還要帶可驗證的成功判準。
 

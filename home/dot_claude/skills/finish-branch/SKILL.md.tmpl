@@ -2,7 +2,7 @@
 {{- $n := dict -}}
 ---
 name: finish-branch
-description: "Use when implementation is complete and verified, to integrate a development branch — presents merge locally / push + PR / keep / discard, then executes per repo architecture: normal repos merge in place; bare+worktree layouts rebase, ff-only merge from the base worktree, and always dispose the feature worktree + branch. Also removes the workflow's active_workflows.md row."
+description: "Use when implementation is complete and verified, to integrate a development branch — presents merge locally / push + PR / keep / discard, then rebases, merges from the main checkout, and disposes the branch and any linked worktree. Establishes up front which directory each step belongs in, since merging and worktree removal both fail badly from the wrong one. Also removes the workflow's active_workflows.md row."
 ---
 
 {{ template "skills/finish-branch.md" (dict "n" $n "chez" .chezmoi) -}}

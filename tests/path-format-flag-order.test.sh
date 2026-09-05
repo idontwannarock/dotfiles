@@ -23,11 +23,15 @@
 #      `cd "$(...)" && pwd -P`, or `basename "$(...)"`, which wants only the last
 #      component and gets the same answer from `.git` and `../.git`
 #
-# Form (b) is in live use at four call sites inside the scanned tree
-# (finish-branch.md, worktree.md, dev-workflow.md, bare-worktree/scope.md). A
-# guard demanding form (a) everywhere would fire on all four on day one, and a
-# guard that is wrong on its first run gets switched off — leaving something
-# worse than no guard: a red light nobody reads.
+# Form (b) had four live call sites inside the scanned tree when this guard was
+# written (finish-branch.md, worktree.md, dev-workflow.md, bare-worktree/scope.md);
+# demanding form (a) everywhere would have fired on all four on day one, and a
+# guard that is wrong on its first run gets switched off — leaving something worse
+# than no guard: a red light nobody reads. All four went away on 2026-09-04 with
+# the bare+worktree architecture detection they belonged to, so the scanned tree
+# is momentarily all form (a). Form (b) stays accepted regardless: it is correct,
+# and narrowing the guard to today's population would make the next legitimate
+# `cd "$(...)" && pwd -P` a false positive.
 #
 # A CALL SITE IS AN INVOCATION, AND THE UNIT OF JUDGEMENT IS THE INVOCATION, NOT
 # THE LINE. Prose that names `--git-common-dir` to talk ABOUT the flag carries no
@@ -122,13 +126,15 @@ repo_root=$(dirname "$self_dir")
 # and a deliberate removal that drops below one is a one-line edit here with the
 # reason in the commit.
 #
-# Set just under the counts measured on 2026-08-24 (17 and 6). A global "> 0"
-# would only tell total collapse apart from everything else: 14 of 16 call sites
-# can vanish and still satisfy it, which is the shape a rename, a
+# Set just under the counts measured on 2026-09-04 (14 and 4), themselves down
+# from 2026-08-24's 17 and 6: retiring the bare+worktree layout deleted
+# reference/bare-worktree/ and the ARCH-detection block in three skill bodies.
+# A global "> 0" would only tell total collapse apart from everything else: 14 of
+# 16 call sites can vanish and still satisfy it, which is the shape a rename, a
 # `.chezmoiignore` change, or a half-finished checkout produces.
 # Written as `<root>:<floor>` so a root and its floor cannot drift apart, and so
 # adding a root is one edit here plus one in the CI filter — nowhere else.
-scan_roots='home/.chezmoitemplates/skills:15 home/dot_agent/reference:5'
+scan_roots='home/.chezmoitemplates/skills:14 home/dot_agent/reference:4'
 # Set only by the message self-check below, which re-invokes this script against
 # a throwaway fixture directory. Floors are zero there because the fixture is two
 # files by construction.

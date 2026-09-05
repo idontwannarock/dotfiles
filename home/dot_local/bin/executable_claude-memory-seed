@@ -6,8 +6,8 @@
 #
 # Two anchors, deliberately distinct inside a linked worktree:
 #   id_root       decides <id>       git: dirname(git-common-dir) — the main
-#                                    checkout, or the container of a .bare
-#                                    layout, so every worktree shares one <id>
+#                                    checkout of the repo, so every linked
+#                                    worktree shares one <id>
 #                                    non-git: CLAUDE_PROJECT_DIR, else cwd
 #   settings_root decides where the  git: the current worktree's toplevel, so
 #                 settings file goes each worktree carries its own file
@@ -53,8 +53,8 @@ physical() {
     CDPATH= cd -- "$1" 2>/dev/null && pwd -P
 }
 
-# Canonical root = dirname(realpath(common-dir)) — parent of .git (normal repo)
-# or parent of .bare (bare+worktree). Stable across every worktree of the repo.
+# Canonical root = dirname(realpath(common-dir)) — the parent of .git, i.e. the
+# main checkout. Stable across every linked worktree of the repo.
 canonical_root() {
     [ -n "$common" ] || return 1
     rp=$(physical "$common") || return 1

@@ -5,45 +5,43 @@ Create an isolated workspace for a workflow. Read
 whether isolation is required (any active/paused row in
 `active_workflows.md` → yes).
 
-## Detect architecture (once)
-
-```bash
-GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
-case "$(basename "$GIT_COMMON")" in
-  .bare) ARCH=bare-worktree ;;
-  *)     ARCH=normal ;;
-esac
-```
-
 ## Create the workspace
 
-Ensure `main` is up to date first (fetch/pull in the main checkout).
+Ensure `main` is up to date first (fetch/pull in the main checkout),
+then, **from the main checkout**:
 
-| ARCH | Command |
-|------|---------|
-| `normal` | From the main repo: `git worktree add ../<repo>-<branch> -b <branch> main` — the explicit `main` start-point matters; without it the worktree branches from current HEAD (likely another workflow's feature branch). |
-| `bare-worktree` | From the container: `git --git-dir=.bare worktree add -b <branch> <branch> main` — directory named after the branch, one branch per worktree. See `~/.agent/reference/bare-worktree/operating.md`. |
+```bash
+git worktree add ../<repo>-<branch> -b <branch> main
+```
+
+The explicit `main` start-point matters. Without it the worktree
+branches from current HEAD — likely another workflow's feature branch.
 
 - If the target directory or branch name already exists, stop and pick
   another name (or resume the existing workflow) — do not force.
 - Never `git checkout` another branch inside an existing worktree to
   "reuse" it — one workflow, one workspace.
-- The `--git-dir=.bare` form only works from the container directory;
-  run it there.
+
+## Move into it
+
+`git worktree add` does not move you. The new directory is where every
+later command for this workflow belongs, so `cd` there before doing
+anything else, and confirm it:
+
+```bash
+cd ../<repo>-<branch> && git rev-parse --show-toplevel && git branch --show-current
+```
+
+Both must name the new workspace. Editing the main checkout while
+believing you are in the worktree is the failure this step exists to
+prevent — it puts the work on the wrong branch, and nothing complains.
 
 ## Register
 
-Resolve the active-workflows path per `ARCH` (same dispatch as
-dev-workflow Step 2b):
-
-- `normal`: auto-derive the canonical slug per
-  `~/.agent/reference/repo-identity.md` — read it rather than restating the
-  anchor here — then `~/.agent/workflows/<slug>/active_workflows.md`.
-- `bare-worktree`: the same derivation applies — the anchor's `dirname` strips
-  `.bare`, so the slug is the container's, which is what this layout wants. Look
-  up the repo's row in `~/.agent/workflow-registry.md` anyway for **Main Repo
-  Path**, which is the `main/` worktree and not the container. See
-  `~/.agent/reference/bare-worktree/claude-state.md`.
+Auto-derive the canonical repo slug per
+`~/.agent/reference/repo-identity.md` — read it rather than restating the
+anchor here — then open
+`~/.agent/workflows/<slug>/active_workflows.md`.
 
 `mkdir -p` the directory if this is the repo's first workflow, then add
 a row (`Change | Branch | Path | Type | Current Step | Status | Last

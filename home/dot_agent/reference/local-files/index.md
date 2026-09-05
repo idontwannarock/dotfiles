@@ -9,4 +9,4 @@ across branches and worktrees of a repo. Tool-agnostic.
   the agent read-fallback rule.
 * [Local files install & setup](setup.md) - one-time install of the global
   `core.hooksPath` dispatcher and the `localfiles` helper via chezmoi, plus
-  migration notes for older bare+worktree repos.
+  what to do when a repo sets its own `core.hooksPath`.

@@ -4,7 +4,7 @@
 {{- $n := dict -}}
 ---
 name: worktree
-description: "Create an isolated git workspace for a workflow — use when another workflow is active/paused in active_workflows.md or the task needs isolation from the current workspace. Handles normal repos (git worktree add) and bare+worktree layouts (git --git-dir=.bare worktree add) natively, and registers the workspace in active_workflows.md."
+description: "Create an isolated git workspace for a workflow — use when another workflow is active/paused in active_workflows.md or the task needs isolation from the current workspace. Runs git worktree add off an up-to-date main, confirms the move into the new directory, and registers the workspace in active_workflows.md."
 ---
 
 {{ template "skills/worktree.md" (dict "n" $n "chez" .chezmoi) -}}
