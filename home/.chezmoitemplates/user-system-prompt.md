@@ -91,15 +91,7 @@ Default to dispatching a *fresh* agent driven by a self-contained directive, rat
 
 **Never hand a large context to an inheriting agent.** Every turn it takes re-reads the whole inherited context, so the saving that motivated inheriting disappears well before the context is full.
 {{ end }}
-## 7. Bare + worktree repos
-
-If cwd is a git worktree whose parent dir contains a `.bare/` folder alongside
-sibling worktree dirs, read `~/.agent/reference/bare-worktree/index.md` and
-follow it (branch creation, never `git switch` in-place, never operate at the
-container level, per-repo memory/worktree settings). The `finish-branch` skill
-handles merging + disposing in this layout natively.
-
-## 8. Memory Index Lines Point, They Do Not Summarize
+## 7. Memory Index Lines Point, They Do Not Summarize
 
 The memory index (`MEMORY.md`) loads in full at the start of every session; the
 individual memory files do not. So the index is the only layer where wording costs

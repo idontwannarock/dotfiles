@@ -17,7 +17,7 @@ toplevel=$(git rev-parse --show-toplevel 2>/dev/null) || toplevel=""
 common=$(git rev-parse --git-common-dir 2>/dev/null) || common=""
 
 # repo-id = slug(dirname(realpath(git-common-dir))) — abs path with '/'->'-';
-# stable across all branches/worktrees of a repo (bare+worktree: the container)
+# stable across all branches/worktrees of a repo (always the main checkout)
 # and unique across repos (no folder-name clash). Matches claude-memory-seed <id>.
 repo_id() {
     rp=$(CDPATH= cd -- "$common" 2>/dev/null && pwd -P) || die "cannot resolve git dir"

@@ -1,7 +1,6 @@
 # Finish Branch
 
-Complete a development branch: verify, integrate, dispose. Both repo
-architectures are handled natively — no external overrides.
+Complete a development branch: verify, integrate, dispose.
 
 ## Ground rules (apply to every option below)
 
@@ -10,74 +9,85 @@ architectures are handled natively — no external overrides.
   report the state, and wait — do NOT run the remaining steps.
 - **Dispose only after the merge is confirmed.** Worktree/branch
   disposal and `active_workflows.md` row removal happen only once the
-  merge commit is verifiably on the base branch (or the user confirmed
+  merge is verifiably on the base branch (or the user confirmed
   Discard). A half-finished sequence keeps the row.
+- **Know where you stand** — see below. Every step here happens in one
+  of two places, and picking the wrong one fails in ways that are not
+  obvious.
+
+## 0. Where you stand
+
+Establish this once, before anything else:
+
+```bash
+WORK=$(git rev-parse --show-toplevel)          # this workflow's workspace
+BRANCH=$(git branch --show-current)
+MAIN=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+[ "$WORK" = "$MAIN" ] && LINKED=no || LINKED=yes
+```
+
+`MAIN` is the main checkout — the first row of `git worktree list` is
+always the one holding `.git` itself. `LINKED=yes` means this branch
+lives in a linked worktree, which constrains two things:
+
+- **Integration runs in `$MAIN`, never in `$WORK`.** `git checkout main`
+  inside a linked worktree fails outright — `fatal: 'main' is already
+  checked out at <main>`. Rebasing the feature branch is the one step
+  that belongs in `$WORK`; everything touching the base branch does not.
+- **Disposal runs from `$MAIN`, never from inside `$WORK`.**
+  `git worktree remove` does *not* refuse when your shell sits inside
+  the directory it is deleting. It removes the tree, and every later
+  command in that shell dies with `Unable to read current working
+  directory`. `cd "$MAIN"` first — this is a hard ordering, not a
+  preference.
+
+When `LINKED=no` the branch shares the main checkout; there is no
+worktree to remove and `$WORK` and `$MAIN` are the same place.
 
 ## 1. Verify before anything
 
 Run the project's verification (tests / build / lint) and confirm
 output. Do not offer integration options on a red branch.
 
-## 2. Detect architecture
-
-```bash
-GIT_COMMON=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
-case "$(basename "$GIT_COMMON")" in
-  .bare) ARCH=bare-worktree ;;
-  *)     ARCH=normal ;;
-esac
-```
-
-## 3. Ask how to integrate, then execute per option × ARCH
+## 2. Ask how to integrate, then execute
 
 Present once: **Merge locally** / **Push + PR** / **Keep branch as is**
 / **Discard**.
 
 ### Merge locally
 
-- `normal`: rebase on up-to-date main (pause on conflict) →
-  `git checkout main && git merge <branch>` → after the merge is
-  confirmed, delete the branch; if the work was in a linked worktree,
-  `git worktree remove <path>` first.
-- `bare-worktree`: never checkout the base inside the feature worktree.
-  ```bash
-  cd <repo>/<branch> && git rebase main     # conflict → stop, resolve, rerun tests
-  cd <repo>/main && git merge --ff-only <branch>   # refused → stop, report (main moved?)
-  # ── only continue once the merge above succeeded ──
-  git --git-dir=<repo>/.bare worktree remove <branch>
-  git -C <repo>/main branch -d <branch>     # -d is safe after FF merge. NOT
-                                            # --git-dir=.bare: the bare repo's own
-                                            # HEAD is often a dangling symref (it
-                                            # points at whatever branch was last
-                                            # deleted), and -d needs HEAD to run its
-                                            # merged check.
-  git --git-dir=<repo>/.bare worktree prune
-  ```
-  Alternative `git merge --no-ff <branch>` from `main/` when the branch
-  history is worth keeping as a unit. Rebase rewrites hashes — update
-  anything that recorded old ones. Run disposal from `main/` or the
-  container, never from inside the worktree being removed. Never
-  `rm -rf` a worktree directory.
-- Then remove the workflow's row from `active_workflows.md` — resolve its
-  path per ARCH first (normal: auto-derived slug; bare-worktree: registry
-  lookup via `autoMemoryDirectory` key, auto-derivation is wrong there —
-  same dispatch as the `worktree` skill's Register step).
+```bash
+cd "$WORK" && git rebase main            # conflict → stop, resolve, rerun tests
+cd "$MAIN" && git merge --ff-only "$BRANCH"   # refused → stop, report (main moved?)
+# ── only continue once the merge above succeeded ──
+[ "$LINKED" = yes ] && git worktree remove "$WORK"
+git branch -d "$BRANCH"                  # -d is safe after a FF merge
+git worktree prune
+```
+
+Use `git merge --no-ff "$BRANCH"` instead when the branch history is
+worth keeping as a unit. Rebase rewrites hashes — update anything that
+recorded the old ones. Never `rm -rf` a worktree directory; `worktree
+remove` also clears the bookkeeping under `.git/worktrees/`.
+
+Then remove the workflow's row from `active_workflows.md` (path per
+`~/.agent/reference/repo-identity.md`, same derivation as the
+`worktree` skill's Register step).
 
 ### Push + PR
 
-Both ARCHes: push the branch, `gh pr create`. The branch — and under
-bare-worktree the worktree — stays until the PR merges (review fixes
-need the workspace). Keep the `active_workflows.md` row, update Current
-Step (e.g. `pr-open`); dispose + remove the row only after the PR
-merges.
+Push the branch and `gh pr create`. The branch and its worktree stay
+until the PR merges — review fixes need the workspace. Keep the
+`active_workflows.md` row and update Current Step (e.g. `pr-open`);
+dispose and remove the row only after the PR merges.
 
-When it merges, sync the base then dispose — run from the base worktree
-(`normal`: the repo itself; `bare-worktree`: `<repo>/main`):
+When it merges, sync the base and confirm the work landed — from
+`$MAIN`:
 
 ```bash
-git switch main && git pull --ff-only   # bare-worktree: cd <repo>/main first
-paths=$(git diff --name-only "$(git merge-base main <branch>)" <branch>)
-git diff main <branch> -- $paths        # MUST be empty
+cd "$MAIN" && git switch main && git pull --ff-only
+paths=$(git diff --name-only "$(git merge-base main "$BRANCH")" "$BRANCH")
+git diff main "$BRANCH" -- $paths        # MUST be empty
 ```
 
 Scope the comparison to the paths the branch touched. An unscoped
@@ -97,12 +107,17 @@ branch's tree is entirely on the base and nothing is lost. That holds
 for merge-commit, squash, rebase, and cherry-pick alike. Non-empty →
 stop and report; something did not land.
 
-Only then dispose: `git branch -D <branch>`; under `bare-worktree`,
-`git --git-dir=<repo>/.bare worktree remove <branch>` first, then
-`branch -D` from `main/`, then `worktree prune`. The remote branch is
-already gone if the repo sets `delete_branch_on_merge`; otherwise
-`git push origin --delete <branch>`. Then remove the
-`active_workflows.md` row.
+Only then dispose — still from `$MAIN`:
+
+```bash
+[ "$LINKED" = yes ] && git worktree remove "$WORK"
+git branch -D "$BRANCH"
+git worktree prune
+```
+
+The remote branch is already gone if the repo sets
+`delete_branch_on_merge`; otherwise `git push origin --delete
+"$BRANCH"`. Then remove the `active_workflows.md` row.
 
 ### Keep branch as is
 
@@ -112,11 +127,15 @@ Leave branch, worktree, and the `active_workflows.md` row untouched
 ### Discard
 
 Destroys unmerged commits — **confirm with the user before deleting**,
-then:
-- `normal`: `git checkout main`, remove the linked worktree if any,
-  `git branch -D <branch>`.
-- `bare-worktree`: `git --git-dir=<repo>/.bare worktree remove
-  <branch>` (add `--force` only if the tree is dirty and the user
-  confirmed), `git --git-dir=<repo>/.bare branch -D <branch>`,
-  `worktree prune`.
-- Then remove the `active_workflows.md` row.
+then, from `$MAIN`:
+
+```bash
+cd "$MAIN"
+[ "$LINKED" = yes ] && git worktree remove "$WORK"   # --force only if the tree
+                                                    # is dirty AND user confirmed
+git branch -D "$BRANCH"
+git worktree prune
+```
+
+When `LINKED=no`, `git switch main` first — you cannot delete the branch
+you are standing on. Then remove the `active_workflows.md` row.

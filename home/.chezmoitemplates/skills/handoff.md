@@ -46,11 +46,11 @@ All of this is a snapshot, and composing the file takes many more turns. A paral
 - **ID**: `YYYY-MM-DD-HHMM__<slug>` (no extension). Use the user's local time. The minute is not a unique key -- two parallel sessions handing off in the same minute share a prefix, which has happened -- so the slug must identify the work on its own. A full ID always resolves; a date-prefix lookup will make the user choose between them.
 - **Repo slug**: take the repo identity path from Gather and replace every `:`, `\`, `/`, and `.` with `-`. Examples:
   - normal layout: git-common-dir is `/home/user/work/api/.git`, so the identity path is `/home/user/work/api` and the slug is `-home-user-work-api`
-  - bare+worktree layout: git-common-dir is `/home/user/work/api/.bare` from **any** worktree, so every worktree of that repo yields the same slug `-home-user-work-api`
+  - linked worktrees: git-common-dir is `/home/user/work/api/.git` from **any** worktree of that repo, so every one of them yields the same slug `-home-user-work-api`
   - `D:\ws\github\dotfiles` becomes `D--ws-github-dotfiles`
   - `\\wsl.localhost\Ubuntu\home\me\proj` becomes `--wsl-localhost-Ubuntu-home-me-proj`
 
-  Use `git-common-dir`, **not** `git rev-parse --show-toplevel`. Under bare+worktree the latter returns the current worktree path, so handoffs written from different worktrees of one repo land in different directories and become invisible to each other. This slug rule is the same one Claude auto-memory uses for `~/.agent/memory/<id>/`, so both systems agree on what "the same repo" means.
+  Use `git-common-dir`, **not** `git rev-parse --show-toplevel`. Inside a linked worktree the latter returns that worktree's path, so handoffs written from different worktrees of one repo land in different directories and become invisible to each other. This slug rule is the same one Claude auto-memory uses for `~/.agent/memory/<id>/`, so both systems agree on what "the same repo" means.
 - **Path**: `~/.agent/handoffs/<repo-slug>/<ID>.md`. Create the directory if missing.
 
 **Handing off to a different repo.** Working in repo A and finding something that belongs to repo B is normal, and the handoff belongs in B's directory. This only happens when the user names the target -- `--repo <path>` in the wrapper, or plainly saying so in the args. The target is always a path: if the user gives a bare repo name, ask which path they mean rather than searching for it.

@@ -6,7 +6,7 @@ This skill reads and prints. It never moves, deletes, or rewrites anything. Arch
 
 ## Resolve the directory
 
-Compute the **repo slug** the same way `handoff` and `pickup` do: take `git rev-parse --path-format=absolute --git-common-dir` minus its last component, falling back to `$PWD` if that fails, then replace every `:`, `\`, `/`, and `.` with `-`. Not `git rev-parse --show-toplevel` -- under bare+worktree that splits one repo across several directories.
+Compute the **repo slug** the same way `handoff` and `pickup` do: take `git rev-parse --path-format=absolute --git-common-dir` minus its last component, falling back to `$PWD` if that fails, then replace every `:`, `\`, `/`, and `.` with `-`. Not `git rev-parse --show-toplevel` -- inside a linked worktree that splits one repo across several directories.
 
 The user may point at a different repo with `--repo <path>`; resolve its slug with `git -C <target> rev-parse --path-format=absolute --git-common-dir`. Keep `--path-format=absolute`: without it git prints a path relative to your own cwd and you get the current repo's slug instead. If the path does not exist or is not a git repo, report it and stop.
 

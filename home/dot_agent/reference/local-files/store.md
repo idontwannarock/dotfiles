@@ -11,8 +11,8 @@ Reference for **local-files**: keeping gitignored local files (`.env`,
 repo, backed by a per-repo global store. Tool-agnostic.
 
 The problem: these files are gitignored, so they don't travel with a branch
-switch into a fresh `git worktree` (or any worktree in a bare+worktree
-layout). A new working directory has no `.env`, and tools that look in cwd
+switch or into a fresh `git worktree`. A new working directory has no `.env`,
+and tools that look in cwd
 (dotenv, docker-compose, the app itself) break. There is also no single
 durable copy on the machine.
 
@@ -39,10 +39,9 @@ ${XDG_STATE_HOME:-~/.local/state}/localfiles/<repo-id>/
 
 - `<repo-id>` = `slug(dirname(realpath(git-common-dir)))` — the canonical-root
   absolute path with `/`→`-` (same `<id>` as `claude-memory-seed`). Stable
-  across every branch and worktree of a repo. For a normal repo the canonical
-  root is the main checkout; for a bare+worktree layout it's the **container**
-  (the dir that holds `.bare/`), not the individual worktree dir. Using the full
-  path (not the folder name) keeps unrelated repos with the same dir name from
+  across every branch and worktree of a repo: the canonical root is the main
+  checkout, never an individual linked-worktree dir. Using the full path (not
+  the folder name) keeps unrelated repos with the same dir name from
   colliding.
 - **Restore** picks the `<branch>/` bucket if it exists, else `_default/`.
 - **Backup** writes `_default/` by default; `--branch` writes the current
@@ -88,6 +87,4 @@ and cannot find it in cwd:
 ## See also
 
 - `setup.md` — one-time install (global `core.hooksPath` dispatcher + helper,
-  all via chezmoi) and migration notes.
-- `../bare-worktree/index.md` — local-files is what fills a fresh worktree's
-  `.env`; bare+worktree relies on the same global dispatcher.
+  all via chezmoi) and the per-repo `core.hooksPath` override to watch for.

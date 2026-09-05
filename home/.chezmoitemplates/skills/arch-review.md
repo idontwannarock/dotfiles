@@ -61,10 +61,10 @@ A review report is always `handoff_kind: task`, never `succession`. It is a stan
 
 - **Repo slug**: identical derivation to `handoff` -- take `git rev-parse --path-format=absolute --git-common-dir`, drop the last component, and replace every `:`, `\`, `/`, and `.` with `-`. Fall back to `$PWD` if the git command fails.
   - `/home/user/work/api/.git` becomes `-home-user-work-api`
-  - `/home/user/work/api/.bare` becomes `-home-user-work-api` from **any** worktree of that repo
+  - `/home/user/work/api/.git` becomes `-home-user-work-api` from **any** worktree of that repo
   - `D:\ws\github\dotfiles\.git` becomes `D--ws-github-dotfiles`
 
-  Not `git rev-parse --show-toplevel`: under bare+worktree that returns the current worktree, so reports would land where `pickup` will not look from a sibling worktree.
+  Not `git rev-parse --show-toplevel`: inside a linked worktree that returns the worktree, so reports would land where `pickup` will not look from a sibling worktree.
 - **ID**: `YYYY-MM-DD-HHMM__arch-review`, user's local time.
 - Create the directory if missing. Never write inside a tool-specific dotdir (`.claude/`, `.codex/`) or into the repo.
 

@@ -1,9 +1,11 @@
 # Retired targets — chezmoi removes these on apply across all machines.
 # Deleting a source file does NOT remove its deployed target; list it here.
 
-# Consolidated into ~/.agent/reference/bare-worktree/ (single tool-agnostic copy)
+# The bare+worktree layout was retired 2026-09-04: too many footguns for the
+# isolation it bought. Linked worktrees off a normal repo stay supported.
 .claude/bare-worktree-workflow.md
 .codex/bare-worktree-workflow.md
+.agent/reference/bare-worktree
 
 # Stale/unused machine-local docs, never re-deployed
 .claude/reference.md
