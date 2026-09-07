@@ -6,7 +6,7 @@ Wraps efk-client.sh with the things every log hunt re-implements: retries,
 search_after pagination, whole-trace fetch, and index/field discovery.
 
 Subcommands:
-  indices  --env prod [--filter foo]              list indices (name, docs, size)
+  indices  --env prod [--filter mms]              list indices (name, docs, size)
   fields   --env prod --index '<pat>'             field names from the mapping
   sample   --env prod --index '<pat>' [-n 1]      dump raw _source docs (learn the shape)
   search   --env prod --index '<pat>' --body -    paginate every hit, print JSON lines
@@ -55,7 +55,8 @@ def get(env, path, soft=False):
 def search(env, index, body):
     """One _search call, with retries on hard errors (proxy 502s are common)."""
     for _ in range(RETRIES):
-        r = _run(["search", "--env", env, "--index", index, "--body", "-"], stdin=json.dumps(body))
+        args = ["search", "--env", env] + (["--index", index] if index else []) + ["--body", "-"]
+        r = _run(args, stdin=json.dumps(body))
         try:
             d = json.loads(r.stdout)
         except Exception:
@@ -132,7 +133,7 @@ def _fields_from_docs(a, n=25):
 
 
 def cmd_fields(a):
-    m = get(a.env, urllib.parse.quote(a.index, safe="*") + "/_mapping", soft=True)
+    m = get(a.env, urllib.parse.quote(a.index, safe="*") + "/_mapping", soft=True) if a.index else None
     if not isinstance(m, dict) or not m:
         print("[info] _mapping unavailable; deriving fields from sampled documents instead.",
               file=sys.stderr)
@@ -194,7 +195,8 @@ def main():
 
     def common(p, index=True):
         p.add_argument("--env", default="prod")
-        if index: p.add_argument("--index", required=True)
+        if index: p.add_argument("--index", default=None,
+                                 help="index pattern; defaults to EFK_INDEX in the credentials file")
         p.add_argument("--from", dest="frm", default=None, help="UTC ISO, e.g. 2026-09-01T00:00:00Z")
         p.add_argument("--to", default=None)
         p.add_argument("--page-size", type=int, default=250)
