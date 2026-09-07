@@ -239,3 +239,48 @@ _dotfiles_check_update() {
     fi
 }
 _dotfiles_check_update
+
+# ── 每日檢查 chezmoi 自己有沒有新版 ─────────────────────────────────────────
+# 獨立的旗標與函式,不併進 _dotfiles_check_update:那支任何一步失敗都直接 return,
+# 併進去就等於讓 dotfiles fetch 失敗時連帶靜音版本檢查,而兩者沒有因果關係。
+#
+# 為什麼需要這個:chezmoi 曾以 snap 安裝,snapd 每幾小時自動更新,所以從來不必過問。
+# 2026-09-07 改用官方腳本的單一執行檔（理由見該次 commit）—— 換來不再依賴 systemd
+# user session,代價是自動更新沒了。這支補的就是那個代價。
+_chezmoi_check_version() {
+    local flag_file="$HOME/.local/share/chezmoi-last-version-check"
+    local today
+    today="$(date +%Y%m%d 2>/dev/null)" || return
+
+    if [ -f "$flag_file" ] && [ "$(cat "$flag_file" 2>/dev/null)" = "$today" ]; then
+        return
+    fi
+
+    command -v chezmoi >/dev/null 2>&1 || return
+    command -v curl    >/dev/null 2>&1 || return
+
+    # 旗標在打網路之前就寫,和 _dotfiles_check_update 同一個理由:上游掛掉或網路不通時,
+    # 每開一個 shell 都重試一次的代價由每次啟動承擔,而它換不到任何東西。
+    mkdir -p "$(dirname "$flag_file")"
+    echo "$today" > "$flag_file"
+
+    local current latest
+    # `command` 繞過本檔上面那個 chezmoi wrapper —— 這裡要的是執行檔,不是那層警告邏輯。
+    current="$(command chezmoi --version 2>/dev/null | sed -n 's/.*version v\([0-9][0-9.]*\).*/\1/p')"
+    [ -n "$current" ] || return
+
+    # sed 而非 jq:jq 不是每台機器都有,而這裡只要 JSON 裡的一個純量。
+    # --max-time 是承重的 —— 這支跑在 shell 啟動路徑上,沒有上限的網路呼叫會把
+    # 每個新視窗鎖住到 TCP 自己放棄為止。實測不可達位址時封頂在 3 秒。
+    latest="$(curl -fsS --max-time 3 https://api.github.com/repos/twpayne/chezmoi/releases/latest 2>/dev/null \
+        | sed -n 's/.*"tag_name"[ ]*:[ ]*"v\([0-9][0-9.]*\)".*/\1/p' | head -1)"
+    [ -n "$latest" ] || return
+
+    [ "$current" = "$latest" ] && return
+
+    # 只陳述兩個版本,不宣稱哪個較新:字串比對分不出「落後」與「本機跑 pre-release」,
+    # 而把後者說成「有更新可用」會讓這個提示在它唯一會出現的場合說錯話。
+    printf '\n\033[33mchezmoi: %s installed, %s available. Run '\''chezmoi upgrade'\''.\033[0m\n\n' "$current" "$latest"
+}
+
+_chezmoi_check_version
