@@ -17,16 +17,9 @@ if ! command -v claude &>/dev/null; then
     exit 0
 fi
 
-log_section "register the superpowers plugin marketplace"
-log_step "[plugins] adding obra/superpowers-marketplace"
-claude plugin marketplace add obra/superpowers-marketplace 2>&1 || true
-
 log_section "install Claude Code plugins"
 log_step "[plugins] installing slack"
 claude plugin install slack 2>&1 || true
-
-log_step "[plugins] installing episodic-memory"
-claude plugin install episodic-memory@superpowers-marketplace 2>&1 || true
 
 INSTALLED_PLUGINS="$(claude plugin list 2>/dev/null || true)"
 
@@ -37,7 +30,13 @@ INSTALLED_PLUGINS="$(claude plugin list 2>/dev/null || true)"
 #
 # Adding a retirement = adding a row here. Reason text is user-facing.
 # Keep this list identical to the PowerShell twin in the .ps1.tmpl.
-RETIRED_PLUGINS="
+#
+# Quoted heredoc, not a double-quoted string: a reason that quotes something --
+# explanatory-output-style quotes the text its hook injects -- closed the string
+# early and the rest of the row ran as commands. The script died there with
+# rc=127, so every step below it (uninstall, cache cleanup, MCP registration)
+# silently stopped running. <<'EOF' disables expansion outright.
+RETIRED_PLUGINS="$(cat <<'RETIRED_EOF'
 superpowers@claude-plugins-official|workflow skills replaced by the in-house discipline skills in ~/.claude/skills/
 claude-md-management@claude-plugins-official|unused
 context7@claude-plugins-official|unused
@@ -50,10 +49,12 @@ pyright-lsp@claude-plugins-official|unused
 jdtls-lsp@claude-plugins-official|unused
 claude-code-setup@claude-plugins-official|unused
 learning-output-style@claude-plugins-official|output styles are served by ~/.claude/output-styles/ELI5.md; the plugin variants only fight it
-explanatory-output-style@claude-plugins-official|its SessionStart hook injects "you may exceed typical length constraints", which contradicts the ELI5 output style
+explanatory-output-style@claude-plugins-official|its SessionStart hook injects 'you may exceed typical length constraints', which contradicts the ELI5 output style
 code-review@claude-plugins-official|its only surface is /code-review, duplicated by the repo's own code:review-* commands
 elements-of-style@superpowers-marketplace|its rules are rhetorical (Strunk) and aimed at prose someone reads for pleasure; commit messages, MR descriptions, docs and work chat are read for instruction, so CLAUDE.md/AGENTS.md section 5 now names the ASD-STE100 principles instead
-"
+episodic-memory@superpowers-marketplace|27 recorded calls in 508 transcripts (20 search, 7 read, 1 subagent) against 2.3 GB on disk (1.1 GB plugin cache plus 1.2 GB of archive and index under ~/.config/superpowers) and a bespoke onnxruntime patch; keyword search over the raw jsonl in ~/.claude/projects/ covers what remains
+RETIRED_EOF
+)"
 
 log_section "uninstall retired plugins so their removal converges on every machine"
 echo "$RETIRED_PLUGINS" | while IFS='|' read -r id reason; do
@@ -103,40 +104,20 @@ echo "$RETIRED_PLUGINS" | while IFS='|' read -r id _reason; do
         log_step "[cleanup] removed ${marketplace}/${plugin_id} cache"
     fi
 done
-# Defensive, and not derivable from the table above: superpowers once shipped from
-# superpowers-marketplace, so its cache can sit under that marketplace too.
-if [ -d "$PLUGIN_CACHE/superpowers-marketplace/superpowers" ]; then
-    rm -rf "$PLUGIN_CACHE/superpowers-marketplace/superpowers"
-    log_step "[cleanup] removed marketplace superpowers cache"
+# superpowers-marketplace has no consumers left: superpowers, episodic-memory and
+# elements-of-style are all retired. Drop the whole marketplace, not just the
+# three plugin dirs -- a registered marketplace with nothing installed still
+# gets refreshed on every plugin operation. Remove the cache first: the
+# marketplace command does not prune it.
+if [ -d "$PLUGIN_CACHE/superpowers-marketplace" ]; then
+    rm -rf "$PLUGIN_CACHE/superpowers-marketplace"
+    log_step "[cleanup] removed superpowers-marketplace cache"
 fi
-
-log_section "repair episodic-memory deps — its lockfile hides onnxruntime-common from a bare import"
-# The published episodic-memory lockfile nests onnxruntime-common only under
-# onnxruntime-node/-web, but @huggingface/transformers does a bare
-# `import 'onnxruntime-common'` that needs it at the package root -> its
-# SessionStart sync hook dies with ERR_MODULE_NOT_FOUND. Reinstalling reproduces
-# the broken layout (it's baked into the lockfile), so surface a top-level copy
-# from the already-present, version-matched nested one. Offline + idempotent;
-# loops version dirs so it self-heals across plugin upgrades.
-em_base="$PLUGIN_CACHE/superpowers-marketplace/episodic-memory"
-if [ -d "$em_base" ]; then
-    for ver_dir in "$em_base"/*/; do
-        [ -d "$ver_dir" ] || continue
-        nm="${ver_dir%/}/node_modules"
-        top="$nm/onnxruntime-common"
-        [ -e "$top" ] && continue
-        for nested in \
-            "$nm/onnxruntime-node/node_modules/onnxruntime-common" \
-            "$nm/onnxruntime-web/node_modules/onnxruntime-common"; do
-            if [ -d "$nested" ]; then
-                cp -R "$nested" "$top"
-                log_step "[deps] repaired onnxruntime-common for $(basename "${ver_dir%/}")"
-                break
-            fi
-        done
-    done
+if claude plugin marketplace list 2>/dev/null | grep -q "superpowers-marketplace"; then
+    log_step "[plugins] removing marketplace superpowers-marketplace — no plugin uses it"
+    claude plugin marketplace remove superpowers-marketplace 2>&1 || true
 else
-    log_skip "[deps] episodic-memory not present; nothing to repair"
+    log_skip "[plugins] superpowers-marketplace not registered"
 fi
 
 log_section "register user-scope MCP servers — a stdio server costs one process per session"

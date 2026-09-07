@@ -53,7 +53,7 @@ Code review 的每個觀點 SHALL 是 `~/.agent/reference/review-lenses/` 下的
 - **THEN** 同一測試失敗——缺少的 lens 在第一次執行 flow 時就會現形，多出來的永遠不會
 
 ### Requirement: Claude plugin 安裝透過 run_onchange_ 腳本
-superpowers marketplace 與所需 plugins 的安裝 SHALL 由 chezmoi `run_onchange_` 腳本處理，腳本內容改變時自動重新執行。所需 plugins 為 episodic-memory 與 elements-of-style（均來自 `obra/superpowers-marketplace`），以及 official marketplace 的 slack 與 explanatory-output-style。
+plugin 的安裝 SHALL 由 chezmoi `run_onchange_` 腳本處理，腳本內容改變時自動重新執行。所需 plugin 僅剩 official marketplace 的 slack。
 
 已退役的 plugin SHALL NOT 被安裝，且腳本 SHALL 主動將其自既有機器移除，使移除隨 apply 傳播至所有機器，而非僅止於執行者當下那台。**僅刪除安裝那一行是不足的**：已 apply 過的機器會保留該 plugin，且 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，會持續更新它。
 
@@ -75,15 +75,15 @@ superpowers marketplace 與所需 plugins 的安裝 SHALL 由 chezmoi `run_oncha
 
 uninstall SHALL 先比對 `claude plugin list` 的快照，僅對實際已安裝者呼叫 CLI——對未安裝者盲目呼叫會噴 stderr，使 apply 輸出充滿雜訊。
 
-cache 清理 SHALL 無條件執行，不以「本次是否 uninstall」為條件：uninstall 會清 `installed_plugins.json` 與 `enabledPlugins` 但保留 cache 目錄，因此先前已手動 uninstall、僅剩 cache 的機器仍需被清理。cache 路徑 SHALL 由 plugin id 推導為 `~/.claude/plugins/cache/<marketplace>/<id>`。既有的 `~/.claude/plugins/cache/superpowers-marketplace/superpowers` 防禦性清理 SHALL 保留（該路徑推導不出來）。
+cache 清理 SHALL 無條件執行，不以「本次是否 uninstall」為條件：uninstall 會清 `installed_plugins.json` 與 `enabledPlugins` 但保留 cache 目錄，因此先前已手動 uninstall、僅剩 cache 的機器仍需被清理。cache 路徑 SHALL 由 plugin id 推導為 `~/.claude/plugins/cache/<marketplace>/<id>`。`~/.claude/plugins/cache/superpowers-marketplace/` SHALL 整個目錄刪除，而非只刪推導得出的三個 plugin 目錄。
 
-uninstall 與 cache 清除 SHALL 各自冪等，在 plugin 或 cache 不存在時靜默通過，SHALL NOT 中斷腳本後續的 jdtls、MCP、episodic-memory 修復步驟。
+uninstall 與 cache 清除 SHALL 各自冪等，在 plugin 或 cache 不存在時靜默通過，SHALL NOT 中斷腳本後續的 jdtls 與 MCP 步驟。
 
-`obra/superpowers-marketplace` 的 marketplace 註冊 SHALL 保留，因 episodic-memory 與 elements-of-style 由其供應。
+`obra/superpowers-marketplace` 的 marketplace 註冊 SHALL 移除：superpowers、episodic-memory、elements-of-style 皆已退役，已無任何消費者。移除 SHALL 排在 plugin uninstall 之後，且 SHALL 先刪 cache 目錄——marketplace 指令不清 cache。
 
 #### Scenario: 首次 apply 自動安裝 plugins
 - **WHEN** 全新機器執行 chezmoi apply
-- **THEN** `run_onchange_install-03-claude-config` 執行，加入 superpowers marketplace 並安裝 episodic-memory、elements-of-style、slack、explanatory-output-style，且不安裝任何退役清單上的 plugin
+- **THEN** `run_onchange_install-03-claude-config` 執行，安裝 slack，且不安裝任何退役清單上的 plugin，也不註冊 superpowers marketplace
 
 #### Scenario: Plugin 腳本更新時重新執行
 - **WHEN** plugin 安裝腳本內容變更後執行 chezmoi apply
@@ -105,13 +105,13 @@ uninstall 與 cache 清除 SHALL 各自冪等，在 plugin 或 cache 不存在�
 - **WHEN** `code-simplifier` 與 `pr-review-toolkit` plugin 被移除
 - **THEN** `code:review-*` 指令不受影響——它們派工給 repo 自有的 `reviewer` agent，讀 `~/.agent/reference/review-lenses/` 下的 lens 檔案，兩者都不來自 plugin
 
-#### Scenario: 移除 superpowers plugin 後 episodic-memory 不受影響
-- **WHEN** superpowers plugin 已從系統移除，但 marketplace 與 episodic-memory 保留
-- **THEN** episodic-memory 的 SessionStart sync hook 仍由其自身 `hooks/hooks.json` 註冊並正常運作，對話 search/archive 功能不中斷
+#### Scenario: marketplace 隨最後一個消費者一併移除
+- **WHEN** superpowers、episodic-memory、elements-of-style 皆已退役後執行 chezmoi apply
+- **THEN** `~/.claude/plugins/cache/superpowers-marketplace/` 被整個刪除，`obra/superpowers-marketplace` 不再列於 `settings.json` 的 `extraKnownMarketplaces`，且腳本在該 marketplace 未註冊時印出 skip 而非報錯
 
-#### Scenario: 移除後 marketplace 與 elements-of-style 保留
-- **WHEN** superpowers plugin 已從系統移除
-- **THEN** `obra/superpowers-marketplace` 仍註冊於 `settings.json` 的 `extraKnownMarketplaces`，elements-of-style 仍為已安裝且啟用狀態
+#### Scenario: 退役 episodic-memory 後對話仍可查
+- **WHEN** episodic-memory plugin 與 `episodic-memory-usage` skill 皆已移除
+- **THEN** `~/.claude/projects/` 下的 jsonl transcript 不受影響，關鍵字查找改由 `rg` / `jq` 承擔；語意式（不記得當時用字）的查找能力 SHALL 視為已知且被接受的損失
 
 #### Scenario: 移除後 plugin 更新迴圈不再觸及退役項目
 - **WHEN** 退役 plugin 已移除後執行 chezmoi apply，`run_update-claude-plugins` 依 `enabledPlugins` 逐一更新

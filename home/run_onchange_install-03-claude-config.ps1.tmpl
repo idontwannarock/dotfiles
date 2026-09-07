@@ -23,16 +23,9 @@ try {
     # FAILED banner for what is only a warning.
     $ErrorActionPreference = "Continue"
 
-    Log-Section "register the superpowers plugin marketplace"
-    Log-Step "[plugins] adding obra/superpowers-marketplace"
-    claude plugin marketplace add obra/superpowers-marketplace 2>&1 | Out-Null
-
     Log-Section "install Claude Code plugins"
     Log-Step "[plugins] installing slack"
     claude plugin install slack 2>&1 | Out-Null
-
-    Log-Step "[plugins] installing episodic-memory"
-    claude plugin install episodic-memory@superpowers-marketplace 2>&1 | Out-Null
 
     $installedPlugins = claude plugin list 2>$null | Out-String
 
@@ -58,6 +51,7 @@ try {
         @{ Id = "explanatory-output-style@claude-plugins-official"; Reason = "its SessionStart hook injects 'you may exceed typical length constraints', which contradicts the ELI5 output style" }
         @{ Id = "code-review@claude-plugins-official";             Reason = "its only surface is /code-review, duplicated by the repo's own code:review-* commands" }
         @{ Id = "elements-of-style@superpowers-marketplace";  Reason = "its rules are rhetorical (Strunk) and aimed at prose someone reads for pleasure; commit messages, MR descriptions, docs and work chat are read for instruction, so CLAUDE.md/AGENTS.md section 5 now names the ASD-STE100 principles instead" }
+        @{ Id = "episodic-memory@superpowers-marketplace";    Reason = "27 recorded calls in 508 transcripts (20 search, 7 read, 1 subagent) against 2.3 GB on disk (1.1 GB plugin cache plus 1.2 GB of archive and index under ~/.config/superpowers) and a bespoke onnxruntime patch; keyword search over the raw jsonl in ~/.claude/projects/ covers what remains" }
     )
 
     Log-Section "uninstall retired plugins so their removal converges on every machine"
@@ -94,41 +88,22 @@ try {
             Log-Skip "[cleanup] no stale $marketplace/$id cache"
         }
     }
-    # Defensive, and not derivable from the table above: superpowers once shipped from
-    # superpowers-marketplace, so its cache can sit under that marketplace too.
-    if (Test-Path "$pluginCache\superpowers-marketplace\superpowers") {
-        Remove-Item -Recurse -Force "$pluginCache\superpowers-marketplace\superpowers"
-        Log-Step "[cleanup] removed marketplace superpowers cache"
+    # superpowers-marketplace has no consumers left: superpowers, episodic-memory and
+    # elements-of-style are all retired. Drop the whole marketplace, not just the
+    # three plugin dirs -- a registered marketplace with nothing installed still
+    # gets refreshed on every plugin operation. Remove the cache first: the
+    # marketplace command does not prune it.
+    if (Test-Path "$pluginCache\superpowers-marketplace") {
+        Remove-Item -Recurse -Force "$pluginCache\superpowers-marketplace"
+        Log-Step "[cleanup] removed superpowers-marketplace cache"
     } else {
-        Log-Skip "[cleanup] no stale marketplace superpowers cache"
+        Log-Skip "[cleanup] no stale superpowers-marketplace cache"
     }
-
-    Log-Section "repair episodic-memory deps — its lockfile hides onnxruntime-common from a bare import"
-    # The published episodic-memory lockfile nests onnxruntime-common only under
-    # onnxruntime-node/-web, but @huggingface/transformers does a bare
-    # `import 'onnxruntime-common'` that needs it at the package root -> its
-    # SessionStart sync hook dies with ERR_MODULE_NOT_FOUND. Reinstalling reproduces
-    # the broken layout (it's baked into the lockfile), so surface a top-level copy
-    # from the already-present, version-matched nested one. Offline + idempotent;
-    # iterates version dirs so it self-heals across plugin upgrades.
-    $emBase = Join-Path $pluginCache "superpowers-marketplace\episodic-memory"
-    if (Test-Path $emBase) {
-        foreach ($verDir in (Get-ChildItem -Path $emBase -Directory -ErrorAction SilentlyContinue)) {
-            $nm  = Join-Path $verDir.FullName "node_modules"
-            $top = Join-Path $nm "onnxruntime-common"
-            if (-not (Test-Path $top)) {
-                $nested = @(
-                    (Join-Path $nm "onnxruntime-node\node_modules\onnxruntime-common"),
-                    (Join-Path $nm "onnxruntime-web\node_modules\onnxruntime-common")
-                ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-                if ($nested) {
-                    Copy-Item -LiteralPath $nested -Destination $top -Recurse -Force
-                    Log-Step "[deps] repaired onnxruntime-common for $($verDir.Name)"
-                }
-            }
-        }
+    if ((claude plugin marketplace list 2>$null | Out-String) -match "superpowers-marketplace") {
+        Log-Step "[plugins] removing marketplace superpowers-marketplace — no plugin uses it"
+        claude plugin marketplace remove superpowers-marketplace 2>&1 | Out-Null
     } else {
-        Log-Skip "[deps] episodic-memory not present; nothing to repair"
+        Log-Skip "[plugins] superpowers-marketplace not registered"
     }
 
     Log-Section "rewrite plugin hook commands through cygpath — Git Bash cannot use the backslash paths Claude emits"

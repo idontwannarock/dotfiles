@@ -154,3 +154,17 @@ AppData/Local/rtk
 .claude/commands/git/clean-gone.md
 .codex/skills/git-sync
 .codex/skills/git-clean-gone
+
+# episodic-memory retired with its plugin. The skill was a pagination guardrail
+# for a plugin that is gone, so it now describes tools no session has. It was
+# also written for a 200K context: the plugin's `read` does fs.readFileSync on
+# the whole file, and the largest transcript here is 4.5 MB. .claude/skills/ is
+# not exact_, so the deployed dir survives a source-side delete.
+.claude/skills/episodic-memory-usage
+
+# episodic-memory's derived data, and the last thing left in the superpowers dir.
+# The installer's cache loop only knows ~/.claude/plugins/cache/<marketplace>/<id>,
+# so it never saw this: 987M of conversation-archive plus 207M of embedding index,
+# measured with du on this machine before removal. Both are rebuildable copies of
+# ~/.claude/projects/, which is the real record and stays put.
+.config/superpowers

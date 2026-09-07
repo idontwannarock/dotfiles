@@ -276,8 +276,7 @@ Go 的 base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本
 | 項目 | 說明 |
 |------|------|
 | slack plugin | Claude Code plugin |
-| episodic-memory / elements-of-style plugins | 來自 `obra/superpowers-marketplace` |
-| explanatory-output-style plugin | 來自 `claude-plugins-official`，並取消安裝 `learning-output-style` |
+| 清理 marketplace | `obra/superpowers-marketplace` 的三個 plugin（superpowers、episodic-memory、elements-of-style）全數退役後，連同 cache 目錄一併移除註冊 |
 | atlassian MCP | 由此腳本註冊的 user-scope MCP server；http transport，本機不 spawn process，OAuth 需自行 `/mcp` 完成 |
 | 清理 | 取消安裝已退役的 plugin／MCP server／npm 工具並清掉殘留 cache，使移除在每台機器上收斂 |
 
