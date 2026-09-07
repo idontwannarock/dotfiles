@@ -8,7 +8,11 @@
 #   Log-Step "installing foo@1.2.3"         installing foo@1.2.3
 #   Log-Skip "[foo] already installed"       [foo] already installed (skipped)
 #   Log-Warn "upstream returned 500"         !! upstream returned 500
-#                                       === END npm global tools (ok) ===
+#                                           (took 1.2s)
+#                                       === END npm global tools (ok, 3.4s) ===
+#
+# Each Log-Section closes the previous section with its elapsed time; Log-End
+# closes the last one and adds the whole-script total to the closing banner.
 #
 # Log-End takes no title — it reads the one Log-Begin stored, so the closing
 # banner can never drift from the opening one.
@@ -32,17 +36,38 @@
 
 $script:LogTitle = ""
 $script:LogEnded = $false
+$script:LogStart = $null
+$script:LogSectionStart = $null
+
+# Invariant culture so the decimal point never becomes a comma on a localized
+# machine — the bash side prints under LC_ALL=C for the same reason.
+function Format-LogElapsed {
+    param([Parameter(Mandatory = $true)][datetime]$Since)
+    ((Get-Date) - $Since).TotalSeconds.ToString('F1', [cultureinfo]::InvariantCulture) + 's'
+}
+
+# Sections have no explicit close, so each one is closed by whatever comes next:
+# the following Log-Section, or Log-End.
+function Close-LogSection {
+    if ($null -eq $script:LogSectionStart) { return }
+    Write-Host "    (took $(Format-LogElapsed $script:LogSectionStart))" -ForegroundColor DarkGray
+    $script:LogSectionStart = $null
+}
 
 function Log-Begin {
     param([Parameter(Mandatory = $true)][string]$Title)
     $script:LogTitle = $Title
     $script:LogEnded = $false
+    $script:LogStart = Get-Date
+    $script:LogSectionStart = $null
     Write-Host "=== BEGIN $Title ===" -ForegroundColor Cyan
 }
 
 function Log-Section {
     param([Parameter(Mandatory = $true)][string]$Purpose)
+    Close-LogSection
     Write-Host "--- $Purpose" -ForegroundColor Cyan
+    $script:LogSectionStart = Get-Date
 }
 
 function Log-Step {
@@ -64,10 +89,12 @@ function Log-End {
     param($ErrorRecord = $null)
     if ($script:LogEnded) { return }
     $script:LogEnded = $true
+    Close-LogSection
+    $total = if ($null -ne $script:LogStart) { Format-LogElapsed $script:LogStart } else { "0.0s" }
     if ($null -ne $ErrorRecord) {
-        Write-Host "=== END $script:LogTitle (FAILED rc=1) ===" -ForegroundColor Cyan
+        Write-Host "=== END $script:LogTitle (FAILED rc=1, $total) ===" -ForegroundColor Cyan
         Write-Host "    !! $($ErrorRecord.Exception.Message)" -ForegroundColor Red
     } else {
-        Write-Host "=== END $script:LogTitle (ok) ===" -ForegroundColor Cyan
+        Write-Host "=== END $script:LogTitle (ok, $total) ===" -ForegroundColor Cyan
     }
 }
