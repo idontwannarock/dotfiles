@@ -99,7 +99,7 @@
 # renovate: datasource=github-releases depName=nxtrace/NTrace-V1
 {{- $nexttraceVersion    := "1.7.3" }}
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-{{- $golangciLintVersion := "2.12.2" }}
+{{- $golangciLintVersion := "2.13.2" }}
 
 # kubectl is hosted at Kubernetes' official static CDN (dl.k8s.io), not GitHub.
 # The kubernetes/kubernetes GitHub Releases page contains no binary assets.
