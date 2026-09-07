@@ -168,3 +168,13 @@ AppData/Local/rtk
 # measured with du on this machine before removal. Both are rebuildable copies of
 # ~/.claude/projects/, which is the real record and stays put.
 .config/superpowers
+
+# The last superpowers leftover. The retired workflow rerouted design docs and
+# plans here (~/.local/share/superpowers/<repo>/{plans,specs}/), so unlike the
+# plugin cache this held authored content, not machine output -- 14 design docs
+# across three repos, last written 2026-07-21. Checked before removing: every
+# doc has a successor change under its repo's openspec/changes/archive/ -- but
+# by a different name and not verbatim. These are the pre-OpenSpec drafts, so
+# what is archived is the decision, not this wording. Named here because it sits
+# under ~/.local/share, which no plugin-cleanup loop in install-03 looks at.
+.local/share/superpowers
