@@ -48,8 +48,17 @@ function chezmoi {
     $y = [char]27 + '[33m'
     $n = [char]27 + '[0m'
     [Console]::Error.WriteLine("`n$y" + "chezmoi: $sub 中止 (exit $rc)。chezmoi 依字典序處理 target 且不跳過失敗項 —— 排在它之後的 target 全部未部署。$n")
-    $pending = @(& $exe.Source status 2>$null).Count
-    [Console]::Error.WriteLine("$y" + "chezmoi: 目前 $pending 筆待處理（chezmoi status）。$n`n")
+    # status 的成敗要跟它的輸出分開判。這裡曾經是 `@(... status 2>$null).Count`,而
+    # apply 失敗的原因往往一樣會讓 status 失敗。空集合有兩個來源,真的沒事和根本沒問成,
+    # .Count 對兩者都給 0 —— 於是在最需要示警的一刻印出「一切安好」。bash 那側同源同因。
+    $statusOut = & $exe.Source status 2>$null
+    $statusRc = $LASTEXITCODE
+    if ($statusRc -ne 0) {
+        [Console]::Error.WriteLine("$y" + "chezmoi: 待處理筆數不明 —— chezmoi status 也失敗了 (exit $statusRc)。$n`n")
+    } else {
+        $pending = @($statusOut).Count
+        [Console]::Error.WriteLine("$y" + "chezmoi: 目前 $pending 筆待處理（chezmoi status）。$n`n")
+    }
 
     $global:LASTEXITCODE = $rc
 }
