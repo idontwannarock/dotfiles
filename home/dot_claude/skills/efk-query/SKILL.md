@@ -24,6 +24,11 @@ Two scripts, no application knowledge:
 Project-specific matching, verdicts, and report shapes do **not** go here. Write those in a
 repo-level skill and shell out to `efk.py`.
 
+**Read `~/.agent/local/efk.md` before the first query against a site.** It records that
+cluster's hostnames, index patterns, which discovery calls the account may make, and the
+per-container field conventions — chiefly whether a log line's text lands in `log` or in
+`message`. Guessing a field name is the fastest way to get a confident, empty answer.
+
 ## Credentials
 
 Resolution order (first hit wins):
@@ -55,6 +60,7 @@ See `~/.agent/local/efk.md` on this machine.
 S=~/.claude/skills/efk-query/scripts
 
 # What does a document actually look like? START HERE on an unfamiliar index.
+# --index is optional: without it, the credentials file's EFK_INDEX applies.
 python3 $S/efk.py sample --env prod --index '<pattern>' -n 2
 
 # Which fields are populated? (falls back to sampled docs when _mapping is denied)
