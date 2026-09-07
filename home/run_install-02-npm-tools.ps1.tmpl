@@ -25,10 +25,15 @@ try {
     # converges everywhere, not just on the machine where the decision was made.
     # Keep this list identical to the bash twin in the .sh.tmpl.
     Log-Section "uninstall retired npm tools so removal converges on every machine"
-    npm ls -g --depth=0 "@colbymchenry/codegraph" 2>&1 | Out-Null
+    # 2>$null, NOT 2>&1: this file runs under $ErrorActionPreference = "Stop",
+    # where 2>&1 turns native stderr into a terminating ErrorRecord. `npm ls` for
+    # an absent package writes to stderr -- which is the normal case on a clean
+    # machine -- so 2>&1 here would abort the whole script before it installed
+    # anything. $LASTEXITCODE still carries npm's answer either way.
+    npm ls -g --depth=0 "@colbymchenry/codegraph" 2>$null | Out-Null
     if ($LASTEXITCODE -eq 0) {
         Log-Step "[npm-tools] removing codegraph — 2 calls across the whole transcript history, one of them a status probe; its 9 tool schemas loaded every session regardless"
-        npm uninstall -g "@colbymchenry/codegraph" 2>&1 | Out-Null
+        npm uninstall -g "@colbymchenry/codegraph" 2>$null | Out-Null
     } else {
         Log-Skip "[npm-tools] codegraph not installed"
     }
