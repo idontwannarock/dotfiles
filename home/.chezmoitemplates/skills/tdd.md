@@ -22,4 +22,4 @@
 ## 邊界
 
 任務無可測 seam、或不值得為它建測試設施時,明說跳過並繼續 —
-結果正確性由 {{ .n.verifyDone }} 把關。不硬上。
+結果正確性由 user 層指令的「Evidence before assertions」把關。不硬上。

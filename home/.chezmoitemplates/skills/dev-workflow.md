@@ -80,7 +80,8 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
    conclusions flow straight into the openspec artifacts, no separate design doc)
 → {{ .n.sk }}openspec-new-change → {{ .n.sk }}openspec-continue-change   (proposal + design.md + tasks.md into openspec/)
 → {{ .n.sk }}openspec-apply-change   (tasks with a testable seam agreed in design → {{ .n.tdd }})
-→ {{ .n.verifyDone }} (run tests / verify commands — hard evidence)
+→ verify (run the project's verification commands — hard evidence; see
+   *Evidence before assertions* in the user-level instructions)
 → {{ .n.sk }}openspec-verify-change (three-dimension spec/code coherence report)
 → openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → the repo-root `context/`) → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewFull }} → {{ .n.reviewCrossModel }}
