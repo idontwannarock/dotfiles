@@ -95,7 +95,7 @@
 # renovate: datasource=github-releases depName=yt-dlp/yt-dlp versioning=loose
 {{- $ytdlpVersion        := "2026.03.17" }}
 # renovate: datasource=github-releases depName=gohugoio/hugo
-{{- $hugoVersion         := "0.164.0" }}
+{{- $hugoVersion         := "0.165.0" }}
 # renovate: datasource=github-releases depName=nxtrace/NTrace-V1
 {{- $nexttraceVersion    := "1.7.3" }}
 # renovate: datasource=github-releases depName=golangci/golangci-lint
