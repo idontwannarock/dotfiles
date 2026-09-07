@@ -84,12 +84,10 @@ type GitInfo struct {
 	Deletions  int
 }
 
+// getGitInfo asks git rather than looking for a .git entry: only a repo root
+// has one, so probing for it blinded the statusline in every subdirectory.
+// Outside a repo the branch command fails and we fall back to an empty GitInfo.
 func getGitInfo(dir string) GitInfo {
-	gitDir := filepath.Join(dir, ".git")
-	if _, err := os.Stat(gitDir); os.IsNotExist(err) {
-		return GitInfo{}
-	}
-
 	var info GitInfo
 	var branchErr error
 	var wg sync.WaitGroup
@@ -315,6 +313,17 @@ func formatRateLimit(label string, pct float64, resetsAt int64) string {
 	return result
 }
 
+// formatBranch renders the branch segment. Inside a worktree the 🌿 marker
+// prefixes the branch instead of repeating the worktree name, which git
+// derives from that same branch.
+func formatBranch(inWorktree bool, branch string) string {
+	marker := ""
+	if inWorktree {
+		marker = "🌿"
+	}
+	return fmt.Sprintf(" %s%s%s%s", cGreen, marker, branch, cReset)
+}
+
 // === Main ===
 
 func main() {
@@ -415,11 +424,17 @@ func main() {
 	}
 
 	line1 += fmt.Sprintf("%s%s%s%s", sep, cCyan, dir, cReset)
-	if data.Worktree != nil && data.Worktree.Name != "" {
-		line1 += fmt.Sprintf(" %s🌿%s%s", cGreen, data.Worktree.Name, cReset)
+	inWorktree := data.Worktree != nil && data.Worktree.Name != ""
+	branch := gitInfo.Branch
+	if branch == "" && inWorktree {
+		// getGitInfo came up empty; the session payload still names the branch.
+		branch = data.Worktree.Branch
+		if branch == "" {
+			branch = data.Worktree.Name
+		}
 	}
-	if gitInfo.Branch != "" {
-		line1 += fmt.Sprintf(" %s%s%s", cGreen, gitInfo.Branch, cReset)
+	if branch != "" {
+		line1 += formatBranch(inWorktree, branch)
 		if gitInfo.Dirty {
 			line1 += cRed + "*" + cReset
 		}
