@@ -10,6 +10,12 @@ on:
     paths:
       - 'tests/**'
       - 'home/dot_local/bin/**'
+      # The PowerShell profile fragments are subjects too: chezmoi-guard.Tests.ps1
+      # and glab-wrapper.Tests.ps1 dot-source them rather than anything under
+      # bin/. A guard that does not run when the file it guards changes is
+      # equivalent to no guard -- and it fails silently, because a workflow that
+      # was never triggered and one that passed look identical on the PR.
+      - 'home/Documents/exact__shared-profile.d/**'
       - '.github/workflows/test-pester.yml'
   workflow_dispatch:
 

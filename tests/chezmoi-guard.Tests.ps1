@@ -11,13 +11,17 @@ BeforeAll {
     $script:FragmentPath = Join-Path $RepoRoot 'home\Documents\exact__shared-profile.d\96-chezmoi-guard.ps1'
 
     # Mock chezmoi: exits with %MOCK_CHEZMOI_RC% for every subcommand except
-    # `status`, which always succeeds and prints a fixed 3-line listing so the
-    # pending count in the warning is deterministic.
+    # `status`, which prints a fixed 3-line listing so the pending count in the
+    # warning is deterministic. %MOCK_STATUS_RC% makes `status` itself fail --
+    # the case the guard used to report as "0 pending", and the reason the two
+    # codes are separate knobs rather than one.
     $script:MockDir = Join-Path ([IO.Path]::GetTempPath()) ("chezmoi-guard-" + [Guid]::NewGuid())
     New-Item -ItemType Directory -Path $MockDir -Force | Out-Null
     @'
 @echo off
 if "%1"=="status" (
+  if not "%MOCK_STATUS_RC%"=="0" exit /b %MOCK_STATUS_RC%
+  if "%MOCK_STATUS_EMPTY%"=="1" exit /b 0
   echo  M .one
   echo  M .two
   echo  M .three
@@ -27,7 +31,7 @@ exit /b %MOCK_CHEZMOI_RC%
 '@ | Set-Content -Path (Join-Path $MockDir 'chezmoi.cmd') -Encoding ascii
 
     function Invoke-Guard {
-        param([string]$Arguments, [int]$Rc, [string]$Path = '')
+        param([string]$Arguments, [int]$Rc, [string]$Path = '', [int]$StatusRc = 0, [int]$StatusEmpty = 0)
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = (Get-Process -Id $PID).Path
         $psi.Arguments              = "-NoProfile -ExecutionPolicy Bypass -Command `". '$FragmentPath'; chezmoi $Arguments; exit `$LASTEXITCODE`""
@@ -41,6 +45,8 @@ exit /b %MOCK_CHEZMOI_RC%
         $psi.WorkingDirectory       = $MockDir
         $psi.EnvironmentVariables['PATH']             = if ($Path) { $Path } else { "$MockDir;$env:PATH" }
         $psi.EnvironmentVariables['MOCK_CHEZMOI_RC']  = "$Rc"
+        $psi.EnvironmentVariables['MOCK_STATUS_RC']   = "$StatusRc"
+        $psi.EnvironmentVariables['MOCK_STATUS_EMPTY'] = "$StatusEmpty"
         $proc   = [System.Diagnostics.Process]::Start($psi)
         $stdout = $proc.StandardOutput.ReadToEnd()
         $stderr = $proc.StandardError.ReadToEnd()
@@ -67,6 +73,22 @@ Describe '96-chezmoi-guard.ps1' {
         It 'reports the pending item count from chezmoi status' {
             $r = Invoke-Guard -Arguments 'apply' -Rc 1
             $r.Stderr | Should -Match '3'
+        }
+
+        # Regression: whatever aborts the apply usually aborts `status` too, and
+        # an empty result was counted as zero -- so the guard announced
+        # "0 pending" at the one moment it exists to raise an alarm. Assert the
+        # message, not merely that something was printed: a count and a
+        # can't-tell read identically to a test that only checks for output.
+        It 'says the count is unknown when status fails too' {
+            $r = Invoke-Guard -Arguments 'apply' -Rc 1 -StatusRc 4
+            $r.Stderr | Should -Match 'exit 4'
+            $r.Stderr | Should -Not -Match '0 筆待處理'
+        }
+
+        It 'still reports a genuine zero as zero' {
+            $r = Invoke-Guard -Arguments 'apply' -Rc 1 -StatusEmpty 1
+            $r.Stderr | Should -Match '0 筆待處理'
         }
 
         It 'covers update as well as apply' {
