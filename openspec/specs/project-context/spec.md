@@ -80,7 +80,7 @@
 
 #### Scenario: 非 sync/archive 階段不得寫入
 
-- **WHEN** grill、arch-review 或實作階段發現疑似長青的內容
+- **WHEN** grill、code:review-architecture 或實作階段發現疑似長青的內容
 - **THEN** SHALL 以候選標記記入 `design.md`,SHALL NOT 直接寫入 `context/`
 
 #### Scenario: 操作步驟留在 docs
@@ -118,7 +118,7 @@
 
 agent 的 auto-memory(`~/.agent/memory/<repo-slug>/`)SHALL NOT 作為 repo-level 長青知識的唯一載體。凡某條事實同時滿足「以本 repo 為範圍」與「跨 change 反覆適用」,它 SHALL 於 `openspec-sync-specs`／archive 階段被晉升進 `context/` 下性質相符的 concept 檔,並於晉升後回收該 memory。
 
-理由是載體性質而非內容品質:auto-memory 是 point-in-time 觀察、不受版控、不在需求分析的閱讀路徑上,且無人審閱。同一條事實留在那裡會隨程式碼漂移而無從察覺,也不會被 `grill`／`arch-review` 讀到。
+理由是載體性質而非內容品質:auto-memory 是 point-in-time 觀察、不受版控、不在需求分析的閱讀路徑上,且無人審閱。同一條事實留在那裡會隨程式碼漂移而無從察覺,也不會被 `grill`／`code:review-architecture` 讀到。
 
 回收 SHALL 同時刪除 memory 檔與 `MEMORY.md` 中對應的索引行。只刪其一會留下斷鏈:索引指向不存在的檔案,或孤兒檔案不再可被發現。
 

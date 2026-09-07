@@ -65,7 +65,7 @@ Hard rules:
 
 The archive lives in a subdirectory on purpose: resolution above only globs `<repo-slug>/*.md`, so archived files drop out of every lookup with no change to the matching logic. That is also why step 2 exists -- dropping out of every lookup is exactly what makes an unmoved decision unfindable.
 
-This step belongs to `handoff`/`pickup` alone. It is deliberately not wired into `finish-branch`: plenty of handoffs -- cross-repo cleanups, `arch-review` reports -- correspond to no branch at all, and tying the two lifecycles together would leave those permanently unarchivable.
+This step belongs to `handoff`/`pickup` alone. It is deliberately not wired into `finish-branch`: plenty of handoffs -- cross-repo cleanups, `code:review-architecture` reports -- correspond to no branch at all, and tying the two lifecycles together would leave those permanently unarchivable.
 
 ## Anti-patterns
 

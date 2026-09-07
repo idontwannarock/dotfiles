@@ -86,4 +86,3 @@ naming it in a single line, so the reader can tell it ran.
 - **Full diff** — every reviewer must receive the full diff, not a summary
 - **Large diffs** — if over 500 lines changed, note at the top that the user may want to split the review
 - **No findings** — if a lens finds no issues, state that briefly; do not fabricate issues
-- **Spec alignment** — if the project has an active OpenSpec change, mention that `{{ .n.reviewSpec }}` can check requirement alignment

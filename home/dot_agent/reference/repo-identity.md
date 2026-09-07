@@ -53,7 +53,7 @@ They diverge on the other characters:
 | Mechanism | Replaces | Defined by |
 |---|---|---|
 | `claude-memory-seed`, local-files store | `/` only | `claude-memory-seed` / `local-files-store` specs |
-| `handoff`, `pickup`, `handoff-list`, `arch-review` | `:` `\` `/` `.` | `session-handoff` spec |
+| `handoff`, `pickup`, `handoff-list`, `code:review-architecture` | `:` `\` `/` `.` | `session-handoff` spec |
 
 `/home/me/ws/hktv.tw/api` therefore files auto-memory under
 `-home-me-ws-hktv.tw-api` and handoffs under `-home-me-ws-hktv-tw-api`. **A repo
@@ -92,7 +92,7 @@ different worktree or a different tool wrote.
 ## Who uses this
 
 `claude-memory-seed` (auto-memory + `autoMemoryDirectory`), the local-files
-store, `handoff` / `pickup` / `handoff-list`, `arch-review`, and the workflow
+store, `handoff` / `pickup` / `handoff-list`, `code:review-architecture`, and the workflow
 registry with its `active_workflows.md` index.
 
 When adding another per-repo artifact, derive the anchor exactly as above rather

@@ -1,36 +1,36 @@
-# arch-review Specification
+# review-architecture Specification
 
 ## Purpose
-定義 `arch-review` 整庫架構體檢能力的行為契約:跨工具部署形狀、兩階段掃描紀律、判準來源分層與降級可見性、pickup 相容的產出格式,以及「只診斷不動刀」的邊界。補足既有品質關卡(`review-*`、`verify-done`)皆以 diff 為輸入所造成的盲區。
+定義 `code:review-architecture` 整庫架構體檢能力的行為契約:跨工具部署形狀、兩階段掃描紀律、判準來源分層與降級可見性、pickup 相容的產出格式,以及「只診斷不動刀」的邊界。補足既有品質關卡(`review-*`、`verify-done`)皆以 diff 為輸入所造成的盲區。
 
 ## Requirements
 
 ### Requirement: 跨工具部署形狀
-`arch-review` SHALL 以 chezmoi shared-body(`home/.chezmoitemplates/skills/arch-review.md`)搭配 per-tool wrapper 部署:Claude 端為 command(`home/dot_claude/commands/arch-review.md.tmpl`),Codex 端為 skill(`home/dot_codex/skills/arch-review/SKILL.md.tmpl`)。兩端 SHALL 共用同一份 body,行為 SHALL NOT 分叉。
+`code:review-architecture` SHALL 以 chezmoi shared-body(`home/.chezmoitemplates/skills/review-architecture.md`)搭配 per-tool wrapper 部署:Claude 端為 command(`home/dot_claude/commands/code/review-architecture.md.tmpl`),Codex 端為 skill(`home/dot_codex/skills/review-architecture/SKILL.md.tmpl`)。兩端 SHALL 共用同一份 body,行為 SHALL NOT 分叉。
 
-`arch-review` 的產物為 `~/.agent/handoffs/` 下的報告檔,可逆且非外部可見,故依 `model-invocability` 的判準 SHALL NOT 標記 `disable-model-invocation: true`。控制體檢頻率的責任在 skill body 自身的觸發條件與「關卡頻率由訊號密度決定」的原則,不在 wrapper 的 flag。
+`code:review-architecture` 的產物為 `~/.agent/handoffs/` 下的報告檔,可逆且非外部可見,故依 `model-invocability` 的判準 SHALL NOT 標記 `disable-model-invocation: true`。控制體檢頻率的責任在 skill body 自身的觸發條件與「關卡頻率由訊號密度決定」的原則,不在 wrapper 的 flag。
 
 #### Scenario: chezmoi apply 後雙工具可用
 - **WHEN** `chezmoi apply` 完成
-- **THEN** `~/.claude/commands/arch-review.md` 與 `~/.codex/skills/arch-review/SKILL.md` SHALL 存在,且由同一份 shared body 渲染
+- **THEN** `~/.claude/commands/code/review-architecture.md` 與 `~/.codex/skills/review-architecture/SKILL.md` SHALL 存在,且由同一份 shared body 渲染
 
 #### Scenario: 兩端可呼叫性一致
 - **WHEN** 比較 Claude 端 command 與 Codex 端 skill 的可呼叫性
 - **THEN** 兩端 SHALL 皆允許模型自行呼叫 —— Claude 端 wrapper SHALL NOT 含 `disable-model-invocation`,Codex 端無對應限制機制
 
 #### Scenario: Codex frontmatter 為嚴格 YAML
-- **WHEN** 以 YAML parser 解析 `~/.codex/skills/arch-review/SKILL.md` 的 frontmatter
+- **WHEN** 以 YAML parser 解析 `~/.codex/skills/review-architecture/SKILL.md` 的 frontmatter
 - **THEN** SHALL 解析成功 —— 含冒號的 `description` SHALL 加引號
 
 ### Requirement: 兩階段掃描紀律
-`arch-review` SHALL 分兩階段掃描:階段一為不讀檔案內容的廉價全庫盤點(目錄樹、檔案規模分布、依賴方向、名稱重複訊號);階段二 SHALL 依階段一結果選出 3-5 個可疑區才讀取內容深挖。深挖區數量 SHALL NOT 超過 5 個。`arch-review` SHALL 接受可選的 path 參數以縮限掃描範圍。
+`code:review-architecture` SHALL 分兩階段掃描:階段一為不讀檔案內容的廉價全庫盤點(目錄樹、檔案規模分布、依賴方向、名稱重複訊號);階段二 SHALL 依階段一結果選出 3-5 個可疑區才讀取內容深挖。深挖區數量 SHALL NOT 超過 5 個。`code:review-architecture` SHALL 接受可選的 path 參數以縮限掃描範圍。
 
 #### Scenario: 預設全庫兩階段
-- **WHEN** 使用者輸入 `/arch-review` 且未帶參數
+- **WHEN** 使用者輸入 `/code:review-architecture` 且未帶參數
 - **THEN** SHALL 先產出全庫結構盤點,再據此選定至多 5 個深挖區
 
 #### Scenario: 帶 path 參數縮限
-- **WHEN** 使用者輸入 `/arch-review src/payment`
+- **WHEN** 使用者輸入 `/code:review-architecture src/payment`
 - **THEN** 兩階段掃描 SHALL 僅在該路徑範圍內進行
 
 #### Scenario: 深挖區上限
@@ -38,7 +38,7 @@
 - **THEN** SHALL 依可疑程度排序並僅深挖前 5 個,且 SHALL 於報告中說明有哪些區未深挖
 
 ### Requirement: 判準來源分層且降級可見
-模組邊界的判準 SHALL 依可用資訊分層:存在 `context/` bundle 時 SHALL 以其詞彙 concept 檔為權威判準;不存在時 SHALL 從 codebase 推斷 domain 語言(目錄結構、型別/類別名、導出介面)。使用推斷判準時,報告 SHALL 明示該判準為推斷而非權威。`arch-review` SHALL NOT 寫入 `context/`。
+模組邊界的判準 SHALL 依可用資訊分層:存在 `context/` bundle 時 SHALL 以其詞彙 concept 檔為權威判準;不存在時 SHALL 從 codebase 推斷 domain 語言(目錄結構、型別/類別名、導出介面)。使用推斷判準時,報告 SHALL 明示該判準為推斷而非權威。`code:review-architecture` SHALL NOT 寫入 `context/`。
 
 #### Scenario: 有 context bundle
 - **WHEN** 執行體檢且 `context/` bundle 存在
@@ -53,7 +53,7 @@
 - **THEN** SHALL NOT 寫入 `context/`(該 bundle 僅於 sync/archive 階段寫入)
 
 ### Requirement: 產出為 pickup 相容文檔
-`arch-review` SHALL 將結果寫入 `~/.agent/handoffs/<repo-slug>/<ID>.md`,其中 repo-slug 與 ID 沿用既有 handoff 約定(ID 形如 `YYYY-MM-DD-HHMM__arch-review`)。該文檔 SHALL 包含 `## Suggested skills` 與 `## Next steps` 兩段以相容 `pickup`。`arch-review` SHALL NOT 修改 `handoff` 或 `pickup` 的行為。
+`code:review-architecture` SHALL 將結果寫入 `~/.agent/handoffs/<repo-slug>/<ID>.md`,其中 repo-slug 與 ID 沿用既有 handoff 約定(ID 形如 `YYYY-MM-DD-HHMM__review-architecture`)。該文檔 SHALL 包含 `## Suggested skills` 與 `## Next steps` 兩段以相容 `pickup`。`code:review-architecture` SHALL NOT 修改 `handoff` 或 `pickup` 的行為。
 
 #### Scenario: 產出可被 pickup 接手
 - **WHEN** 體檢完成寫出報告後,使用者於任一新 session 執行 `/pickup <ID>`
@@ -61,7 +61,7 @@
 
 #### Scenario: 報告路徑與 ID 約定
 - **WHEN** 體檢完成
-- **THEN** 報告 SHALL 位於 `~/.agent/handoffs/<repo-slug>/` 下,檔名 SHALL 為 `<YYYY-MM-DD-HHMM>__arch-review.md`,且 SHALL 向使用者印出絕對路徑與可複製的 `/pickup <ID>` 指令
+- **THEN** 報告 SHALL 位於 `~/.agent/handoffs/<repo-slug>/` 下,檔名 SHALL 為 `<YYYY-MM-DD-HHMM>__review-architecture.md`,且 SHALL 向使用者印出絕對路徑與可複製的 `/pickup <ID>` 指令
 
 #### Scenario: 不寫入工具專屬目錄
 - **WHEN** 體檢完成寫檔
@@ -76,7 +76,7 @@
 - **THEN** SHALL NOT 列出 `dev-workflow` 或其他會對候選動工的 skill —— `pickup` 會在讀 `## Next steps` 之前無確認地呼叫該段所有項目,等同在使用者選定候選前就啟動 change 生命週期
 
 ### Requirement: 只提候選不動手
-`arch-review` SHALL 僅產出排序過的重構候選,每項 SHALL 包含問題陳述、證據(檔案路徑加具體事證)、影響範圍與建議動作。`arch-review` SHALL NOT 修改任何原始碼,亦 SHALL NOT 自動建立 OpenSpec change。
+`code:review-architecture` SHALL 僅產出排序過的重構候選,每項 SHALL 包含問題陳述、證據(檔案路徑加具體事證)、影響範圍與建議動作。`code:review-architecture` SHALL NOT 修改任何原始碼,亦 SHALL NOT 自動建立 OpenSpec change。
 
 #### Scenario: 不修改程式碼
 - **WHEN** 體檢識別出重構機會

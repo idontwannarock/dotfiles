@@ -20,7 +20,7 @@
 
 ### Requirement: repo slug 取自 git common dir 的父目錄
 
-handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=absolute --git-common-dir` 去除最後一段後導出,其中 slug 化為將絕對路徑中每個 `:`、`\`、`/`、`.` 替換為 `-`。`handoff`、`pickup`、`handoff-list` 與 `arch-review` SHALL 使用同一條規則。SHALL NOT 使用 `git rev-parse --show-toplevel` 作為 slug 來源。
+handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=absolute --git-common-dir` 去除最後一段後導出,其中 slug 化為將絕對路徑中每個 `:`、`\`、`/`、`.` 替換為 `-`。`handoff`、`pickup`、`handoff-list` 與 `code:review-architecture` SHALL 使用同一條規則。SHALL NOT 使用 `git rev-parse --show-toplevel` 作為 slug 來源。
 
 `--path-format=absolute` SHALL NOT 省略:未加時 git 印出的是相對於**呼叫者** cwd 的路徑,搭配 `-C <目標>` 會靜默解析成當前 repo。
 
@@ -184,9 +184,9 @@ handoff 產物落點所用的 repo slug SHALL 由 `git rev-parse --path-format=a
 - **WHEN** `pickup` 收到的 args 以 `in <語言>` 結尾
 - **THEN** SHALL 以該語言進行本次 session,並將該後綴自 args 移除,SHALL NOT 把它當成對第一條 next step 的補充說明
 
-#### Scenario: arch-review 產出沿用同一形狀
+#### Scenario: code:review-architecture 產出沿用同一形狀
 
-- **WHEN** `arch-review` 寫出報告的 resume 行
+- **WHEN** `code:review-architecture` 寫出報告的 resume 行
 - **THEN** SHALL 套用同一條語言後綴規則 —— 該產物與 handoff 共用 `pickup` 契約,形狀不得分叉
 
 ### Requirement: 跨 repo 交接只接受明講的目標

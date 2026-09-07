@@ -123,3 +123,34 @@ AppData/Local/rtk
 # 不是 exact_，沒有東西會 prune 它。在沒有舊路徑的機器上是 no-op。
 .claude/skills/coordinating-lines
 .codex/skills/coordinating-lines
+
+# Review command consolidation. The eight code:review-* entry points collapsed to
+# four: surgical, comprehensive, cross-model, architecture. The five dropped ones
+# (linus, security, spec, types, uncommitted) were never called by the survivors --
+# those consume the lens files directly -- so they were independent entry points
+# with zero recorded use across 508 transcripts, each still paying description
+# tokens in every session. arch-review moved into the code:review-* namespace at
+# the same time; its old paths are named here because .claude/commands/ and
+# .codex/skills/ are not exact_, so a source-side rename leaves the old file
+# deployed and the model sees two overlapping descriptions.
+.claude/commands/code/review-linus.md
+.claude/commands/code/review-security.md
+.claude/commands/code/review-spec.md
+.claude/commands/code/review-types.md
+.claude/commands/code/review-uncommitted.md
+.codex/skills/review-linus
+.codex/skills/review-security
+.codex/skills/review-spec
+.codex/skills/review-types
+.codex/skills/review-uncommitted
+.claude/commands/arch-review.md
+.codex/skills/arch-review
+
+# git:sync and git:clean-gone retired. Both were thin wrappers over four shell
+# commands, both had zero recorded use, and dev-workflow was their only caller --
+# it now carries the same instructions inline, which is cheaper than a command
+# whose description loads in every session to be invoked never.
+.claude/commands/git/sync.md
+.claude/commands/git/clean-gone.md
+.codex/skills/git-sync
+.codex/skills/git-clean-gone

@@ -19,14 +19,14 @@ OpenSpec 流程需要隔離時 SHALL 使用自家 `worktree` skill 建立獨立�
 
 #### Scenario: 開始 OpenSpec 流程
 - **WHEN** 使用者確認要使用 OpenSpec 流程且存在其他 active/paused workflow
-- **THEN** Claude SHALL 先執行 `git:sync`,再用 `worktree` skill 建立工作區,然後才開始後續步驟
+- **THEN** Claude SHALL 先 fetch 並 rebase main,再用 `worktree` skill 建立工作區,然後才開始後續步驟
 
 ### Requirement: 小型核心流程
 小型流程 SHALL 跳過 grill，由 openspec 直接處理設計。在 sync-specs/archive 階段,若 `design.md` 有標記的長青候選,SHALL 逐條對照實際 shipped 內容,將符合晉升閘門者晉升進 `context/`。在 `finish-branch` 之前 SHALL 套用團隊文件記錄步驟的判準。
 
 #### Scenario: 小型流程步驟
 - **WHEN** 選擇小型流程
-- **THEN** 執行順序 SHALL 為：ensure-openspec → openspec-new-change → openspec-continue-change（loop）→ openspec-apply-change → openspec validate → [openspec-sync-specs;此時晉升 design.md 的長青候選進 context/] → openspec-archive-change → git:commit → code:review-surgical → 如需修正走新一輪 → 如不需修正 → [團隊文件記錄步驟] → finish-branch → [git:clean-gone]
+- **THEN** 執行順序 SHALL 為：ensure-openspec → openspec-new-change → openspec-continue-change（loop）→ openspec-apply-change → openspec validate → [openspec-sync-specs;此時晉升 design.md 的長青候選進 context/] → openspec-archive-change → git:commit → code:review-surgical → 如需修正走新一輪 → 如不需修正 → [團隊文件記錄步驟] → finish-branch → [清理 upstream 已消失的分支]
 
 #### Scenario: 晉升長青候選
 - **WHEN** 小型流程進行 sync-specs/archive 且 `design.md` 含 evergreen 候選標記
@@ -37,7 +37,7 @@ OpenSpec 流程需要隔離時 SHALL 使用自家 `worktree` skill 建立獨立�
 
 #### Scenario: 大型流程步驟
 - **WHEN** 選擇大型流程
-- **THEN** 執行順序 SHALL 為:ensure-openspec → grill → openspec-new-change → openspec-continue-change → openspec-apply-change(可測 seam 套 tdd)→ verify-done → openspec-verify-change → openspec validate → openspec-sync-specs（此時晉升 design.md 的長青候選進 context/）→ openspec-archive-change → git:commit → code:review-comprehensive → code:review-cross-model → 如需修正走新一輪 → 如不需修正 → [團隊文件記錄步驟] → finish-branch → [git:clean-gone]
+- **THEN** 執行順序 SHALL 為:ensure-openspec → grill → openspec-new-change → openspec-continue-change → openspec-apply-change(可測 seam 套 tdd)→ verify-done → openspec-verify-change → openspec validate → openspec-sync-specs（此時晉升 design.md 的長青候選進 context/）→ openspec-archive-change → git:commit → code:review-comprehensive → code:review-cross-model → 如需修正走新一輪 → 如不需修正 → [團隊文件記錄步驟] → finish-branch → [清理 upstream 已消失的分支]
 
 #### Scenario: 晉升長青候選
 - **WHEN** 大型流程進行 sync-specs/archive 且 `design.md` 含 evergreen 候選標記
@@ -79,7 +79,7 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 
 #### Scenario: 流程開始前同步
 - **WHEN** OpenSpec 流程開始
-- **THEN** Claude SHALL 執行 `git:sync` 確保 main 是最新的（已在 worktree 上的 session 除外）
+- **THEN** Claude SHALL fetch 並 rebase 確保 main 是最新的（已在 worktree 上的 session 除外）
 
 #### Scenario: Merge 前 rebase
 - **WHEN** 執行 `finish-branch`
@@ -87,7 +87,7 @@ OpenSpec 流程中的 Git 操作 SHALL 遵循定義的整合行為，包含同�
 
 #### Scenario: 清理分支
 - **WHEN** merge 完成後
-- **THEN** Claude SHALL 自動建議執行 `git:clean-gone` 清理已合併的本地分支與 worktree
+- **THEN** Claude SHALL 自動建議清理 upstream 已消失的本地分支與 worktree
 
 ### Requirement: 團隊文件記錄步驟
 兩個核心流程 SHALL 在 review 迴圈收斂之後、`finish-branch` 之前，套用一條判準決定本次 change 是否應寫入團隊文件；判定為是時 SHALL 交由 `confluence-team-doc` 執行。此步驟 SHALL NOT 阻斷流程——任何退化、跳過或使用者否決，SHALL 一律以繼續執行 `finish-branch` 收場。

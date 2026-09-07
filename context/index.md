@@ -4,7 +4,7 @@ okf_version: "0.2"
 
 # Project Context
 
-給「做需求分析」時進入狀況用的長青背景文件。model-agnostic、人可讀,**不自動載入** —— 需要時由 `grill`、`arch-review` 等主動讀取。
+給「做需求分析」時進入狀況用的長青背景文件。model-agnostic、人可讀,**不自動載入** —— 需要時由 `grill`、`code:review-architecture` 等主動讀取。
 
 **範圍邊界**:這裡放專案的*為什麼存在、怎麼想這個 domain、有哪些反覆適用的原則*。「系統現在做什麼(WHAT、可驗收)」在 `openspec/specs/`;「某次 change 當下的方案選擇」在該 change 的 `design.md`。三者不重疊。
 
