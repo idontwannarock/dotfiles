@@ -504,7 +504,7 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 | Effort | 等級徽章，`ultracode` 為獨立的 ⚡ 徽章 |
 | Context | 進度條、百分比、`已用/上限` token 數（上限取 stdin JSON 的 `context_window.context_window_size`） |
 | Rate limits | ⏳ 5h／7d 使用率與重置倒數（僅 Pro／Max，且首次 API 回應之後才有） |
-| 位置 | 專案目錄名、worktree 名（🌿，僅 worktree session）、git 分支（未提交變更加 `*`）、`+N -N` diff 統計 |
+| 位置 | 專案目錄名、git 分支（worktree session 前綴 🌿，未提交變更加 `*`）、`+N -N` diff 統計。分支取當前目錄，子目錄亦適用 |
 
 沒有資料的段落整段省略，不留空的 `│`。
 
