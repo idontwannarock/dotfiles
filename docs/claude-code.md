@@ -673,7 +673,7 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 
 跨 repo 交接用 `--repo <path>`，且只認使用者明講 —— agent 察覺內容屬別的 repo 可以問，但不得自行改落點。
 
-這個目錄不只放 session state：`/arch-review` 的體檢報告也寫在這裡，靠同一套 `pickup` 契約被接手（見下節）。
+這個目錄不只放 session state：`/code:review-architecture` 的體檢報告也寫在這裡，靠同一套 `pickup` 契約被接手（見下節）。
 
 ### 待辦清單與封存
 
@@ -683,7 +683,7 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 - `/pickup` — 接手；`## Next steps` 全數達成後列出逐條證據，經使用者確認才把檔案 `mv` 進 `<repo-slug>/archive/`
 - 封存永遠是搬移，不是 `rm`。`pickup` 只 glob `<repo-slug>/*.md`，故 `archive/` 天然退出所有查找
 
-刻意不與 `finish-branch` 耦合：跨 repo 交接與 `arch-review` 報告不對應任何分支，綁在一起會讓它們永遠無法封存。
+刻意不與 `finish-branch` 耦合：跨 repo 交接與 `code:review-architecture` 報告不對應任何分支，綁在一起會讓它們永遠無法封存。
 
 ### 舊路徑
 
@@ -718,19 +718,21 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 
 ## Code Review（`code:review-*`）
 
-八支指令共用一組 **lens**：`~/.agent/reference/review-lenses/` 下的純檔案，一個
+四支指令共用一組 **lens**：`~/.agent/reference/review-lenses/` 下的純檔案，一個
 檔案一個觀點。flow 指名要跑哪幾個，reviewer 自己去讀。
 
 | Flow | Lens |
 |------|------|
 | `code:review-comprehensive` | 全部七個 ＋ confidence 過濾 ＋ cross-model 反駁 |
-| `code:review-uncommitted` | 依變更檔案類型挑選 ＋ confidence 過濾 |
 | `code:review-surgical` | correctness、design |
-| `code:review-security` | security、failure-handling |
-| `code:review-linus` | design（整體裁決式報告） |
-| `code:review-types` | design（逐型別評分報告） |
-| `code:review-spec` | 不用 lens——三個問題都相對於 OpenSpec artifact |
 | `code:review-cross-model` | 不用 lens——把結論丟給別的 model 家族反駁 |
+| `code:review-architecture` | 不用 lens——看整棵樹的結構，不看 diff |
+
+原本有八支。`review-linus`、`review-security`、`review-spec`、`review-types`、
+`review-uncommitted` 已退役：它們不被 surgical/comprehensive 呼叫（那兩支直接吃
+lens 檔案），是各自獨立的入口，而 508 份 transcript 裡一次都沒被用過——卻每個
+session 都在付 description 的 token。`code:review-architecture` 同時併入這個命名空間，改名
+`code:review-architecture`。
 
 七個 lens：`correctness`、`failure-handling`、`tests`、`design`、`comments`、
 `conventions`、`security`。切法的原則是**一條 finding 只屬於一個 lens**；兩個
@@ -764,23 +766,23 @@ agent 與 skill 的 `description` 會**預載入每個 session** 的 system prom
 沒有任何東西在 render 期解析 lens 路徑，所以打錯字的 flow 會 render 成功、apply
 成功，直到 review 當下才在 subagent 裡失敗。
 
-## Arch Review（`/arch-review`）
+## Arch Review（`/code:review-architecture`）
 
-整庫架構體檢。行為契約見 [`openspec/specs/arch-review/spec.md`](../openspec/specs/arch-review/spec.md)——它定義了跨工具部署形狀、兩階段掃描紀律、判準來源分層與降級可見性、pickup 相容的產出格式，以及「只診斷不動刀」的邊界。本節只記檔案方位與實跑經驗。
+整庫架構體檢。行為契約見 [`openspec/specs/review-architecture/spec.md`](../openspec/specs/review-architecture/spec.md)——它定義了跨工具部署形狀、兩階段掃描紀律、判準來源分層與降級可見性、pickup 相容的產出格式，以及「只診斷不動刀」的邊界。本節只記檔案方位與實跑經驗。
 
 ### 組件
 
 | 角色 | 檔案 |
 |---|---|
-| Claude command | `dot_claude/commands/arch-review.md.tmpl` |
-| Codex skill | `dot_codex/skills/arch-review/SKILL.md.tmpl` |
-| 共用 body | `.chezmoitemplates/skills/arch-review.md` |
+| Claude command | `dot_claude/commands/code/review-architecture.md.tmpl` |
+| Codex skill | `dot_codex/skills/review-architecture/SKILL.md.tmpl` |
+| 共用 body | `.chezmoitemplates/skills/review-architecture.md` |
 
 ### 使用方式
 
-預設掃整庫，可傳路徑縮限：`/arch-review src/payment`。
+預設掃整庫，可傳路徑縮限：`/code:review-architecture src/payment`。
 
-產出寫到 `~/.agent/handoffs/<repo-slug>/<YYYY-MM-DD-HHMM>__arch-review.md`，用 `/pickup <id>` 接手選中的候選。
+產出寫到 `~/.agent/handoffs/<repo-slug>/<YYYY-MM-DD-HHMM>__review-architecture.md`，用 `/pickup <id>` 接手選中的候選。
 
 ### 何時該跑
 

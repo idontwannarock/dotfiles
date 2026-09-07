@@ -33,9 +33,9 @@
 
 這對應你現在 `~/.claude/CLAUDE.md` 裡的做法，但改用 Codex 的語彙與能力表達。
 
-Claude 端是 command 的能力（`/handoff`、`/pickup`、`/arch-review`）在 Codex 一律包成 skill，部署到 `~/.codex/skills/<name>/`，與 Claude 共用 `.chezmoitemplates/skills/<name>.md` 的同一份 body —— 行為相同，只有 frontmatter 依各工具慣例不同。
+Claude 端是 command 的能力（`/handoff`、`/pickup`、`/code:review-architecture`）在 Codex 一律包成 skill，部署到 `~/.codex/skills/<name>/`，與 Claude 共用 `.chezmoitemplates/skills/<name>.md` 的同一份 body —— 行為相同，只有 frontmatter 依各工具慣例不同。
 
-其中 `arch-review` 的檔案方位與實跑經驗見 [claude-code.md](claude-code.md) 的 Arch Review 章節，行為契約見 [`openspec/specs/arch-review/spec.md`](../openspec/specs/arch-review/spec.md)。
+其中 `code:review-architecture` 的檔案方位與實跑經驗見 [claude-code.md](claude-code.md) 的 Arch Review 章節，行為契約見 [`openspec/specs/review-architecture/spec.md`](../openspec/specs/review-architecture/spec.md)。
 
 八支 `review-*` skill 同樣共用 body。它們的觀點放在 `~/.agent/reference/review-lenses/` —— tool-agnostic 的純檔案，兩端指向同一批路徑。這對 Codex 特別重要：Codex 沒有 agent 機制，改制前拿到的是一張列著 `subagent_type` 名字的表，那些 agent 只存在於 Claude 端，Codex 實際能讀到的只有表格裡那一行 focus 說明。派工方式是 body 裡少數的 reader-axis 分支之一：Claude 平行派 subagent，Codex 逐個 lens 依序做完再開下一個。細節見 [claude-code.md](claude-code.md) 的 Code Review 章節。
 

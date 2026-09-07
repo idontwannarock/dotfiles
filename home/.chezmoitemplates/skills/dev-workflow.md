@@ -26,7 +26,9 @@ Skip → stop here and proceed with standard development.
 
 ### 2a. Sync main
 
-Run `{{ .n.gitSync }}` unless already on a worktree.
+Unless already on a worktree: stash any uncommitted changes, `git fetch origin`,
+`git rebase origin/main`, then pop the stash. Stop and report on a rebase
+conflict — never force a resolution.
 
 ### 2b. Resolve workflow registry
 
@@ -67,7 +69,7 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 → [{{ .n.sk }}openspec-sync-specs — ask if implementation drifted from specs; promote design.md evergreen-candidates → the repo-root `context/`] → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewQuick }}
 → Fixes needed? → Confirm scope, start a new change round (same branch/worktree, from {{ .n.sk }}openspec-new-change)
-→ No fixes → [team-doc step] → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
+→ No fixes → [team-doc step] → {{ .n.finishBranch }} → [prune gone branches]
 ```
 
 ### Large workflow
@@ -83,8 +85,13 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
 → openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → the repo-root `context/`) → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewFull }} → {{ .n.reviewCrossModel }}
 → Fixes needed? → Confirm scope, start a new change round
-→ No fixes → [team-doc step] → {{ .n.finishBranch }} → [{{ .n.gitCleanGone }}]
+→ No fixes → [team-doc step] → {{ .n.finishBranch }} → [prune gone branches]
 ```
+
+`[prune gone branches]` is the mop-up for branches merged elsewhere (a PR merged
+on the forge): `git fetch --all --prune`, list them with
+`git branch -vv | awk '/: gone\]/{print $1}'`, confirm with the user, then
+`git branch -D` each one. Never touch the current branch or `main`.
 
 `{{ .n.reviewCrossModel }}` hands the review's filtered findings to an agent of a
 different kind and has both sides refute each other once, because the six lenses

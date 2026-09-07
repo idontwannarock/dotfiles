@@ -23,6 +23,12 @@ Based on the above context, create a single git commit. Follow these rules stric
 
 - Analyze all staged changes and write a concise commit message focusing on the "why"
 - Follow the repository's existing commit message style (check `git log --oneline -5`)
+- If those five messages do not agree on a style, do not average them — write
+  Conventional Commits (<https://www.conventionalcommits.org/en/v1.0.0/>):
+  `type(scope): summary`, with `type` one of `feat`, `fix`, `docs`, `style`,
+  `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`. An inconsistent
+  log carries no convention to follow, so guessing one from it invents a house
+  style the repo never had.
 - Use a HEREDOC to pass the message:
   ```
   git commit -m "$(cat <<'EOF'

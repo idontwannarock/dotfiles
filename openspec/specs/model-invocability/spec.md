@@ -43,8 +43,8 @@ SHALL NOT 以「是否有副作用」作為判準。該措辭無法區分風險�
 
 #### Scenario: 解鎖清單
 
-- **WHEN** 檢視 `handoff`、`pickup`、`handoff-list`、`arch-review`、`git/commit`、`git/sync`、`git/clean-gone`、`code/review-surgical`、`code/review-comprehensive`、`code/review-linus`、`code/review-uncommitted`、`code/review-security`、`code/review-spec`、`code/review-types`、`code/review-cross-model` 的 frontmatter
-- **THEN** 皆 SHALL NOT 含 `disable-model-invocation`(共 15 支;`git/clean-gone` 刪除遠端已消失的本地分支,可經 reflog 回復,故屬可逆;`code/review-cross-model` 唯讀,其對外行為僅限於在本機 herdr pane 內起一個唯讀的 agent,無不可逆效果亦非外部可見)
+- **WHEN** 檢視 `handoff`、`pickup`、`handoff-list`、`git/commit`、`code/review-surgical`、`code/review-comprehensive`、`code/review-cross-model`、`code/review-architecture` 的 frontmatter
+- **THEN** 皆 SHALL NOT 含 `disable-model-invocation`(共 8 支;`code/review-cross-model` 唯讀,其對外行為僅限於在本機 herdr pane 內起一個唯讀的 agent,無不可逆效果亦非外部可見;`code/review-architecture` 只診斷不改 source)
 
 #### Scenario: 清單涵蓋整棵樹
 
@@ -58,7 +58,7 @@ SHALL NOT 以「是否有副作用」作為判準。該措辭無法區分風險�
 
 #### Scenario: 無 Codex 對應者同樣適用
 
-- **WHEN** 某 command 在 Codex 端無對應 skill(如 `code/review-security`、`code/review-spec`、`code/review-types`),因而不構成 parity 破洞
+- **WHEN** 某 command 在 Codex 端無對應 skill,因而不構成 parity 破洞
 - **THEN** 仍 SHALL 依判準分類 —— 只處理有破洞者會留下同類破口
 
 #### Scenario: 新增 command 時
@@ -91,7 +91,7 @@ Codex skill SHALL NOT 為了對齊而在 `description` 中加入「僅在使用�
 
 #### Scenario: 看到 review 可被自行呼叫
 
-- **WHEN** 有人發現模型能自行啟動 `code/review-*` 或 `arch-review`
+- **WHEN** 有人發現模型能自行啟動 `code/review-*` 或 `code:review-architecture`
 - **THEN** SHALL NOT 逕行加回 flag —— 這些能力可逆且非外部可見,符合判準;若疑慮在 token 成本,SHALL 改動 skill body 的觸發條件
 
 #### Scenario: 看到模型自行 commit

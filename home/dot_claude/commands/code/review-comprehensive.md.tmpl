@@ -2,10 +2,7 @@
 {{- $n := dict
     "tool" "claude"
     "reviewFull" "code:review-comprehensive"
-    "reviewCrossModel" "code:review-cross-model"
-    "reviewSpec" "code:review-spec"
-    "reviewTypes" "code:review-types"
-    "reviewLinus" "code:review-linus" -}}
+    "reviewCrossModel" "code:review-cross-model" -}}
 ---
 allowed-tools: Bash(git diff:*), Bash(git log:*), Bash(git status:*), Bash(git show:*), Bash(gh pr:*), Bash(git branch:*)
 description: Comprehensive code review of commit ranges, branches, or entire codebase — seven lenses, confidence scoring, cross-model rebuttal

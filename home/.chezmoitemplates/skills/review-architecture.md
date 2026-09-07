@@ -33,7 +33,7 @@ Build a structural picture cheaply. Aim for signals, not understanding:
 - Name collisions and near-collisions across directories (`User` / `Member` / `Account`; `*Service` / `*Manager` / `*Handler` for the same noun).
 - Obvious duplication signals: same filename in several places, parallel directory shapes.
 
-If the user passed a path argument (`/arch-review src/payment`), scope every phase to it.
+If the user passed a path argument (`/code:review-architecture src/payment`), scope every phase to it.
 
 Use cheap tools only: file enumeration (`git ls-files`), per-directory line counts, and pattern counts for import lines (`rg -l` / `rg --count-matches`). Do not open files to read logic in this phase.
 
@@ -65,7 +65,7 @@ A review report is always `handoff_kind: task`, never `succession`. It is a stan
   - `D:\ws\github\dotfiles\.git` becomes `D--ws-github-dotfiles`
 
   Not `git rev-parse --show-toplevel`: inside a linked worktree that returns the worktree, so reports would land where `pickup` will not look from a sibling worktree.
-- **ID**: `YYYY-MM-DD-HHMM__arch-review`, user's local time.
+- **ID**: `YYYY-MM-DD-HHMM__review-architecture`, user's local time.
 - Create the directory if missing. Never write inside a tool-specific dotdir (`.claude/`, `.codex/`) or into the repo.
 
 Rank candidates by expected payoff over effort -- highest first.

@@ -66,7 +66,15 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - **Language diagnostics**: After editing typed languages (Python, Java, TypeScript, Go, Rust), query the language server for diagnostics before claiming edits are complete. Your memory of the type system lags; the compiler does not.
 - **Library docs**: Before writing code that calls an external library, framework, SDK, or CLI tool, query `context7` for current syntax. Training data drifts; APIs rename parameters and deprecate surfaces between releases.
-- **English prose**: When writing English commit messages, PR descriptions, error messages, or user-facing docs, apply Strunk's *Elements of Style* — cut excess words, prefer active voice, concrete over abstract. Use available writing style tools (e.g. `elements-of-style`) if present.
+- **Prose you produce**: Commit messages, PR/MR descriptions, error messages, docs,
+  and work chat are read for instruction, not for pleasure. Write them under the
+  ASD-STE100 principles, in any language: one idea per sentence; active voice;
+  short sentences; concrete over abstract; and **the same term for the same thing
+  every time** — never vary a word for style, because a synonym reads as a second
+  concept. Take the principles, not the ~900-word approved vocabulary: that list
+  is for aircraft maintenance manuals and makes ordinary prose sound machine-made.
+  Rhetorical style guides (Strunk, *Elements of Style*) optimise for a reader who
+  wants to keep reading; these artifacts have a reader who wants to stop.
 - **Local conventions**: Before writing a project's configuration — service config files, local DB containers, deployment env vars, integration-test setup — read `~/.agent/local/index.md` if it exists. It holds cross-project conventions kept deliberately outside every repo, so no repo, no search, and no other reference will surface them. No such file means this machine has none.
 
 ## 6. Subagent Dispatch
