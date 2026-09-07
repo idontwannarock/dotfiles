@@ -192,9 +192,20 @@ chezmoi() {
     [ "$rc" -eq 127 ] && return "$rc"
 
     printf >&2 '\n\033[33mchezmoi: %s 中止 (exit %s)。chezmoi 依字典序處理 target 且不跳過失敗項 —— 排在它之後的 target 全部未部署。\033[0m\n' "$sub" "$rc"
-    local pending
-    pending="$(command chezmoi status 2>/dev/null | grep -c '')"
-    printf >&2 '\033[33mchezmoi: 目前 %s 筆待處理（chezmoi status）。\033[0m\n\n' "$pending"
+    # status 的成敗要跟它的輸出分開判。這裡曾經是
+    # `pending="$(command chezmoi status 2>/dev/null | grep -c '')"`,而 apply 失敗的
+    # 原因往往一樣會讓 status 失敗（2026-09-04 的 XDG_RUNTIME_DIR 就是:兩者都在做事
+    # 之前就死了）。那時 stderr 被丟掉、grep 數到零行,於是這行在最需要示警的一刻印出
+    # 「0 筆待處理」—— 恰好是「一切安好」的說法。空輸出有兩個來源,真的沒事和根本沒問成,
+    # 只有離開管線去看退出碼才分得出來。
+    local pending status_rc
+    pending="$(command chezmoi status 2>/dev/null)"
+    status_rc=$?
+    if [ "$status_rc" -ne 0 ]; then
+        printf >&2 '\033[33mchezmoi: 待處理筆數不明 —— chezmoi status 也失敗了 (exit %s)。\033[0m\n\n' "$status_rc"
+    else
+        printf >&2 '\033[33mchezmoi: 目前 %s 筆待處理（chezmoi status）。\033[0m\n\n' "$(printf '%s' "$pending" | grep -c '')"
+    fi
     return "$rc"
 }
 
