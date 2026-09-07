@@ -95,15 +95,11 @@ model_verbosity = "medium"
 web_search = "live"
 '@
 
-    Log-Section "compose the MCP server block — on Windows npx is a .cmd, so it needs a cmd /c wrapper to spawn"
+    Log-Section "compose the MCP server block — all entries are remote URLs, so this block is identical on every OS"
     $mcpConfig = @'
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
-
-[mcp_servers."context7"]
-command = "cmd"
-args = ["/c", "npx", "-y", "@upstash/context7-mcp"]
 
 # Slack OAuth 登入請自行進入 Codex CLI 完成（per-machine，不同步）。
 [mcp_servers.slack]

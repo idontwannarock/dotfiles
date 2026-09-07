@@ -154,7 +154,7 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | code-simplifier、pr-review-toolkit | 未使用；repo 曾有同名 agent，已隨 review lens 改制退役，與這兩個 plugin 始終無關 |
 | explanatory-output-style、learning-output-style | 兩者都靠 SessionStart hook 注入輸出風格；explanatory 那段寫「可以超過長度限制」，與 `output-styles/ELI5.md` 的「短句、只給必要的」直接對衝。輸出風格單一來源＝ELI5.md |
 | code-review | 唯一入口是 `/code-review`，與自家 `code:review-*` 重疊；508 份 transcript 中自家版用 61 次、它 0 次 |
-| elements-of-style | Strunk 的規則是修辭取向，寫給「想繼續讀下去」的讀者；commit message、MR 描述、docs、工作對話的讀者想趕快讀完。改由 CLAUDE.md/AGENTS.md §5 的 ASD-STE100 原則承擔 |
+| elements-of-style | Strunk 的規則是修辭取向，寫給「想繼續讀下去」的讀者；commit message、MR 描述、docs、工作對話的讀者想趕快讀完。改由 CLAUDE.md/AGENTS.md §3 的 ASD-STE100 原則承擔 |
 | episodic-memory | 508 份 transcript 只有 27 次實際呼叫（search 20、read 7、subagent 1），散在 9 個 session；代價是磁碟 2.3 GB（plugin cache 1.1 GB ＋ `~/.config/superpowers/` 的 archive 與 index 1.2 GB，皆為 du 實測）與安裝腳本裡一段專屬的 onnxruntime 修補。後者不在 plugin cache 底下，腳本的 cache 清理迴圈掃不到，故由 `.chezmoiremove` 點名。關鍵字查找改用 `rg` / `jq` 直接掃 `~/.claude/projects/` 的 jsonl |
 
 > 退役一個 plugin＝往那張表加一列，**不是**把安裝那行刪掉。刪安裝行不會讓已 apply 過的機器移除它，而 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，每次 apply 還會繼續更新它。
@@ -687,7 +687,7 @@ Per-session 的 `session-<id>.cache` / `reminded-*` 哨兵刻意**不清理**：
 |---|---|---|
 | 目錄解析 | `dot_local/bin/executable_claude-memory-seed`（`where` 子命令） | 與寫 `autoMemoryDirectory` 同一支，兩者不可能對不上 |
 | 提醒 hook | `dot_claude/hooks/executable_memory-index-reminder.sh` | UserPromptSubmit；`MEMORY.md` 達 16／24／30KB 各提醒一次 |
-| 整理準則 | `.chezmoitemplates/user-system-prompt.md` §8 | Claude 與 Codex 共用 body |
+| 整理準則 | `.chezmoitemplates/user-system-prompt.md` §5 | 只給 Claude；Codex 沒有 `MEMORY.md` 也沒有這支 hook |
 | 註冊 | `dot_claude/modify_settings.json.sh.tmpl` jq patch | chezmoi apply 時生效 |
 
 ### 為什麼門檻是位元組不是行數
