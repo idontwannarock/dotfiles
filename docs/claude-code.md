@@ -70,8 +70,7 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 （歷史脈絡:舊流程用 superpowers `brainstorming`/`writing-plans`,需要把
 design doc 改道到 `~/.local/share/superpowers/<repo>/`;該機制已隨
 rework-dev-workflow-skills change 退役。superpowers plugin 已於
-remove-superpowers-plugin change 移除 —— 已驗證 episodic-memory 不依賴它
-(自帶 hooks、來自不同 marketplace),流程紀律全改由 `~/.claude/skills/` 自家 skills 提供。
+remove-superpowers-plugin change 移除,流程紀律全改由 `~/.claude/skills/` 自家 skills 提供。
 該次移除只停止安裝、uninstall 靠手動,已套用過的機器因此留著 plugin;
 retire-superpowers-plugin-cleanup change 改由 `install-03-claude-config`
 主動 uninstall 並清 cache,移除才隨 apply 收斂到每台機器。)
@@ -147,8 +146,6 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | 名稱 | 來源 | 說明 |
 |------|------|------|
 | slack | `claude-plugins-official` | Slack 讀寫、搜尋、Block Kit |
-| episodic-memory | `superpowers-marketplace` | 跨 session 對話記憶 |
-| elements-of-style | `superpowers-marketplace` | Strunk 寫作風格改善 |
 
 **已退役**（腳本以 `$retiredPlugins` 資料表驅動，在每台機器上主動 `plugin uninstall` 並清除殘留 cache，使移除收斂）：
 
@@ -159,10 +156,12 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | code-simplifier、pr-review-toolkit | 未使用；repo 曾有同名 agent，已隨 review lens 改制退役，與這兩個 plugin 始終無關 |
 | explanatory-output-style、learning-output-style | 兩者都靠 SessionStart hook 注入輸出風格；explanatory 那段寫「可以超過長度限制」，與 `output-styles/ELI5.md` 的「短句、只給必要的」直接對衝。輸出風格單一來源＝ELI5.md |
 | code-review | 唯一入口是 `/code-review`，與自家 `code:review-*` 重疊；508 份 transcript 中自家版用 61 次、它 0 次 |
+| elements-of-style | Strunk 的規則是修辭取向，寫給「想繼續讀下去」的讀者；commit message、MR 描述、docs、工作對話的讀者想趕快讀完。改由 CLAUDE.md/AGENTS.md §5 的 ASD-STE100 原則承擔 |
+| episodic-memory | 508 份 transcript 只有 27 次實際呼叫（search 20、read 7、subagent 1），散在 9 個 session；代價是磁碟 2.3 GB（plugin cache 1.1 GB ＋ `~/.config/superpowers/` 的 archive 與 index 1.2 GB，皆為 du 實測）與安裝腳本裡一段專屬的 onnxruntime 修補。後者不在 plugin cache 底下，腳本的 cache 清理迴圈掃不到，故由 `.chezmoiremove` 點名。關鍵字查找改用 `rg` / `jq` 直接掃 `~/.claude/projects/` 的 jsonl |
 
 > 退役一個 plugin＝往那張表加一列，**不是**把安裝那行刪掉。刪安裝行不會讓已 apply 過的機器移除它，而 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，每次 apply 還會繼續更新它。
 
-`superpowers-marketplace` 本身保留，因為 `episodic-memory` 與 `elements-of-style` 仍由它提供。
+`superpowers-marketplace` 已隨最後一個消費者一併移除——superpowers、episodic-memory、elements-of-style 全數退役後，它沒有任何 plugin 了。腳本先刪 cache 目錄再 `marketplace remove`：marketplace 指令不清 cache。
 
 ### On-demand 工具
 
@@ -178,7 +177,6 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | 名稱 | 來源 | 說明 |
 |------|------|------|
 | claude-plugins-official | `anthropics/claude-plugins-official` | 內建預設 marketplace |
-| superpowers-marketplace | `obra/superpowers-marketplace` | 提供 `episodic-memory` 與 `elements-of-style`；同名的 `superpowers` plugin 本身已退役 |
 
 ### 依賴
 
@@ -452,19 +450,6 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 - [#22906](https://github.com/anthropics/claude-code/issues/22906) / [#22934](https://github.com/anthropics/claude-code/issues/22934) — SessionStart hook errors cause CLI freeze
 
 待官方修復後可移除 workaround。
-
-### episodic-memory MCP 連不上（plugin cache 不完整）
-
-`claude mcp list` 顯示 `plugin:episodic-memory:episodic-memory - ✘ Failed to connect`。
-
-| 項目 | 說明 |
-|------|------|
-| 症狀 | MCP server 啟動指令 `node .../cli/mcp-server-wrapper.js` 找不到檔案 |
-| 根因 | plugin cache (`~/.claude/plugins/cache/superpowers-marketplace/episodic-memory/`) 被 Claude 內部 GC 誤刪目錄，缺 `cli/ dist/ src/ scripts/` 等，只剩 `docs/ skills/ test/`（會留下 `.orphaned_at` 標記） |
-| 修復 | 重裝讓 Claude 重新 clone 完整 repo：`claude plugin uninstall episodic-memory@superpowers-marketplace` 後 `claude plugin install episodic-memory@superpowers-marketplace`（單純 install 不會修復已存在的壞 cache，需先 uninstall） |
-| 首次啟動 | `cli/dist` 已隨 repo commit，但執行期依賴（better-sqlite3 等原生模組）需 `node_modules`；wrapper 首次啟動會自動 `npm install`（約 30–60 秒，含原生編譯），故第一次 health check 可能逾時顯示 failed，裝完即恢復 |
-
-安裝腳本 `run_onchange_install-03-claude-config` 已包含 episodic-memory 安裝，新機器會自動裝；cache 損壞時手動重裝即可。
 
 ## ensure-openspec 腳本
 
