@@ -41,7 +41,7 @@ Read `~/.agent/workflows/<repo-slug>/active_workflows.md` (same canonical slug a
 | State | Action |
 |-------|--------|
 | **None active** | Work directly in main repo: `git checkout -b <new-branch>`. Register row with Type=`main`. |
-| **Any active/paused** | Read `~/.agent/reference/dev-workflow-isolation.md`, then `{{ .n.worktree }}` — requires isolation. |
+| **Any active/paused** | Requires isolation — read `~/.agent/reference/dev-workflow-isolation.md`, which carries the create-and-register steps. |
 
 The `active_workflows.md` row format:
 
@@ -52,7 +52,7 @@ The `active_workflows.md` row format:
 - **Current Step**: a tool-neutral semantic label (e.g. `apply-change done`, `review`) — this file is shared across tools, so never write a tool-specific skill token (such as a `$`-sigil'd `$openspec-…`); the resuming tool re-derives the token from its own name-map.
 - **Status**: `active` or `paused`
 
-Update Current Step + Last Updated after each skill completes. Set Status to `paused` when switching workflows. Remove the row after `{{ .n.finishBranch }}`.
+Update Current Step + Last Updated after each skill completes. Set Status to `paused` when switching workflows. `{{ .n.finishBranch }}` does not touch this file — once it reports the branch integrated and disposed, remove the row yourself.
 
 ## Step 3: Run the Core Flow
 
@@ -80,7 +80,8 @@ Codex; slash commands are user-typed UI only and unavailable to dispatched subag
    conclusions flow straight into the openspec artifacts, no separate design doc)
 → {{ .n.sk }}openspec-new-change → {{ .n.sk }}openspec-continue-change   (proposal + design.md + tasks.md into openspec/)
 → {{ .n.sk }}openspec-apply-change   (tasks with a testable seam agreed in design → {{ .n.tdd }})
-→ {{ .n.verifyDone }} (run tests / verify commands — hard evidence)
+→ verify (run the project's verification commands — hard evidence; see
+   *Evidence before assertions* in the user-level instructions)
 → {{ .n.sk }}openspec-verify-change (three-dimension spec/code coherence report)
 → openspec validate → {{ .n.sk }}openspec-sync-specs (promote design.md evergreen-candidates → the repo-root `context/`) → {{ .n.sk }}openspec-archive-change
 → {{ .n.gitCommit }} → {{ .n.reviewFull }} → {{ .n.reviewCrossModel }}

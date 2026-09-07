@@ -43,9 +43,7 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 | `grill` | Large 流程前端 — 一次一題訪談，共識確認前不動工；結論直接進 openspec artifacts |
 | `tdd` | 實作紀律 — 只在預先同意的 seam 測試、red before green、垂直切片 |
 | `diagnose` | Bug 進入點 — 先建 feedback loop 才准提假設；根因餵進 proposal 的 Why |
-| `verify-done` | 完工前驗證 — 證據先於宣稱 |
-| `worktree` | 隔離 workspace 建立（`git worktree add`，含移入新目錄的確認） |
-| `finish-branch` | 分支收尾 — merge/PR/處置,雙架構原生支援 |
+| `finish-branch` | 分支收尾 — merge/PR/處置；worktree 的四個靜默陷阱查 `~/.agent/reference/git-worktree-hazards.md` |
 
 瑣碎任務（改 typo、一行修改）會自動跳過詢問。
 

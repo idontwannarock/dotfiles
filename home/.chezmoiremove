@@ -178,3 +178,15 @@ AppData/Local/rtk
 # what is archived is the decision, not this wording. Named here because it sits
 # under ~/.local/share, which no plugin-cleanup loop in install-03 looks at.
 .local/share/superpowers
+
+# verify-done and worktree, retired in this same branch. Neither lost content:
+# verify-done became the "Evidence before assertions" rule in the shared
+# user-system-prompt body, and worktree's two halves split into
+# .agent/reference/git-worktree-hazards.md (the git part) and
+# dev-workflow-isolation.md (the registry part). Listed here because
+# .claude/skills/ and .codex/skills/ are not exact_, so a source-side delete
+# leaves the deployed dir in place.
+.claude/skills/verify-done
+.claude/skills/worktree
+.codex/skills/verify-done
+.codex/skills/worktree

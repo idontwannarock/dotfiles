@@ -1,6 +1,6 @@
 ## Purpose
 
-A whole-repo architecture checkup. Every other quality gate here reads a **diff** -- `review-*` sees the branch delta, `verify-done` runs the tests. Architectural entropy is a cross-change phenomenon: each diff looks reasonable on its own, and the damage is only visible when you step back. This skill is that step back.
+A whole-repo architecture checkup. Every other quality gate here reads a **diff** -- `review-*` sees the branch delta, verification runs the tests. Architectural entropy is a cross-change phenomenon: each diff looks reasonable on its own, and the damage is only visible when you step back. This skill is that step back.
 
 It **diagnoses only**. The output is a ranked list of refactor candidates with evidence, written to a pickup-compatible document so you can resume and act on a chosen candidate in a fresh session.
 

@@ -58,6 +58,15 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+**Evidence before assertions.** Before you say complete, fixed, or passing, run
+the project's verification commands — tests, build, lint, typecheck — and read
+their output. State the result from that output, not from memory or inference.
+Report a failure with its output; a failure is never a reason to skip
+verification. State partial verification as partial: what you verified, what you
+skipped, and why. Reject the three excuses — "the change is small" (run it),
+"it passed a moment ago" (run it again), and "the environment is broken, treat
+it as passing" (report the environment problem instead).
+
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
 ## 5. Use Your Tools
