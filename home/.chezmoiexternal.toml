@@ -161,7 +161,7 @@
 # ~/.local/opt/gnupg (auto-bumped by mirror-externals.yml's gnupg detector).
 # Bump version below and rerun `chezmoi apply` to upgrade.
 # renovate: datasource=github-releases depName=gopasspw/gopass
-{{- $gopassVersion := "1.16.1" }}
+{{- $gopassVersion := "1.17.0" }}
 
 # URL tag uses `v` prefix; archive filename version string omits `v`. Same
 # variable injected to both (cf. golangci-lint pattern in Wave 2).
