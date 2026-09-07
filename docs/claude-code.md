@@ -240,15 +240,22 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 
 **chezmoi 只負責基礎設施。** `run_install-02-npm-tools` 把 `chrome-devtools-mcp`、`agent-browser-mcp`
 全域裝好（不走 `npx`，理由見上表），讓任何 repo 想用的時候「已經在那裡」；但
-`run_onchange_install-03-claude-config` **只註冊 `codegraph` 與 `atlassian` 兩個 user-scope server**。
+`run_onchange_install-03-claude-config` **只註冊 `atlassian` 一個 user-scope server**。
 
 判準對 stdio 與 http 不一樣，因為成本不一樣：
 
 - **stdio**：每個 session 一個 process，所以要問「**是不是每個 session 都真的會用到**」。
-  codegraph 是跨檔查 symbol／caller 的通用工具，符合；瀏覽器與 codex 只有特定工作才需要，
-  不符合——把它們放 user scope 等於讓每個純後端 repo 的 session 都替用不到的東西付錢。
+  目前**沒有任何 stdio server 通過這一關**。瀏覽器與 codex 只有特定工作才需要，
+  放 user scope 等於讓每個純後端 repo 的 session 都替用不到的東西付錢。
 - **http**：本機不 spawn 任何 process，上面那個乘數根本不成立。`atlassian` 因此放 user scope，
   代價接近零，換來的是任何 repo 隨時能查 Jira／Confluence 而不必逐一註冊。
+
+> **codegraph 是這條判準的反例，已於 2026-09-07 退役。** 它當初以「跨檔查 symbol 的通用工具」
+> 之名進 user scope，理由聽起來成立，但沒人量過。實際數字是**全部歷史 transcript 共 2 次呼叫**，
+> 其中一次還只是 `codegraph_status`。代價則是 9 份 tool schema 每個 session 都載入。
+> 教訓：「通用」是推測，呼叫次數才是證據——
+> `grep -rhoE '"name":"mcp__<server>__[a-z_]+"' ~/.claude/projects | sort | uniq -c`
+> 可以直接量任何一個 server 的實際使用量，別再靠感覺放行 user scope。
 
 #### 現成可用的 MCP 清單
 
@@ -257,7 +264,6 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 
 | server | 做什麼 | 現成程度 | binary 來源 |
 |--------|--------|---------|------------|
-| `codegraph` | 跨檔查 symbol／caller／callee、影響範圍 | **已在 user scope，什麼都不用做** | install-02（`@colbymchenry/codegraph`） |
 | `chrome-devtools` | 驅動 Chrome：導航、抓 DOM／console／network、效能 trace | binary 已裝，待註冊 | install-02（`chrome-devtools-mcp`） |
 | `agent-browser` | 較輕量的瀏覽器自動化（點擊、填表、截圖） | binary 已裝，待註冊 | install-02（`agent-browser-mcp`） |
 | `codex` | 把 Codex CLI 當 MCP server，交叉詢問另一個模型 | binary 已裝，待註冊 | install-02（`@openai/codex`） |

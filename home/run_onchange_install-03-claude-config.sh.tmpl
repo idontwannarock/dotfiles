@@ -161,11 +161,24 @@ mcp_add_if_missing() {
     fi
 }
 
-if command -v codegraph &>/dev/null; then
-    mcp_add_if_missing "codegraph" -- codegraph "serve" "--mcp"
-else
-    log_skip "[mcp] codegraph binary not found"
-fi
+# Retired MCP servers. Same convergence rule as the retired plugins above:
+# dropping the add line leaves the entry in ~/.claude.json on every machine that
+# already applied, and a stdio server keeps costing a process per session there.
+#
+# Adding a retirement = adding a row here.
+# Keep this list identical to the PowerShell twin in the .ps1.tmpl.
+RETIRED_MCP="
+codegraph|2 calls across the whole transcript history, one of them a status probe; its 9 tool schemas loaded every session regardless
+"
+echo "$RETIRED_MCP" | while IFS='|' read -r name reason; do
+    [ -n "$name" ] || continue
+    if claude mcp list 2>/dev/null | grep -q "^${name}:"; then
+        log_step "[mcp] unregistering ${name} — ${reason}"
+        claude mcp remove --scope user "$name" >/dev/null 2>&1 || true
+    else
+        log_skip "[mcp] ${name} not registered"
+    fi
+done
 
 # http transport: no binary to guard on, and no per-session process. The script
 # registers it but cannot log in — run /mcp and pick atlassian to finish the
