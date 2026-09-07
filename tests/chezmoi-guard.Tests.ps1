@@ -19,15 +19,17 @@ BeforeAll {
     New-Item -ItemType Directory -Path $MockDir -Force | Out-Null
     @'
 @echo off
-if "%1"=="status" (
-  if not "%MOCK_STATUS_RC%"=="0" exit /b %MOCK_STATUS_RC%
-  if "%MOCK_STATUS_EMPTY%"=="1" exit /b 0
-  echo  M .one
-  echo  M .two
-  echo  M .three
-  exit /b 0
-)
-exit /b %MOCK_CHEZMOI_RC%
+rem Flat, deliberately: `exit /b N` nested inside a parenthesised if-block
+rem returns 0, not N. Measured -- the same logic written with the block yields
+rem 0 for every code, which read here as "status succeeded with no output" and
+rem made the new failed-status case assert against the wrong branch.
+if not "%1"=="status" exit /b %MOCK_CHEZMOI_RC%
+if not "%MOCK_STATUS_RC%"=="0" exit /b %MOCK_STATUS_RC%
+if "%MOCK_STATUS_EMPTY%"=="1" exit /b 0
+echo  M .one
+echo  M .two
+echo  M .three
+exit /b 0
 '@ | Set-Content -Path (Join-Path $MockDir 'chezmoi.cmd') -Encoding ascii
 
     function Invoke-Guard {
