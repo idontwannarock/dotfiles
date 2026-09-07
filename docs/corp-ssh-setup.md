@@ -296,9 +296,17 @@ host that never wanted it.
 the cache expires, `pass` fails (no TTY available under sshd), the helper
 exits 1, and ssh aborts with an error visible in `ssh -v` output.
 
-The helper declines (`exit 1`) for any prompt it doesn't recognize. For
-hosts not listed in `hosts.yaml`, the helper declines and the current auth
-method fails. No corp credentials are leaked to unrelated servers.
+The helper never sends a credential for a prompt it doesn't recognize, and
+never for a host missing from `hosts.yaml`. No corp credentials are leaked to
+unrelated servers.
+
+It does not answer those prompts with `exit 1` either. `SSH_ASKPASS_REQUIRE=force`
+routes *every* openssh question through the helper, host-key confirmations
+included, and `exit 1` there reads as "no" — plain `ssh <any-new-host>` would die
+with `Host key verification failed.` and never show the yes/no prompt. So the
+helper's `ask_human()` re-asks on `/dev/tty`: host-key answers echo, passwords
+don't. With no controlling terminal (cron, CI, agents) there is nobody to ask,
+and it declines with `exit 1` as before.
 
 ## Troubleshooting
 
@@ -313,7 +321,7 @@ method fails. No corp credentials are leaked to unrelated servers.
 | Auth succeeds manually but cron/harness still fails | Harness env doesn't share gpg-agent | gpg-agent runs as a per-user daemon; any process as same uid can talk to it via `~/.gnupg/S.gpg-agent`. Make sure cron isn't using a different uid or chrooted env |
 | Host listed in `hosts.yaml` but helper declines | Entry is ssh alias, not HostName | Regenerate using the `ssh -G` recipe in step 4 |
 | Passphrase-protected SSH key no longer works | `SSH_ASKPASS_REQUIRE=force` intercepts passphrase prompt too | Use unencrypted keys, OR `SSH_ASKPASS_REQUIRE=never ssh host` per session |
-| `Host key verification failed.` on first connect to a new host, **no** yes/no prompt shown | `SSH_ASKPASS_REQUIRE=force` intercepts the host-key confirmation too, and the helper declines it | Verify the fingerprint out of band — run `ssh-keyscan -t ed25519 <target>` on the jump host and compare with the key `ssh -v` reports — then `ssh -o StrictHostKeyChecking=accept-new <host>` once |
+| `Host key verification failed.` on first connect to a new host, **no** yes/no prompt shown | Helper predates `ask_human()`, or the shell has no controlling terminal | Update `~/.local/bin/corp-ssh-askpass` (`chezmoi apply ~/.local/bin/corp-ssh-askpass`). In a real terminal the yes/no prompt should appear. From a script or agent, verify the fingerprint out of band with `ssh-keyscan -t ed25519 <target>` and then `ssh -o StrictHostKeyChecking=accept-new <host>` once |
 | `Permission denied, please try again.` repeated, **never** prompted for a password | Host missing from `hosts.yaml`, or its prompt shape is unrecognized — the helper declines and ssh submits an empty password | `ssh -v` shows `read_passphrase: requested to askpass`; add the HostName to `hosts.yaml`. To see the real prompt text, point `SSH_ASKPASS` at a wrapper that logs `$1` |
 | `Too many authentication failures` (disconnect before any credential is accepted) | (a) ssh offers agent/default pubkeys to a password+OTP host and exhausts server `MaxAuthTries`, or (b) a wrong/stale credential — usually an expired AD password — is retried every round | See ["Too many authentication failures"](#too-many-authentication-failures) below |
 

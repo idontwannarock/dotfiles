@@ -13,6 +13,27 @@ set -eu
 prompt="${1:-}"
 hosts_file="$HOME/.corp-ssh/hosts.yaml"
 
+# 0. Fallback for prompts this helper does not own. SSH_ASKPASS_REQUIRE=force
+#    routes EVERY openssh question here, including host-key confirmations
+#    ("Are you sure you want to continue connecting (yes/no/...)?") and password
+#    prompts for hosts outside hosts.yaml. Exiting 1 answers those with "no":
+#    connecting to any new host then fails with "Host key verification failed."
+#    So hand the question back to the human instead. openssh gives this helper
+#    no TTY of its own, so open /dev/tty directly; with no controlling terminal
+#    (cron, agents, CI) there is nobody to ask and declining stays correct.
+ask_human() {
+  { exec 3<>/dev/tty; } 2>/dev/null || exit 1
+  printf '%s' "$prompt" >&3
+  if [[ "$prompt" == *"(yes/no"* ]]; then
+    read -r reply <&3 || exit 1          # host-key answer, echo it back
+  else
+    read -rs reply <&3 || exit 1         # password, keep it off the screen
+    printf '\n' >&3
+  fi
+  printf '%s\n' "$reply"
+  exit 0
+}
+
 # 1. Parse hostname from the prompt. Two shapes exist, one per auth method:
 #      keyboard-interactive (PAM) → "(user@host.fqdn) Password:"
 #      password (openssh builtin) → "user@host.fqdn's password: "
@@ -24,20 +45,20 @@ passwd_re="^(.+@)?(.+)'s password: ?\$"
 if [[ "$prompt" =~ $kbdint_re ]] || [[ "$prompt" =~ $passwd_re ]]; then
   target_host="${BASH_REMATCH[2]}"
 else
-  exit 1   # prompt format unrecognized → decline
+  ask_human   # prompt format unrecognized → not ours, ask the human
 fi
 short_host="${target_host%%.*}"
 
 # 2. Only answer for hosts listed in hosts.yaml (either FQDN or short form).
-[[ -r "$hosts_file" ]] || exit 1
+[[ -r "$hosts_file" ]] || ask_human
 if ! grep -qE "^[[:space:]]*-[[:space:]]*(${short_host}|${target_host})[[:space:]]*\$" "$hosts_file"; then
-  exit 1   # not a corp host → decline, openssh aborts this auth method
+  ask_human   # not a corp host → ask the human, as plain ssh would
 fi
 
 # 3. Resolve pass_path prefix from yaml. Shared corp credentials live at
 #    "$pass_path/password" and "$pass_path/totp".
 pass_path=$(awk -F: '/^pass_path:/ { print $2 }' "$hosts_file" | tr -d ' ')
-[[ -n "$pass_path" ]] || exit 1
+[[ -n "$pass_path" ]] || ask_human
 
 # 3b. Hosts with their own local account (not the shared AD principal) keep
 #     their password at "$pass_path/hosts/<short_host>". Select by checking the
@@ -61,7 +82,7 @@ rc=0
 case "$prompt" in
   *"One-time Password:"*)          out=$(pass otp  "$pass_path/totp"  2>/dev/null) || rc=$? ;;
   *"Password:"*|*"'s password:"*) out=$(pass show "$password_entry" 2>/dev/null) || rc=$? ;;
-  *) exit 1 ;;
+  *) ask_human ;;
 esac
 
 if [[ $rc -ne 0 || -z "$out" ]]; then

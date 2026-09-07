@@ -245,11 +245,30 @@ silently. Cold cache → dialog appears once.
 The helper is GUI-free; only the GPG-passphrase entry triggers a dialog,
 and only when the cache is cold.
 
+`SSH_ASKPASS_REQUIRE=force` routes *every* ssh.exe question through the helper,
+host-key confirmations included. The helper must not answer those with `exit 1`
+-- that reads as "no", and `ssh <any-new-host>` then dies with
+`Host key verification failed.` with no prompt shown. `Invoke-AskHuman` re-asks
+the human instead: ssh.exe reads the helper's stdout as the answer, so the
+question goes to the console device `CONOUT$`, and the reply comes from
+`$Host.UI.ReadLine()` (host keys, echoed) or `ReadLineAsSecureString()`
+(passwords, hidden). A redirected stdin means nobody is there to answer, and it
+declines as before.
+
+**The fingerprint line does not survive to the helper.** ssh.exe passes the
+whole multi-line question as one argument, but `corp-ssh-askpass.cmd` forwards
+it with `%*` and cmd.exe cuts an argument at its first newline. The helper
+receives only `The authenticity of host '<host>' can't be established.`, so it
+matches on that line and re-composes the yes/no question itself. Verify the
+fingerprint out of band before answering:
+`ssh-keyscan -t ed25519 <host> | ssh-keygen -lf -` from a host you trust.
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `ssh <corp-host>` still prompts on TTY | PowerShell profile not loaded | Close + reopen PowerShell, or `. $PROFILE`. Verify `$env:SSH_ASKPASS_REQUIRE` is `force`. |
+| `Host key verification failed.` on first connect to a new host, **no** yes/no prompt shown | Helper predates `Invoke-AskHuman`, or the session has no console (scheduled task, redirected stdin) | Re-apply `~/.local/bin/corp-ssh-askpass.ps1`. From a real PowerShell window the yes/no prompt must appear; from a script, verify out of band and use `ssh -o StrictHostKeyChecking=accept-new <host>` once. |
 | `'powershell' is not recognized` from `.cmd` | Running ssh.exe directly from cmd.exe with no PATH | This setup is PowerShell-only by design. Run from a PowerShell session. |
 | `Permission denied`, `ssh -v` shows `corp-ssh-askpass: gopass failed` | gpg-agent cache cold | `gopass show -o corp/password >$null` to warm cache (dialog appears once). |
 | `gopass: decryption failed: No secret key` | GPG key not imported, or trust not set | `gpg --list-secret-keys`; `gpg --edit-key <FPR> trust 5 save`. |

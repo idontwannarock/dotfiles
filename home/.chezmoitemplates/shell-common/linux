@@ -14,9 +14,12 @@ export GPG_TTY="$(tty)"
 
 # ── SSH askpass for hosts requiring password + OTP ─────────────────────────
 # Set SSH_ASKPASS_REQUIRE=force so openssh uses the helper regardless of TTY
-# state. Safe globally: helper declines (exit 1) for unknown prompts, so ssh
-# to hosts with key auth or other methods is unaffected. Known constraint:
-# SSH keys must be unencrypted, or the user must unset SSH_ASKPASS_REQUIRE
+# state. `force` routes EVERY openssh question to the helper, host-key
+# confirmations included, so the helper must never answer a prompt it does not
+# own with exit 1 -- that reads as "no" and breaks `ssh` to any new host with
+# "Host key verification failed." The helper's ask_human() fallback re-asks the
+# human on /dev/tty instead; keep it when editing. Known constraint: SSH keys
+# must be unencrypted, or the user must unset SSH_ASKPASS_REQUIRE
 # (e.g. `SSH_ASKPASS_REQUIRE=never ssh host`) for those sessions.
 if [ -x "$HOME/.local/bin/corp-ssh-askpass" ]; then
     export SSH_ASKPASS="$HOME/.local/bin/corp-ssh-askpass"

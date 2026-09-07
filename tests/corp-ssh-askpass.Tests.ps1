@@ -16,6 +16,10 @@ BeforeAll {
         $psi.Arguments              = "-NoProfile -ExecutionPolicy Bypass -File `"$HelperPath`" `"$Prompt`""
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError  = $true
+        # stdin MUST be redirected. Invoke-AskHuman treats a non-redirected stdin
+        # as "a human is watching" and blocks on $Host.UI.ReadLine(); inheriting
+        # the console would hang the suite instead of failing it.
+        $psi.RedirectStandardInput   = $true
         $psi.UseShellExecute        = $false
         $psi.EnvironmentVariables['USERPROFILE']          = $env:USERPROFILE
         $psi.EnvironmentVariables['PATH']                 = $env:PATH
@@ -26,6 +30,7 @@ BeforeAll {
         if ($env:MOCK_GOPASS_ENTRIES_FILE)  { $psi.EnvironmentVariables['MOCK_GOPASS_ENTRIES_FILE']  = $env:MOCK_GOPASS_ENTRIES_FILE }
         if ($env:MOCK_GOPASS_ECHO_ENTRY)    { $psi.EnvironmentVariables['MOCK_GOPASS_ECHO_ENTRY']    = $env:MOCK_GOPASS_ECHO_ENTRY }
         $proc = [System.Diagnostics.Process]::Start($psi)
+        $proc.StandardInput.Close()
         $stdout = $proc.StandardOutput.ReadToEnd()
         $stderr = $proc.StandardError.ReadToEnd()
         $proc.WaitForExit()
@@ -164,6 +169,49 @@ password_otp_hosts:
             Remove-Item -Path (Join-Path $Sandbox '.corp-ssh\hosts.yaml') -Force
             $r = Invoke-Helper -Prompt '(user@corp-host.example.com) Password:'
             $r.ExitCode | Should -Be 1
+        }
+    }
+
+    Context 'host-key confirmation (Invoke-AskHuman)' {
+        # SSH_ASKPASS_REQUIRE=force sends host-key confirmations here too. The
+        # helper must not answer them itself: exit 1 reads as "no" and breaks
+        # `ssh <any-new-host>` with "Host key verification failed."
+        #
+        # Only the no-human branch is automatable. The console branch needs a
+        # real console and a keystroke; verify it by hand with
+        #   ssh <some-new-host>
+        # in a PowerShell window -- the yes/no prompt must appear.
+        BeforeEach {
+            Set-Content -Path (Join-Path $Sandbox '.corp-ssh\hosts.yaml') -Value @"
+pass_path: corp
+
+password_otp_hosts:
+  - corp-host.example.com
+"@ -Encoding ascii
+        }
+
+        It 'declines a host-key prompt when stdin is redirected (nobody to ask)' {
+            $env:MOCK_GOPASS_PASSWORD = 'should-not-leak'
+            $r = Invoke-Helper -Prompt "The authenticity of host 'new.example.com (1.2.3.4)' can't be established.`nAre you sure you want to continue connecting (yes/no/[fingerprint])? "
+            $r.ExitCode | Should -Be 1
+            $r.Stdout | Should -BeNullOrEmpty
+        }
+
+        It 'declines the truncated host-key prompt Windows actually receives' {
+            # corp-ssh-askpass.cmd passes %* and cmd.exe cuts the argument at its
+            # first newline, so this single line is all the helper ever sees.
+            $env:MOCK_GOPASS_PASSWORD = 'should-not-leak'
+            $r = Invoke-Helper -Prompt "The authenticity of host 'new.example.com (1.2.3.4)' can't be established."
+            $r.ExitCode | Should -Be 1
+            $r.Stdout | Should -BeNullOrEmpty
+        }
+
+        It 'never sends a corp credential to a host-key prompt' {
+            # Guards the ordering: the prompt parses as neither shape, so it must
+            # reach Invoke-AskHuman before any gopass call.
+            $env:MOCK_GOPASS_PASSWORD = 'should-not-leak'
+            $r = Invoke-Helper -Prompt 'Are you sure you want to continue connecting (yes/no/[fingerprint])? '
+            $r.Stdout | Should -Not -Match 'should-not-leak'
         }
     }
 
