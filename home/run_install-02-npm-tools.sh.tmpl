@@ -22,14 +22,25 @@ if ! command -v npm &>/dev/null; then
     exit 0
 fi
 
+# Retired npm tools. Dropping the install line is NOT enough: machines that
+# already applied keep the package forever. Uninstall here so removal converges
+# everywhere, not just on the machine where the decision was made.
+#
+# Guard on `npm ls`, not `command -v`: under WSL the Windows-side npm prefix is
+# on PATH, so `command -v` finds the Windows copy and would skip the Linux one.
+log_section "uninstall retired npm tools so removal converges on every machine"
+if npm ls -g --depth=0 @colbymchenry/codegraph &>/dev/null; then
+    log_step "[npm-tools] removing codegraph — 2 calls across the whole transcript history, one of them a status probe; its 9 tool schemas loaded every session regardless"
+    npm uninstall -g @colbymchenry/codegraph 2>&1 || true
+else
+    log_skip "[npm-tools] codegraph not installed"
+fi
+
 log_section "install Claude Code CLI"
 npm_install claude @anthropic-ai/claude-code
 
 log_section "install Codex CLI"
 npm_install codex @openai/codex
-
-log_section "install codegraph — semantic code graph MCP server"
-npm_install codegraph @colbymchenry/codegraph
 
 # The two browser MCP servers are INSTALLED here but deliberately NOT
 # registered by install-03: user scope would spawn them in every session,

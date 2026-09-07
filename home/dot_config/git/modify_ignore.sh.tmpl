@@ -18,8 +18,7 @@ fi
 
 # 缺少的 baseline 行才補到檔尾（grep -xF：整行、純字串比對）
 for line in \
-  '**/.claude/settings.local.json' \
-  '.codegraph/'
+  '**/.claude/settings.local.json'
 do
   if ! printf '%s\n' "$current" | grep -qxF -- "$line"; then
     printf '%s\n' "$line"

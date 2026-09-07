@@ -210,10 +210,24 @@ try {
         }
     }
 
-    if (Get-Command "codegraph" -ErrorAction SilentlyContinue) {
-        Add-McpIfMissing -Name "codegraph" -AddArgs @("--", "codegraph", "serve", "--mcp")
-    } else {
-        Log-Skip "[mcp] codegraph binary not found"
+    # Retired MCP servers. Same convergence rule as the retired plugins above:
+    # dropping the add line leaves the entry in ~/.claude.json on every machine
+    # that already applied, and a stdio server keeps costing a process per
+    # session there.
+    #
+    # Adding a retirement = adding a row here.
+    # Keep this list identical to the bash twin in the .sh.tmpl.
+    $retiredMcp = @{
+        "codegraph" = "2 calls across the whole transcript history, one of them a status probe; its 9 tool schemas loaded every session regardless"
+    }
+    foreach ($name in $retiredMcp.Keys) {
+        $present = claude mcp list 2>$null | Select-String -Pattern "^${name}:" -Quiet
+        if ($present) {
+            Log-Step "[mcp] unregistering ${name} — $($retiredMcp[$name])"
+            claude mcp remove --scope user $name 2>&1 | Out-Null
+        } else {
+            Log-Skip "[mcp] ${name} not registered"
+        }
     }
 
     # http transport: no binary to guard on, and no per-session process. The
