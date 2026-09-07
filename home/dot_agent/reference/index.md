@@ -9,8 +9,8 @@ Tool-agnostic reference shared by every AI coding tool on this machine
 one edit takes effect for all of them.
 
 Each tool's prompts and skills link **into this tree by absolute path**, not
-through this file — the `tdd` and `worktree` skills link their leaf files
-directly. This index exists to declare `okf_version` and to give the
+through this file — the `tdd` and `finish-branch` skills link their leaf
+files directly. This index exists to declare `okf_version` and to give the
 tree a place where everything in it is listed; it is not on any load path.
 
 Loaded on demand — read the file you need, not the whole tree.
@@ -29,6 +29,10 @@ Loaded on demand — read the file you need, not the whole tree.
 * [Worktree isolation](dev-workflow-isolation.md) - when `active_workflows.md`
   has active or paused rows, isolate the new workflow in its own worktree
   instead of sharing the main repo.
+* [Git worktree hazards](git-worktree-hazards.md) - the four ways a linked
+  worktree goes wrong without erroring: a missing start-point, staying in the
+  main checkout, disposing from the wrong directory, and `git branch -d` as a
+  merged-gate. Workflow-agnostic.
 
 # Local environment
 

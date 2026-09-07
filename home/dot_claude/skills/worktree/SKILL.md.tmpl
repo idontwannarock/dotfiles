@@ -1,9 +1,0 @@
-{{- /* Claude name-map for the shared worktree body */ -}}
-{{- $n := dict -}}
----
-name: worktree
-user-invocable: false
-description: "Create an isolated git workspace for a workflow — use when another workflow is active/paused in active_workflows.md or the task needs isolation from the current workspace. Runs git worktree add off an up-to-date main, confirms the move into the new directory, and registers the workspace in active_workflows.md."
----
-
-{{ template "skills/worktree.md" (dict "n" $n "chez" .chezmoi) -}}
