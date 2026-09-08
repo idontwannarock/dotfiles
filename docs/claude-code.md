@@ -157,7 +157,7 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | elements-of-style | Strunk 的規則是修辭取向，寫給「想繼續讀下去」的讀者；commit message、MR 描述、docs、工作對話的讀者想趕快讀完。改由 CLAUDE.md/AGENTS.md §3 的 ASD-STE100 原則承擔 |
 | episodic-memory | 508 份 transcript 只有 27 次實際呼叫（search 20、read 7、subagent 1），散在 9 個 session；代價是磁碟 2.3 GB（plugin cache 1.1 GB ＋ `~/.config/superpowers/` 的 archive 與 index 1.2 GB，皆為 du 實測）與安裝腳本裡一段專屬的 onnxruntime 修補。後者不在 plugin cache 底下，腳本的 cache 清理迴圈掃不到，故由 `.chezmoiremove` 點名。關鍵字查找改用 `rg` / `jq` 直接掃 `~/.claude/projects/` 的 jsonl |
 
-> 退役一個 plugin＝往那張表加一列，**不是**把安裝那行刪掉。刪安裝行不會讓已 apply 過的機器移除它，而 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，每次 apply 還會繼續更新它。
+> 退役一個 plugin＝往那張表加一列，**不是**把安裝那行刪掉。刪安裝行不會讓已 apply 過的機器移除它，而 `run_update-claude-plugins` 依 `enabledPlugins` 迭代，只要它的 marketplace 有動就會繼續更新它。
 
 `superpowers-marketplace` 已隨最後一個消費者一併移除——superpowers、episodic-memory、elements-of-style 全數退役後，它沒有任何 plugin 了。腳本先刪 cache 目錄再 `marketplace remove`：marketplace 指令不清 cache。
 
@@ -175,6 +175,30 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | 名稱 | 來源 | 說明 |
 |------|------|------|
 | claude-plugins-official | `anthropics/claude-plugins-official` | 內建預設 marketplace |
+
+#### 更新探針
+
+`run_update-claude-plugins` 在做任何昂貴動作前，先對每個 marketplace 跑一次
+`git ls-remote <repo> HEAD`，只更新真的移動過的那幾個。
+
+`claude plugin marketplace update` 不管有沒有變都會重抓，Windows 上實測 28.4 秒；
+後面的逐 plugin 迴圈再花 10.5 秒回報「已是最新」。探針一次 round-trip 就能回答同一個
+問題，整段從 42.6 秒降到 3.3 秒。
+
+比對基準是腳本自己寫的 `~/.cache/dotfiles/claude-marketplace-shas`，**不是**各 marketplace
+目錄裡的 `.gcs-sha`。`.gcs-sha` 由 claude 在 marketplace 本身落地時就寫下，而逐 plugin
+迴圈在那之後才跑；若那個迴圈中途死掉，`.gcs-sha` 已經是新的，探針會永遠跳過而 plugin
+停在舊版。state file 只在腳本跑完才寫，中斷的那次下次會重做。
+
+失敗行為刻意不對稱：
+
+| 情況 | 行為 |
+|------|------|
+| 缺 jq／git／`known_marketplaces.json` | fail-open — 全量刷新 |
+| source type 不是 `github` | fail-open — 全量刷新 |
+| 遠端連不上 | fail-closed — 印 warn 後結束（離線本來也更新不了） |
+
+刪掉 state file 就能強制一次全量刷新。
 
 ### 依賴
 
