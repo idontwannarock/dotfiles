@@ -1,7 +1,8 @@
 {{- if ne .chezmoi.os "windows" -}}
 #!/usr/bin/env bash
 # chezmoi run_ script — refresh Claude Code marketplaces + update enabled plugins
-# 每次 chezmoi apply / update 都會跑（與 install-03 不同，那支只在內容變更時跑）
+# 每次 chezmoi apply / update 都會跑（與 install-03 不同，那支只在內容變更時跑），
+# 但開頭的探針會在沒有任何 marketplace 移動時直接結束。
 # 依賴 install-03 已加好 marketplace 與安裝好 plugin
 
 set -euo pipefail
@@ -17,6 +18,62 @@ if ! command -v claude &>/dev/null; then
     exit 0
 fi
 
+# Cheap probe before the expensive part. `claude plugin marketplace update`
+# re-downloads every marketplace whether or not it moved — 28s on Windows, and
+# the per-plugin loop that follows adds another 11s to report "already at the
+# latest version". One `git ls-remote` per marketplace answers the same question
+# in under a second.
+#
+# The comparison baseline is our own state file, not the .gcs-sha marker chezmoi
+# finds inside each marketplace: claude writes that marker as soon as the
+# marketplace itself lands, so a run that died in the per-plugin loop afterwards
+# would leave a marker claiming everything is current. The state file is written
+# only after this script completes, so an interrupted run repeats next time.
+STATE_DIR="$HOME/.cache/dotfiles"
+STATE_FILE="$STATE_DIR/claude-marketplace-shas"
+KNOWN="$HOME/.claude/plugins/known_marketplaces.json"
+PROBE_OK=1
+REMOTE_SHAS=""
+
+save_probe_state() {
+    [ "$PROBE_OK" -eq 1 ] || return 0
+    mkdir -p "$STATE_DIR"
+    printf '%s' "$REMOTE_SHAS" > "$STATE_FILE"
+}
+
+log_section "ask each marketplace remote for its head — skip the whole refresh when none moved"
+if ! command -v jq &>/dev/null || ! command -v git &>/dev/null || [ ! -f "$KNOWN" ]; then
+    log_warn "[probe] jq, git or known_marketplaces.json missing; doing the full refresh"
+    PROBE_OK=0
+fi
+
+if [ "$PROBE_OK" -eq 1 ]; then
+    while IFS=$'\t' read -r name kind repo; do
+        [ -n "$name" ] || continue
+        if [ "$kind" != "github" ]; then
+            log_step "[$name] source type '$kind' has no cheap probe; doing the full refresh"
+            PROBE_OK=0
+            break
+        fi
+        # `|| true` inside the substitution: pipefail makes the pipeline carry
+        # git's exit code, and set -e would abort the whole script on an
+        # unreachable remote instead of reaching the offline branch below.
+        sha="$(git ls-remote "https://github.com/$repo" HEAD 2>/dev/null | cut -f1 || true)"
+        if [ -z "$sha" ]; then
+            log_warn "[$name] remote unreachable; leaving every plugin as it is"
+            exit 0
+        fi
+        log_step "[$name] remote head $sha"
+        REMOTE_SHAS="${REMOTE_SHAS}${name} ${sha}"$'\n'
+    done < <(jq -r 'to_entries[] | [.key, .value.source.source, (.value.source.repo // "")] | @tsv' "$KNOWN" | sort)
+fi
+
+if [ "$PROBE_OK" -eq 1 ] && [ -f "$STATE_FILE" ] \
+    && [ "$(printf '%s' "$REMOTE_SHAS")" = "$(cat "$STATE_FILE")" ]; then
+    log_skip "[probe] every marketplace already matches its remote; nothing to update"
+    exit 0
+fi
+
 log_section "refresh all marketplaces so plugin version data is current"
 log_step "[marketplaces] refreshing"
 claude plugin marketplace update 2>&1 || true
@@ -25,12 +82,14 @@ log_section "read the enabled plugin list out of settings.json"
 SETTINGS="$HOME/.claude/settings.json"
 if [ ! -f "$SETTINGS" ] || ! command -v jq &>/dev/null; then
     log_warn "[plugins] settings.json or jq missing; skipping per-plugin update"
+    save_probe_state
     exit 0
 fi
 
 ENABLED="$(jq -r '.enabledPlugins // {} | to_entries[] | select(.value==true) | .key' "$SETTINGS")"
 if [ -z "$ENABLED" ]; then
     log_skip "[plugins] no enabled plugins found"
+    save_probe_state
     exit 0
 fi
 
@@ -40,4 +99,6 @@ while IFS= read -r plugin; do
     log_step "[plugins] updating $plugin"
     claude plugin update "$plugin" 2>&1 | sed 's/^/        /' || true
 done <<< "$ENABLED"
+
+save_probe_state
 {{ end -}}

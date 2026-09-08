@@ -1,6 +1,7 @@
 {{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_ script — refresh Claude Code marketplaces + update enabled plugins
-# 每次 chezmoi apply / update 都會跑（與 install-03 不同，那支只在內容變更時跑）
+# 每次 chezmoi apply / update 都會跑（與 install-03 不同，那支只在內容變更時跑），
+# 但開頭的探針會在沒有任何 marketplace 移動時直接結束。
 # 依賴 install-03 已加好 marketplace 與安裝好 plugin
 
 $ErrorActionPreference = "Continue"
@@ -25,6 +26,65 @@ try {
         return
     }
 
+    # Cheap probe before the expensive part. `claude plugin marketplace update`
+    # re-downloads every marketplace whether or not it moved — 28s here, and the
+    # per-plugin loop that follows adds another 11s to report "already at the
+    # latest version". One `git ls-remote` per marketplace answers the same
+    # question in under a second.
+    #
+    # The comparison baseline is our own state file, not the .gcs-sha marker
+    # inside each marketplace: claude writes that marker as soon as the
+    # marketplace itself lands, so a run that died in the per-plugin loop
+    # afterwards would leave a marker claiming everything is current. The state
+    # file is written only after this script completes, so an interrupted run
+    # repeats next time.
+    $stateFile = Join-Path $env:USERPROFILE ".cache\dotfiles\claude-marketplace-shas"
+    $known = Join-Path $env:USERPROFILE ".claude\plugins\known_marketplaces.json"
+    $probeOk = $true
+    $remoteShas = @()
+
+    function Save-ProbeState {
+        if (-not $probeOk) { return }
+        $dir = Split-Path $stateFile -Parent
+        if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        # WriteAllText, not Set-Content: PowerShell 5.1 would prepend a UTF-8 BOM
+        # and the next run's string compare would never match.
+        [System.IO.File]::WriteAllText($stateFile, ($remoteShas -join "`n"))
+    }
+
+    Log-Section "ask each marketplace remote for its head — skip the whole refresh when none moved"
+    if ((-not (Test-Path $known)) -or (-not (Get-Command git -ErrorAction SilentlyContinue))) {
+        Log-Warn "[probe] git or known_marketplaces.json missing; doing the full refresh"
+        $probeOk = $false
+    }
+
+    if ($probeOk) {
+        $entries = (Get-Content $known -Raw | ConvertFrom-Json).PSObject.Properties | Sort-Object Name
+        foreach ($entry in $entries) {
+            $name = $entry.Name
+            $kind = $entry.Value.source.source
+            if ($kind -ne 'github') {
+                Log-Step "[$name] source type '$kind' has no cheap probe; doing the full refresh"
+                $probeOk = $false
+                break
+            }
+            $line = git ls-remote "https://github.com/$($entry.Value.source.repo)" HEAD 2>$null | Select-Object -First 1
+            $sha = if ($line) { ($line -split "`t")[0] } else { "" }
+            if (-not $sha) {
+                Log-Warn "[$name] remote unreachable; leaving every plugin as it is"
+                return
+            }
+            Log-Step "[$name] remote head $sha"
+            $remoteShas += "$name $sha"
+        }
+    }
+
+    if ($probeOk -and (Test-Path $stateFile) -and
+        ((Get-Content $stateFile -Raw) -eq ($remoteShas -join "`n"))) {
+        Log-Skip "[probe] every marketplace already matches its remote; nothing to update"
+        return
+    }
+
     Log-Section "refresh all marketplaces so plugin version data is current"
     Log-Step "[marketplaces] refreshing"
     claude plugin marketplace update 2>&1 | ForEach-Object { "        $_" }
@@ -33,6 +93,7 @@ try {
     $settings = Join-Path $env:USERPROFILE ".claude\settings.json"
     if (-not (Test-Path $settings)) {
         Log-Warn "[plugins] settings.json missing; skipping per-plugin update"
+        Save-ProbeState
         return
     }
 
@@ -40,6 +101,7 @@ try {
         $config = Get-Content $settings -Raw | ConvertFrom-Json
     } catch {
         Log-Warn "[plugins] failed to parse settings.json; skipping"
+        Save-ProbeState
         return
     }
 
@@ -52,6 +114,7 @@ try {
 
     if ($enabled.Count -eq 0) {
         Log-Skip "[plugins] no enabled plugins found"
+        Save-ProbeState
         return
     }
 
@@ -60,6 +123,8 @@ try {
         Log-Step "[plugins] updating $plugin"
         claude plugin update $plugin 2>&1 | ForEach-Object { "        $_" }
     }
+
+    Save-ProbeState
 } catch {
     Log-End -ErrorRecord $_
     throw
