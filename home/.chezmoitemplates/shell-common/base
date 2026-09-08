@@ -175,6 +175,28 @@ glab() {
 # Mirror of Documents/_shared-profile.d/96-chezmoi-guard.ps1; the two warning
 # strings are kept byte-identical on purpose.
 chezmoi() {
+    # `update` needs --init. chezmoi reads no `init` key in the [update] config
+    # section (see .chezmoi.toml.tmpl for what it does read), so without the flag
+    # the generated ~/.config/chezmoi/chezmoi.toml goes stale whenever
+    # .chezmoi.toml.tmpl gains a key, and chezmoi only prints a warning about it.
+    #
+    # --init is the only spelling that regenerates the config between the pull and
+    # the apply. A [hooks.update.pre] runs before the pull and a post hook after
+    # the apply (verified), so neither helps the run that brings the new key in.
+    #
+    # Only $1 is inspected, deliberately. Scanning every argument for the word
+    # "update" — the shape the failure warning below uses — would also fire on
+    # `chezmoi add update` or `chezmoi cat update` and hand those a flag they
+    # reject. The warning can afford that scan because it only ever reads the
+    # match; this branch changes the command line.
+    if [ "${1:-}" = "update" ]; then
+        local a has_init=""
+        for a in "$@"; do
+            [ "$a" = "--init" ] && has_init=1
+        done
+        [ -n "$has_init" ] || set -- "$@" --init
+    fi
+
     command chezmoi "$@"
     local rc=$?
     [ "$rc" -eq 0 ] && return 0

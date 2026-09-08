@@ -35,11 +35,28 @@ function chezmoi {
         return
     }
 
-    & $exe.Source @args
+    # `update` needs --init. chezmoi reads no `init` key in the [update] config
+    # section (see .chezmoi.toml.tmpl for what it does read), so without the flag
+    # the generated config goes stale whenever .chezmoi.toml.tmpl gains a key, and
+    # chezmoi only prints a warning about it. --init is the only spelling that
+    # regenerates the config between the pull and the apply; a [hooks.update.pre]
+    # runs before the pull and a post hook after the apply (verified), so neither
+    # helps the run that brings the new key in.
+    #
+    # Only the first argument is inspected, deliberately. Scanning every argument
+    # for the word "update" — the shape the failure warning below uses — would
+    # also fire on `chezmoi add update` and hand it a flag it rejects. $args is
+    # copied rather than mutated: it is an automatic variable.
+    $argv = @($args)
+    if ($argv.Count -gt 0 -and $argv[0] -eq 'update' -and ($argv -notcontains '--init')) {
+        $argv += '--init'
+    }
+
+    & $exe.Source @argv
     $rc = $LASTEXITCODE
     if ($rc -eq 0) { return }
 
-    $sub = @($args | Where-Object { $_ -in @('apply', 'update') }) | Select-Object -First 1
+    $sub = @($argv | Where-Object { $_ -in @('apply', 'update') }) | Select-Object -First 1
     if (-not $sub) {
         $global:LASTEXITCODE = $rc
         return
