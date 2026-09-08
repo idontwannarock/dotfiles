@@ -22,7 +22,8 @@ fi
 # re-downloads every marketplace whether or not it moved — 28s on Windows, and
 # the per-plugin loop that follows adds another 11s to report "already at the
 # latest version". One `git ls-remote` per marketplace answers the same question
-# in under a second.
+# in under a second, and names which marketplace moved so the work below can be
+# narrowed to it.
 #
 # The comparison baseline is our own state file, not the .gcs-sha marker chezmoi
 # finds inside each marketplace: claude writes that marker as soon as the
@@ -34,6 +35,7 @@ STATE_FILE="$STATE_DIR/claude-marketplace-shas"
 KNOWN="$HOME/.claude/plugins/known_marketplaces.json"
 PROBE_OK=1
 REMOTE_SHAS=""
+MOVED=""
 
 save_probe_state() {
     [ "$PROBE_OK" -eq 1 ] || return 0
@@ -63,20 +65,38 @@ if [ "$PROBE_OK" -eq 1 ]; then
             log_warn "[$name] remote unreachable; leaving every plugin as it is"
             exit 0
         fi
-        log_step "[$name] remote head $sha"
         REMOTE_SHAS="${REMOTE_SHAS}${name} ${sha}"$'\n'
+        prev=""
+        [ -f "$STATE_FILE" ] && prev="$(awk -v n="$name" '$1 == n { print $2; exit }' "$STATE_FILE")"
+        if [ "$prev" = "$sha" ]; then
+            log_skip "[$name] still at $sha"
+        else
+            log_step "[$name] moved to $sha"
+            MOVED="${MOVED}${name}"$'\n'
+        fi
     done < <(jq -r 'to_entries[] | [.key, .value.source.source, (.value.source.repo // "")] | @tsv' "$KNOWN" | sort)
 fi
 
-if [ "$PROBE_OK" -eq 1 ] && [ -f "$STATE_FILE" ] \
-    && [ "$(printf '%s' "$REMOTE_SHAS")" = "$(cat "$STATE_FILE")" ]; then
+if [ "$PROBE_OK" -eq 1 ] && [ -z "$MOVED" ]; then
     log_skip "[probe] every marketplace already matches its remote; nothing to update"
     exit 0
 fi
 
-log_section "refresh all marketplaces so plugin version data is current"
-log_step "[marketplaces] refreshing"
-claude plugin marketplace update 2>&1 || true
+# Refresh and update only what moved. `claude plugin marketplace update` takes
+# an optional name, and every plugin is named plugin@marketplace, so both halves
+# can be narrowed to the marketplaces the probe flagged. A failed probe cannot
+# name anything, so it falls back to refreshing all of them.
+log_section "refresh the marketplaces that moved so their plugin version data is current"
+if [ "$PROBE_OK" -eq 1 ]; then
+    while IFS= read -r name; do
+        [ -n "$name" ] || continue
+        log_step "[$name] refreshing"
+        claude plugin marketplace update "$name" 2>&1 | sed 's/^/        /' || true
+    done <<< "$MOVED"
+else
+    log_step "[marketplaces] refreshing all — the probe could not tell which moved"
+    claude plugin marketplace update 2>&1 | sed 's/^/        /' || true
+fi
 
 log_section "read the enabled plugin list out of settings.json"
 SETTINGS="$HOME/.claude/settings.json"
@@ -93,9 +113,13 @@ if [ -z "$ENABLED" ]; then
     exit 0
 fi
 
-log_section "update each enabled plugin — restart Claude Code afterwards to pick up new versions"
+log_section "update the plugins that belong to a refreshed marketplace — restart Claude Code afterwards to pick up new versions"
 while IFS= read -r plugin; do
     [ -z "$plugin" ] && continue
+    if [ "$PROBE_OK" -eq 1 ] && ! printf '%s' "$MOVED" | grep -qxF "${plugin##*@}"; then
+        log_skip "[plugins] $plugin — its marketplace did not move"
+        continue
+    fi
     log_step "[plugins] updating $plugin"
     claude plugin update "$plugin" 2>&1 | sed 's/^/        /' || true
 done <<< "$ENABLED"

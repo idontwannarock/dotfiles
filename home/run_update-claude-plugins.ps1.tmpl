@@ -30,7 +30,8 @@ try {
     # re-downloads every marketplace whether or not it moved — 28s here, and the
     # per-plugin loop that follows adds another 11s to report "already at the
     # latest version". One `git ls-remote` per marketplace answers the same
-    # question in under a second.
+    # question in under a second, and names which marketplace moved so the work
+    # below can be narrowed to it.
     #
     # The comparison baseline is our own state file, not the .gcs-sha marker
     # inside each marketplace: claude writes that marker as soon as the
@@ -42,6 +43,7 @@ try {
     $known = Join-Path $env:USERPROFILE ".claude\plugins\known_marketplaces.json"
     $probeOk = $true
     $remoteShas = @()
+    $moved = @()
 
     function Save-ProbeState {
         if (-not $probeOk) { return }
@@ -56,6 +58,14 @@ try {
     if ((-not (Test-Path $known)) -or (-not (Get-Command git -ErrorAction SilentlyContinue))) {
         Log-Warn "[probe] git or known_marketplaces.json missing; doing the full refresh"
         $probeOk = $false
+    }
+
+    $prevShas = @{}
+    if (Test-Path $stateFile) {
+        foreach ($line in (Get-Content $stateFile)) {
+            $parts = $line -split ' ', 2
+            if ($parts.Count -eq 2) { $prevShas[$parts[0]] = $parts[1] }
+        }
     }
 
     if ($probeOk) {
@@ -74,20 +84,35 @@ try {
                 Log-Warn "[$name] remote unreachable; leaving every plugin as it is"
                 return
             }
-            Log-Step "[$name] remote head $sha"
             $remoteShas += "$name $sha"
+            if ($prevShas[$name] -eq $sha) {
+                Log-Skip "[$name] still at $sha"
+            } else {
+                Log-Step "[$name] moved to $sha"
+                $moved += $name
+            }
         }
     }
 
-    if ($probeOk -and (Test-Path $stateFile) -and
-        ((Get-Content $stateFile -Raw) -eq ($remoteShas -join "`n"))) {
+    if ($probeOk -and $moved.Count -eq 0) {
         Log-Skip "[probe] every marketplace already matches its remote; nothing to update"
         return
     }
 
-    Log-Section "refresh all marketplaces so plugin version data is current"
-    Log-Step "[marketplaces] refreshing"
-    claude plugin marketplace update 2>&1 | ForEach-Object { "        $_" }
+    # Refresh and update only what moved. `claude plugin marketplace update`
+    # takes an optional name, and every plugin is named plugin@marketplace, so
+    # both halves can be narrowed to the marketplaces the probe flagged. A failed
+    # probe cannot name anything, so it falls back to refreshing all of them.
+    Log-Section "refresh the marketplaces that moved so their plugin version data is current"
+    if ($probeOk) {
+        foreach ($name in $moved) {
+            Log-Step "[$name] refreshing"
+            claude plugin marketplace update $name 2>&1 | ForEach-Object { "        $_" }
+        }
+    } else {
+        Log-Step "[marketplaces] refreshing all — the probe could not tell which moved"
+        claude plugin marketplace update 2>&1 | ForEach-Object { "        $_" }
+    }
 
     Log-Section "read the enabled plugin list out of settings.json"
     $settings = Join-Path $env:USERPROFILE ".claude\settings.json"
@@ -118,8 +143,12 @@ try {
         return
     }
 
-    Log-Section "update each enabled plugin — restart Claude Code afterwards to pick up new versions"
+    Log-Section "update the plugins that belong to a refreshed marketplace — restart Claude Code afterwards to pick up new versions"
     foreach ($plugin in $enabled) {
+        if ($probeOk -and ($moved -notcontains ($plugin -split '@')[-1])) {
+            Log-Skip "[plugins] $plugin — its marketplace did not move"
+            continue
+        }
         Log-Step "[plugins] updating $plugin"
         claude plugin update $plugin 2>&1 | ForEach-Object { "        $_" }
     }
