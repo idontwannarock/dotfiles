@@ -11,7 +11,22 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
 [update]
     init = true
     force = true
-    refreshExternals = "always"
+    # "auto", not "always": `always` ignores every refreshPeriod and re-fetches
+    # all 35 externals on every update — measured at 112 seconds on Windows
+    # (39.5s cached vs 151.2s forced). "auto" refreshes an external only once its
+    # own refreshPeriod has elapsed, and an external with no refreshPeriod is
+    # never re-fetched while its cache entry exists.
+    #
+    # That is correct here because the cache key is a hash of the URL and 33 of
+    # the 35 externals pin their version in the URL: the content behind a pinned
+    # URL cannot change, and a Renovate version bump rewrites the URL, which
+    # misses the cache and downloads on its own. The 2 rolling entries
+    # (statusline, passgen) carry refreshPeriod = "1h".
+    #
+    # The rule this buys: a new external whose URL is NOT version-pinned MUST set
+    # refreshPeriod, or it will silently never update. See the header of
+    # .chezmoiexternal.toml.
+    refreshExternals = "auto"
 
 [data]
     isWSL = {{ $isWSL }}
