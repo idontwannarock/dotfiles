@@ -26,9 +26,9 @@ These are TOML comments, so they do not change what `chezmoi apply` deploys
 
 ## Why a version in the URL is what makes an external cheap
 
-`[update] refreshExternals` is `"auto"`, so chezmoi decides per entry, by cache
-age alone, whether to go to the network. An entry with no `refreshPeriod` is
-fetched once and then served from cache forever.
+chezmoi's default refresh mode is `auto`, so it decides per entry, by cache age
+alone, whether to go to the network. An entry with no `refreshPeriod` is fetched
+once and then served from cache forever.
 
 That is safe precisely because the pin lives in the URL. chezmoi keys its cache
 on a hash of the URL, so the Renovate PR that rewrites a version string also
@@ -40,9 +40,9 @@ branch, a moving tag — **must** set `refreshPeriod`, or it will silently never
 update on any machine. Only `statusline` and `passgen` are rolling today, and
 both carry `refreshPeriod = "1h"`.
 
-`always` was the earlier setting. It ignores every `refreshPeriod` and re-fetches
-all 35 externals on every update: 151.2s against 39.5s cached on Windows, a
-112-second tax for no gain, since 33 of the 35 cannot have changed.
+Passing `-R` (`--refresh-externals`, which defaults to `always`) overrides all of
+this and re-fetches every entry: 151.2s against 39.5s cached on Windows. Do not
+reach for it out of habit — 33 of the 35 cannot have changed.
 
 ## Adding a new tool
 
