@@ -23,6 +23,11 @@ rem Flat, deliberately: `exit /b N` nested inside a parenthesised if-block
 rem returns 0, not N. Measured -- the same logic written with the block yields
 rem 0 for every code, which read here as "status succeeded with no output" and
 rem made the new failed-status case assert against the wrong branch.
+rem Argument echo for the --init injection tests. Two flat lines for the same
+rem reason the rest of this file is flat: `exit /b N` inside a parenthesised
+rem if-block returns 0.
+if "%MOCK_ECHO_ARGS%"=="1" echo ARGS:%*
+if "%MOCK_ECHO_ARGS%"=="1" exit /b 0
 if not "%1"=="status" exit /b %MOCK_CHEZMOI_RC%
 if not "%MOCK_STATUS_RC%"=="0" exit /b %MOCK_STATUS_RC%
 if "%MOCK_STATUS_EMPTY%"=="1" exit /b 0
@@ -33,7 +38,7 @@ exit /b 0
 '@ | Set-Content -Path (Join-Path $MockDir 'chezmoi.cmd') -Encoding ascii
 
     function Invoke-Guard {
-        param([string]$Arguments, [int]$Rc, [string]$Path = '', [int]$StatusRc = 0, [int]$StatusEmpty = 0)
+        param([string]$Arguments, [int]$Rc, [string]$Path = '', [int]$StatusRc = 0, [int]$StatusEmpty = 0, [int]$EchoArgs = 0)
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName               = (Get-Process -Id $PID).Path
         $psi.Arguments              = "-NoProfile -ExecutionPolicy Bypass -Command `". '$FragmentPath'; chezmoi $Arguments; exit `$LASTEXITCODE`""
@@ -49,6 +54,7 @@ exit /b 0
         $psi.EnvironmentVariables['MOCK_CHEZMOI_RC']  = "$Rc"
         $psi.EnvironmentVariables['MOCK_STATUS_RC']   = "$StatusRc"
         $psi.EnvironmentVariables['MOCK_STATUS_EMPTY'] = "$StatusEmpty"
+        $psi.EnvironmentVariables['MOCK_ECHO_ARGS']   = "$EchoArgs"
         $proc   = [System.Diagnostics.Process]::Start($psi)
         $stdout = $proc.StandardOutput.ReadToEnd()
         $stderr = $proc.StandardError.ReadToEnd()
@@ -138,6 +144,42 @@ Describe '96-chezmoi-guard.ps1' {
             $r = Invoke-Guard -Arguments 'cat' -Rc 1
             $r.Stderr | Should -Not -Match 'exit 1'
             $r.ExitCode | Should -Be 1
+        }
+    }
+
+    # chezmoi reads no `init` key in the [update] config section, so without this
+    # injection the generated config goes stale whenever .chezmoi.toml.tmpl gains
+    # a key and chezmoi only warns. Mirrors the bash half in
+    # .chezmoitemplates/shell-common/base.
+    Context '--init injection for update' {
+        It 'adds --init to a bare update' {
+            $r = Invoke-Guard -Arguments 'update' -Rc 0 -EchoArgs 1
+            $r.Stdout | Should -Match 'ARGS:update --init'
+        }
+
+        It 'keeps the caller flags and still adds --init' {
+            $r = Invoke-Guard -Arguments 'update --dry-run' -Rc 0 -EchoArgs 1
+            $r.Stdout | Should -Match 'ARGS:update --dry-run --init'
+        }
+
+        It 'does not double --init when the caller already passed it' {
+            $r = Invoke-Guard -Arguments 'update --init' -Rc 0 -EchoArgs 1
+            $r.Stdout | Should -Match 'ARGS:update --init'
+            $r.Stdout | Should -Not -Match '--init --init'
+        }
+
+        It 'leaves apply alone' {
+            $r = Invoke-Guard -Arguments 'apply' -Rc 0 -EchoArgs 1
+            $r.Stdout | Should -Match 'ARGS:apply'
+            $r.Stdout | Should -Not -Match '--init'
+        }
+
+        # Only $1 is inspected. The failure warning above scans every argument
+        # for the word "update", which would hand this command a flag it rejects.
+        It 'leaves a target that happens to be named update alone' {
+            $r = Invoke-Guard -Arguments 'add update' -Rc 0 -EchoArgs 1
+            $r.Stdout | Should -Match 'ARGS:add update'
+            $r.Stdout | Should -Not -Match '--init'
         }
     }
 }
