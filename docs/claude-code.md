@@ -287,17 +287,33 @@ claude mcp add --scope project codex -- codex mcp-server
 清單要新增成員時，**同時改兩處**：`run_install-02-npm-tools.{sh,ps1}.tmpl` 加安裝、這張表加一列。
 只加安裝沒人知道它存在；只加表格則換機器就沒有。
 
-#### atlassian：端點選 `/authv2`，以及兩個坑
+#### atlassian：端點選 `/v2/mcp`，以及三個坑
 
-install-03 註冊的端點是 `https://mcp.atlassian.com/v1/mcp/authv2`。它是 Atlassian 現行的正典
-端點，被它取代的裸 `/v1/mcp` **少了 Compass 與 Teamwork Graph 兩組工具**（31 支 vs 39 支）——
-差別不只是換 auth 協議。要預先知道某端點會給哪些權限，讀它的 metadata 就好，不必先授權再數：
+install-03 註冊的端點是 `https://mcp.atlassian.com/v2/mcp`。它取代 `/v1/mcp/authv2`，差別不是
+版號而是架構：
+
+| | `/v1/mcp/authv2` | `/v2/mcp` |
+|---|---|---|
+| 工具形狀 | 40 支攤平，直接呼叫 | 約 10 支常用 + `discover` / `executeRead` / `executeWrite` / `executeDestructive` |
+| 可觸及操作 | 就那 40 支 | 243 個（121 個可被 `discover` 搜到） |
+| OAuth scope | 22 個，依產品切（`read:jira-work`） | 32 個，統一 `*:agent-interface` |
+| 產品覆蓋 | Jira、Confluence、Compass、Teamwork Graph | 前述扣掉 Compass，加上 Bitbucket、Loom、Talent、Goals、Focus、Projects、Artifacts |
+
+**代價是 Compass 那組 scope 沒了**，換來的是常駐 schema 小很多，加上 v1 根本沒有的操作
+（例如 `listJiraFilters`——讀得出 saved filter 的 JQL，排查「為什麼這張票沒出現在 filter 裡」
+就靠它）。有在用 Compass 才需要留 v1。
+
+要預先知道某端點會給哪些權限，讀它的 metadata 就好，不必先授權再數。兩邊 diff 一次最清楚：
 
 ```sh
-curl -s https://mcp.atlassian.com/.well-known/oauth-protected-resource/v1/mcp/authv2 | jq .scopes_supported
+for p in v1/mcp/authv2 v2/mcp; do
+  curl -s "https://mcp.atlassian.com/.well-known/oauth-protected-resource/$p" \
+    | jq -r '.scopes_supported[]' | sort > "/tmp/scopes-$(echo $p | tr / _).txt"
+done
+diff /tmp/scopes-v1_mcp_authv2.txt /tmp/scopes-v2_mcp.txt
 ```
 
-舊 `/v1/mcp` 連這份 metadata 都回 `Not Found`，這本身就是它屬於舊世代的訊號。
+裸 `/v1/mcp` 連這份 metadata 都回 `Not Found`，這本身就是它屬於舊世代的訊號。
 
 **坑一：改完 URL 一定要重啟 Claude Code。** MCP client 把 OAuth discovery 的結果快取在 process
 記憶體裡，不會因為設定檔改了就重新解析。沒重啟就跑 `/mcp`，它會拿**舊端點的** authorization
@@ -311,12 +327,25 @@ storage` 只隔 100ms。那不是 OAuth 壞掉，是兩邊在講不同的 key。
 條目**——你 dotfiles 註冊的那筆會靜靜消失但行為看似正常，debug 時極易誤判。自註冊的好處正在於
 升級節奏握在自己手上。
 
+**坑三：403「The app is not installed on this instance」是 token 過期，不是端點壞掉。**
+症狀很會騙人：`claude mcp list` 顯示 `✔ Connected`，`atlassianUserInfo` 也正常回傳帳號，
+但**每一個** Jira 與 Confluence 呼叫都回這句 403。字面在講「站台沒裝這個 app」，極容易誤判成
+公司管理員把 Rovo MCP 移除了而放棄。**實際上重跑一次 `/mcp` 授權就好。**
+
+分辨方法：身分類呼叫（`atlassianUserInfo`、`getAccessibleAtlassianResources`）走 OAuth 本身，
+不經過 app；資料類呼叫才經過。**只有資料類全掛、身分類正常，就是 token 問題**——真被管理員
+移除時身分類不會單獨活著。
+
+同時換端點又重新授權會分不出是哪一個修好的。切回舊端點重測一次就分辨得出來，而且回應的
+`context.endpoint` 欄位會直說走的是哪個端點（`v1-authv2:streamable-http`），那是比「有沒有通」
+更強的證據。
+
 **既有機器要手動遷移。** `mcp_add_if_missing` 只比對 server 名稱，所以已經有 `atlassian` 的機器
 不會被 install-03 換掉端點。手動跑一次，然後**重啟** Claude Code 並 `/mcp` 重新授權：
 
 ```sh
 claude mcp remove atlassian -s user
-claude mcp add atlassian -s user --transport http https://mcp.atlassian.com/v1/mcp/authv2
+claude mcp add atlassian -s user --transport http https://mcp.atlassian.com/v2/mcp
 ```
 
 注意 `-s/--scope` 是每個子命令各自解析的，`add` 漏掉就會落在預設的 `local`（只在當前目錄生效，
