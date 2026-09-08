@@ -8,25 +8,29 @@
 
 sourceDir = {{ .chezmoi.sourceDir | quote }}
 
-[update]
-    init = true
-    force = true
-    # "auto", not "always": `always` ignores every refreshPeriod and re-fetches
-    # all 35 externals on every update — measured at 112 seconds on Windows
-    # (39.5s cached vs 151.2s forced). "auto" refreshes an external only once its
-    # own refreshPeriod has elapsed, and an external with no refreshPeriod is
-    # never re-fetched while its cache entry exists.
-    #
-    # That is correct here because the cache key is a hash of the URL and 33 of
-    # the 35 externals pin their version in the URL: the content behind a pinned
-    # URL cannot change, and a Renovate version bump rewrites the URL, which
-    # misses the cache and downloads on its own. The 2 rolling entries
-    # (statusline, passgen) carry refreshPeriod = "1h".
-    #
-    # The rule this buys: a new external whose URL is NOT version-pinned MUST set
-    # refreshPeriod, or it will silently never update. See the header of
-    # .chezmoiexternal.toml.
-    refreshExternals = "auto"
+# There is deliberately no [update] section. It used to carry init, force and
+# refreshExternals. chezmoi accepts none of those three as configuration-file
+# variables — [update] holds only apply, args, command and recurseSubmodules —
+# and it ignores unknown keys without a word, so all three sat here doing
+# nothing for as long as they existed.
+#
+# Verified two ways. The block chezmoi actually parses:
+#     chezmoi execute-template '{{ "{{" }} .chezmoi.config.update | toJson {{ "}}" }}'
+#     {"apply":true,"args":null,"command":"","recurseSubmodules":true}
+# And the behaviour: with `init = true` present, `chezmoi update` still left the
+# generated config stale and printed "config file template has changed", while
+# `chezmoi update --init` regenerated it.
+#
+# What each one was for, and where it really lives:
+#
+#   init             `chezmoi update --init`. This one is still needed. Without
+#                    it the generated ~/.config/chezmoi/chezmoi.toml goes stale
+#                    whenever this template gains a key, and chezmoi only warns.
+#   force            `--force`. Not needed: apply does not prompt unless
+#                    --interactive is passed.
+#   refreshExternals `-R`. Not needed: the default is already "auto", which is
+#                    what we want. The refreshPeriod rule in the header of
+#                    .chezmoiexternal.toml depends on that default.
 
 [data]
     isWSL = {{ $isWSL }}

@@ -9,8 +9,8 @@
 # Pins with no annotation are not tracked; statusline/passgen are self-built.
 #
 # ⚠ refreshPeriod rule — read this before adding an entry.
-# The [update] section of .chezmoi.toml.tmpl sets refreshExternals = "auto", so
-# chezmoi decides per entry, by cache age alone, whether to go to the network:
+# chezmoi's default refresh mode is "auto", so it decides per entry, by cache age
+# alone, whether to go to the network:
 #
 #   * URL pins a version (every entry below except the first two)
 #       -> omit refreshPeriod. The cache key is a hash of the URL, so a version
