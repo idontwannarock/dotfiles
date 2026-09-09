@@ -183,12 +183,17 @@ mcp_add_if_missing "atlassian" --transport http "https://mcp.atlassian.com/v2/mc
 log_section "set user preferences in ~/.claude.json"
 CLAUDE_JSON="$HOME/.claude.json"
 if [ -f "$CLAUDE_JSON" ] && command -v jq &>/dev/null; then
-    if [ "$(jq -r '.copyOnSelect // "unset"' "$CLAUDE_JSON")" != "false" ]; then
+    # `jq -e` on a comparison, not `// "unset"`. jq's // treats false and null
+    # alike, so a copyOnSelect that was already false read back as "unset" and
+    # this rewrote ~/.claude.json on every single apply while reporting a change
+    # that had already been made. -e exits non-zero when the result is false or
+    # null, which is exactly the "needs setting" case.
+    if jq -e '.copyOnSelect == false' "$CLAUDE_JSON" >/dev/null 2>&1; then
+        log_skip "[config] copyOnSelect already false"
+    else
         tmp=$(mktemp)
         jq '.copyOnSelect = false' "$CLAUDE_JSON" > "$tmp" && mv "$tmp" "$CLAUDE_JSON"
         log_step "[config] set copyOnSelect=false"
-    else
-        log_skip "[config] copyOnSelect already false"
     fi
 else
     log_skip "[config] ~/.claude.json or jq missing"
