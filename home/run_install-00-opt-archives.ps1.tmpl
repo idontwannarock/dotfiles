@@ -46,6 +46,21 @@
 # Unix already installs go this way (run_once_install-01-runtimes.sh.tmpl,
 # install_go_linux_tarball). This makes Windows match rather than diverge.
 #
+# run_onchange_before_clear-readonly-externals.ps1.tmpl retired with this change.
+# It existed because Temurin's zips carry a read-only bit on a few entries, chezmoi
+# maps that to the DOS ReadOnly attribute when it extracts an archive external, and
+# Windows then refused to let chezmoi overwrite its own output on the next version
+# bump (twpayne/chezmoi#3441):
+#
+#     .local/opt/jdk-17/bin/server/classes.jsa: Access is denied.
+#
+# chezmoi no longer writes into those directories, so it can no longer be blocked by
+# them. The reinstall path below sidesteps the attribute anyway: Remove-Item -Force
+# deletes read-only files, and the directory is replaced wholesale rather than
+# written into. That script's template also asserted it could still find five
+# $jdkNNVersion pins in .chezmoiexternal.toml, and it is what caught this change —
+# it failed the render with "found 0" rather than silently freezing its onchange key.
+#
 # Version pins live here, not in .chezmoiexternal.toml. renovate.json's custom
 # manager reads this file too — keep the annotation format identical to the one
 # used there.
