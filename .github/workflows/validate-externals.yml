@@ -63,8 +63,14 @@ jobs:
           # render it too. It emits nothing on non-Windows, which is why the URL
           # list is a union rather than a separate job.
           chezmoi execute-template < home/run_install-00-opt-archives.ps1.tmpl > rendered.ps1
-          urls=$( { grep -oE 'url = "[^"]+"' rendered.toml | sed -E 's/url = "(.*)"/\1/'
-                    grep -oE "Url += *'[^']+'" rendered.ps1 | sed -E "s/.*'(.*)'/\1/" ; } | sort -u)
+          toml_urls=$(grep -oE 'url = "[^"]+"' rendered.toml | sed -E 's/url = "(.*)"/\1/')
+          # `|| true` is load-bearing: rendered.ps1 is empty on non-Windows and
+          # grep exits 1 on no match, which under `bash -e -o pipefail` kills the
+          # step before it prints anything. It did exactly that on the first run
+          # of this change. The .toml side deliberately keeps no guard -- an
+          # externals file that renders no URLs at all is a real regression.
+          ps1_urls=$(grep -oE "Url += *'[^']+'" rendered.ps1 | sed -E "s/.*'(.*)'/\1/" || true)
+          urls=$(printf '%s\n%s\n' "$toml_urls" "$ps1_urls" | grep -v '^$' | sort -u)
           echo "URLs to check on ${{ matrix.os }}:"; echo "$urls"
           fail=0
           while IFS= read -r u; do
