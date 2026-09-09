@@ -53,6 +53,20 @@ $script:LogEnded = $false
 $script:LogStart = $null
 $script:LogSectionStart = $null
 
+# Verbosity comes from chezmoi's own -v. chezmoi exports no verbosity variable,
+# but it does export the whole command line as CHEZMOI_ARGS, so read that rather
+# than invent a second switch nobody would remember. Split into tokens: a
+# substring test would fire on any path that happens to contain "-v".
+$script:LogVerbose = @($env:CHEZMOI_ARGS -split '\s+') |
+    Where-Object { $_ -eq '-v' -or $_ -eq '--verbose' } |
+    ForEach-Object { $true } |
+    Select-Object -First 1
+if ($null -eq $script:LogVerbose) { $script:LogVerbose = $false }
+
+# For call sites that have their own noise to gate, notably a command whose
+# output is only worth reading when it failed.
+function Test-LogVerbose { return $script:LogVerbose }
+
 # Invariant culture so the decimal point never becomes a comma on a localized
 # machine — the bash side prints under LC_ALL=C for the same reason.
 function Format-LogElapsed {
@@ -64,7 +78,9 @@ function Format-LogElapsed {
 # the following Log-Section, or Log-End.
 function Close-LogSection {
     if ($null -eq $script:LogSectionStart) { return }
-    Write-Host "    (took $(Format-LogElapsed $script:LogSectionStart))" -ForegroundColor DarkGray
+    if ($script:LogVerbose) {
+        Write-Host "    (took $(Format-LogElapsed $script:LogSectionStart))" -ForegroundColor DarkGray
+    }
     $script:LogSectionStart = $null
 }
 
@@ -77,10 +93,22 @@ function Log-Begin {
     Write-Host "=== BEGIN $Title ===" -ForegroundColor Cyan
 }
 
+# What each line is for, and why only some survive a quiet run:
+#
+#   Log-Begin/Log-End   the block and its total. Always: this is the answer to
+#                       "what ran and how long did it take".
+#   Log-Warn            always. A warning nobody sees is not a warning.
+#   Log-Step            something changed. Always, because a quiet run that
+#                       silently changed the machine is the thing to avoid.
+#   Log-Section         narration of intent. Verbose only.
+#   Log-Skip            nothing happened. Verbose only -- these are the bulk of
+#                       the output and they all say the same thing.
+#   (took ...)          per-section timing. Verbose only; the total on the END
+#                       banner is what a normal run needs.
 function Log-Section {
     param([Parameter(Mandatory = $true)][string]$Purpose)
     Close-LogSection
-    Write-Host "--- $Purpose" -ForegroundColor Cyan
+    if ($script:LogVerbose) { Write-Host "--- $Purpose" -ForegroundColor Cyan }
     $script:LogSectionStart = Get-Date
 }
 
@@ -91,7 +119,7 @@ function Log-Step {
 
 function Log-Skip {
     param([Parameter(Mandatory = $true)][string]$Message)
-    Write-Host "    $Message (skipped)" -ForegroundColor Gray
+    if ($script:LogVerbose) { Write-Host "    $Message (skipped)" -ForegroundColor Gray }
 }
 
 function Log-Warn {
