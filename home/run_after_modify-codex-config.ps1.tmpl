@@ -51,7 +51,7 @@ try {
 
         if ($sections.Count -gt 0) {
             $keptSections = "`n" + ($sections -join "`n")
-            Log-Step "[codex] preserving $($sections.Count) line(s) of project and plugin config"
+            Log-Skip "[codex] preserving $($sections.Count) line(s) of project and plugin config"
         } else {
             Log-Skip "[codex] no project or plugin blocks to preserve"
         }
@@ -102,10 +102,24 @@ web_search = "live"
 url = "https://developers.openai.com/mcp"
 '@
 
-    Log-Section "write config.toml without a BOM -- PowerShell 5.x would otherwise emit one and Codex rejects it"
-    $result = $globalConfig + $keptSections + $mcpConfig
-    [System.IO.File]::WriteAllText($configPath, $result + "`n", [System.Text.UTF8Encoding]::new($false))
-    Log-Step "[codex] wrote $configPath"
+    Log-Section "write config.toml only when the content differs -- this is a run_after_ script, so it runs on every apply and an unconditional write would report a change every time"
+    $result = $globalConfig + $keptSections + $mcpConfig + "`n"
+    # Read as bytes and decode by hand: Get-Content strips a UTF-8 BOM, so a file
+    # that still carries one would compare equal and never be rewritten. Compare
+    # with -cne, not -ne -- PowerShell's string -eq is case-insensitive, and a
+    # case-only drift in a model name or a path is exactly the kind of change
+    # this must catch.
+    $current = if (Test-Path $configPath) {
+        [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($configPath))
+    } else { $null }
+    if ($current -cne $result) {
+        # WriteAllText with an explicit BOM-less encoding: PowerShell 5.x would
+        # otherwise emit a BOM, and Codex rejects it.
+        [System.IO.File]::WriteAllText($configPath, $result, [System.Text.UTF8Encoding]::new($false))
+        Log-Step "[codex] wrote $configPath"
+    } else {
+        Log-Skip "[codex] $configPath already up to date"
+    }
 } catch {
     Log-End -ErrorRecord $_
     throw
