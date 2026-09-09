@@ -16,7 +16,7 @@ set -euo pipefail
 
 log_begin "npm global tools"
 
-log_section "check npm is available — every install below needs it"
+log_section "check npm is available -- every install below needs it"
 if ! command -v npm &>/dev/null; then
     log_warn "[npm-tools] npm not found; skipping all npm installs"
     exit 0
@@ -30,7 +30,7 @@ fi
 # on PATH, so `command -v` finds the Windows copy and would skip the Linux one.
 log_section "uninstall retired npm tools so removal converges on every machine"
 if npm ls -g --depth=0 @colbymchenry/codegraph &>/dev/null; then
-    log_step "[npm-tools] removing codegraph — 2 calls across the whole transcript history, one of them a status probe; its 9 tool schemas loaded every session regardless"
+    log_step "[npm-tools] removing codegraph -- 2 calls across the whole transcript history, one of them a status probe; its 9 tool schemas loaded every session regardless"
     npm uninstall -g @colbymchenry/codegraph 2>&1 || true
 else
     log_skip "[npm-tools] codegraph not installed"
@@ -48,13 +48,13 @@ npm_install codex @openai/codex
 # in with `claude mcp add --scope project`. Installing globally rather than
 # leaving it to `npx -y <pkg>@latest` still matters -- npx adds an `npm exec`
 # wrapper plus a `sh -c` layer, 3 processes where a binary costs 1.
-log_section "install chrome-devtools-mcp — available for repos that opt in, not registered globally"
+log_section "install chrome-devtools-mcp -- available for repos that opt in, not registered globally"
 npm_install chrome-devtools-mcp chrome-devtools-mcp
 
-log_section "install agent-browser-mcp — same deal as chrome-devtools-mcp"
+log_section "install agent-browser-mcp -- same deal as chrome-devtools-mcp"
 npm_install agent-browser-mcp agent-browser-mcp
 
-log_section "install OpenSpec CLI — spec/change tracking used by dev-workflow"
+log_section "install OpenSpec CLI -- spec/change tracking used by dev-workflow"
 if command -v openspec &>/dev/null; then
     log_skip "[openspec] already installed"
 else

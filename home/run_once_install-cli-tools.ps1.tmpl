@@ -81,7 +81,7 @@ $ErrorActionPreference = "Stop"
 
 Log-Begin "Windows CLI tools"
 try {
-    Log-Section "no-op — every former package now comes from chezmoi-external, the OS, or is unmanaged"
+    Log-Section "no-op -- every former package now comes from chezmoi-external, the OS, or is unmanaged"
     Log-Skip "[cli-tools] nothing to install here; see this file's header for where each landed"
 } catch {
     Log-End -ErrorRecord $_

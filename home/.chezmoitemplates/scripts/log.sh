@@ -18,6 +18,13 @@
 # uncaught error) still prints the closing banner with the real exit code.
 # Callers must not install their own EXIT trap.
 
+# Everything these functions print is ASCII, deliberately. The PowerShell mirror
+# has to be -- chezmoi captures a run_ script through a pipe and the child pwsh
+# encodes it with the console code page, which turned every em dash into "?" once
+# the profile stopped running chcp for it (see scripts/log.ps1). Bash has no such
+# problem, but the two sides are kept identical on purpose, so the rule is the
+# same on both: use "--", never an em dash, in any string these functions print.
+
 _LOG_TITLE=""
 _LOG_T0=""
 _LOG_SECTION_T0=""

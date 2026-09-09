@@ -11,7 +11,7 @@ set -euo pipefail
 
 log_begin "Claude Code config"
 
-log_section "check claude CLI is available — every step below drives it"
+log_section "check claude CLI is available -- every step below drives it"
 if ! command -v claude &>/dev/null; then
     log_warn "claude command not found; skipping Claude config setup"
     exit 0
@@ -62,14 +62,14 @@ echo "$RETIRED_PLUGINS" | while IFS='|' read -r id reason; do
     # Check first: uninstalling something absent writes to stderr, and 11 of those
     # every apply would bury the real output.
     if echo "$INSTALLED_PLUGINS" | grep -qF "$id"; then
-        log_step "[plugins] removing ${id} — ${reason}"
+        log_step "[plugins] removing ${id} -- ${reason}"
         claude plugin uninstall "$id" 2>&1 || true
     else
         log_skip "[plugins] ${id} not installed"
     fi
 done
 
-log_section "install jdtls — the Java LSP; pinned tarball here, scoop rolling release on Windows"
+log_section "install jdtls -- the Java LSP; pinned tarball here, scoop rolling release on Windows"
 JDTLS_DIR="$HOME/.local/share/jdtls"
 if ! command -v jdtls &>/dev/null && [ ! -f "$JDTLS_DIR/bin/jdtls" ]; then
     JDTLS_VERSION="1.58.0-202602271700"
@@ -114,13 +114,13 @@ if [ -d "$PLUGIN_CACHE/superpowers-marketplace" ]; then
     log_step "[cleanup] removed superpowers-marketplace cache"
 fi
 if claude plugin marketplace list 2>/dev/null | grep -q "superpowers-marketplace"; then
-    log_step "[plugins] removing marketplace superpowers-marketplace — no plugin uses it"
+    log_step "[plugins] removing marketplace superpowers-marketplace -- no plugin uses it"
     claude plugin marketplace remove superpowers-marketplace 2>&1 || true
 else
     log_skip "[plugins] superpowers-marketplace not registered"
 fi
 
-log_section "register user-scope MCP servers — a stdio server costs one process per session"
+log_section "register user-scope MCP servers -- a stdio server costs one process per session"
 # The cost of user scope is per session, not per machine, so a stdio server
 # earns the scope only if every session genuinely uses it. An http server
 # spawns nothing locally and is close to free. Everything still out of scope
@@ -152,7 +152,7 @@ codegraph|2 calls across the whole transcript history, one of them a status prob
 echo "$RETIRED_MCP" | while IFS='|' read -r name reason; do
     [ -n "$name" ] || continue
     if claude mcp list 2>/dev/null | grep -q "^${name}:"; then
-        log_step "[mcp] unregistering ${name} — ${reason}"
+        log_step "[mcp] unregistering ${name} -- ${reason}"
         claude mcp remove --scope user "$name" >/dev/null 2>&1 || true
     else
         log_skip "[mcp] ${name} not registered"

@@ -18,20 +18,20 @@ log_begin "container & cloud tools"
 
 {{- if eq .chezmoi.os "darwin" }}
 
-log_section "check Homebrew is available — every install below goes through it"
+log_section "check Homebrew is available -- every install below goes through it"
 if ! command -v brew &>/dev/null; then
     log_warn "[containers] Homebrew not found; skipping"
     exit 0
 fi
 
-log_section "install Docker Desktop — ships both the docker CLI and compose"
+log_section "install Docker Desktop -- ships both the docker CLI and compose"
 brew_install_cask docker
 
 log_section "install Kubernetes CLI tooling"
 pkg_install kubectl
 pkg_install kubelogin
 
-log_section "install Lens — the Kubernetes GUI"
+log_section "install Lens -- the Kubernetes GUI"
 brew_install_cask lens
 
 {{- else }}
@@ -63,14 +63,14 @@ else
     sudo apt-get update -q && sudo apt-get install -y kubectl
 fi
 
-log_section "check kubelogin — no apt package, so this only reports"
+log_section "check kubelogin -- no apt package, so this only reports"
 if command -v kubelogin &>/dev/null; then
     log_skip "[kubelogin] already installed"
 else
     log_warn "[kubelogin] install manually: https://github.com/Azure/kubelogin"
 fi
 
-log_section "skip Lens — GUI app, belongs to the host OS on Linux/WSL"
+log_section "skip Lens -- GUI app, belongs to the host OS on Linux/WSL"
 log_skip "[lens] GUI app; install manually on Linux/WSL if needed"
 
 {{- end }}

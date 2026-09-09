@@ -26,14 +26,14 @@ $nvmExe     = Join-Path $nvmHome "nvm.exe"
 
 Log-Begin "Wave 9: scoop -> chezmoi-external (nvm)"
 try {
-    Log-Section "guard on the external having landed — everything below drives nvm.exe"
+    Log-Section "guard on the external having landed -- everything below drives nvm.exe"
     if (-not (Test-Path $nvmExe)) {
         Log-Warn "[nvm] $nvmExe not found -- .chezmoiexternal.toml has not extracted nvm-noinstall.zip yet"
         Log-Warn "[nvm] skipping; rerun 'chezmoi apply'"
         return
     }
 
-    Log-Section "uninstall scoop nvm — this also strips scoop's NVM_HOME/NVM_SYMLINK env and PATH entries"
+    Log-Section "uninstall scoop nvm -- this also strips scoop's NVM_HOME/NVM_SYMLINK env and PATH entries"
     if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
         $installed = $false
         try {
@@ -100,7 +100,7 @@ try {
     # In-process PATH for the bootstrap below.
     $env:PATH = "$nvmHome;$nvmSymlink;$env:PATH"
 
-    Log-Section "write settings.txt — nvm-windows reads it to decide where Node versions install"
+    Log-Section "write settings.txt -- nvm-windows reads it to decide where Node versions install"
     # ASCII encoding mirrors the scoop manifest's pre_install writer.
     $settings = Join-Path $nvmHome "settings.txt"
     if (-not (Test-Path $settings)) {
@@ -111,7 +111,7 @@ try {
         Log-Skip "[settings.txt] already present"
     }
 
-    Log-Section "create the nvm root dir — the NSIS installer normally does it, but we deploy by zip extract"
+    Log-Section "create the nvm root dir -- the NSIS installer normally does it, but we deploy by zip extract"
     # Without it `nvm install` aborts with "<root> could not be found or does not exist".
     if (-not (Test-Path $nvmRoot)) {
         New-Item -ItemType Directory -Force -Path $nvmRoot | Out-Null
@@ -120,7 +120,7 @@ try {
         Log-Skip "[root] already present"
     }
 
-    Log-Section "bootstrap latest LTS Node — 'nvm use' needs a UAC prompt, so a non-interactive apply may stop half-way"
+    Log-Section "bootstrap latest LTS Node -- 'nvm use' needs a UAC prompt, so a non-interactive apply may stop half-way"
     # `nvm use` creates the active-version symlink via mklink, which triggers a UAC/
     # elevate prompt -- expected and interactive. Skipped entirely if a Node is active.
     #

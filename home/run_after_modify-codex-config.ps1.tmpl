@@ -21,7 +21,7 @@ try {
         Log-Skip "[codex] $configDir already exists"
     }
 
-    Log-Section "salvage the machine-local [projects.*] blocks — a plain overwrite would lose per-project settings"
+    Log-Section "salvage the machine-local [projects.*] blocks -- a plain overwrite would lose per-project settings"
     $keptSections = ""
     if (Test-Path $configPath) {
         $lines = Get-Content $configPath -Encoding UTF8
@@ -59,7 +59,7 @@ try {
         Log-Skip "[codex] no existing config.toml"
     }
 
-    Log-Section "compose the global settings block — must stay in sync with dot_codex/modify_config.toml (Unix)"
+    Log-Section "compose the global settings block -- must stay in sync with dot_codex/modify_config.toml (Unix)"
     $globalConfig = @'
 #:schema https://developers.openai.com/codex/config-schema.json
 
@@ -95,7 +95,7 @@ model_verbosity = "medium"
 web_search = "live"
 '@
 
-    Log-Section "compose the MCP server block — all entries are remote URLs, so this block is identical on every OS"
+    Log-Section "compose the MCP server block -- all entries are remote URLs, so this block is identical on every OS"
     $mcpConfig = @'
 
 [mcp_servers.openaiDeveloperDocs]
@@ -106,7 +106,7 @@ url = "https://developers.openai.com/mcp"
 url = "https://mcp.slack.com/mcp"
 '@
 
-    Log-Section "write config.toml without a BOM — PowerShell 5.x would otherwise emit one and Codex rejects it"
+    Log-Section "write config.toml without a BOM -- PowerShell 5.x would otherwise emit one and Codex rejects it"
     $result = $globalConfig + $keptSections + $mcpConfig
     [System.IO.File]::WriteAllText($configPath, $result + "`n", [System.Text.UTF8Encoding]::new($false))
     Log-Step "[codex] wrote $configPath"

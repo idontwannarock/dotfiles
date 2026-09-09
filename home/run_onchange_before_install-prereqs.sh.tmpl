@@ -8,7 +8,7 @@
 
 log_begin "apply prereqs"
 
-log_section "ensure jq — modify_settings.json.sh.tmpl needs it to patch Claude Code settings"
+log_section "ensure jq -- modify_settings.json.sh.tmpl needs it to patch Claude Code settings"
 if command -v jq &>/dev/null; then
     log_skip "[jq] already installed"
     exit 0

@@ -15,7 +15,7 @@ log_begin "CLI tools"
 
 {{- if eq .chezmoi.os "darwin" }}
 
-log_section "check Homebrew is available — every install below goes through it"
+log_section "check Homebrew is available -- every install below goes through it"
 if ! command -v brew &>/dev/null; then
     log_warn "[cli-tools] Homebrew not found; skipping"
     exit 0
@@ -32,7 +32,7 @@ pkg_install nexttrace
 pkg_install yt-dlp
 pkg_install golangci-lint
 
-log_section "install the PostgreSQL client — libpq is keg-only, so force-link to expose psql"
+log_section "install the PostgreSQL client -- libpq is keg-only, so force-link to expose psql"
 if command -v psql &>/dev/null; then
     log_skip "[psql] already installed"
 else
@@ -51,7 +51,7 @@ pkg_install tree
 pkg_install ffmpeg
 pkg_install psql postgresql-client
 
-log_section "install golangci-lint — not in apt, so use the official installer into ~/.local/bin"
+log_section "install golangci-lint -- not in apt, so use the official installer into ~/.local/bin"
 if command -v golangci-lint &>/dev/null; then
     log_skip "[golangci-lint] already installed"
 else
@@ -62,7 +62,7 @@ else
         || log_warn "[golangci-lint] install failed. See https://golangci-lint.run/welcome/install/"
 fi
 
-log_section "install hugo — apt coverage varies by release, so fall back to a manual pointer"
+log_section "install hugo -- apt coverage varies by release, so fall back to a manual pointer"
 if command -v hugo &>/dev/null; then
     log_skip "[hugo] already installed"
 else
@@ -70,7 +70,7 @@ else
     sudo apt-get install -y hugo 2>/dev/null || log_warn "[hugo] not available in apt. Install from https://gohugo.io/installation/"
 fi
 
-log_section "install nexttrace — not packaged in apt, use the upstream script"
+log_section "install nexttrace -- not packaged in apt, use the upstream script"
 if command -v nexttrace &>/dev/null; then
     log_skip "[nexttrace] already installed"
 else
@@ -78,7 +78,7 @@ else
     curl -fsSL nxtrace.org/nt | bash 2>/dev/null || log_warn "[nexttrace] install manually: https://github.com/nxtrace/NTrace-core"
 fi
 
-log_section "install yt-dlp — apt coverage varies, fall back to a pip pointer"
+log_section "install yt-dlp -- apt coverage varies, fall back to a pip pointer"
 if command -v yt-dlp &>/dev/null; then
     log_skip "[yt-dlp] already installed"
 else

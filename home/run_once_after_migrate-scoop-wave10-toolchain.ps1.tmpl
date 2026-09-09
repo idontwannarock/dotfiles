@@ -46,7 +46,7 @@ $packages = @(
 
 Log-Begin "Wave 10: scoop -> chezmoi-external (Category D toolchain)"
 try {
-    Log-Section "guard on the externals having landed — the env rewiring below points at them"
+    Log-Section "guard on the externals having landed -- the env rewiring below points at them"
     $goExe    = Join-Path $goBin "go.exe"
     $jdk21Exe = Join-Path $jdk21 "bin\java.exe"
     if (-not ((Test-Path $goExe) -and (Test-Path $jdk21Exe))) {
@@ -64,7 +64,7 @@ try {
         Log-Skip "scoop not found; skipping uninstall"
     }
 
-    Log-Section "point JAVA_HOME at jdk-21 — use-java switches the default by rewriting this, not PATH"
+    Log-Section "point JAVA_HOME at jdk-21 -- use-java switches the default by rewriting this, not PATH"
     $curJavaHome = [Environment]::GetEnvironmentVariable("JAVA_HOME", "User")
     if ($curJavaHome -ieq $jdk21) {
         Log-Skip "[JAVA_HOME] already $jdk21"
@@ -91,7 +91,7 @@ try {
         Remove-Item "env:$n" -ErrorAction SilentlyContinue
     }
 
-    Log-Section "rebuild User PATH as REG_EXPAND_SZ — SetEnvironmentVariable writes REG_SZ and would kill the %JAVA_HOME% indirection"
+    Log-Section "rebuild User PATH as REG_EXPAND_SZ -- SetEnvironmentVariable writes REG_SZ and would kill the %JAVA_HOME% indirection"
     # Read the raw User PATH WITHOUT expanding, so any existing %VAR% refs survive,
     # strip leftover scoop Category-D toolchain entries, prepend the new bins, and
     # write back as REG_EXPAND_SZ so %JAVA_HOME%\bin re-expands per session (this is
@@ -160,7 +160,7 @@ public static extern System.IntPtr SendMessageTimeout(
     # finds an existing install and takes the fast path on re-runs).
     $env:PATH = "$jdk21\bin;$goBin;$mavenBin;$cargoBin;$env:PATH"
 
-    Log-Section "install pinned Python versions via uv — uv's version-alias junction is unreadable under SSH, so pin exact patches"
+    Log-Section "install pinned Python versions via uv -- uv's version-alias junction is unreadable under SSH, so pin exact patches"
     # Done here (run_after_, after externals deploy + env reset) rather than in
     # run_once_install-01-runtimes.ps1.tmpl: that runs before externals land, and
     # run_once would not retry once uv/externals appear.
@@ -203,7 +203,7 @@ public static extern System.IntPtr SendMessageTimeout(
         Log-Warn "[python] uv not on PATH -- skipping; rerun 'chezmoi apply' once uv (Wave 1 external) is present"
     }
 
-    Log-Section "install Rust via the official rustup-init — scoop's rustup was the SSH-hostile one"
+    Log-Section "install Rust via the official rustup-init -- scoop's rustup was the SSH-hostile one"
     if (Get-Command rustup -ErrorAction SilentlyContinue) {
         Log-Skip "[rust] rustup present; ensuring stable is the default toolchain"
         rustup default stable 2>&1 | Out-Null

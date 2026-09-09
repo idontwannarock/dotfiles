@@ -43,7 +43,7 @@ save_probe_state() {
     printf '%s' "$REMOTE_SHAS" > "$STATE_FILE"
 }
 
-log_section "ask each marketplace remote for its head — skip the whole refresh when none moved"
+log_section "ask each marketplace remote for its head -- skip the whole refresh when none moved"
 if ! command -v jq &>/dev/null || ! command -v git &>/dev/null || [ ! -f "$KNOWN" ]; then
     log_warn "[probe] jq, git or known_marketplaces.json missing; doing the full refresh"
     PROBE_OK=0
@@ -94,7 +94,7 @@ if [ "$PROBE_OK" -eq 1 ]; then
         claude plugin marketplace update "$name" 2>&1 | sed 's/^/        /' || true
     done <<< "$MOVED"
 else
-    log_step "[marketplaces] refreshing all — the probe could not tell which moved"
+    log_step "[marketplaces] refreshing all -- the probe could not tell which moved"
     claude plugin marketplace update 2>&1 | sed 's/^/        /' || true
 fi
 
@@ -113,11 +113,11 @@ if [ -z "$ENABLED" ]; then
     exit 0
 fi
 
-log_section "update the plugins that belong to a refreshed marketplace — restart Claude Code afterwards to pick up new versions"
+log_section "update the plugins that belong to a refreshed marketplace -- restart Claude Code afterwards to pick up new versions"
 while IFS= read -r plugin; do
     [ -z "$plugin" ] && continue
     if [ "$PROBE_OK" -eq 1 ] && ! printf '%s' "$MOVED" | grep -qxF "${plugin##*@}"; then
-        log_skip "[plugins] $plugin — its marketplace did not move"
+        log_skip "[plugins] $plugin -- its marketplace did not move"
         continue
     fi
     log_step "[plugins] updating $plugin"

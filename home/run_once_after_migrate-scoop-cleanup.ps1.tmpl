@@ -51,7 +51,7 @@ $packages = @(
 
 Log-Begin "scoop cleanup (waves 2-7, 11, 12a)"
 try {
-    Log-Section "check scoop is installed — with no scoop there is nothing to uninstall"
+    Log-Section "check scoop is installed -- with no scoop there is nothing to uninstall"
     if (-not (Get-Command "scoop" -ErrorAction SilentlyContinue)) {
         Log-Skip "scoop not found; skipping the entire cleanup"
         return

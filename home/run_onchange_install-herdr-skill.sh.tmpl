@@ -39,7 +39,7 @@ TMP="$(mktemp)"
 # 要讀得出是哪一種失敗（舊版沒有 --skill vs. binary 壞掉）。
 if ! SKILL_ERR="$(herdr --skill 2>&1 >"$TMP")"; then
     rm -f "$TMP"
-    log_warn "herdr --skill failed (${SKILL_ERR:-no detail}) — keeping the skill already on disk"
+    log_warn "herdr --skill failed (${SKILL_ERR:-no detail}) -- keeping the skill already on disk"
     exit 0
 fi
 
@@ -55,7 +55,7 @@ if ! [ -s "$TMP" ] \
     || ! grep -q '^name: herdr$' "$TMP" \
     || ! grep -q '^description: "' "$TMP"; then
     rm -f "$TMP"
-    log_warn "v${VERSION} skill failed validation — keeping the skill already on disk"
+    log_warn "v${VERSION} skill failed validation -- keeping the skill already on disk"
     exit 0
 fi
 

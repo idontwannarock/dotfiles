@@ -54,7 +54,7 @@ try {
         [System.IO.File]::WriteAllText($stateFile, ($remoteShas -join "`n"))
     }
 
-    Log-Section "ask each marketplace remote for its head — skip the whole refresh when none moved"
+    Log-Section "ask each marketplace remote for its head -- skip the whole refresh when none moved"
     if ((-not (Test-Path $known)) -or (-not (Get-Command git -ErrorAction SilentlyContinue))) {
         Log-Warn "[probe] git or known_marketplaces.json missing; doing the full refresh"
         $probeOk = $false
@@ -110,7 +110,7 @@ try {
             claude plugin marketplace update $name 2>&1 | ForEach-Object { "        $_" }
         }
     } else {
-        Log-Step "[marketplaces] refreshing all — the probe could not tell which moved"
+        Log-Step "[marketplaces] refreshing all -- the probe could not tell which moved"
         claude plugin marketplace update 2>&1 | ForEach-Object { "        $_" }
     }
 
@@ -143,10 +143,10 @@ try {
         return
     }
 
-    Log-Section "update the plugins that belong to a refreshed marketplace — restart Claude Code afterwards to pick up new versions"
+    Log-Section "update the plugins that belong to a refreshed marketplace -- restart Claude Code afterwards to pick up new versions"
     foreach ($plugin in $enabled) {
         if ($probeOk -and ($moved -notcontains ($plugin -split '@')[-1])) {
-            Log-Skip "[plugins] $plugin — its marketplace did not move"
+            Log-Skip "[plugins] $plugin -- its marketplace did not move"
             continue
         }
         Log-Step "[plugins] updating $plugin"

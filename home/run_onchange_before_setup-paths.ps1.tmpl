@@ -34,7 +34,7 @@ try {
     $jqVersion = "1.8.1"
     $jqUrl     = "https://github.com/jqlang/jq/releases/download/jq-$jqVersion/jq-windows-amd64.exe"
 
-    Log-Section "create ~/.local/bin — the download and PATH entry below both need it to exist"
+    Log-Section "create ~/.local/bin -- the download and PATH entry below both need it to exist"
     if (-not (Test-Path $localBin)) {
         New-Item -ItemType Directory -Path $localBin -Force | Out-Null
         Log-Step "[setup-paths] created $localBin"
@@ -42,7 +42,7 @@ try {
         Log-Skip "[setup-paths] $localBin already exists"
     }
 
-    Log-Section "download jq.exe here rather than via external — externals land after modify_settings.json needs jq"
+    Log-Section "download jq.exe here rather than via external -- externals land after modify_settings.json needs jq"
     if (-not (Test-Path $jqExe)) {
         Log-Step "[setup-paths] downloading jq v$jqVersion -> $jqExe"
         Invoke-WebRequest -Uri $jqUrl -OutFile $jqExe -UseBasicParsing

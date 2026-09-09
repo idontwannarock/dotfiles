@@ -17,7 +17,7 @@ $ErrorActionPreference = "Continue"
 
 Log-Begin "Wave 8: GnuPG off scoop"
 try {
-    Log-Section "kill leftover scoop gpg daemons — they hold files the uninstall needs to delete"
+    Log-Section "kill leftover scoop gpg daemons -- they hold files the uninstall needs to delete"
     Get-Process gpg-agent,scdaemon,keyboxd,dirmngr -ErrorAction SilentlyContinue |
         Where-Object { $_.Path -like '*\scoop\apps\gpg\*' } |
         Stop-Process -Force -ErrorAction SilentlyContinue
@@ -28,7 +28,7 @@ try {
         Log-Skip "scoop not found; skipping uninstall"
     }
 
-    Log-Section "remove orphaned gpg/gpg2 shims — the scoop gpg shim was hijacked to git's gpg"
+    Log-Section "remove orphaned gpg/gpg2 shims -- the scoop gpg shim was hijacked to git's gpg"
     $shimDir = Join-Path $env:USERPROFILE "scoop\shims"
     foreach ($f in 'gpg.exe','gpg.shim','gpg2.exe','gpg2.shim') {
         $p = Join-Path $shimDir $f
@@ -38,11 +38,11 @@ try {
         }
     }
 
-    Log-Section "wipe stale gpg-agent sockets — a dead scoop-portable agent socket makes gpg report 'No secret key'"
+    Log-Section "wipe stale gpg-agent sockets -- a dead scoop-portable agent socket makes gpg report 'No secret key'"
     Get-ChildItem (Join-Path $env:USERPROFILE ".gnupg\S.gpg-agent*") -Force -ErrorAction SilentlyContinue |
         Remove-Item -Force -ErrorAction SilentlyContinue
 
-    Log-Section "drop the orphaned clink cmd.exe AutoRun — it broke the corp-ssh-askpass handoff (Wave 4 gap)"
+    Log-Section "drop the orphaned clink cmd.exe AutoRun -- it broke the corp-ssh-askpass handoff (Wave 4 gap)"
     # Only if it points at a clink.bat that no longer exists -- never touch a working AutoRun.
     $cp = 'HKCU:\Software\Microsoft\Command Processor'
     $autorun = (Get-ItemProperty -Path $cp -Name AutoRun -ErrorAction SilentlyContinue).AutoRun
