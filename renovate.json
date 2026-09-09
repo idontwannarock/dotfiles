@@ -10,8 +10,11 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "chezmoi external tool version pins annotated with inline # renovate: comments",
-      "managerFilePatterns": ["/\\.chezmoiexternal\\.toml$/"],
+      "description": "chezmoi tool version pins annotated with inline # renovate: comments. Two files: .chezmoiexternal.toml, and run_install-00-opt-archives.ps1.tmpl for the six large archives that were moved out of externals (see that file's header for why).",
+      "managerFilePatterns": [
+        "/\\.chezmoiexternal\\.toml$/",
+        "/run_install-00-opt-archives\\.ps1\\.tmpl$/"
+      ],
       "matchStringsStrategy": "any",
       "matchStrings": [
         "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)(?: versioning=(?<versioning>.*?))?(?: extractVersion=(?<extractVersion>.*?))?\\s+\\{\\{-?\\s*\\$\\w+\\s*:=\\s*\"(?<currentValue>[^\"]+)\""

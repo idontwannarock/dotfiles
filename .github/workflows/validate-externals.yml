@@ -32,7 +32,7 @@ jobs:
             "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
             --jq '.[].filename')
           echo "changed files:"; echo "$files"
-          if echo "$files" | grep -qE '^home/(\.chezmoiexternal\.toml|run_onchange_install-gnupg\.ps1\.tmpl)$'; then
+          if echo "$files" | grep -qE '^home/(\.chezmoiexternal\.toml|run_onchange_install-gnupg\.ps1\.tmpl|run_install-00-opt-archives\.ps1\.tmpl)$'; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
           else
             echo "relevant=false" >> "$GITHUB_OUTPUT"
@@ -57,8 +57,25 @@ jobs:
       - name: Render externals + check URLs
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          chezmoi execute-template < home/.chezmoiexternal.toml > rendered.toml
-          urls=$(grep -oE 'url = "[^"]+"' rendered.toml | sed -E 's/url = "(.*)"/\1/' | sort -u)
+          # --source is required, not cosmetic: run_install-00-opt-archives.ps1.tmpl
+          # pulls in {{ template "scripts/log.ps1" }}, and execute-template reading
+          # stdin cannot resolve .chezmoitemplates without being told where the
+          # source is. The repo root carries .chezmoiroot = home, so $PWD is the
+          # right thing to pass, matching test-render.yml.
+          chezmoi execute-template --source="$PWD" < home/.chezmoiexternal.toml > rendered.toml
+          # go and the five JDKs live in a run_ script rather than the externals
+          # file (see its header). Their URLs still need the same HEAD check, so
+          # render it too. It emits nothing on non-Windows, which is why the URL
+          # list is a union rather than a separate job.
+          chezmoi execute-template --source="$PWD" < home/run_install-00-opt-archives.ps1.tmpl > rendered.ps1
+          toml_urls=$(grep -oE 'url = "[^"]+"' rendered.toml | sed -E 's/url = "(.*)"/\1/')
+          # `|| true` is load-bearing: rendered.ps1 is empty on non-Windows and
+          # grep exits 1 on no match, which under `bash -e -o pipefail` kills the
+          # step before it prints anything. It did exactly that on the first run
+          # of this change. The .toml side deliberately keeps no guard -- an
+          # externals file that renders no URLs at all is a real regression.
+          ps1_urls=$(grep -oE "Url += *'[^']+'" rendered.ps1 | sed -E "s/.*'(.*)'/\1/" || true)
+          urls=$(printf '%s\n%s\n' "$toml_urls" "$ps1_urls" | grep -v '^$' | sort -u)
           echo "URLs to check on ${{ matrix.os }}:"; echo "$urls"
           fail=0
           while IFS= read -r u; do

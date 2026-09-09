@@ -295,86 +295,20 @@
 # ~/.local/opt/<tool> (real dirs, no scoop 'current' junction) -> SSH-safe.
 #
 # python (uv) install, rust bootstrap, all env/PATH wiring, and the scoop
-# uninstall live in run_once_after_migrate-scoop-wave10-toolchain.ps1.tmpl
-# (runs after these externals deploy). go/maven need no script -- PATH is wired
-# by the Wave 10 migrate script.
+# uninstall live in run_once_after_migrate-scoop-wave10-toolchain.ps1.tmpl.
+# maven needs no script -- PATH is wired by the Wave 10 migrate script.
 #
-# JDKs: 5 temurin majors installed in parallel (not switched). stripComponents = 1
-# drops each zip's single versioned top-level dir (e.g. jdk-21.0.11+10/) so the
-# contents land directly in ~/.local/opt/jdk-N. Temurin 8 uses a different naming
-# scheme (jdk8u<NNN>-b<BB>); 11+ use jdk-<V>+<B> (the '+' is %2B in the GitHub URL,
-# '_' in the asset filename). Pinned to the currently-installed versions; bump the
-# URL + rerun `chezmoi apply` to upgrade (Adoptium quarterly CU -- review every 6
-# months). graalvm21-jdk21 + graalvm-oracle-jdk are NOT migrated; the Wave 10
-# script uninstalls them (GraalVM CE 21 is frozen at 21.0.2; user does not need
-# graalvm/native-image).
-# Go pinned locally (not via the .goLinuxTarballVersion data var): config data
-# freezes at chezmoi init, so a local var renders fresh at apply and avoids a
-# downgrade from the currently-installed 1.24.13. The Unix tarball var sits at
-# 1.24.4; the two Go pins are allowed to drift (both >= goMinVersion).
-# renovate: datasource=golang-version depName=go
-{{- $goVersion    := "1.27.1" }}
+# go and the five JDKs are NOT here. They moved to
+# run_install-00-opt-archives.ps1.tmpl, which reinstalls on a URL change instead
+# of re-hashing every file on every apply. Together they were 1.7 GB and 11 of
+# the 26 seconds a `chezmoi apply --dry-run` took on Windows; that file's header
+# carries the measurements and the force-reinstall commands. graalvm21-jdk21 and
+# graalvm-oracle-jdk were never migrated -- the Wave 10 script uninstalls them
+# (GraalVM CE 21 is frozen at 21.0.2; user does not need graalvm/native-image).
 # renovate: datasource=maven depName=org.apache.maven:maven-core
 {{- $mavenVersion := "3.9.16" }}
 # major segment of the archive path is derived so a 3->4 bump can't 404 (maven-3/ vs maven-4/)
 {{- $mavenMajor := $mavenVersion | splitList "." | first }}
-
-[".local/opt/go"]
-    type = "archive"
-    url = "https://go.dev/dl/go{{ $goVersion }}.windows-amd64.zip"
-    stripComponents = 1
-
-# JDKs refactored to per-major version variables so Renovate can bump each one.
-# Each major is its OWN GitHub repo (temurin21-binaries only ships 21.x), so
-# Renovate cannot cross majors -- no allowedVersions needed. The version is
-# encoded twice with different escaping: the release tag uses '+' (URL-encoded
-# %2B), the asset filename uses '_'. jdk-8 uses the legacy 8uNNN-bNN scheme
-# (tag jdk8u..., asset drops the '-'); 11+ use jdk-<X.Y.Z>+<B>. The renovate
-# `versioning` for these lives in renovate.json packageRules (the +build suffix
-# needs a regex versioning; jdk-8's scheme needs a different one).
-# renovate: datasource=github-releases depName=adoptium/temurin8-binaries extractVersion=^jdk(?<version>.+)$
-{{- $jdk8Version := "8u504-b01" }}
-{{- $jdk8Asset := $jdk8Version | replace "-" "" }}
-[".local/opt/jdk-8"]
-    type = "archive"
-    url = "https://github.com/adoptium/temurin8-binaries/releases/download/jdk{{ $jdk8Version }}/OpenJDK8U-jdk_x64_windows_hotspot_{{ $jdk8Asset }}.zip"
-    stripComponents = 1
-
-# renovate: datasource=github-releases depName=adoptium/temurin11-binaries extractVersion=^jdk-(?<version>.+)$
-{{- $jdk11Version := "11.0.32+9" }}
-{{- $jdk11Tag := $jdk11Version | replace "+" "%2B" }}
-{{- $jdk11Asset := $jdk11Version | replace "+" "_" }}
-[".local/opt/jdk-11"]
-    type = "archive"
-    url = "https://github.com/adoptium/temurin11-binaries/releases/download/jdk-{{ $jdk11Tag }}/OpenJDK11U-jdk_x64_windows_hotspot_{{ $jdk11Asset }}.zip"
-    stripComponents = 1
-
-# renovate: datasource=github-releases depName=adoptium/temurin17-binaries extractVersion=^jdk-(?<version>.+)$
-{{- $jdk17Version := "17.0.20+8" }}
-{{- $jdk17Tag := $jdk17Version | replace "+" "%2B" }}
-{{- $jdk17Asset := $jdk17Version | replace "+" "_" }}
-[".local/opt/jdk-17"]
-    type = "archive"
-    url = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-{{ $jdk17Tag }}/OpenJDK17U-jdk_x64_windows_hotspot_{{ $jdk17Asset }}.zip"
-    stripComponents = 1
-
-# renovate: datasource=github-releases depName=adoptium/temurin21-binaries extractVersion=^jdk-(?<version>.+)$
-{{- $jdk21Version := "21.0.12+8" }}
-{{- $jdk21Tag := $jdk21Version | replace "+" "%2B" }}
-{{- $jdk21Asset := $jdk21Version | replace "+" "_" }}
-[".local/opt/jdk-21"]
-    type = "archive"
-    url = "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-{{ $jdk21Tag }}/OpenJDK21U-jdk_x64_windows_hotspot_{{ $jdk21Asset }}.zip"
-    stripComponents = 1
-
-# renovate: datasource=github-releases depName=adoptium/temurin25-binaries extractVersion=^jdk-(?<version>.+)$
-{{- $jdk25Version := "25.0.4+7" }}
-{{- $jdk25Tag := $jdk25Version | replace "+" "%2B" }}
-{{- $jdk25Asset := $jdk25Version | replace "+" "_" }}
-[".local/opt/jdk-25"]
-    type = "archive"
-    url = "https://github.com/adoptium/temurin25-binaries/releases/download/jdk-{{ $jdk25Tag }}/OpenJDK25U-jdk_x64_windows_hotspot_{{ $jdk25Asset }}.zip"
-    stripComponents = 1
 
 [".local/opt/maven"]
     type = "archive"

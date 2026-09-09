@@ -3,8 +3,10 @@
 # (Category D multi-version dev toolchain).
 #
 # Covers go124, python311/313, rustup, maven3, temurin 8/11/17/21/25, plus the two
-# manually-installed graalvm packages (removed, not migrated). Runs after
-# .chezmoiexternal.toml extracts go / jdk-N / maven into ~/.local/opt/. Idempotent
+# manually-installed graalvm packages (removed, not migrated). Runs after maven
+# lands from .chezmoiexternal.toml and after run_install-00-opt-archives.ps1.tmpl
+# installs go and the JDKs (they left the externals file for cost reasons; see
+# that file's header). Idempotent
 # (every step gated on desired state); also provisions fresh machines (the scoop
 # steps no-op when nothing is installed).
 #
