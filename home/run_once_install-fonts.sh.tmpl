@@ -14,7 +14,7 @@ log_begin "fonts"
 
 {{- if eq .chezmoi.os "darwin" }}
 
-log_section "check Homebrew is available — casks are the only install path here"
+log_section "check Homebrew is available -- casks are the only install path here"
 if ! command -v brew &>/dev/null; then
     log_warn "[fonts] Homebrew not found; skipping"
     exit 0
@@ -26,7 +26,7 @@ brew_install_cask font-jetbrains-mono
 
 {{- else }}
 
-log_section "report font sources — on Linux/WSL the host OS terminal owns fonts, not this shell"
+log_section "report font sources -- on Linux/WSL the host OS terminal owns fonts, not this shell"
 log_skip "[fonts] managed by the host OS terminal emulator"
 log_step "CaskaydiaCove Nerd Font: https://www.nerdfonts.com/font-downloads"
 log_step "JetBrains Mono: https://www.jetbrains.com/lp/mono/"

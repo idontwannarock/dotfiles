@@ -22,7 +22,7 @@ function Remove-ScoopPackage {
         [switch]$PruneShims
     )
 
-    Log-Section "remove scoop $Name — $Reason"
+    Log-Section "remove scoop $Name -- $Reason"
 
     $installed = $false
     try {

@@ -17,7 +17,7 @@
 
 Log-Begin "Windows fonts"
 try {
-    Log-Section "no-op — fonts arrive via chezmoi-external and are registered by run_once_register-fonts"
+    Log-Section "no-op -- fonts arrive via chezmoi-external and are registered by run_once_register-fonts"
     Log-Skip "[fonts] nothing to install here; existing scoop font installs are left untouched by design"
 } catch {
     Log-End -ErrorRecord $_

@@ -9,7 +9,7 @@ $ErrorActionPreference = "Stop"
 
 Log-Begin "Claude Code config"
 try {
-    Log-Section "check claude CLI is available — every step below drives it"
+    Log-Section "check claude CLI is available -- every step below drives it"
     if (-not (Get-Command "claude" -ErrorAction SilentlyContinue)) {
         Log-Warn "claude command not found; skipping Claude config setup"
         return
@@ -59,7 +59,7 @@ try {
         # Check first: uninstalling something absent writes to stderr, and 11 of those
         # every apply would bury the real output.
         if ($installedPlugins -match [regex]::Escape($p.Id)) {
-            Log-Step "[plugins] removing $($p.Id) — $($p.Reason)"
+            Log-Step "[plugins] removing $($p.Id) -- $($p.Reason)"
             claude plugin uninstall $p.Id 2>&1 | Out-Null
         } else {
             Log-Skip "[plugins] $($p.Id) not installed"
@@ -100,13 +100,13 @@ try {
         Log-Skip "[cleanup] no stale superpowers-marketplace cache"
     }
     if ((claude plugin marketplace list 2>$null | Out-String) -match "superpowers-marketplace") {
-        Log-Step "[plugins] removing marketplace superpowers-marketplace — no plugin uses it"
+        Log-Step "[plugins] removing marketplace superpowers-marketplace -- no plugin uses it"
         claude plugin marketplace remove superpowers-marketplace 2>&1 | Out-Null
     } else {
         Log-Skip "[plugins] superpowers-marketplace not registered"
     }
 
-    Log-Section "rewrite plugin hook commands through cygpath — Git Bash cannot use the backslash paths Claude emits"
+    Log-Section "rewrite plugin hook commands through cygpath -- Git Bash cannot use the backslash paths Claude emits"
     if (Test-Path $pluginCache) {
         $hooksFiles = Get-ChildItem -Path $pluginCache -Recurse -Filter "hooks.json" |
             Where-Object { $_.FullName -match "\\hooks\\hooks\.json$" }
@@ -135,7 +135,7 @@ try {
         }
     }
 
-    Log-Section "strip CRLF from plugin .sh files — Git Bash refuses to run them otherwise"
+    Log-Section "strip CRLF from plugin .sh files -- Git Bash refuses to run them otherwise"
     if (Get-Command "dos2unix" -ErrorAction SilentlyContinue) {
         $shFiles = @(Get-ChildItem -Path $pluginCache -Recurse -Filter "*.sh" -ErrorAction SilentlyContinue)
         Log-Step "[crlf] converting $($shFiles.Count) plugin .sh files"
@@ -147,7 +147,7 @@ try {
         Log-Warn "[crlf] re-run 'chezmoi apply' to fetch ~/.local/bin/dos2unix.exe (from .chezmoiexternal.toml)"
     }
 
-    Log-Section "strip UTF-8 BOM from hooks.json — Claude's JSON parser rejects it"
+    Log-Section "strip UTF-8 BOM from hooks.json -- Claude's JSON parser rejects it"
     if (Test-Path $pluginCache) {
         $hooksJsonFiles = @(Get-ChildItem -Path $pluginCache -Recurse -Filter "hooks.json" |
             Where-Object { $_.FullName -match "\\hooks\\hooks\.json$" })
@@ -162,7 +162,7 @@ try {
         }
     }
 
-    Log-Section "register user-scope MCP servers — a stdio server costs one process per session"
+    Log-Section "register user-scope MCP servers -- a stdio server costs one process per session"
     # The cost of user scope is per session, not per machine, so a stdio server
     # earns the scope only if every session genuinely uses it. An http server
     # spawns nothing locally and is close to free. Everything still out of
@@ -196,7 +196,7 @@ try {
     foreach ($name in $retiredMcp.Keys) {
         $present = claude mcp list 2>$null | Select-String -Pattern "^${name}:" -Quiet
         if ($present) {
-            Log-Step "[mcp] unregistering ${name} — $($retiredMcp[$name])"
+            Log-Step "[mcp] unregistering ${name} -- $($retiredMcp[$name])"
             # 2>$null for the same reason as the `claude mcp list` guard above:
             # this section runs under Stop, where 2>&1 makes native stderr
             # terminating.

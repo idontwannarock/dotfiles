@@ -41,7 +41,7 @@ Log-Begin "chezmoi.toml self-heal"
 try {
     $configPath = Join-Path $env:USERPROFILE ".config\chezmoi\chezmoi.toml"
 
-    Log-Section "refresh [scriptEnv] PATH from the registry — the config froze it at init time"
+    Log-Section "refresh [scriptEnv] PATH from the registry -- the config froze it at init time"
     # Single-quoted here-string: the PATH is rendered verbatim from the same
     # expression .chezmoi.toml.tmpl uses, and must not be re-interpolated.
     $expectedPath = @'
@@ -76,12 +76,12 @@ try {
             [System.IO.File]::WriteAllText($configPath, $newContent, $utf8NoBom)
 
             Log-Step "[chezmoi.toml] refreshed [scriptEnv] PATH from the registry"
-            Log-Warn "chezmoi read the old PATH at startup — re-run 'chezmoi apply' once so"
+            Log-Warn "chezmoi read the old PATH at startup -- re-run 'chezmoi apply' once so"
             Log-Warn "lookPath and run_*/modify_* subprocesses see newly installed tools"
         }
     }
 
-    Log-Section "locate git-bash by ordered candidate roots — a PATH lookup would pick WSL's System32 bash"
+    Log-Section "locate git-bash by ordered candidate roots -- a PATH lookup would pick WSL's System32 bash"
     # Detect git-bash: ordered candidate Git-for-Windows roots, first whose
     # bin\bash.exe exists wins. Non-scoop first (new installs win), scoop last
     # (back-compat). NEVER a PATH `where bash` -- that picks WSL System32 bash or the
@@ -158,7 +158,7 @@ try {
     Log-Step "[chezmoi.toml] patched [interpreters.sh] in $configPath"
     Log-Step "[chezmoi.toml] command = `"$expectedCommand`""
     Log-Warn "if THIS apply now fails on a modify_*.sh with 'not a valid Win32 application',"
-    Log-Warn "re-run 'chezmoi apply' once more — the patched interpreter is read at startup"
+    Log-Warn "re-run 'chezmoi apply' once more -- the patched interpreter is read at startup"
 } catch {
     Log-End -ErrorRecord $_
     throw

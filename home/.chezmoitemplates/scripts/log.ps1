@@ -34,22 +34,19 @@
 # catch runs before finally, and Log-End is idempotent, so a failure reports
 # FAILED and the finally call is a no-op.
 
-# chezmoi runs these scripts with -NoProfile (see [interpreters.ps1] in
-# .chezmoi.toml.tmpl), so Documents/_shared-profile.d/00-encoding.ps1 does not
-# run and the console is left on the OEM code page. Every banner below carries an
-# em dash and most section names carry Chinese, both of which print as "?" there.
-# This mirrors that fragment, minus only its interactive Clear-Host.
+# Everything this file prints is ASCII, deliberately. chezmoi captures a run_
+# script's output through a pipe, and the child pwsh encodes that with the
+# console code page, which is Big5 on this machine -- an em dash came out as "?"
+# in all 13 places one apply printed one. The profile used to hide that by
+# running chcp 65001 before anything else, and -NoProfile stopped it
+# (see [interpreters.ps1] in .chezmoi.toml.tmpl).
 #
-# chcp is load-bearing and was dropped once to save a process: setting
-# [Console]::OutputEncoding alone left every em dash printing as "??" -- 13 of
-# them in one apply, measured. The console code page is what actually governs the
-# bytes when chezmoi captures the script's output through a pipe. chcp is a few
-# tens of milliseconds against the 1.65s that -NoProfile saves per script.
-try {
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-    chcp 65001 > $null
-} catch {}
+# Setting [Console]::OutputEncoding here does not fix it, and neither does
+# calling chcp here; both were tried and measured. Adding a UTF-8 BOM does not
+# either -- pwsh reads a BOM-less UTF-8 script correctly, so the script side was
+# never the broken half. Keeping the output ASCII removes the dependency instead
+# of working around it, so keep it that way: use "--", never an em dash, in any
+# string these functions print.
 
 $script:LogTitle = ""
 $script:LogEnded = $false

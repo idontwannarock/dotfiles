@@ -17,7 +17,7 @@ $ErrorActionPreference = "Stop"
 
 Log-Begin "DOCKER_HOST"
 try {
-    Log-Section "pin User DOCKER_HOST at the WSL-local endpoint — the daemon lives in WSL Ubuntu, the CLI on Windows"
+    Log-Section "pin User DOCKER_HOST at the WSL-local endpoint -- the daemon lives in WSL Ubuntu, the CLI on Windows"
     $expected = "tcp://127.0.0.1:2375"
     $current  = [Environment]::GetEnvironmentVariable("DOCKER_HOST", "User")
 

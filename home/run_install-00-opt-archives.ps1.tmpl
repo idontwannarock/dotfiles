@@ -122,8 +122,8 @@ $force   = $env:DOTFILES_REINSTALL_OPT -eq '1'
 
 Log-Begin "~/.local/opt toolchain archives"
 try {
-    Log-Section "compare each directory against the URL it was installed from — reinstall only when the pin moved"
-    if ($force) { Log-Step "[force] DOTFILES_REINSTALL_OPT=1 — reinstalling every entry" }
+    Log-Section "compare each directory against the URL it was installed from -- reinstall only when the pin moved"
+    if ($force) { Log-Step "[force] DOTFILES_REINSTALL_OPT=1 -- reinstalling every entry" }
 
     if (-not (Test-Path $optRoot)) { New-Item -ItemType Directory -Path $optRoot -Force | Out-Null }
 
@@ -155,7 +155,7 @@ try {
                 Log-Skip "[$($spec.Name)] found $want on disk; adopted without downloading"
                 continue
             }
-            Log-Step "[$($spec.Name)] on-disk version is not $want — reinstalling"
+            Log-Step "[$($spec.Name)] on-disk version is not $want -- reinstalling"
         }
 
         Log-Step "[$($spec.Name)] downloading $($spec.Url)"

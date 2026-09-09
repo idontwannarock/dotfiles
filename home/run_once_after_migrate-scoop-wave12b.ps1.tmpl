@@ -32,14 +32,14 @@ $clsid    = "{23170F69-40C1-278A-1000-000100020000}"
 
 Log-Begin "Wave 12b: scoop -> chezmoi-external (7z)"
 try {
-    Log-Section "guard on the external having downloaded the MSI — everything below unpacks it"
+    Log-Section "guard on the external having downloaded the MSI -- everything below unpacks it"
     if (-not (Test-Path $msi)) {
         Log-Warn "[7z] $msi not found -- .chezmoiexternal.toml has not downloaded the 7-Zip MSI yet"
         Log-Warn "[7z] skipping; rerun 'chezmoi apply'"
         return
     }
 
-    Log-Section "extract the MSI with 'msiexec /a' — an administrative install lays out the payload with no system registration"
+    Log-Section "extract the MSI with 'msiexec /a' -- an administrative install lays out the payload with no system registration"
     # Gate on 7z.exe so a re-apply is a no-op.
     if (Test-Path $exe) {
         Log-Skip "[7z] $exe already present; skipping extraction"
@@ -61,7 +61,7 @@ try {
         Log-Step "[7z] extracted to $optDir"
     }
 
-    Log-Section "uninstall scoop 7zip BEFORE registering — its uninstaller deletes the HKCU shell-extension keys"
+    Log-Section "uninstall scoop 7zip BEFORE registering -- its uninstaller deletes the HKCU shell-extension keys"
     if (Get-Command "scoop" -ErrorAction SilentlyContinue) {
         $installed = $false
         try {

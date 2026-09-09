@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 
 Log-Begin "Windows Terminal settings"
 try {
-    Log-Section "check Windows Terminal and jq are present — the merge below needs both"
+    Log-Section "check Windows Terminal and jq are present -- the merge below needs both"
     $settingsDir = Join-Path $env:LOCALAPPDATA "Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState"
     $settingsPath = Join-Path $settingsDir "settings.json"
 
@@ -22,7 +22,7 @@ try {
         return
     }
 
-    Log-Section "merge our patch into the live settings.json — a plain overwrite would drop machine-local profiles"
+    Log-Section "merge our patch into the live settings.json -- a plain overwrite would drop machine-local profiles"
     $patch = @'
 {
   "copyFormatting": "none",

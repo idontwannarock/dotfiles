@@ -57,7 +57,7 @@ function Register-UserFonts($sourceDir, $filter, $label) {
 
 Log-Begin "per-user font registration"
 try {
-    Log-Section "prepare the per-user font dir with the AppContainer ACL — sandboxed UWP apps cannot read it otherwise"
+    Log-Section "prepare the per-user font dir with the AppContainer ACL -- sandboxed UWP apps cannot read it otherwise"
     # SIDs: S-1-15-2-1 = ALL APPLICATION PACKAGES,
     # S-1-15-2-2 = ALL RESTRICTED APPLICATION PACKAGES (scoop-nerd-fonts#198).
     New-Item -ItemType Directory -Force $fontInstallDir | Out-Null
@@ -71,7 +71,7 @@ try {
     Set-Acl -AclObject $acl $fontInstallDir
     Log-Step "[fonts] ACL applied to $fontInstallDir"
 
-    Log-Section "copy and register each face under HKCU — this replaces what scoop's font install used to do"
+    Log-Section "copy and register each face under HKCU -- this replaces what scoop's font install used to do"
     $share = Join-Path $env:USERPROFILE ".local\share\fonts"
     # cascadia: the external already kept only the Mono faces; the *NerdFontMono-*
     # filter matches scoop's manifest. jetbrains: all *.ttf (the external kept only

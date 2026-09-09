@@ -9,7 +9,7 @@ $ErrorActionPreference = "Continue"
 
 Log-Begin "Rust toolchain update"
 try {
-    Log-Section "put ~/.cargo/bin on PATH for this session — rustup-init ran with --no-modify-path"
+    Log-Section "put ~/.cargo/bin on PATH for this session -- rustup-init ran with --no-modify-path"
     $cargoBin = Join-Path $env:USERPROFILE ".cargo\bin"
     if (Test-Path $cargoBin) { $env:PATH = "$cargoBin;$env:PATH" }
 
@@ -18,7 +18,7 @@ try {
         return
     }
 
-    Log-Section "update the stable toolchain — best effort, an offline machine must not fail the whole apply"
+    Log-Section "update the stable toolchain -- best effort, an offline machine must not fail the whole apply"
     rustup update stable 2>&1 | ForEach-Object { "        $_" }
     if ($LASTEXITCODE -eq 0) {
         Log-Step "[rust] stable is up to date"

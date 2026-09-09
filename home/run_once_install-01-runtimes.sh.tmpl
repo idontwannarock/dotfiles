@@ -31,7 +31,7 @@ JDK_VERSIONS=(
 
 log_begin "runtimes & languages"
 
-log_section "install nvm — the Node version manager everything else on Node depends on"
+log_section "install nvm -- the Node version manager everything else on Node depends on"
 if [ -s "$HOME/.nvm/nvm.sh" ]; then
     log_skip "[nvm] already installed"
 else
@@ -51,7 +51,7 @@ else
     log_warn "[node] nvm not available in this session; skipping node install"
 fi
 
-log_section "install vim — the editor, configured by dot_vimrc"
+log_section "install vim -- the editor, configured by dot_vimrc"
 if command -v vim &>/dev/null; then
     log_skip "[vim] already installed"
 else
@@ -64,7 +64,7 @@ else
 {{- end }}
 fi
 
-log_section "install starship — the shell prompt wired up by dot_shell_common"
+log_section "install starship -- the shell prompt wired up by dot_shell_common"
 if command -v starship &>/dev/null; then
     log_skip "[starship] already installed"
 else
@@ -129,14 +129,14 @@ install_go_linux_tarball() {
     log_step "[go] installed: $(go version)"
 }
 {{ end }}
-log_section "install Go ≥ ${GO_MIN_VERSION} — the base toolchain GOTOOLCHAIN bootstraps from"
+log_section "install Go >= ${GO_MIN_VERSION} -- the base toolchain GOTOOLCHAIN bootstraps from"
 go_needs_install=true
 if command -v go >/dev/null 2>&1; then
     go_current_version="$(go version | awk '{print $3}' | sed 's/^go//')"
     if go_version_below_min "$go_current_version" "$GO_MIN_VERSION"; then
         log_step "[go] existing ${go_current_version} < ${GO_MIN_VERSION}; replacing"
     else
-        log_skip "[go] already installed (${go_current_version} ≥ ${GO_MIN_VERSION})"
+        log_skip "[go] already installed (${go_current_version} >= ${GO_MIN_VERSION})"
         go_needs_install=false
     fi
 fi
@@ -155,7 +155,7 @@ if [ "$go_needs_install" = true ]; then
 {{- end }}
 fi
 
-log_section "install rustup — Rust toolchain manager (run_update-rust-toolchain keeps it current)"
+log_section "install rustup -- Rust toolchain manager (run_update-rust-toolchain keeps it current)"
 if command -v rustup &>/dev/null; then
     log_skip "[rustup] already installed"
 else
@@ -168,7 +168,7 @@ fi
 # Make cargo bin available in this session
 [ -s "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
-log_section "install uv — Python package + version manager (Python is managed entirely through it)"
+log_section "install uv -- Python package + version manager (Python is managed entirely through it)"
 if command -v uv &>/dev/null; then
     log_skip "[uv] already installed"
 else
@@ -193,7 +193,7 @@ else
     log_warn "[python] uv not available in this session; skipping python install"
 fi
 
-log_section "install sdkman — the JVM toolchain manager JDKs and Maven come from"
+log_section "install sdkman -- the JVM toolchain manager JDKs and Maven come from"
 if [ -s "$HOME/.sdkman/bin/sdkman-init.sh" ]; then
     log_skip "[sdkman] already installed"
 else
@@ -220,14 +220,14 @@ if command -v sdk &>/dev/null; then
     # 和 nounset 不相容，所以在呼叫 sdk 前關掉 -u。
     set +u
 
-    log_section "install pinned Temurin JDKs via sdkman — identifiers drift upstream, review every 6 months"
+    log_section "install pinned Temurin JDKs via sdkman -- identifiers drift upstream, review every 6 months"
     for ver in "${JDK_VERSIONS[@]}"; do
         if [ -d "$HOME/.sdkman/candidates/java/${ver}" ]; then
             log_skip "[jdk ${ver}] already installed"
         else
             log_step "[jdk ${ver}] installing via sdkman"
             if ! sdk install java "$ver"; then
-                log_warn "[jdk ${ver}] install failed — identifier may be stale; refresh with: sdk list java | grep tem"
+                log_warn "[jdk ${ver}] install failed -- identifier may be stale; refresh with: sdk list java | grep tem"
             fi
         fi
     done
@@ -242,6 +242,6 @@ if command -v sdk &>/dev/null; then
 
     set -u
 else
-    log_warn "[sdkman] sdk command not available in this session — JDK/Maven skipped"
+    log_warn "[sdkman] sdk command not available in this session -- JDK/Maven skipped"
 fi
 {{ end -}}

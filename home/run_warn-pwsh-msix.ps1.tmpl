@@ -14,7 +14,7 @@
 
 Log-Begin "pwsh MSIX check"
 try {
-    Log-Section "detect whether pwsh is the Store (MSIX) build — nudge only, never changes anything"
+    Log-Section "detect whether pwsh is the Store (MSIX) build -- nudge only, never changes anything"
     # Detection must never fail an apply -- this is only a nudge. Any error (e.g. the
     # Appx module failing to load) is swallowed and treated as "can't tell, stay quiet".
     try {

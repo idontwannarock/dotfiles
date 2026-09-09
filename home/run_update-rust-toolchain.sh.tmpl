@@ -10,7 +10,7 @@ set -euo pipefail
 
 log_begin "Rust toolchain update"
 
-log_section "load rustup into this session — PATH may not be wired yet"
+log_section "load rustup into this session -- PATH may not be wired yet"
 [ -s "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
 if ! command -v rustup &>/dev/null; then
@@ -18,7 +18,7 @@ if ! command -v rustup &>/dev/null; then
     exit 0
 fi
 
-log_section "update the stable toolchain — best effort, an offline machine must not fail the whole apply"
+log_section "update the stable toolchain -- best effort, an offline machine must not fail the whole apply"
 if rustup update stable; then
     log_step "[rust] stable is up to date"
 else
