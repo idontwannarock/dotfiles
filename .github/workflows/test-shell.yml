@@ -11,6 +11,10 @@ on:
     paths:
       - 'tests/*.test.sh'
       - 'home/dot_local/bin/**'
+      - 'home/dot_codex/modify_config.toml'
+      - 'home/run_after_modify-codex-config.ps1.tmpl'
+      - 'home/run_install-04-codex-plugins.sh.tmpl'
+      - 'home/run_install-04-codex-plugins.ps1.tmpl'
       # The shared skill bodies and the cross-tool reference tree are subjects
       # too: path-format-flag-order.test.sh reads them rather than any script
       # under bin/. A guard that does not run when the files it guards change is

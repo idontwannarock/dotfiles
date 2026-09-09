@@ -69,18 +69,34 @@ Claude 端是 command 的能力（`/handoff`、`/pickup`、`/code:review-archite
 ["model-with-reasoning", "current-dir", "git-branch", "context-used", "five-hour-limit", "thread-title"]
 ```
 
-### 6. Slack MCP server
+### 6. Slack plugin
 
-Slack 直接列在同步的 MCP servers 中（見 `dot_codex/modify_config.toml` 與其
-Windows 對應 `run_after_modify-codex-config.ps1.tmpl`）：
+chezmoi 會在 Codex CLI 可用後執行以下命令，確保官方 curated Slack plugin 已安裝
+且啟用：
 
-```toml
-[mcp_servers.slack]
-url = "https://mcp.slack.com/mcp"
+```bash
+codex plugin add slack@openai-curated --json
 ```
 
-server 條目由 chezmoi 隨 config 一併維護；Slack OAuth 登入請自行進入 Codex CLI
-完成，屬每台機器各自的互動式設定，不會同步進 dotfiles。
+`run_install-04-codex-plugins` 每次 apply 都會先讀取 `codex plugin list --json`。
+plugin 已安裝且啟用時，腳本不會重裝。plugin 被移除或停用時，下一次 apply 會修復
+狀態。Codex CLI 暫時不存在時，腳本會略過，並在下一次 apply 重試。
+
+Slack 的帳號連線由 plugin 管理。若 Codex 顯示連線提示，請在該機器完成一次互動式
+登入，再開一個新 session。OAuth credential、Slack client ID 和 token 都不會寫入
+dotfiles。
+
+不要再執行 `codex mcp login slack`。Slack MCP 不支援 Codex 對直接 remote MCP 使用
+的 dynamic client registration。同步的 config 因此不再包含
+`[mcp_servers.slack]` 或 `https://mcp.slack.com/mcp`。可用以下命令確認本機狀態：
+
+```bash
+codex plugin list --json
+codex mcp get slack  # 預期回報找不到名為 slack 的直接 MCP server
+```
+
+Codex plugin registration 位於每台機器的 `[plugins.*]` config tables。chezmoi 會保留
+所有這類 tables，和既有的 `[projects.*]` per-machine 設定相同。
 
 ## 使用方式
 

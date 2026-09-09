@@ -1,6 +1,6 @@
 {{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_after_ script — 合併 codex config（Windows）
-# 同步全域設定與通用 MCP servers，但保留本機的 per-project 設定
+# 同步全域設定與通用 MCP servers，但保留本機的 project 與 plugin 設定
 #
 # ⚠ 雙源：dot_codex/modify_config.toml 是 Unix 版本，此檔是 Windows 版本。
 # 兩邊的全域設定（model、profiles、instructions）和 MCP servers 必須同步。
@@ -21,14 +21,14 @@ try {
         Log-Skip "[codex] $configDir already exists"
     }
 
-    Log-Section "salvage the machine-local [projects.*] blocks -- a plain overwrite would lose per-project settings"
+    Log-Section "salvage the machine-local [projects.*] and [plugins.*] blocks -- a plain overwrite would lose machine-local settings"
     $keptSections = ""
     if (Test-Path $configPath) {
         $lines = Get-Content $configPath -Encoding UTF8
         $inKeep = $false
         $sections = @()
         foreach ($line in $lines) {
-            if ($line -match '^\[projects\.') {
+            if ($line -match '^\[(projects|plugins)\.') {
                 $inKeep = $true
                 $sections += $line
             } elseif ($line -match '^\[' -and $inKeep) {
@@ -38,7 +38,7 @@ try {
             }
         }
         # 丟棄尾端空行。保留範圍到下一個 section header 為止，所以最後一個
-        # [projects.*] 與 [mcp_servers.*] 之間的空行也被收了進來；原樣保留會和
+        # 保留區塊與 [mcp_servers.*] 之間的空行也被收了進來；原樣保留會和
         # $mcpConfig 開頭那個空行疊加。此腳本重寫的是自己上一輪的輸出，必須是
         # 不動點，否則每次 apply 多一行。分隔一律由 $mcpConfig 單方提供。
         #
@@ -51,9 +51,9 @@ try {
 
         if ($sections.Count -gt 0) {
             $keptSections = "`n" + ($sections -join "`n")
-            Log-Step "[codex] preserving $($sections.Count) line(s) of [projects.*] config"
+            Log-Step "[codex] preserving $($sections.Count) line(s) of project and plugin config"
         } else {
-            Log-Skip "[codex] no [projects.*] blocks to preserve"
+            Log-Skip "[codex] no project or plugin blocks to preserve"
         }
     } else {
         Log-Skip "[codex] no existing config.toml"
@@ -100,10 +100,6 @@ web_search = "live"
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
-
-# Slack OAuth 登入請自行進入 Codex CLI 完成（per-machine，不同步）。
-[mcp_servers.slack]
-url = "https://mcp.slack.com/mcp"
 '@
 
     Log-Section "write config.toml without a BOM -- PowerShell 5.x would otherwise emit one and Codex rejects it"

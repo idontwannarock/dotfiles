@@ -1,0 +1,36 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_ script — required Codex plugins (Unix/macOS/WSL)
+# Runs on every apply so a missing or disabled plugin is repaired.
+
+set -euo pipefail
+
+{{ template "scripts/log.sh" }}
+{{ template "scripts/load-nvm" }}
+
+plugin="slack@openai-curated"
+
+log_begin "Codex plugins"
+
+log_section "check Codex CLI is available"
+if ! command -v codex &>/dev/null; then
+    log_warn "[codex-plugins] codex not found; retrying on the next apply"
+    exit 0
+fi
+
+log_section "inspect required Codex plugins"
+plugin_list="$(codex plugin list --json)"
+if jq -e --arg plugin "$plugin" \
+    '(.installed | type == "array") and any(.installed[]; .pluginId == $plugin and .installed == true and .enabled == true)' \
+    <<<"$plugin_list" &>/dev/null; then
+    log_skip "[codex-plugins] $plugin is installed and enabled"
+else
+    jq_rc=$?
+    if [ "$jq_rc" -gt 1 ]; then
+        log_warn "[codex-plugins] codex plugin list returned invalid JSON"
+        exit "$jq_rc"
+    fi
+    log_step "[codex-plugins] installing or enabling $plugin"
+    codex plugin add "$plugin" --json
+fi
+{{ end -}}
