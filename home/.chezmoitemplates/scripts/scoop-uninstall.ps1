@@ -26,7 +26,11 @@ function Remove-ScoopPackage {
 
     $installed = $false
     try {
-        $listOutput = scoop list $Name 2>$null | Out-String
+        # 6>$null as well as 2>$null: scoop prints "Installed apps matching
+        # 'x':" with Write-Host, which bypasses the pipeline entirely and lands
+        # on the host. Out-String never sees it, so every probe leaked a line
+        # about a package that was not even installed -- 19 of them in one apply.
+        $listOutput = scoop list $Name 2>$null 6>$null | Out-String
         $pattern = "(?im)^\s*$([regex]::Escape($Name))\b"
         if ($listOutput -match $pattern) { $installed = $true }
     } catch {}
