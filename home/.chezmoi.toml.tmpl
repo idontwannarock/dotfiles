@@ -106,7 +106,26 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
 # 缺了 pwsh，第一個 .ps1 run script 就會 exec: "pwsh": not found 而中止。見 README Bootstrap。
 # 不需路徑偵測：不像 bash（PATH 會選到 WSL System32 bash），pwsh 在 PATH 上無歧義
 # （App Execution Alias / winget / scoop 都正確解析）。非 Windows 不跑 .ps1，故僅 Windows。
+#
+# -NoProfile is the one place this deviates from chezmoi's built-in default, and
+# it is the whole reason the args are spelled out. Without it every run_ script
+# paid a full interactive profile load. Measured on Windows, three runs of an
+# empty script:
+#
+#     with profile   2.11s  2.24s  2.27s
+#     -NoProfile     0.50s  0.57s  0.56s
+#
+# About 1.65s each. Six .ps1 scripts, so roughly 10 seconds of every apply went
+# on starship, completions and profile.d for scripts that read none of them. The
+# profile also threw on every launch: it sets $RawUI.CursorPosition, which has no
+# valid handle when there is no console.
+#
+# Two things the profile used to supply, and where they come from now:
+#   PATH    [scriptEnv] above, read from the registry. Already independent.
+#   UTF-8   Documents/_shared-profile.d/00-encoding.ps1 set the console encoding.
+#           Without it the em dash in every log banner prints as "?".
+#           .chezmoitemplates/scripts/log.ps1 now sets it itself.
 [interpreters.ps1]
     command = "pwsh"
-    args = ["-NoLogo", "-File"]
+    args = ["-NoLogo", "-NoProfile", "-File"]
 {{- end }}

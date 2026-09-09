@@ -34,6 +34,18 @@
 # catch runs before finally, and Log-End is idempotent, so a failure reports
 # FAILED and the finally call is a no-op.
 
+# chezmoi runs these scripts with -NoProfile (see [interpreters.ps1] in
+# .chezmoi.toml.tmpl), so Documents/_shared-profile.d/00-encoding.ps1 does not
+# run and the console is left on the OEM code page. Every banner below carries an
+# em dash and most section names carry Chinese, both of which print as "?" there.
+# This mirrors that fragment, minus its interactive Clear-Host and minus its chcp
+# call -- chcp spawns a process, and the point of -NoProfile is to stop paying
+# for work the script does not need.
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+} catch {}
+
 $script:LogTitle = ""
 $script:LogEnded = $false
 $script:LogStart = $null
