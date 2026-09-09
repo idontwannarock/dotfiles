@@ -247,7 +247,11 @@ try {
         Log-Skip "[config] ~/.claude.json or jq missing"
     }
 
-    Log-Step "restart Claude Code to activate the changes above"
+    if (Test-LogChanged) {
+        Log-Step "restart Claude Code to activate the changes above"
+    } else {
+        Log-Skip "nothing changed; no Claude Code restart needed"
+    }
 } catch {
     Log-End -ErrorRecord $_
     throw
