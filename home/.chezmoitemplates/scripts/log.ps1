@@ -38,12 +38,17 @@
 # .chezmoi.toml.tmpl), so Documents/_shared-profile.d/00-encoding.ps1 does not
 # run and the console is left on the OEM code page. Every banner below carries an
 # em dash and most section names carry Chinese, both of which print as "?" there.
-# This mirrors that fragment, minus its interactive Clear-Host and minus its chcp
-# call -- chcp spawns a process, and the point of -NoProfile is to stop paying
-# for work the script does not need.
+# This mirrors that fragment, minus only its interactive Clear-Host.
+#
+# chcp is load-bearing and was dropped once to save a process: setting
+# [Console]::OutputEncoding alone left every em dash printing as "??" -- 13 of
+# them in one apply, measured. The console code page is what actually governs the
+# bytes when chezmoi captures the script's output through a pipe. chcp is a few
+# tens of milliseconds against the 1.65s that -NoProfile saves per script.
 try {
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    chcp 65001 > $null
 } catch {}
 
 $script:LogTitle = ""
