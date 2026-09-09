@@ -36,6 +36,16 @@ AppData
 .local/bin/corp-ssh-askpass
 {{- end }}
 
+# ── gpg cache keepalive: systemd user timer, so Linux/WSL only ────────
+# gpg-cache-warm is the guard every caller uses before a headless `pass`; the
+# keepalive and its units only make sense where systemd --user runs. Windows and
+# macOS keep their own agent cache behaviour and have no systemd.
+{{- if ne .chezmoi.os "linux" }}
+.local/bin/gpg-cache-warm
+.local/bin/gpg-cache-keepalive
+.config/systemd
+{{- end }}
+
 # ── pinentry-timeout: wraps /usr/bin/pinentry-curses, so Linux/WSL only ──
 # Windows uses pinentry-w32 and macOS pinentry-mac; neither needs the wrapper.
 # It is inert unless ~/.gnupg/gpg-agent.conf names it as pinentry-program, and

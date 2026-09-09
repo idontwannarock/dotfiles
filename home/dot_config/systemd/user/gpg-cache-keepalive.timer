@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh the gpg-agent cache every 6 hours
+
+[Timer]
+# default-cache-ttl is 86400 (24h idle). Six hours leaves three missed runs of
+# margin before the cache would expire on its own.
+OnBootSec=10min
+OnUnitActiveSec=6h
+
+[Install]
+WantedBy=timers.target

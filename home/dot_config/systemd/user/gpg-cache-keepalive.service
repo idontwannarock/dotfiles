@@ -1,0 +1,7 @@
+[Unit]
+Description=Keep the gpg-agent passphrase cache from going idle
+Documentation=man:gpg-agent(1)
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/gpg-cache-keepalive

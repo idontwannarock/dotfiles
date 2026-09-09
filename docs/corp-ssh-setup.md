@@ -136,6 +136,41 @@ Verifying it takes three checks, and the first two alone are a false green:
 `GET_PASSPHRASE` with a throwaway cache-id is the trick that makes step 3 cheap:
 it touches no keygrip, so a warm key cache survives the test.
 
+**Keep the cache warm, and refuse to run when it is not.** The timeout above
+caps a single prompt. It does not help against the shape that actually hurts: a
+background poll loop. On 2026-09-09 a `kubectl` loop retried every three
+seconds with a cold cache, so killing one pinentry only made room for the next,
+and the terminal it painted over belonged to a different session. Two pieces
+address that, and neither replaces the other.
+
+`~/.local/bin/gpg-cache-warm` (chezmoi-managed, Linux only) exits 0 when the
+password store's decryption key is cached and 1 when it is not. It derives the
+keygrip from `.gpg-id` rather than hardcoding it, and it reads **only the
+encryption subkey**: `pass` decrypts and never signs, so a warm signing key says
+nothing about whether a prompt will appear. Every headless caller of `pass`
+should guard on it and fail with a message instead of summoning pinentry.
+
+`~/.local/bin/gpg-cache-keepalive`, run every six hours by
+`gpg-cache-keepalive.timer`, does one cache-hit decrypt. Because
+`default-cache-ttl` is an idle timer, that single access pushes the 24-hour
+window forward, so the cache survives a working week and expires only at the
+30-day ceiling. It calls the guard first and exits quietly when the cache is
+cold: warming needs a passphrase, a passphrase needs pinentry, and pinentry from
+a timer draws on whatever terminal it finds.
+
+Two details make the difference between this working and only looking like it:
+
+- **Call the guard by path.** systemd's user PATH does not include
+  `~/.local/bin`. A bare `gpg-cache-warm` there resolves to nothing, exits 127,
+  and reads as "cold" — a keepalive that silently refreshes nothing forever.
+- **Log which branch ran.** Both paths exit 0, because a cold cache is not a
+  failure. Without a line in the journal, a keepalive that never warms anything
+  is indistinguishable from one that works. Check with
+  `journalctl --user -u gpg-cache-keepalive -n 5`; it must say `cache refreshed`.
+
+Neither piece survives a reboot or a gpg-agent restart. Both clear the cache
+outright, and only a human can refill it.
+
 **Back up the GPG private key.** If you lose it, every secret in `pass` is
 unrecoverable. Recommended:
 
@@ -429,7 +464,9 @@ on group membership, etc.).
   from a fully unattended context (e.g., a daemon started before any
   interactive login), you'd need to either pre-warm gpg-agent at boot via
   `gpg-preset-passphrase` (requires storing passphrase somewhere) or accept
-  that the first call after boot fails.
+  that the first call after boot fails. `gpg-cache-keepalive` narrows this but
+  does not close it: it holds an already-warm cache open, and a reboot or a
+  gpg-agent restart still needs one interactive `pass show`.
 - **Password rotation is manual.** The design detects expired passwords via
   auth failures, not via proactive notification.
 

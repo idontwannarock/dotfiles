@@ -1,0 +1,37 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# chezmoi run_onchange_ -- enable the gpg-agent cache keepalive timer.
+#
+# Deploying the unit files is not enough: systemd only runs a timer that is
+# enabled, and enabling is a per-machine state change, not a file. The hashes
+# below make this rerun whenever either unit changes, so an edit to the schedule
+# reaches a machine that already enabled the timer once.
+#
+# unit hashes: {{ include "dot_config/systemd/user/gpg-cache-keepalive.timer" | sha256sum }} {{ include "dot_config/systemd/user/gpg-cache-keepalive.service" | sha256sum }}
+set -eu
+
+{{ template "scripts/log.sh" }}
+
+log_begin "gpg cache keepalive timer"
+
+log_section "hold the passphrase cache open so a background job never meets a cold cache"
+
+# WSL images without a user session, and containers, have no systemd to talk to.
+# Warn rather than fail: the rest of the apply is unaffected, and the guard in
+# gpg-cache-warm still protects every caller.
+if ! systemctl --user show-environment >/dev/null 2>&1; then
+    log_warn "[gpg] no systemd user session; skipping timer (keepalive will not run)"
+    exit 0
+fi
+
+systemctl --user daemon-reload
+
+if [ "$(systemctl --user is-enabled gpg-cache-keepalive.timer 2>/dev/null || true)" = "enabled" ] \
+   && systemctl --user is-active gpg-cache-keepalive.timer >/dev/null 2>&1; then
+    log_skip "[gpg] keepalive timer already enabled and running"
+    exit 0
+fi
+
+log_step "[gpg] enabling gpg-cache-keepalive.timer"
+systemctl --user enable --now gpg-cache-keepalive.timer
+{{ end -}}
