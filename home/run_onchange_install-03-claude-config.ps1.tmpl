@@ -229,14 +229,19 @@ try {
     Log-Section "set user preferences in ~/.claude.json"
     $claudeJson = Join-Path $env:USERPROFILE ".claude.json"
     if ((Test-Path $claudeJson) -and (Get-Command "jq" -ErrorAction SilentlyContinue)) {
-        $current = & jq -r '.copyOnSelect // "unset"' $claudeJson
-        if ($current -ne "false") {
+        # `jq -e` on a comparison, not `// "unset"`. jq's // treats false and
+        # null alike, so a copyOnSelect that was already false read back as
+        # "unset" and this rewrote ~/.claude.json on every single apply while
+        # reporting a change that had already been made. -e exits non-zero when
+        # the result is false or null, which is exactly the "needs setting" case.
+        & jq -e '.copyOnSelect == false' $claudeJson *> $null
+        if ($LASTEXITCODE -eq 0) {
+            Log-Skip "[config] copyOnSelect already false"
+        } else {
             $patched = & jq '.copyOnSelect = false' $claudeJson
             $utf8NoBom = New-Object System.Text.UTF8Encoding $false
             [System.IO.File]::WriteAllText($claudeJson, ($patched -join "`n"), $utf8NoBom)
             Log-Step "[config] set copyOnSelect=false"
-        } else {
-            Log-Skip "[config] copyOnSelect already false"
         }
     } else {
         Log-Skip "[config] ~/.claude.json or jq missing"
