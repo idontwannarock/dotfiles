@@ -199,5 +199,9 @@ else
     log_skip "[config] ~/.claude.json or jq missing"
 fi
 
-log_step "restart Claude Code to activate the changes above"
+if log_changed; then
+    log_step "restart Claude Code to activate the changes above"
+else
+    log_skip "nothing changed; no Claude Code restart needed"
+fi
 {{ end -}}

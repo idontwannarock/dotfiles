@@ -28,6 +28,7 @@
 _LOG_TITLE=""
 _LOG_T0=""
 _LOG_SECTION_T0=""
+_LOG_CHANGED=""
 
 # Verbosity is a variable of this repo's own, not a chezmoi flag.
 #
@@ -87,6 +88,7 @@ log_end() {
 
 log_begin() {
     _LOG_TITLE="$1"
+    _LOG_CHANGED=""
     _LOG_T0="$(_log_now)"
     printf '=== BEGIN %s ===\n' "$_LOG_TITLE"
     trap log_end EXIT
@@ -113,7 +115,14 @@ log_section() {
     fi
     _LOG_SECTION_T0="$(_log_now)"
 }
-log_step() { printf '    %s\n' "$1"; }
+log_step() { _LOG_CHANGED=1; printf '    %s\n' "$1"; }
+
+# True once any log_step has fired. For a closing line that should only appear
+# when something actually changed -- "restart X to activate the changes above"
+# printed under an empty block is a false signal, and the quiet run made it
+# obvious. log_step is already the single place that means "work happened", so
+# this reads that rather than asking every call site to set a flag.
+log_changed() { [ -n "$_LOG_CHANGED" ]; }
 log_warn() { printf '    !! %s\n' "$1"; }
 log_skip() {
     if [ -n "$_LOG_VERBOSE" ]; then

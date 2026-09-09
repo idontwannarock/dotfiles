@@ -52,6 +52,7 @@ $script:LogTitle = ""
 $script:LogEnded = $false
 $script:LogStart = $null
 $script:LogSectionStart = $null
+$script:LogChanged = $false
 
 # Verbosity is a variable of this repo's own, not a chezmoi flag.
 #
@@ -91,6 +92,7 @@ function Log-Begin {
     $script:LogEnded = $false
     $script:LogStart = Get-Date
     $script:LogSectionStart = $null
+    $script:LogChanged = $false
     Write-Host "=== BEGIN $Title ===" -ForegroundColor Cyan
 }
 
@@ -115,8 +117,16 @@ function Log-Section {
 
 function Log-Step {
     param([Parameter(Mandatory = $true)][string]$Message)
+    $script:LogChanged = $true
     Write-Host "    $Message" -ForegroundColor Yellow
 }
+
+# True once any Log-Step has fired. For a closing line that should only appear
+# when something actually changed -- "restart X to activate the changes above"
+# printed under an empty block is a false signal, and the quiet run made it
+# obvious. Log-Step is already the single place that means "work happened", so
+# this reads that rather than asking every call site to set a flag.
+function Test-LogChanged { return $script:LogChanged }
 
 function Log-Skip {
     param([Parameter(Mandatory = $true)][string]$Message)
