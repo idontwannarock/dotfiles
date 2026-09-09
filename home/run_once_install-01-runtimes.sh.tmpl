@@ -187,8 +187,19 @@ export PATH="$HOME/.local/bin:$PATH"
 log_section "install Python 3.13 via uv"
 # uv python install 本身是冪等的：已安裝會 reuse。
 if command -v uv &>/dev/null; then
-    log_step "[python] ensuring 3.13 is installed via uv"
-    uv python install 3.13
+    # Captured, not streamed. uv is idempotent and prints "already installed" on
+    # the normal path, so streaming it put a line on screen to say nothing had
+    # happened. Shown when it failed, where it is the only diagnostic, or under
+    # DOTFILES_LOG_VERBOSE.
+    if uv_out="$(uv python install 3.13 2>&1)"; then
+        if log_is_verbose; then
+            printf '%s\n' "$uv_out" | sed 's/^/        /'
+        fi
+        log_skip "[python] 3.13 present via uv"
+    else
+        printf '%s\n' "$uv_out" | sed 's/^/        /'
+        log_warn "[python] 'uv python install 3.13' failed; continuing"
+    fi
 else
     log_warn "[python] uv not available in this session; skipping python install"
 fi

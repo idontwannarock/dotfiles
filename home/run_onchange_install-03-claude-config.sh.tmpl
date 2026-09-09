@@ -18,8 +18,18 @@ if ! command -v claude &>/dev/null; then
 fi
 
 log_section "install Claude Code plugins"
-log_step "[plugins] installing slack"
-claude plugin install slack 2>&1 || true
+# Captured, not streamed. The plugin is normally already installed and claude
+# says so on stdout, which was a line to report that nothing happened. Shown when
+# the install failed, or under DOTFILES_LOG_VERBOSE.
+if plugin_out="$(claude plugin install slack 2>&1)"; then
+    if log_is_verbose; then
+        printf '%s\n' "$plugin_out" | sed 's/^/        /'
+    fi
+    log_skip "[plugins] slack present"
+else
+    printf '%s\n' "$plugin_out" | sed 's/^/        /'
+    log_warn "[plugins] 'claude plugin install slack' failed; continuing"
+fi
 
 INSTALLED_PLUGINS="$(claude plugin list 2>/dev/null || true)"
 

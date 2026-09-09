@@ -183,8 +183,17 @@ public static extern System.IntPtr SendMessageTimeout(
     $env:UV_PYTHON_INSTALL_DIR = $uvPyDir
     $env:UV_PYTHON_INSTALL_BIN = "0"
     if (Get-Command uv -ErrorAction SilentlyContinue) {
-        Log-Step "[python] uv python install $($pyVersions -join ' ') (-> $uvPyDir, no trampolines)"
-        uv python install @pyVersions
+        # Captured, not streamed. uv is idempotent and prints "All requested
+        # versions already installed" on the normal path. Mirrors the bash half
+        # in run_once_install-01-runtimes.sh.tmpl.
+        $uvOut = & uv python install @pyVersions 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            if (Test-LogVerbose) { $uvOut | ForEach-Object { "        $_" } }
+            Log-Skip "[python] $($pyVersions -join ' ') present via uv (-> $uvPyDir, no trampolines)"
+        } else {
+            $uvOut | ForEach-Object { "        $_" }
+            Log-Warn "[python] 'uv python install' failed; continuing"
+        }
         # Remove stale uv trampolines from earlier installs; python3.*.cmd wrappers replace them.
         foreach ($t in @("python3.11.exe", "python3.13.exe", "python3.exe", "python.exe")) {
             $tp = Join-Path $env:USERPROFILE ".local\bin\$t"

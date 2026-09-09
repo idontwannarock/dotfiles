@@ -24,8 +24,17 @@ try {
     $ErrorActionPreference = "Continue"
 
     Log-Section "install Claude Code plugins"
-    Log-Step "[plugins] installing slack"
-    claude plugin install slack 2>&1 | Out-Null
+    # Captured, not streamed -- and captured rather than discarded, so a failure
+    # still has its diagnostic. The plugin is normally already installed, so the
+    # output only says nothing happened. Mirrors the bash half.
+    $pluginOut = & claude plugin install slack 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        if (Test-LogVerbose) { $pluginOut | ForEach-Object { "        $_" } }
+        Log-Skip "[plugins] slack present"
+    } else {
+        $pluginOut | ForEach-Object { "        $_" }
+        Log-Warn "[plugins] 'claude plugin install slack' failed; continuing"
+    }
 
     $installedPlugins = claude plugin list 2>$null | Out-String
 
