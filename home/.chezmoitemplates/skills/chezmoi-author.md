@@ -56,16 +56,33 @@ any banner corrupts the file. Never add logging to one.
 Load the fragment, then use these six verbs. Output is byte-identical across both
 interpreters:
 
-| bash | PowerShell | Output | Use for |
-|------|-----------|--------|---------|
-| `log_begin "<title>"` | `Log-Begin "<title>"` | `=== BEGIN <title> ===` | Once, at the top |
-| `log_section "<purpose>"` | `Log-Section "<purpose>"` | `--- <purpose>` | Each logical section |
-| `log_step "<msg>"` | `Log-Step "<msg>"` | `    <msg>` | Work actually being done |
-| `log_skip "<msg>"` | `Log-Skip "<msg>"` | `    <msg> (skipped)` | An idempotent guard hit |
-| `log_warn "<msg>"` | `Log-Warn "<msg>"` | `    !! <msg>` | Non-fatal problem |
-| `log_end` | `Log-End` | `=== END <title> (ok\|FAILED rc=N) ===` | Closing banner |
+| bash | PowerShell | Output | Use for | Quiet run |
+|------|-----------|--------|---------|-----------|
+| `log_begin "<title>"` | `Log-Begin "<title>"` | `=== BEGIN <title> ===` | Once, at the top | shown |
+| `log_section "<purpose>"` | `Log-Section "<purpose>"` | `--- <purpose>` | Each logical section | hidden |
+| `log_step "<msg>"` | `Log-Step "<msg>"` | `    <msg>` | Work actually being done | shown |
+| `log_skip "<msg>"` | `Log-Skip "<msg>"` | `    <msg> (skipped)` | An idempotent guard hit | hidden |
+| `log_warn "<msg>"` | `Log-Warn "<msg>"` | `    !! <msg>` | Non-fatal problem | shown |
+| `log_end` | `Log-End` | `=== END <title> (ok\|FAILED rc=N) ===` | Closing banner, with the block total | shown |
 
 Rules:
+
+- **Pick `log_step` or `log_skip` by whether the machine changed**, not by which
+  reads better. That choice is what a quiet run is filtered on: `log_step` means
+  something happened and always prints; `log_skip` means nothing happened and is
+  hidden. Getting it backwards either hides a change or leaves the noise in.
+- **A quiet apply shows the blocks, their totals, real work, and warnings.**
+  Section headers, skips and per-section timings need `DOTFILES_LOG_VERBOSE=1`.
+  Not chezmoi's `-v`: that prints a full diff of every script before it runs,
+  and `--debug` logs every syscall. Neither is the detail anyone wanted.
+- **Output must be ASCII.** chezmoi captures a script through a pipe and the
+  child `pwsh` encodes it with the console code page, so an em dash arrives as
+  `?`. Write `--`. `scripts/log.ps1` carries the full account.
+- **A command that prints on its no-op path gets captured, not streamed.**
+  Print it when the command failed, where it is the only diagnostic, or under
+  `log_is_verbose` / `Test-LogVerbose`. `run_update-rust-toolchain` is the
+  worked example: `rustup update stable` printed three lines every apply to say
+  nothing had changed.
 
 - **`log_end` takes no title.** It reuses what `log_begin` stored. Never pass one —
   a second place to write the title is how the old scripts ended up saying
