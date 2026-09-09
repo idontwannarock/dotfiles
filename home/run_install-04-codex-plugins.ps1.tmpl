@@ -1,0 +1,47 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_ script — required Codex plugins (Windows)
+# Runs on every apply so a missing or disabled plugin is repaired.
+
+$ErrorActionPreference = "Stop"
+
+{{ template "scripts/log.ps1" }}
+
+$plugin = "slack@openai-curated"
+
+Log-Begin "Codex plugins"
+try {
+    Log-Section "check Codex CLI is available"
+    if (-not (Get-Command "codex" -ErrorAction SilentlyContinue)) {
+        Log-Warn "[codex-plugins] codex not found; retrying on the next apply"
+        return
+    }
+
+    Log-Section "inspect required Codex plugins"
+    $pluginListLines = codex plugin list --json
+    if ($LASTEXITCODE -ne 0) {
+        throw "codex plugin list failed with exit code $LASTEXITCODE"
+    }
+    $pluginListJson = $pluginListLines -join "`n"
+    $pluginList = $pluginListJson | ConvertFrom-Json
+    $enabled = @(
+        $pluginList.installed | Where-Object {
+            $_.pluginId -eq $plugin -and $_.installed -eq $true -and $_.enabled -eq $true
+        }
+    )
+
+    if ($enabled.Count -gt 0) {
+        Log-Skip "[codex-plugins] $plugin is installed and enabled"
+    } else {
+        Log-Step "[codex-plugins] installing or enabling $plugin"
+        codex plugin add $plugin --json | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            throw "codex plugin add failed with exit code $LASTEXITCODE"
+        }
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
+{{ end -}}

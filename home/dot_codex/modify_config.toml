@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # chezmoi modify_ script — 合併 codex config（Unix/macOS/WSL）
-# 同步全域設定與通用 MCP servers，但保留本機的 per-project 設定
+# 同步全域設定與通用 MCP servers，但保留本機的 project 與 plugin 設定
 #
 # ⚠ Windows 雙源：此腳本因副檔名 .toml 在 Windows 上無法被 chezmoi 透過
 # [interpreters.*] 派發執行，故 .chezmoiignore.tmpl 在 Windows 排除此檔，
@@ -9,7 +9,7 @@
 #
 # 策略：
 # 1. 輸出同步的全域設定（model、profiles、instructions）
-# 2. 從現有檔案中提取 [projects.*] 區塊並原封不動附加
+# 2. 從現有檔案中提取 [projects.*] 與 [plugins.*] 區塊並原封不動附加
 # 3. 輸出同步的 MCP servers
 
 set -euo pipefail
@@ -53,14 +53,14 @@ model_verbosity = "medium"
 web_search = "live"
 GLOBAL
 
-# ── 保留本機 per-machine 區塊：[projects.*]（per-project 設定）────────────────
+# ── 保留本機 per-machine 區塊：[projects.*] 與 [plugins.*] ───────────────────
 # 用命令替換取回，是為了它會移除結果尾端的所有換行——這是冪等性的關鍵。
-# awk 的保留範圍到下一個 section header 為止，所以最後一個 [projects.*] 與下方
+# awk 的保留範圍到下一個 section header 為止，所以最後一個保留區塊與下方
 # [mcp_servers.*] 之間的空行也會被一起保留；若原樣印出，就會和 MCP heredoc 開頭
 # 那個空行疊加。而 modify_ 腳本吃的是自己上一輪的輸出，於是每 apply 一次多一行。
 # 區塊之間的分隔一律由本腳本單方提供，被保留的內容不得自帶尾端空白。
 kept="$(echo "$existing" | awk '
-    /^\[projects\./ { in_keep=1; print; next }
+    /^\[(projects|plugins)\./ { in_keep=1; print; next }
     /^\[/ { in_keep=0 }
     in_keep { print }
 ')"
@@ -74,8 +74,4 @@ cat << 'MCP'
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
-
-# Slack OAuth 登入請自行進入 Codex CLI 完成（per-machine，不同步）。
-[mcp_servers.slack]
-url = "https://mcp.slack.com/mcp"
 MCP
