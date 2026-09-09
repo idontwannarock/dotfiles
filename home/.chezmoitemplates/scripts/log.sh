@@ -29,17 +29,17 @@ _LOG_TITLE=""
 _LOG_T0=""
 _LOG_SECTION_T0=""
 
-# Verbosity comes from chezmoi's own -v. chezmoi exports no verbosity variable,
-# but it does export the whole command line as CHEZMOI_ARGS, so read that rather
-# than invent a second switch nobody would remember. Matched token by token: a
-# substring test would fire on any path that happens to contain "-v".
+# Verbosity is a variable of this repo's own, not a chezmoi flag.
+#
+# Reading chezmoi's -v out of CHEZMOI_ARGS was tried first and abandoned: chezmoi
+# -v already means something, and that something is loud. It prints a full diff
+# of every script it is about to run, hundreds of lines of the script's own
+# source, which is the opposite of what someone asking for detail wants.
+# --debug is worse: it logs every syscall.
+#
+#     DOTFILES_LOG_VERBOSE=1 chezmoi apply
 _LOG_VERBOSE=""
-for _log_arg in ${CHEZMOI_ARGS:-}; do
-    case "$_log_arg" in
-        -v|--verbose) _LOG_VERBOSE=1 ;;
-    esac
-done
-unset _log_arg
+[ "${DOTFILES_LOG_VERBOSE:-}" = "1" ] && _LOG_VERBOSE=1
 
 # For call sites that have their own noise to gate, notably a command whose
 # output is only worth reading when it failed.
