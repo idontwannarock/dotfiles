@@ -24,6 +24,31 @@ a static one-liner — you never write version-comparison logic.
 These are TOML comments, so they do not change what `chezmoi apply` deploys
 (verified by a before/after render diff).
 
+## Two files carry pins, not one
+
+The custom manager scans both `home/.chezmoiexternal.toml` and
+`home/run_install-00-opt-archives.ps1.tmpl`. The annotation format is identical in
+each; only the location differs.
+
+The second file exists because six entries — `go` and the five JDKs — were too
+expensive to keep as externals. chezmoi re-reads and re-hashes every managed file
+on every apply, so it can tell you edited one. Measured on Windows with
+`chezmoi apply --dry-run`:
+
+| | managed entries | time |
+|---|---|---|
+| all externals | 23,466 | 26.3s |
+| `go` off | 6,113 | 24.2s |
+| five JDKs off | 20,673 | 19.0s |
+| both off | 3,320 | 15.5s |
+
+Cost tracks **bytes**, not file count — roughly 194 MB/s. Those six directories
+are 1.7 GB and 11 of the 26 seconds. They now reinstall when their URL changes
+instead, which is the trigger that was wanted anyway. That file's header carries
+the design and the force-reinstall commands.
+
+`validate-externals` HEAD-checks the URLs from both files.
+
 ## Why a version in the URL is what makes an external cheap
 
 chezmoi's default refresh mode is `auto`, so it decides per entry, by cache age

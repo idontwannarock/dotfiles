@@ -1,0 +1,184 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_ script — install the large ~/.local/opt toolchain archives.
+#
+# These used to be chezmoi-external archive entries. They were moved out because
+# of what an external costs per run: chezmoi re-reads and re-hashes every managed
+# file on every apply, so it can tell that you edited one. Measured on Windows
+# with `chezmoi apply --dry-run`, two runs each, second reported:
+#
+#     main                       23,466 managed   26.3s
+#     go external off             6,113 managed   24.2s
+#     five JDK externals off     20,673 managed   19.0s
+#     both off                    3,320 managed   15.5s
+#
+# Time tracks BYTES, not file count: roughly 194 MB/s. go is 297 MB across
+# 17,353 files and costs 2.1s; the five JDKs are 1,415 MB across 2,793 files and
+# cost 7.3s. Together 1.7 GB, 11 of the 26 seconds, for six directories nobody
+# hand-edits. chezmoi has no external attribute that skips the per-file check —
+# type, url, urls, stripComponents, exact, include, exclude, format, checksum,
+# encrypted, decompress, filter, refreshPeriod, archive.extractAppleDouble,
+# targetPath. Not one of them.
+#
+# What replaces it is the trigger people actually want: reinstall when the URL
+# changes, not when a file drifts. Each directory carries a sentinel holding the
+# URL it was installed from.
+#
+#   sentinel matches the pin      skip, no download, no exec
+#   sentinel missing              probe the installed version; adopt if it
+#                                 matches the pin, reinstall if it does not
+#   sentinel holds another URL    reinstall
+#
+# The adopt branch is what keeps existing machines from re-downloading 1.7 GB the
+# first time this script runs.
+#
+# Forcing a reinstall, which is the drift repair chezmoi used to do for free:
+#   one directory   Remove-Item ~\.local\opt\jdk-21\.installed-from
+#   everything      $env:DOTFILES_REINSTALL_OPT = 1
+# then `chezmoi apply` either way.
+#
+# This is a plain run_, not run_onchange_. run_onchange_ would fire on a URL
+# change just as well, but it does not run at all otherwise — so deleting a
+# sentinel would do nothing and there would be no force path short of
+# `chezmoi state delete-bucket --bucket=scriptState`, which re-runs every
+# run_once_ migration in this repo. The sentinel comparison below is a handful of
+# file reads.
+#
+# Unix already installs go this way (run_once_install-01-runtimes.sh.tmpl,
+# install_go_linux_tarball). This makes Windows match rather than diverge.
+#
+# Version pins live here, not in .chezmoiexternal.toml. renovate.json's custom
+# manager reads this file too — keep the annotation format identical to the one
+# used there.
+
+$ErrorActionPreference = "Continue"
+
+{{ template "scripts/log.ps1" }}
+
+# renovate: datasource=golang-version depName=go
+{{- $goVersion := "1.27.1" }}
+# renovate: datasource=github-releases depName=adoptium/temurin8-binaries extractVersion=^jdk(?<version>.+)$
+{{- $jdk8Version := "8u504-b01" }}
+{{- $jdk8Asset := $jdk8Version | replace "-" "" }}
+{{- /* 8u504-b01 -> 504. Java 8 reports itself as 1.8.0_504, nothing like the pin. */}}
+{{- $jdk8Update := (splitList "-" $jdk8Version) | first | trimPrefix "8u" }}
+# renovate: datasource=github-releases depName=adoptium/temurin11-binaries extractVersion=^jdk-(?<version>.+)$
+{{- $jdk11Version := "11.0.32+9" }}
+# renovate: datasource=github-releases depName=adoptium/temurin17-binaries extractVersion=^jdk-(?<version>.+)$
+{{- $jdk17Version := "17.0.20+8" }}
+# renovate: datasource=github-releases depName=adoptium/temurin21-binaries extractVersion=^jdk-(?<version>.+)$
+{{- $jdk21Version := "21.0.12+8" }}
+# renovate: datasource=github-releases depName=adoptium/temurin25-binaries extractVersion=^jdk-(?<version>.+)$
+{{- $jdk25Version := "25.0.4+7" }}
+
+# Temurin encodes the version twice with different escaping: the release tag uses
+# '+' (URL-encoded %2B), the asset filename uses '_'. jdk-8 uses the legacy
+# 8uNNN-bNN scheme, whose tag is jdk8u... and whose asset drops the '-'.
+$specs = @(
+    @{
+        Name    = 'go'
+        Version = '{{ $goVersion }}'
+        Url     = 'https://go.dev/dl/go{{ $goVersion }}.windows-amd64.zip'
+        Probe     = 'bin\go.exe'
+        ProbeArgs = @('version')
+        # go version go1.27.1 windows/amd64
+        ProbeMatch = 'go{{ $goVersion }}' 
+    }
+{{- range $j := (list
+      (dict "n" "jdk-8"  "v" $jdk8Version  "repo" "temurin8-binaries"  "tag" (printf "jdk%s" $jdk8Version) "asset" (printf "OpenJDK8U-jdk_x64_windows_hotspot_%s" $jdk8Asset) "probe" (printf "1.8.0_%s" $jdk8Update))
+      (dict "n" "jdk-11" "v" $jdk11Version "repo" "temurin11-binaries" "tag" (printf "jdk-%s" (replace "+" "%2B" $jdk11Version)) "asset" (printf "OpenJDK11U-jdk_x64_windows_hotspot_%s" (replace "+" "_" $jdk11Version)) "probe" (first (splitList "+" $jdk11Version)))
+      (dict "n" "jdk-17" "v" $jdk17Version "repo" "temurin17-binaries" "tag" (printf "jdk-%s" (replace "+" "%2B" $jdk17Version)) "asset" (printf "OpenJDK17U-jdk_x64_windows_hotspot_%s" (replace "+" "_" $jdk17Version)) "probe" (first (splitList "+" $jdk17Version)))
+      (dict "n" "jdk-21" "v" $jdk21Version "repo" "temurin21-binaries" "tag" (printf "jdk-%s" (replace "+" "%2B" $jdk21Version)) "asset" (printf "OpenJDK21U-jdk_x64_windows_hotspot_%s" (replace "+" "_" $jdk21Version)) "probe" (first (splitList "+" $jdk21Version)))
+      (dict "n" "jdk-25" "v" $jdk25Version "repo" "temurin25-binaries" "tag" (printf "jdk-%s" (replace "+" "%2B" $jdk25Version)) "asset" (printf "OpenJDK25U-jdk_x64_windows_hotspot_%s" (replace "+" "_" $jdk25Version)) "probe" (first (splitList "+" $jdk25Version)))
+) }}
+    @{
+        Name    = '{{ $j.n }}'
+        Version = '{{ $j.v }}'
+        Url     = 'https://github.com/adoptium/{{ $j.repo }}/releases/download/{{ $j.tag }}/{{ $j.asset }}.zip'
+        Probe     = 'bin\java.exe'
+        ProbeArgs = @('-version')
+        # openjdk version "21.0.12" 2026-07-21 LTS -- and for 8, "1.8.0_504"
+        ProbeMatch = '{{ $j.probe }}' 
+    }
+{{- end }}
+)
+
+$optRoot = Join-Path $env:USERPROFILE ".local\opt"
+$force   = $env:DOTFILES_REINSTALL_OPT -eq '1'
+
+Log-Begin "~/.local/opt toolchain archives"
+try {
+    Log-Section "compare each directory against the URL it was installed from — reinstall only when the pin moved"
+    if ($force) { Log-Step "[force] DOTFILES_REINSTALL_OPT=1 — reinstalling every entry" }
+
+    if (-not (Test-Path $optRoot)) { New-Item -ItemType Directory -Path $optRoot -Force | Out-Null }
+
+    foreach ($spec in $specs) {
+        $dir      = Join-Path $optRoot $spec.Name
+        $sentinel = Join-Path $dir '.installed-from'
+
+        if (-not $force -and (Test-Path $sentinel)) {
+            if ((Get-Content $sentinel -Raw).Trim() -eq $spec.Url) {
+                Log-Skip "[$($spec.Name)] already at $($spec.Version)"
+                continue
+            }
+        }
+
+        # Adoption: a directory left behind by the old chezmoi-external has no
+        # sentinel. Ask the binary what version it is rather than re-downloading
+        # a few hundred MB to find out it was already correct.
+        $probe = Join-Path $dir $spec.Probe
+        if (-not $force -and (Test-Path $probe)) {
+            # Temurin prints -version on stderr; 2>&1 folds it back in.
+            $out = & $probe $spec.ProbeArgs 2>&1 | Out-String
+            # ProbeMatch, not something derived from Version here: Java 8 reports
+            # "1.8.0_504" for the pin 8u504-b01, which no general rule over the
+            # pin string produces. Deriving it cost a wrong reinstall of 190 MB
+            # in testing before the table carried the expected string outright.
+            $want = $spec.ProbeMatch
+            if ($out -match [regex]::Escape($want)) {
+                Set-Content -Path $sentinel -Value $spec.Url -Encoding ascii -NoNewline
+                Log-Skip "[$($spec.Name)] found $want on disk; adopted without downloading"
+                continue
+            }
+            Log-Step "[$($spec.Name)] on-disk version is not $want — reinstalling"
+        }
+
+        Log-Step "[$($spec.Name)] downloading $($spec.Url)"
+        $tmpZip = Join-Path ([IO.Path]::GetTempPath()) ("chezmoi-opt-" + $spec.Name + ".zip")
+        $tmpDir = Join-Path ([IO.Path]::GetTempPath()) ("chezmoi-opt-" + $spec.Name)
+        Remove-Item $tmpZip, $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+        try {
+            # ProgressPreference: Invoke-WebRequest's progress bar costs more than
+            # the download on a several-hundred-MB file.
+            $prev = $ProgressPreference
+            $ProgressPreference = 'SilentlyContinue'
+            Invoke-WebRequest -Uri $spec.Url -OutFile $tmpZip -UseBasicParsing
+            $ProgressPreference = $prev
+
+            Log-Step "[$($spec.Name)] extracting"
+            Expand-Archive -Path $tmpZip -DestinationPath $tmpDir -Force
+
+            # Every one of these archives wraps its payload in a single top-level
+            # directory; the externals stripped it with stripComponents = 1.
+            $inner = @(Get-ChildItem $tmpDir -Directory)
+            $payload = if ($inner.Count -eq 1) { $inner[0].FullName } else { $tmpDir }
+
+            # Swap rather than extract in place: a half-written toolchain is worse
+            # than an old one.
+            if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
+            Move-Item $payload $dir
+            Set-Content -Path (Join-Path $dir '.installed-from') -Value $spec.Url -Encoding ascii -NoNewline
+            Log-Step "[$($spec.Name)] installed $($spec.Version)"
+        } catch {
+            Log-Warn "[$($spec.Name)] install failed: $($_.Exception.Message)"
+        } finally {
+            Remove-Item $tmpZip, $tmpDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
+{{ end -}}
