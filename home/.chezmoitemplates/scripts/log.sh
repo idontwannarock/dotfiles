@@ -29,6 +29,22 @@ _LOG_TITLE=""
 _LOG_T0=""
 _LOG_SECTION_T0=""
 
+# Verbosity is a variable of this repo's own, not a chezmoi flag.
+#
+# Reading chezmoi's -v out of CHEZMOI_ARGS was tried first and abandoned: chezmoi
+# -v already means something, and that something is loud. It prints a full diff
+# of every script it is about to run, hundreds of lines of the script's own
+# source, which is the opposite of what someone asking for detail wants.
+# --debug is worse: it logs every syscall.
+#
+#     DOTFILES_LOG_VERBOSE=1 chezmoi apply
+_LOG_VERBOSE=""
+[ "${DOTFILES_LOG_VERBOSE:-}" = "1" ] && _LOG_VERBOSE=1
+
+# For call sites that have their own noise to gate, notably a command whose
+# output is only worth reading when it failed.
+log_is_verbose() { [ -n "$_LOG_VERBOSE" ]; }
+
 # Clock for the elapsed-time suffixes. EPOCHREALTIME (bash 5) gives milliseconds;
 # macOS system bash is 3.2 and lacks it, so fall back to SECONDS (whole seconds).
 # Both readings in a pair always come from the same source, so the difference is
@@ -49,7 +65,9 @@ _log_elapsed() {
 # the following log_section, or log_end.
 _log_close_section() {
     [ -n "$_LOG_SECTION_T0" ] || return 0
-    printf '    (took %s)\n' "$(_log_elapsed "$_LOG_SECTION_T0")"
+    if [ -n "$_LOG_VERBOSE" ]; then
+        printf '    (took %s)\n' "$(_log_elapsed "$_LOG_SECTION_T0")"
+    fi
     _LOG_SECTION_T0=""
 }
 
@@ -74,8 +92,32 @@ log_begin() {
     trap log_end EXIT
 }
 
+# What each line is for, and why only some survive a quiet run:
+#
+#   log_begin/log_end   the block and its total. Always: this is the answer to
+#                       "what ran and how long did it take".
+#   log_warn            always. A warning nobody sees is not a warning.
+#   log_step            something changed. Always, because a quiet run that
+#                       silently changed the machine is the thing to avoid.
+#   log_section         narration of intent. Verbose only.
+#   log_skip            nothing happened. Verbose only -- these are the bulk of
+#                       the output and they all say the same thing.
+#   (took ...)          per-section timing. Verbose only; the total on the END
+#                       banner is what a normal run needs.
+#
 # `--` guards the leading dash in the format string.
-log_section() { _log_close_section; printf -- '--- %s\n' "$1"; _LOG_SECTION_T0="$(_log_now)"; }
-log_step()    { printf '    %s\n' "$1"; }
-log_skip()    { printf '    %s (skipped)\n' "$1"; }
-log_warn()    { printf '    !! %s\n' "$1"; }
+log_section() {
+    _log_close_section
+    if [ -n "$_LOG_VERBOSE" ]; then
+        printf -- '--- %s\n' "$1"
+    fi
+    _LOG_SECTION_T0="$(_log_now)"
+}
+log_step() { printf '    %s\n' "$1"; }
+log_warn() { printf '    !! %s\n' "$1"; }
+log_skip() {
+    if [ -n "$_LOG_VERBOSE" ]; then
+        printf '    %s (skipped)\n' "$1"
+    fi
+    return 0
+}

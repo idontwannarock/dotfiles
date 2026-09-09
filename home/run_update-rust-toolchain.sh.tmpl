@@ -19,9 +19,18 @@ if ! command -v rustup &>/dev/null; then
 fi
 
 log_section "update the stable toolchain -- best effort, an offline machine must not fail the whole apply"
-if rustup update stable; then
-    log_step "[rust] stable is up to date"
+# Captured, not streamed. rustup prints three lines on every run, and
+# "unchanged" is the normal case, so those three lines were pure noise on a
+# machine that had nothing to do. They are worth reading in exactly two
+# situations: the update failed, where they are the only diagnostic, and the
+# caller asked for detail with -v.
+if rust_out="$(rustup update stable 2>&1)"; then
+    if log_is_verbose; then
+        printf '%s\n' "$rust_out" | sed 's/^/        /'
+    fi
+    log_skip "[rust] stable is up to date"
 else
+    printf '%s\n' "$rust_out" | sed 's/^/        /'
     log_warn "[rust] 'rustup update stable' failed (offline?); continuing"
 fi
 {{ end -}}

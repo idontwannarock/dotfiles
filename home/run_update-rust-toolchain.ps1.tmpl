@@ -19,10 +19,17 @@ try {
     }
 
     Log-Section "update the stable toolchain -- best effort, an offline machine must not fail the whole apply"
-    rustup update stable 2>&1 | ForEach-Object { "        $_" }
+    # Captured, not streamed. rustup prints three lines on every run, and
+    # "unchanged" is the normal case, so those three lines were pure noise on a
+    # machine that had nothing to do. They are worth reading in exactly two
+    # situations: the update failed, where they are the only diagnostic, and the
+    # caller asked for detail with -v.
+    $rustOut = & rustup update stable 2>&1
     if ($LASTEXITCODE -eq 0) {
-        Log-Step "[rust] stable is up to date"
+        if (Test-LogVerbose) { $rustOut | ForEach-Object { "        $_" } }
+        Log-Skip "[rust] stable is up to date"
     } else {
+        $rustOut | ForEach-Object { "        $_" }
         Log-Warn "[rust] 'rustup update stable' failed (offline?); continuing"
     }
 } catch {
