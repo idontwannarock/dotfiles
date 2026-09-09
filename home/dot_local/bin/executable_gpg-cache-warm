@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# gpg-cache-warm — exit 0 if the password-store decryption key is cached in
+# gpg-agent, exit 1 if it is cold.
+#
+# Callers use this as a guard before any `pass show` that runs without a
+# terminal of its own. A cold-cache `pass` does not merely fail: gpg forwards
+# the inherited GPG_TTY to gpg-agent, pinentry-curses opens an alternate screen
+# on whatever terminal that points at, and it destroys that session.
+#
+# The keygrip is derived, not hardcoded, so a key rotation needs no edit here.
+# Only the encryption subkey matters — `pass` decrypts, it never signs, so a
+# warm signing key says nothing about whether a prompt will appear.
+set -euo pipefail
+
+store="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+gpg_id=$(head -1 "$store/.gpg-id" 2>/dev/null) || exit 1
+[ -n "$gpg_id" ] || exit 1
+
+# Colon format: a sec/ssb line carries capabilities in field 12, and the grp
+# line that follows it carries that key's keygrip in field 10. Lowercase `e`
+# marks the subkey usable for encryption.
+grip=$(gpg --batch --with-colons --with-keygrip --list-secret-keys "$gpg_id" 2>/dev/null \
+  | awk -F: '/^(sec|ssb):/{cap=$12} /^grp:/{if (cap ~ /e/) print $10}' | head -1)
+[ -n "$grip" ] || exit 1
+
+# `keyinfo --list` returns: S KEYINFO <grip> D - - <cached> P - - -
+# Field 7 is the cache flag: `1` warm, `-` cold. Field 5 is the serial number,
+# which is always `-` for an on-disk key — reading it instead always says cold.
+cached=$(gpg-connect-agent 'keyinfo --list' /bye 2>/dev/null \
+  | awk -v g="$grip" '$1=="S" && $2=="KEYINFO" && $3==g {print $7}')
+[ "$cached" = "1" ]

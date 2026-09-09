@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# gpg-cache-keepalive — hold the gpg-agent passphrase cache open across a work
+# day, so a background job never discovers a cold cache and prompts on someone
+# else's terminal.
+#
+# gpg-agent's default-cache-ttl is an idle timer: "Each time a cache entry is
+# accessed, the entry's timer is reset". So one cache-hit decrypt per interval
+# pushes the idle window forward indefinitely, up to the absolute max-cache-ttl.
+#
+# This never warms a cold cache. Warming needs a passphrase, and a passphrase
+# needs pinentry, and pinentry from a timer draws on an arbitrary terminal.
+# Cold means: report it and exit, and let a human warm it.
+#
+# Both paths exit 0, because a cold cache is not a failure. So each path says
+# which one it took — otherwise a keepalive that never warms anything looks
+# exactly like one that works.
+#
+# systemd's user PATH does not include ~/.local/bin, so the guard is called by
+# path. A bare name resolves to nothing there, exits 127, and reads as "cold" —
+# a keepalive that silently never refreshes anything.
+set -euo pipefail
+
+here=$(dirname "$(readlink -f "$0")")
+
+if ! "$here/gpg-cache-warm"; then
+  echo "cache is cold; skipping (a human must warm it)"
+  exit 0
+fi
+
+pass show corp/password >/dev/null
+echo "cache refreshed"
