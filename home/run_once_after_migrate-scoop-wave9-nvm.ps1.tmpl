@@ -124,10 +124,16 @@ try {
     # `nvm use` creates the active-version symlink via mklink, which triggers a UAC/
     # elevate prompt -- expected and interactive. Skipped entirely if a Node is active.
     #
-    # CAVEAT: a NON-interactive `chezmoi apply` cannot answer that UAC prompt, so
-    # `nvm use` may fail/hang and leave Node installed-but-not-activated (no symlink
-    # -> node not on PATH). If so, finish in an interactive shell: `nvm use <version>`
-    # and approve the UAC dialog. `nvm install` itself needs no elevation.
+    # CAVEAT: a NON-interactive `chezmoi apply` on the DESKTOP cannot answer that UAC
+    # prompt, so `nvm use` may fail/hang and leave Node installed-but-not-activated (no
+    # symlink -> node not on PATH). If so, finish in an interactive shell:
+    # `nvm use <version>` and approve the UAC dialog. `nvm install` needs no elevation.
+    #
+    # OVER SSH THERE IS NO PROMPT. sshd builds the logon token without UAC filtering, so
+    # an SSH session already runs at High integrity and creates the symlink directly --
+    # measured, `mklink /D` succeeds over SSH and fails on the desktop. Running this
+    # apply over SSH is therefore the more reliable route, not the riskier one.
+    # See docs/windows-ssh-junction.md.
     if (Test-Path (Join-Path $nvmSymlink "node.exe")) {
         Log-Skip "[node] already active"
     } else {

@@ -61,6 +61,17 @@ junction 相反：誰都能建，所以誰都不能信。
 
 **這個不對稱是設計，不會隨版本消失。**
 
+## 附帶效果:SSH 是跑 nvm 的較佳途徑
+
+同一個 High IL token 帶來一個正面效果。nvm-windows 靠切換 symlink 來換版本,而建立
+symlink 需要提權——上游 README 寫明 "nvm-windows runs in an Admin shell"。
+
+在桌面上,非互動的 `chezmoi apply` 遇到 `nvm use` 會卡在無人回應的 UAC 提示。
+在 SSH session 下不會,因為那個 session 本來就是提權的。
+
+所以 nvm 相關的 apply,走 SSH 比走桌面可靠。`run_once_after_migrate-scoop-wave9-nvm.ps1.tmpl`
+的 CAVEAT 註解已標明這一點。
+
 ## 對工具選型的意義
 
 任何在 Medium 身分下動態建立 junction 的工具，在 SSH session 下必然失效。已知案例：
