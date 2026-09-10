@@ -9,7 +9,7 @@ bash_template="$repo_root/home/run_install-04-codex-plugins.sh.tmpl"
 ps_template="$repo_root/home/run_install-04-codex-plugins.ps1.tmpl"
 log_fragment="$repo_root/home/.chezmoitemplates/scripts/log.sh"
 nvm_fragment="$repo_root/home/.chezmoitemplates/scripts/load-nvm"
-plugin='slack@openai-curated-remote'
+plugin_id='slack@openai-curated'
 
 for tool in bash jq; do
     command -v "$tool" >/dev/null 2>&1 || {
@@ -56,14 +56,15 @@ case "$1 $2" in
     'plugin list')
         case "$CODEX_STUB_SCENARIO" in
             missing|failed-add) printf '{"installed":[]}\n' ;;
-            enabled) printf '{"installed":[{"pluginId":"slack@openai-curated-remote","installed":true,"enabled":true}]}\n' ;;
-            disabled) printf '{"installed":[{"pluginId":"slack@openai-curated-remote","installed":true,"enabled":false}]}\n' ;;
+            enabled) printf '{"installed":[{"pluginId":"slack@openai-curated-remote","name":"slack","installed":true,"enabled":true}]}\n' ;;
+            enabled-legacy-marketplace) printf '{"installed":[{"pluginId":"slack@openai-curated","name":"slack","installed":true,"enabled":true}]}\n' ;;
+            disabled) printf '{"installed":[{"pluginId":"slack@openai-curated-remote","name":"slack","installed":true,"enabled":false}]}\n' ;;
             malformed) printf 'not-json\n' ;;
         esac
         ;;
     'plugin add')
         [ "$CODEX_STUB_SCENARIO" != failed-add ] || exit 23
-        printf '{"pluginId":"slack@openai-curated-remote"}\n'
+        printf '{"pluginId":"slack@openai-curated","name":"slack"}\n'
         ;;
     *) exit 64 ;;
 esac
@@ -89,7 +90,7 @@ run_case() {
 run_case missing
 [ "$RC" -eq 0 ] || fail "missing plugin returned $RC"
 [ "$(printf '%s\n' "$CALLS" | grep -c '^plugin list --json$')" -eq 1 ] || fail 'missing case did not list once'
-[ "$(printf '%s\n' "$CALLS" | grep -c '^plugin add slack@openai-curated-remote --json$')" -eq 1 ] || fail 'missing case did not add the required plugin once'
+[ "$(printf '%s\n' "$CALLS" | grep -c '^plugin add slack@openai-curated --json$')" -eq 1 ] || fail 'missing case did not add the required plugin once'
 printf '%s\n' "$OUTPUT" | grep -Fq '=== END Codex plugins (ok,' || fail 'missing case has no successful closing banner'
 
 run_case enabled
@@ -97,9 +98,17 @@ run_case enabled
 printf '%s\n' "$CALLS" | grep -q '^plugin add ' && fail 'enabled plugin was reinstalled'
 printf '%s\n' "$OUTPUT" | grep -Fq '(skipped)' || fail 'enabled plugin did not log a skip'
 
+# The marketplace that qualifies the reported pluginId differs per machine, so
+# the guard must match on the bare name. Matching the id made every apply
+# reinstall the plugin.
+run_case enabled-legacy-marketplace
+[ "$RC" -eq 0 ] || fail "enabled plugin under the other marketplace returned $RC"
+printf '%s\n' "$CALLS" | grep -q '^plugin add ' && fail 'enabled plugin under the other marketplace was reinstalled'
+printf '%s\n' "$OUTPUT" | grep -Fq '(skipped)' || fail 'enabled plugin under the other marketplace did not log a skip'
+
 run_case disabled
 [ "$RC" -eq 0 ] || fail "disabled plugin returned $RC"
-[ "$(printf '%s\n' "$CALLS" | grep -c '^plugin add slack@openai-curated-remote --json$')" -eq 1 ] || fail 'disabled plugin was not repaired'
+[ "$(printf '%s\n' "$CALLS" | grep -c '^plugin add slack@openai-curated --json$')" -eq 1 ] || fail 'disabled plugin was not repaired'
 
 missing_cli_dir="$tmp/unavailable-cli"
 mkdir -p "$missing_cli_dir/home" "$missing_cli_dir/bin"
@@ -120,8 +129,10 @@ run_case failed-add
 printf '%s\n' "$OUTPUT" | grep -Fq '=== END Codex plugins (FAILED rc=23,' || fail 'failed add has no failed closing banner'
 
 for source in "$bash_template" "$ps_template"; do
-    grep -Fq "$plugin" "$source" || fail "plugin identifier missing from $source"
+    grep -Fq "$plugin_id" "$source" || fail "plugin identifier missing from $source"
 done
+grep -Fq '.name == $name' "$bash_template" || fail 'bash guard does not match on the bare plugin name'
+grep -Fq '$_.name -eq $pluginName' "$ps_template" || fail 'PowerShell guard does not match on the bare plugin name'
 grep -Fq '{{- if ne .chezmoi.os "windows" -}}' "$bash_template" || fail 'bash platform guard is missing'
 grep -Fq '{{- if eq .chezmoi.os "windows" -}}' "$ps_template" || fail 'PowerShell platform guard is missing'
 grep -Fq 'try {' "$ps_template" || fail 'PowerShell logging try block is missing'
@@ -136,4 +147,4 @@ if [ "$failures" -ne 0 ]; then
     exit 1
 fi
 
-printf 'ok: Codex plugin installer reconciles %s\n' "$plugin"
+printf 'ok: Codex plugin installer reconciles %s\n' "$plugin_id"

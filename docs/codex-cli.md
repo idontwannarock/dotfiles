@@ -75,11 +75,14 @@ chezmoi 會在 Codex CLI 可用後執行以下命令，確保官方 curated Slac
 且啟用：
 
 ```bash
-codex plugin add slack@openai-curated-remote --json
+codex plugin add slack@openai-curated --json
 ```
 
-`run_install-04-codex-plugins` 每次 apply 都會先讀取 `codex plugin list --json`。
-plugin 已安裝且啟用時，腳本不會重裝。plugin 被移除或停用時，下一次 apply 會修復
+`run_install-04-codex-plugins` 每次 apply 都會先讀取 `codex plugin list --json`，
+並以 plugin 的 `name`（`slack`）比對，不是以 `pluginId` 比對。Codex 回報的
+`pluginId` 帶 marketplace 名稱，而該名稱每台機器不同：Windows 是
+`openai-curated`，WSL 是 `openai-curated-remote`。用 `pluginId` 比對會永遠比不中，
+使每次 apply 都重裝一次。plugin 已安裝且啟用時，腳本不會重裝。plugin 被移除或停用時，下一次 apply 會修復
 狀態。Codex CLI 暫時不存在時，腳本會略過，並在下一次 apply 重試。
 
 Slack 的帳號連線由 plugin 管理。若 Codex 顯示連線提示，請在該機器完成一次互動式
