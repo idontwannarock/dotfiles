@@ -393,5 +393,5 @@ dotfiles/
 | [Renovate](docs/renovate.md) | external 工具版本自動追蹤與 auto-merge |
 | [SSH](docs/ssh.md) | SSH key 設定教學、`~/.ssh/config.d/` Include 慣例 |
 | [Starship](docs/starship.md) | Starship prompt 設定 |
-| [User Scripts](docs/user-scripts.md) | 手動執行的輔助腳本（scoop 更新、pwsh 換裝） |
+| [User Scripts](docs/user-scripts.md) | 手動執行的輔助腳本（scoop 更新、pwsh 換裝、SDKMAN 更新、YouTube 影片存檔轉逐字稿） |
 | [Vim](docs/vim.md) | Vim / IdeaVim 設定與快捷鍵 |

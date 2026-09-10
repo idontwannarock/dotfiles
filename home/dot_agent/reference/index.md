@@ -46,6 +46,12 @@ Loaded on demand — read the file you need, not the whole tree.
   demand by the `review-*` flows. Plain reference files rather than agents or
   skills, so none of them costs anything until a flow names one.
 
+# Summarising
+
+* [Summariser tiers](summariser-tiers.md) - which agent handles a body of text,
+  chosen by its size. Lets a skill body name a tier without naming a model, so a
+  new model release edits one table instead of every skill.
+
 # Testing
 
 * [好測試 / 壞測試](tdd/tests.md) - 判斷一個測試是資產還是負債的準則：走真實
