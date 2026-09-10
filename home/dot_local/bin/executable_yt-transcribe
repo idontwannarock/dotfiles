@@ -269,14 +269,16 @@ if [ "$KEEP_AUDIO" -eq 0 ]; then
   log "audio deleted per --no-audio"
 fi
 
-# Size the transcript, then name the tier. The caller decides; this only advises.
+# Size the transcript and name the size class. Which agent handles which class is
+# the caller's lookup, not this script's business: a byte counter has no reason to
+# know any model name.
 read -r EST_TOKENS TIER < <(python3 -c '
 import sys,re
 t=open(sys.argv[1],encoding="utf-8",errors="replace").read()
 cjk=len(re.findall(r"[　-鿿]",t))
 # CJK runs about 1 token per 1.5 chars; western text about 1.33 per word.
 est=int(cjk/1.5)+int(len(re.findall(r"[A-Za-z0-9@#$%&*_/-]+",t))*1.33)
-print(est, "haiku" if est<8000 else "sonnet" if est<40000 else "cross-model")
+print(est, "small" if est<8000 else "medium" if est<40000 else "large")
 ' "$TRANSCRIPT")
 
 cat <<MANIFEST
