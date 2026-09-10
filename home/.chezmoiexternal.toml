@@ -392,7 +392,7 @@
 # more that scoop's `extract_dir: fonts/ttf` excludes), so include +
 # stripComponents = 2 keeps only fonts/ttf/*.ttf, flattened into the dest dir.
 # renovate: datasource=github-releases depName=ryanoasis/nerd-fonts
-{{- $cascadiaNfVersion    := "3.4.0" }}
+{{- $cascadiaNfVersion    := "3.5.1" }}
 # renovate: datasource=github-releases depName=JetBrains/JetBrainsMono
 {{- $jetbrainsMonoVersion := "2.304" }}
 
