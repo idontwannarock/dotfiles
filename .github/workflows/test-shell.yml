@@ -40,7 +40,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # No prerequisite step: the scripts under test silently no-op when jq is
       # missing, so each test file asserts on jq and git itself and exits with a
