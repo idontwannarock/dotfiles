@@ -106,7 +106,7 @@
 # renovate: datasource=github-releases depName=int128/kubelogin
 {{- $kubeloginVersion    := "1.36.3" }}
 # renovate: datasource=github-releases depName=yt-dlp/yt-dlp versioning=loose
-{{- $ytdlpVersion        := "2026.03.17" }}
+{{- $ytdlpVersion        := "2026.08.19" }}
 # renovate: datasource=github-releases depName=gohugoio/hugo
 {{- $hugoVersion         := "0.165.0" }}
 # renovate: datasource=github-releases depName=nxtrace/NTrace-V1
