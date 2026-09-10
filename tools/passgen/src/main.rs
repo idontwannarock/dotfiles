@@ -11,7 +11,7 @@
 //   $ passgen -e 'ㄨㄛˇㄞˋㄔ'       # 輸出 Dachen keystroke
 
 use clap::Parser;
-use rand::Rng;
+use rand::RngExt;
 use rand::seq::SliceRandom;
 
 // ── 字元類別 ────────────────────────────────────────────────────────────────
