@@ -221,7 +221,7 @@
 # chezmoi caches by URL so the zip downloads once. Bump $ffmpegVersion + rerun
 # `chezmoi apply` (or merge Renovate's PR).
 # renovate: datasource=github-releases depName=GyanD/codexffmpeg
-{{- $ffmpegVersion := "8.1.2" }}
+{{- $ffmpegVersion := "9.0.1" }}
 
 [".local/bin/ffmpeg.exe"]
     type = "archive-file"
