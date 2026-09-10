@@ -75,7 +75,7 @@ chezmoi 會在 Codex CLI 可用後執行以下命令，確保官方 curated Slac
 且啟用：
 
 ```bash
-codex plugin add slack@openai-curated --json
+codex plugin add slack@openai-curated-remote --json
 ```
 
 `run_install-04-codex-plugins` 每次 apply 都會先讀取 `codex plugin list --json`。

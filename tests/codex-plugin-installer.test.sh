@@ -9,7 +9,7 @@ bash_template="$repo_root/home/run_install-04-codex-plugins.sh.tmpl"
 ps_template="$repo_root/home/run_install-04-codex-plugins.ps1.tmpl"
 log_fragment="$repo_root/home/.chezmoitemplates/scripts/log.sh"
 nvm_fragment="$repo_root/home/.chezmoitemplates/scripts/load-nvm"
-plugin='slack@openai-curated'
+plugin='slack@openai-curated-remote'
 
 for tool in bash jq; do
     command -v "$tool" >/dev/null 2>&1 || {
@@ -56,14 +56,14 @@ case "$1 $2" in
     'plugin list')
         case "$CODEX_STUB_SCENARIO" in
             missing|failed-add) printf '{"installed":[]}\n' ;;
-            enabled) printf '{"installed":[{"pluginId":"slack@openai-curated","installed":true,"enabled":true}]}\n' ;;
-            disabled) printf '{"installed":[{"pluginId":"slack@openai-curated","installed":true,"enabled":false}]}\n' ;;
+            enabled) printf '{"installed":[{"pluginId":"slack@openai-curated-remote","installed":true,"enabled":true}]}\n' ;;
+            disabled) printf '{"installed":[{"pluginId":"slack@openai-curated-remote","installed":true,"enabled":false}]}\n' ;;
             malformed) printf 'not-json\n' ;;
         esac
         ;;
     'plugin add')
         [ "$CODEX_STUB_SCENARIO" != failed-add ] || exit 23
-        printf '{"pluginId":"slack@openai-curated"}\n'
+        printf '{"pluginId":"slack@openai-curated-remote"}\n'
         ;;
     *) exit 64 ;;
 esac
@@ -89,7 +89,7 @@ run_case() {
 run_case missing
 [ "$RC" -eq 0 ] || fail "missing plugin returned $RC"
 [ "$(printf '%s\n' "$CALLS" | grep -c '^plugin list --json$')" -eq 1 ] || fail 'missing case did not list once'
-[ "$(printf '%s\n' "$CALLS" | grep -c '^plugin add slack@openai-curated --json$')" -eq 1 ] || fail 'missing case did not add the required plugin once'
+[ "$(printf '%s\n' "$CALLS" | grep -c '^plugin add slack@openai-curated-remote --json$')" -eq 1 ] || fail 'missing case did not add the required plugin once'
 printf '%s\n' "$OUTPUT" | grep -Fq '=== END Codex plugins (ok,' || fail 'missing case has no successful closing banner'
 
 run_case enabled
@@ -99,7 +99,7 @@ printf '%s\n' "$OUTPUT" | grep -Fq '(skipped)' || fail 'enabled plugin did not l
 
 run_case disabled
 [ "$RC" -eq 0 ] || fail "disabled plugin returned $RC"
-[ "$(printf '%s\n' "$CALLS" | grep -c '^plugin add slack@openai-curated --json$')" -eq 1 ] || fail 'disabled plugin was not repaired'
+[ "$(printf '%s\n' "$CALLS" | grep -c '^plugin add slack@openai-curated-remote --json$')" -eq 1 ] || fail 'disabled plugin was not repaired'
 
 missing_cli_dir="$tmp/unavailable-cli"
 mkdir -p "$missing_cli_dir/home" "$missing_cli_dir/bin"
