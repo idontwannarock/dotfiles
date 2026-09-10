@@ -280,7 +280,17 @@
 # Env (NVM_HOME / NVM_SYMLINK), User PATH, settings.txt, and the Node bootstrap
 # are handled by run_once_after_migrate-scoop-wave9-nvm.ps1.tmpl, which runs after
 # this external deploys. Bump $nvmVersion + rerun `chezmoi apply` to upgrade.
-# renovate: datasource=github-releases depName=coreybutler/nvm-windows
+#
+# PINNED TO 1.x ON PURPOSE. v2 ships no nvm-noinstall.zip -- every v2 asset is an
+# Inno Setup `-setup.exe` plus a `-sync.exe` build tool, and chezmoi has no external
+# type that runs an installer. The v2 installer also migrates v1 itself, writing to
+# Program Files, the registry and machine-level env, all outside chezmoi's control.
+# Renovate proved this in #198: the rendered v2 URL 404s and the gate fails.
+# Revisit when upstream ships a portable archive or the documented winget package
+# lands (docs.nvm-windows.com still says "Coming Soon!"). Note the repo has moved to
+# nvm-windows/nvm; coreybutler/nvm-windows now 301-redirects.
+# renovate: ignore -- v2 ships only an installer, so a version bump cannot be a
+# chezmoi external; see the paragraph above before re-enabling.
 {{- $nvmVersion := "1.2.2" }}
 
 [".local/opt/nvm"]
