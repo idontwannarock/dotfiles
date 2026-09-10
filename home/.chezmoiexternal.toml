@@ -286,6 +286,8 @@
 # type that runs an installer. The v2 installer also migrates v1 itself, writing to
 # Program Files, the registry and machine-level env, all outside chezmoi's control.
 # Renovate proved this in #198: the rendered v2 URL 404s and the gate fails.
+# Why nvm-windows and not fnm: fnm creates junctions on Windows, which an SSH
+# session cannot traverse. See docs/windows-ssh-junction.md.
 # Revisit when upstream ships a portable archive or the documented winget package
 # lands (docs.nvm-windows.com still says "Coming Soon!"). Note the repo has moved to
 # nvm-windows/nvm; coreybutler/nvm-windows now 301-redirects.
