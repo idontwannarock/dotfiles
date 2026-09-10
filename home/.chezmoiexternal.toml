@@ -59,7 +59,7 @@
 # Bump versions below and rerun `chezmoi apply` to upgrade.
 {{- if eq .chezmoi.os "windows" }}
 # renovate: datasource=github-releases depName=starship/starship
-{{- $starshipVersion := "1.25.1" }}
+{{- $starshipVersion := "1.26.0" }}
 # renovate: datasource=github-releases depName=zellij-org/zellij
 {{- $zellijVersion   := "0.44.3" }}
 # renovate: datasource=github-releases depName=astral-sh/uv
