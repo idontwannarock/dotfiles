@@ -149,6 +149,23 @@ low-risk updates merge themselves once it passes.
   a machine until you run `chezmoi apply`, where the install scripts re-verify (e.g. the
   gnupg SHA-256).
 
+### PR throughput, and why a tool can starve
+
+The queue is rate-limited, and Renovate creates branches in alphabetical order. If the
+limit cuts the queue short, the same tail of the alphabet is dropped every week — the
+tool never gets a PR, and its pin silently rots.
+
+This happened. `config:recommended` sets `prHourlyLimit: 2`, and the schedule window is
+`before 6am on monday`, in which Mend runs the job only 1–4 times. That capped the repo
+at 2–8 bump PRs per week. Everything alphabetically past `nxtrace` never made it:
+`ryanoasis/nerd-fonts`, `starship/starship`, `yt-dlp/yt-dlp` and `zellij-org/zellij`
+each sat in the dashboard's **Awaiting Schedule** list for months. yt-dlp fell 5 months
+behind this way.
+
+`renovate.json` now sets `prHourlyLimit: 6`. To confirm the queue drains, read the
+Dependency Dashboard issue after a Monday: **Awaiting Schedule** should hold only
+`major` updates, which stay manual by design.
+
 ### One-time manual setup
 
 These are GitHub settings, not code — do them once:
