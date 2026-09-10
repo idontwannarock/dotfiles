@@ -85,7 +85,7 @@ jobs:
           path: dist/
 
       - name: Update passgen-latest release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: passgen-latest
           name: passgen-latest (${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }})
@@ -95,7 +95,7 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Create versioned release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: passgen-v${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }}
           name: passgen v${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }}
