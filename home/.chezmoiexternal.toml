@@ -281,7 +281,7 @@
 # are handled by run_once_after_migrate-scoop-wave9-nvm.ps1.tmpl, which runs after
 # this external deploys. Bump $nvmVersion + rerun `chezmoi apply` to upgrade.
 # renovate: datasource=github-releases depName=coreybutler/nvm-windows
-{{- $nvmVersion := "1.2.2" }}
+{{- $nvmVersion := "v2.0.0" }}
 
 [".local/opt/nvm"]
     type = "archive"
