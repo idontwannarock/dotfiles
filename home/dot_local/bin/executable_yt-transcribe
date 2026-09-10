@@ -1,0 +1,298 @@
+#!/usr/bin/env bash
+# Archive a YouTube video: the video file, its audio, a transcript, the thumbnail
+# and the full metadata as yt-dlp reported it.
+#
+# Emits a manifest on stdout so a caller can find the artifacts without guessing.
+# Does NOT summarise: it reports a recommended model tier and stops there.
+set -Euo pipefail
+
+BASE_DIR="${YT_TRANSCRIBE_BASE:-$HOME/.agent/media}"
+WHISPER_MODEL=""
+FORCE_LANG=""
+KEEP_AUDIO=1
+KEEP_VIDEO=1
+SUBS_FIRST=1
+URL=""
+
+die() { printf 'yt-transcribe: %s\n' "$*" >&2; exit 1; }
+log() { printf '[yt-transcribe] %s\n' "$*" >&2; }
+
+usage() {
+  cat >&2 <<'USAGE'
+Usage: yt-transcribe [options] <youtube-url>
+
+  --base-dir DIR   Where to put the per-video folder.
+                   Default: $YT_TRANSCRIBE_BASE, else ~/.agent/media
+  --model NAME     Whisper model. Default: small.en for English, medium otherwise.
+  --lang CODE      Force the audio language (e.g. en, zh).
+  --no-video       Do not keep the video file. Audio is downloaded on its own.
+  --no-audio       Delete the audio file after transcription.
+  --no-subs        Skip the subtitle attempt; always transcribe the audio.
+  -h, --help       Show this message.
+USAGE
+  exit "${1:-0}"
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --base-dir) BASE_DIR="${2:?--base-dir needs a path}"; shift 2 ;;
+    --model)    WHISPER_MODEL="${2:?--model needs a name}"; shift 2 ;;
+    --lang)     FORCE_LANG="${2:?--lang needs a code}"; shift 2 ;;
+    --no-video) KEEP_VIDEO=0; shift ;;
+    --no-audio) KEEP_AUDIO=0; shift ;;
+    --no-subs)  SUBS_FIRST=0; shift ;;
+    -h|--help)  usage 0 ;;
+    -*)         die "unknown option: $1" ;;
+    *)          [ -n "$URL" ] && die "only one URL is accepted"; URL="$1"; shift ;;
+  esac
+done
+
+[ -n "$URL" ] || usage 1
+
+for dep in uvx ffmpeg python3; do
+  command -v "$dep" >/dev/null 2>&1 || die "missing dependency: $dep"
+done
+
+# yt-dlp needs a JS runtime to satisfy YouTube's token check. Without one the
+# subtitle endpoint answers 429 and some formats go missing.
+JS_ARGS=()
+for rt in deno node bun; do
+  if command -v "$rt" >/dev/null 2>&1; then
+    JS_ARGS=(--js-runtimes "$rt:$(command -v "$rt")")
+    break
+  fi
+done
+[ ${#JS_ARGS[@]} -gt 0 ] || log "WARNING: no JS runtime found; expect 429 on subtitles"
+
+YTDLP=(uvx --with curl-cffi yt-dlp "${JS_ARGS[@]}")
+
+log "reading metadata"
+META_TMP="$(mktemp)"
+trap 'rm -f "$META_TMP"' EXIT
+"${YTDLP[@]}" --skip-download --print-json "$URL" >"$META_TMP" 2>/dev/null \
+  || die "could not read metadata for $URL"
+
+read -r VIDEO_ID UPLOAD_DATE VIDEO_LANG < <(python3 -c '
+import json,sys
+m=json.load(open(sys.argv[1]))
+print(m.get("id") or "unknown",
+      m.get("upload_date") or "00000000",
+      (m.get("language") or "").split("-")[0] or "unknown")
+' "$META_TMP")
+
+[ "$VIDEO_ID" != "unknown" ] || die "no video id in metadata"
+
+OUT_DIR="$BASE_DIR/$UPLOAD_DATE-$VIDEO_ID"
+mkdir -p "$OUT_DIR"
+
+# Keep the metadata exactly as yt-dlp reported it. Whatever was captured stays
+# captured; picking fields now would throw away answers to questions not yet asked.
+cp "$META_TMP" "$OUT_DIR/metadata.json"
+chmod 644 "$OUT_DIR/metadata.json"
+
+# The thumbnail is only a URL in the metadata, and those URLs expire. Save the image.
+# No --convert-thumbnails: converting re-encodes the image and the stored file
+# stops being the one YouTube served. Keep the native format.
+log "fetching thumbnail"
+"${YTDLP[@]}" --skip-download --write-thumbnail \
+  -o "$OUT_DIR/thumbnail.%(ext)s" "$URL" >/dev/null 2>&1 \
+  || log "WARNING: thumbnail fetch failed; continuing"
+THUMB_FILE="$(find "$OUT_DIR" -maxdepth 1 -name 'thumbnail.*' | sort | head -1)"
+if [ -n "$THUMB_FILE" ]; then
+  log "thumbnail -> $THUMB_FILE"
+else
+  THUMB_FILE=""
+fi
+
+VIDEO_FILE=""
+AUDIO_FILE="$OUT_DIR/audio.mp3"
+
+if [ "$KEEP_VIDEO" -eq 1 ]; then
+  log "downloading video"
+  "${YTDLP[@]}" -f 'bv*+ba/b' --merge-output-format mp4 \
+    -o "$OUT_DIR/video.%(ext)s" "$URL" >/dev/null 2>&1 \
+    || die "video download failed"
+  VIDEO_FILE="$(find "$OUT_DIR" -maxdepth 1 -name 'video.*' | sort | head -1)"
+  [ -n "$VIDEO_FILE" ] && [ -s "$VIDEO_FILE" ] || die "video file is missing or empty"
+  log "video -> $VIDEO_FILE"
+
+  # Pull the audio out of the file already on disk instead of fetching it twice.
+  log "extracting audio from the video file"
+  ffmpeg -nostdin -v error -y -i "$VIDEO_FILE" -vn -codec:a libmp3lame -q:a 5 \
+    "$AUDIO_FILE" || die "audio extraction failed"
+else
+  log "downloading audio"
+  "${YTDLP[@]}" -f bestaudio -x --audio-format mp3 --audio-quality 5 \
+    -o "$OUT_DIR/audio.%(ext)s" "$URL" >/dev/null 2>&1 \
+    || die "audio download failed"
+fi
+[ -s "$AUDIO_FILE" ] || die "audio file is missing or empty: $AUDIO_FILE"
+
+# A readable metadata sidecar, so the folder explains itself without jq.
+python3 - "$OUT_DIR/metadata.json" "$OUT_DIR/metadata.md" "$(basename "${THUMB_FILE:-}")" <<'PY'
+import json,sys,datetime
+src,dst=sys.argv[1],sys.argv[2]
+thumb=sys.argv[3] if len(sys.argv)>3 else ""
+m=json.load(open(src))
+def g(k,d=""): return m.get(k) or d
+d=g("upload_date","")
+upload=f"{d[0:4]}-{d[4:6]}-{d[6:8]}" if len(d)==8 else ""
+tags=g("tags",[]) or []
+chapters=g("chapters",[]) or []
+lines=[
+ "---",
+ 'type: SourceMetadata',
+ f'video_id: "{g("id")}"',
+ f'title: {json.dumps(g("title"))}',
+ f'url: "{g("webpage_url")}"',
+ f'channel: {json.dumps(g("channel") or g("uploader"))}',
+ f'channel_id: "{g("channel_id")}"',
+ f'channel_url: "{g("channel_url")}"',
+ f'uploader_id: "{g("uploader_id")}"',
+ f'upload_date: "{upload}"',
+ f'duration_seconds: {g("duration",0)}',
+ f'duration: "{g("duration_string")}"',
+ f'language: "{g("language")}"',
+ f'thumbnail_url: "{g("thumbnail")}"',
+ f'thumbnail_file: "{thumb}"',
+ f'categories: {json.dumps(g("categories",[]))}',
+ f'view_count: {g("view_count",0)}',
+ f'like_count: {g("like_count",0)}',
+ f'comment_count: {g("comment_count",0)}',
+ f'fetched_at: "{datetime.datetime.now().astimezone().isoformat(timespec="seconds")}"',
+ "tags:",
+]
+lines += [f"  - {json.dumps(t)}" for t in tags[:30]] or ["  []"]
+lines += ["---","", f"# {g('title')}",""]
+if chapters:
+    lines += ["## Chapters",""]
+    for c in chapters:
+        st=int(c.get("start_time") or 0)
+        lines.append(f"- `{st//3600:02d}:{st//60%60:02d}:{st%60:02d}` {c.get('title','')}")
+    lines.append("")
+lines += ["## Description","", g("description","(none)"), ""]
+open(dst,"w").write("\n".join(lines))
+PY
+log "metadata -> $OUT_DIR/metadata.md"
+
+TRANSCRIPT="$OUT_DIR/transcript.txt"
+TRANSCRIPT_SOURCE=""
+
+# Path one: subtitles the uploader wrote by hand. Seconds, and human quality.
+#
+# Auto-generated captions are deliberately NOT used. YouTube serves them as a
+# rolling window: each phrase reappears in two or three consecutive cues, with
+# per-word timing tags inside. Flattening that to prose needs real dedup work,
+# and the result is still worse than what whisper produces from the audio.
+# metadata.json already separates "subtitles" (hand-written) from
+# "automatic_captions", so this costs no extra request.
+if [ "$SUBS_FIRST" -eq 1 ]; then
+  MANUAL_LANGS="$(python3 -c '
+import json,sys
+m=json.load(open(sys.argv[1]))
+subs=m.get("subtitles") or {}
+print(" ".join(k for k in subs if k != "live_chat"))
+' "$OUT_DIR/metadata.json")"
+
+  if [ -z "$MANUAL_LANGS" ]; then
+    log "no hand-written subtitles; using speech-to-text"
+  else
+    log "hand-written subtitles found: $MANUAL_LANGS"
+    PICK=""
+    for want in "${FORCE_LANG:-$VIDEO_LANG}" en zh-Hant zh-TW; do
+      for have in $MANUAL_LANGS; do
+        [ "$have" = "$want" ] && { PICK="$have"; break; }
+      done
+      [ -n "$PICK" ] && break
+    done
+    # Nothing preferred matched, so take the first track on offer.
+    [ -n "$PICK" ] || PICK="${MANUAL_LANGS%% *}"
+    log "using subtitle track: $PICK"
+
+    if "${YTDLP[@]}" --write-subs --no-write-auto-subs --sub-langs "$PICK" \
+         --skip-download --convert-subs srt --retries 5 \
+         -o "$OUT_DIR/subs.%(ext)s" "$URL" >/dev/null 2>&1; then
+      SUB_FILE="$(find "$OUT_DIR" -maxdepth 1 \( -name 'subs*.srt' -o -name 'subs*.vtt' \) | sort | head -1)"
+      if [ -n "$SUB_FILE" ] && [ -s "$SUB_FILE" ]; then
+        # Strip cue numbers, timestamps, VTT headers and markup; keep the words.
+        python3 -c '
+import re,sys
+out=[]
+for ln in open(sys.argv[1],encoding="utf-8",errors="replace"):
+    s=ln.strip()
+    if not s or s.isdigit() or "-->" in s: continue
+    if s.startswith(("WEBVTT","Kind:","Language:","NOTE","STYLE")): continue
+    # Subtitle projects put contributor credits in the first cue. Not speech.
+    if re.match(r"^(Translator|Reviewer|Traducteur|Transcriber)\s*:", s): continue
+    s=re.sub(r"<[^>]+>","",s).strip()
+    if not s or (out and out[-1]==s): continue
+    out.append(s)
+open(sys.argv[2],"w",encoding="utf-8").write(" ".join(out)+"\n")
+' "$SUB_FILE" "$TRANSCRIPT"
+        if [ -s "$TRANSCRIPT" ]; then
+          TRANSCRIPT_SOURCE="youtube-subtitles:$PICK"
+          # Both paths leave the timed file under the same name.
+          mv "$SUB_FILE" "$OUT_DIR/transcript.${SUB_FILE##*.}"
+        fi
+      fi
+    fi
+    [ -n "$TRANSCRIPT_SOURCE" ] \
+      && log "subtitles -> $TRANSCRIPT" \
+      || log "subtitle download failed; falling back to speech-to-text"
+  fi
+fi
+
+# Path two: run speech-to-text on the audio, locally.
+if [ -z "$TRANSCRIPT_SOURCE" ]; then
+  STT_LANG="${FORCE_LANG:-$VIDEO_LANG}"
+  if [ -z "$WHISPER_MODEL" ]; then
+    case "$STT_LANG" in
+      en) WHISPER_MODEL="small.en" ;;
+      *)  WHISPER_MODEL="medium" ;;
+    esac
+  fi
+  log "transcribing with whisper model=$WHISPER_MODEL lang=$STT_LANG"
+  W_ARGS=(--model "$WHISPER_MODEL" --output_format all --output_dir "$OUT_DIR")
+  [ "$STT_LANG" != "unknown" ] && W_ARGS+=(--language "$STT_LANG")
+  uvx --from whisper-ctranslate2 whisper-ctranslate2 "${W_ARGS[@]}" "$AUDIO_FILE" >&2 \
+    || die "transcription failed"
+  [ -s "$OUT_DIR/audio.txt" ] || die "whisper produced no text"
+  mv "$OUT_DIR/audio.txt" "$TRANSCRIPT"
+  for ext in srt vtt json tsv; do
+    [ -f "$OUT_DIR/audio.$ext" ] && mv "$OUT_DIR/audio.$ext" "$OUT_DIR/transcript.$ext"
+  done
+  TRANSCRIPT_SOURCE="whisper:$WHISPER_MODEL"
+fi
+
+if [ "$KEEP_AUDIO" -eq 0 ]; then
+  rm -f "$AUDIO_FILE"; AUDIO_FILE=""
+  log "audio deleted per --no-audio"
+fi
+
+# Size the transcript, then name the tier. The caller decides; this only advises.
+read -r EST_TOKENS TIER < <(python3 -c '
+import sys,re
+t=open(sys.argv[1],encoding="utf-8",errors="replace").read()
+cjk=len(re.findall(r"[　-鿿]",t))
+# CJK runs about 1 token per 1.5 chars; western text about 1.33 per word.
+est=int(cjk/1.5)+int(len(re.findall(r"[A-Za-z0-9@#$%&*_/-]+",t))*1.33)
+print(est, "haiku" if est<8000 else "sonnet" if est<40000 else "cross-model")
+' "$TRANSCRIPT")
+
+cat <<MANIFEST
+--- yt-transcribe manifest ---
+video_id:          $VIDEO_ID
+url:               $URL
+out_dir:           $OUT_DIR
+metadata_json:     $OUT_DIR/metadata.json
+metadata_md:       $OUT_DIR/metadata.md
+transcript:        $TRANSCRIPT
+transcript_source: $TRANSCRIPT_SOURCE
+video:             ${VIDEO_FILE:-(none)}
+audio:             ${AUDIO_FILE:-(none)}
+thumbnail:         ${THUMB_FILE:-(none)}
+est_tokens:        $EST_TOKENS
+recommended_tier:  $TIER
+summary_target:    $OUT_DIR/summary.md
+--- end manifest ---
+MANIFEST
