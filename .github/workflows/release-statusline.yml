@@ -80,7 +80,7 @@ jobs:
         env:
           VERSION_DATE: ${{ steps.version.outputs.date }}
           COMMIT_SHA: ${{ github.sha }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: statusline-latest
           name: statusline-latest (${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }})
@@ -93,7 +93,7 @@ jobs:
         env:
           VERSION_DATE: ${{ steps.version.outputs.date }}
           COMMIT_SHA: ${{ github.sha }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: statusline-v${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }}
           name: statusline v${{ steps.version.outputs.date }}-${{ steps.version.outputs.short_sha }}
