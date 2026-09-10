@@ -61,7 +61,7 @@
 # renovate: datasource=github-releases depName=starship/starship
 {{- $starshipVersion := "1.26.0" }}
 # renovate: datasource=github-releases depName=zellij-org/zellij
-{{- $zellijVersion   := "0.44.3" }}
+{{- $zellijVersion   := "0.45.1" }}
 # renovate: datasource=github-releases depName=astral-sh/uv
 {{- $uvVersion       := "0.12.10" }}
 # renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
