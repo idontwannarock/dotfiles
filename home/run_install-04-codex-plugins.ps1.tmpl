@@ -6,7 +6,12 @@ $ErrorActionPreference = "Stop"
 
 {{ template "scripts/log.ps1" }}
 
-$plugin = "slack@openai-curated-remote"
+# Codex reports installed plugins under a marketplace-qualified id, and that
+# marketplace differs per machine (openai-curated on Windows,
+# openai-curated-remote on WSL). Match on the bare name so a marketplace
+# rename cannot make the guard miss and reinstall on every apply.
+$pluginName = "slack"
+$pluginId = "slack@openai-curated"
 
 Log-Begin "Codex plugins"
 try {
@@ -25,15 +30,15 @@ try {
     $pluginList = $pluginListJson | ConvertFrom-Json
     $enabled = @(
         $pluginList.installed | Where-Object {
-            $_.pluginId -eq $plugin -and $_.installed -eq $true -and $_.enabled -eq $true
+            $_.name -eq $pluginName -and $_.installed -eq $true -and $_.enabled -eq $true
         }
     )
 
     if ($enabled.Count -gt 0) {
-        Log-Skip "[codex-plugins] $plugin is installed and enabled"
+        Log-Skip "[codex-plugins] $pluginName is installed and enabled"
     } else {
-        Log-Step "[codex-plugins] installing or enabling $plugin"
-        codex plugin add $plugin --json | Out-Host
+        Log-Step "[codex-plugins] installing or enabling $pluginId"
+        codex plugin add $pluginId --json | Out-Host
         if ($LASTEXITCODE -ne 0) {
             throw "codex plugin add failed with exit code $LASTEXITCODE"
         }

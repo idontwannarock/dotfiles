@@ -8,7 +8,12 @@ set -euo pipefail
 {{ template "scripts/log.sh" }}
 {{ template "scripts/load-nvm" }}
 
-plugin="slack@openai-curated-remote"
+# Codex reports installed plugins under a marketplace-qualified id, and that
+# marketplace differs per machine (openai-curated on Windows,
+# openai-curated-remote on this WSL box). Match on the bare name so a
+# marketplace rename cannot make the guard miss and reinstall on every apply.
+plugin_name="slack"
+plugin_id="slack@openai-curated"
 
 log_begin "Codex plugins"
 
@@ -20,17 +25,17 @@ fi
 
 log_section "inspect required Codex plugins"
 plugin_list="$(codex plugin list --json)"
-if jq -e --arg plugin "$plugin" \
-    '(.installed | type == "array") and any(.installed[]; .pluginId == $plugin and .installed == true and .enabled == true)' \
+if jq -e --arg name "$plugin_name" \
+    '(.installed | type == "array") and any(.installed[]; .name == $name and .installed == true and .enabled == true)' \
     <<<"$plugin_list" &>/dev/null; then
-    log_skip "[codex-plugins] $plugin is installed and enabled"
+    log_skip "[codex-plugins] $plugin_name is installed and enabled"
 else
     jq_rc=$?
     if [ "$jq_rc" -gt 1 ]; then
         log_warn "[codex-plugins] codex plugin list returned invalid JSON"
         exit "$jq_rc"
     fi
-    log_step "[codex-plugins] installing or enabling $plugin"
-    codex plugin add "$plugin" --json
+    log_step "[codex-plugins] installing or enabling $plugin_id"
+    codex plugin add "$plugin_id" --json
 fi
 {{ end -}}

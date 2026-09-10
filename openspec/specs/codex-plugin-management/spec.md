@@ -7,18 +7,19 @@
 
 ### Requirement: chezmoi SHALL reconcile required Codex plugins
 
-The chezmoi source SHALL provide platform-specific `run_` installers that ensure `slack@openai-curated-remote` is installed and enabled after the Codex CLI becomes available. The installers SHALL use the Codex plugin CLI rather than writing plugin cache or marketplace state directly.
+The chezmoi source SHALL provide platform-specific `run_` installers that ensure the `slack` plugin is installed and enabled after the Codex CLI becomes available. The installers SHALL identify the plugin by its `name` field, because the marketplace that qualifies the reported `pluginId` differs per machine. The installers SHALL add the plugin as `slack@openai-curated`. The installers SHALL use the Codex plugin CLI rather than writing plugin cache or marketplace state directly.
 
 #### Scenario: Slack plugin is missing
-- **WHEN** `chezmoi apply` runs, Codex is available, and `codex plugin list --json` does not report `slack@openai-curated-remote` as installed and enabled
-- **THEN** the installer runs `codex plugin add slack@openai-curated-remote --json`
+- **WHEN** `chezmoi apply` runs, Codex is available, and `codex plugin list --json` reports no entry named `slack` that is installed and enabled
+- **THEN** the installer runs `codex plugin add slack@openai-curated --json`
 
 #### Scenario: Slack plugin is already installed and enabled
-- **WHEN** `chezmoi apply` runs and `codex plugin list --json` reports `slack@openai-curated-remote` as installed and enabled
+- **WHEN** `chezmoi apply` runs and `codex plugin list --json` reports an entry named `slack` as installed and enabled
 - **THEN** the installer logs a skip and SHALL NOT reinstall the plugin
+- **AND** the skip holds whatever marketplace qualifies that entry's `pluginId`
 
 #### Scenario: Slack plugin is installed but disabled
-- **WHEN** `chezmoi apply` runs and `slack@openai-curated-remote` is installed but not enabled
+- **WHEN** `chezmoi apply` runs and the `slack` plugin is installed but not enabled
 - **THEN** the installer invokes the Codex plugin add operation to restore the required enabled state
 
 #### Scenario: Codex is temporarily unavailable
@@ -36,7 +37,7 @@ The Unix/macOS/WSL and Windows installers SHALL reconcile the same plugin identi
 
 #### Scenario: Platform templates declare the same required plugin
 - **WHEN** the bash and PowerShell installer sources are compared
-- **THEN** both identify `slack@openai-curated-remote` as the required plugin
+- **THEN** both match the installed plugin by the name `slack` and both add `slack@openai-curated`
 
 #### Scenario: Installer order follows the Codex CLI installation
 - **WHEN** chezmoi orders the rendered install scripts by filename
@@ -48,7 +49,7 @@ The Unix/macOS/WSL and Windows installers SHALL reconcile the same plugin identi
 
 ### Requirement: Slack SHALL use the curated plugin connection only
 
-The managed Codex configuration SHALL NOT declare a direct `[mcp_servers.slack]` entry. Slack access SHALL come from `slack@openai-curated-remote`, so Codex does not attempt unsupported dynamic OAuth client registration for a duplicate direct server.
+The managed Codex configuration SHALL NOT declare a direct `[mcp_servers.slack]` entry. Slack access SHALL come from the `slack` Codex plugin, so Codex does not attempt unsupported dynamic OAuth client registration for a duplicate direct server.
 
 #### Scenario: Managed config is generated
 - **WHEN** either platform-specific Codex config generator runs
