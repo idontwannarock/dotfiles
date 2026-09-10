@@ -17,13 +17,17 @@ Dispatch with the **Agent tool**, `subagent_type: reviewer`, all lenses in one
 message so they run concurrently. That agent is read-only by construction: its
 `tools` are `Read, Grep, Glob`, so it cannot edit the tree it is reviewing.
 {{- else -}}
-Work through the lenses one at a time. Before each, state which lens you are
-opening; read its file; apply it to the diff; write its findings down before
-opening the next. Do not carry a finding from one lens into another — the
-separation is what keeps the same issue from being counted twice.
+Dispatch with **`spawn_agent`**, one agent per lens, all in the same round so they
+run concurrently. Leave the `model` field unset: a spawned agent inherits your
+model.
 
-This review is read-only. Do not edit, stage, commit, or run anything that
-changes the tree.
+Pass `fork_turns: "none"` and make each directive self-contained: the full diff,
+the absolute path to that agent's lens file, and the reporting shape below.
+
+A spawned agent gets **the same tools you have**, so nothing stops it changing the
+tree. Read-only is prose here, not construction — write it into every directive:
+read the diff and the lens file, report the findings, edit nothing, stage nothing,
+commit nothing.
 {{- end }}
 
 ## Reporting shape

@@ -782,8 +782,9 @@ agent 與 skill 的 `description` 會**預載入每個 session** 的 system prom
 
 觀點內容曾經是七個 agent，約 12KB description，等於「無論今天有沒有 review 都付
 費」。改成檔案後，flow 已經決定要跑哪個 lens 了，檔案可以躺在磁碟上直到那一刻。
-順帶解決了另一半：Codex 沒有 agent 機制，以前拿到的是一張它派不出去的 agent 表，
-真正的 lens 內容一行都沒有。現在兩邊指向同一批路徑。
+順帶解決了另一半：Codex 以前拿到的是一張列著 Claude 端 agent 名字的表，那些名字它派
+不出去，真正的 lens 內容一行都沒有。現在兩邊指向同一批路徑。（Codex 0.153.4 有
+`spawn_agent`，但它派的是自己的 agent，不是這張表上的名字。）
 
 ### reviewer agent
 
