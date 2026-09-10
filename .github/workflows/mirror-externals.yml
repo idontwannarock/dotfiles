@@ -40,7 +40,7 @@ jobs:
       # Renovate PR. The `|| github.token` fallback keeps the mirror working (just without
       # the check/auto-merge) if the secret is unset or its PAT has expired — otherwise an
       # empty token would break checkout and every gh call.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.MIRROR_PAT || github.token }}
       - name: Mirror ${{ matrix.tool }}
