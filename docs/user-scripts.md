@@ -11,6 +11,7 @@
 | `scoop-interactive-update.ps1` | Windows | 互動式更新 scoop 套件 | `scoopupdate` alias |
 | `switch-pwsh-to-msi.ps1` | Windows | 將 Microsoft Store（MSIX）版 PowerShell 7 換成官方 MSI 版 | 手動執行，需系統管理員權限 |
 | `sdkupdate` | Linux/WSL、macOS | 互動式更新 SDKMAN 套件（JDK、Maven、Gradle…） | `sdkupdate`（`~/.local/bin` 已在 PATH，不需 alias） |
+| `yt-transcribe` | Linux/WSL、macOS | 把一支 YouTube 影片存成影片檔、音檔、逐字稿、縮圖與完整 metadata | `yt-transcribe <url>` |
 
 ## 依賴
 
@@ -18,6 +19,9 @@
 |------|------|------|
 | [Scoop](https://scoop.sh/) | `scoop-interactive-update.ps1` | 僅 Windows |
 | [SDKMAN!](https://sdkman.io/) | `sdkupdate` | 僅 Unix；SDKMAN 不支援 Windows 原生 |
+| [uv](https://docs.astral.sh/uv/) | `yt-transcribe` | 透過 `uvx` 取用 yt-dlp 與 whisper，不裝進系統 |
+| ffmpeg | `yt-transcribe` | 合併影音軌、從影片抽音軌 |
+| JS runtime（deno / node / bun）| `yt-transcribe` | YouTube 的 token 檢查需要；缺了字幕端點會回 429 |
 
 ## `sdkupdate` 設計備忘
 
@@ -50,3 +54,44 @@ SDKMAN 沒有 scoop `update` 那種「原地升級」指令：`sdk upgrade` 只�
 
 以 macOS 內建的 bash 3.2 為下限：不使用 associative array（`declare -A` 需要 bash 4），
 也不使用 `find -printf`（GNU 擴充，BSD find 沒有）。
+
+## `yt-transcribe` 設計備忘
+
+一支影片產生一個資料夾，路徑是 `<base>/<上傳日期>-<video id>/`。base 依序取
+`--base-dir`、`$YT_TRANSCRIBE_BASE`、`~/.agent/media`。
+
+腳本**不做摘要**。它只量逐字稿長度，在 manifest 印出建議的模型級別，然後結束。
+摘要交給呼叫者，因為模型選擇是呼叫者的成本決定，不是這支腳本的事。
+
+### 產物
+
+| 檔案 | 內容 |
+|------|------|
+| `video.mp4` | 影片檔，最高畫質。`--no-video` 可略過 |
+| `audio.mp3` | 音軌。有影片檔時用 ffmpeg 從本機抽出，不重抓一次 |
+| `transcript.txt` | 純文字逐字稿，摘要就讀這份 |
+| `transcript.srt` 等 | 帶時間戳的版本 |
+| `thumbnail.<原生格式>` | 縮圖 |
+| `metadata.json` | yt-dlp 回報的原始 metadata，一個欄位都不刪 |
+| `metadata.md` | 同上的可讀版：frontmatter 放常用欄位，body 放章節與影片說明 |
+
+### 四個刻意的決定
+
+- **不使用自動字幕。** YouTube 的自動字幕是滾動視窗格式：同一句話會在連續兩三個 cue
+  裡重複出現，內部還夾著逐字時間標記。攤平成散文要真的做去重，而且結果仍然比
+  whisper 從音檔轉出來的差。所以只用上傳者手寫的字幕；判斷來源是 `metadata.json`
+  已經分開的 `subtitles`（手寫）與 `automatic_captions`（自動）兩個欄位，不多打一次網路。
+- **metadata 照抓照留。** 不篩欄位。現在挑掉的欄位，就是以後想問卻問不到的答案。
+  代價是檔案可能到十幾 MB，因為 `--print-json` 會帶上所有格式與字幕軌清單。
+- **縮圖不轉檔。** 不加 `--convert-thumbnails`：轉檔是重新編碼，存下來的就不再是
+  YouTube 實際給的那個檔。原生格式通常是 `.webp`。
+- **字幕的貢獻者掛名要濾掉。** TED 這類社群翻譯會把 `Translator:` / `Reviewer:`
+  放在第一個 cue 裡。那不是講出來的話，留著會污染摘要。
+
+### 兩個踩過的坑
+
+- **`yt-dlp` 要夠新，而且要有 JS runtime。** Ubuntu 套件庫的版本停在 2022，對現在的
+  YouTube 直接失敗。改用 `uvx` 取最新版。即使版本新，少了 JS runtime 仍會在字幕
+  端點吃到 `HTTP 429`；腳本會自動找 deno / node / bun 並接上。
+- **`--convert-subs srt` 不保證產出 `.srt`。** 只找 `.srt` 的話，字幕明明抓到了也會
+  被判定失敗而白跑一次 whisper。收檔要同時接受 `.srt` 與 `.vtt`。

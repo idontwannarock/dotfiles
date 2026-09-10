@@ -1,0 +1,9 @@
+{{- /* Codex name-map for the shared youtube-transcribe body */ -}}
+{{- $n := dict
+    "tool" "codex" -}}
+---
+name: youtube-transcribe
+description: "Use when the user wants to know what a YouTube video says, or wants one archived as text — pasting a YouTube URL with no other instruction, asking 「這支影片在講什麼」、「幫我抓逐字稿」、「把這個影片存起來」、「總結一下這個影片」, or \"what does this video say\", \"get me the transcript\", \"summarise this video\". Archives the video, audio, transcript, thumbnail and metadata to disk with the yt-transcribe script, then routes the transcript to a summariser sized by the tier the script reports. Skip for videos already transcribed, and for audio files already on disk that need no download."
+---
+
+{{ template "skills/youtube-transcribe.md" (dict "n" $n) -}}

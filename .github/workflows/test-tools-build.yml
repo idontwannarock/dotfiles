@@ -3,17 +3,54 @@ name: Test tools build
 # PR-only, like test-pester.yml and validate-externals.yml. The release-* workflows
 # already compile these on push to main — the point here is to catch the error
 # BEFORE it lands, not to build the same commit twice.
+#
+# Runs on ALL PRs with no paths filter so the required `tools-gate` check always
+# reports — a PR that touches no tool passes instantly, avoiding the "required check
+# never runs -> PR stuck" trap. Same contract as validate-externals.yml's `gate`.
+# Require `tools-gate` in the ruleset, never `passgen`/`statusline (*)` directly:
+# those report nothing on an unrelated PR, and a new matrix entry would silently
+# fall outside the required list.
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'tools/**'
-      - '.github/workflows/test-tools-build.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
+  # Always runs; decides whether the compile jobs are relevant to this PR.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A manual run has no PR to inspect, so build everything.
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Paginate: `gh pr view --json files` caps at 100 files, which could miss
+          # a tools/ file on a large PR and skip the build (fail-open).
+          files=$(gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --jq '.[].filename')
+          echo "changed files:"; echo "$files"
+          if echo "$files" | grep -qE '^(tools/|\.github/workflows/test-tools-build\.yml$)'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
   go:
     name: statusline (${{ matrix.goos }}/${{ matrix.goarch }})
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
 
     # Same four combinations release-statusline.yml publishes. Cross-compiling all
@@ -35,9 +72,9 @@ jobs:
             goarch: amd64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version: 'stable'
 
@@ -53,10 +90,12 @@ jobs:
 
   rust:
     name: passgen
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -72,3 +111,33 @@ jobs:
       - name: Test
         working-directory: tools/passgen
         run: cargo test
+
+  # The single required status check. Mirrors validate-externals.yml's `gate`.
+  tools-gate:
+    needs: [changes, go, rust]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide
+        run: |
+          # Fail CLOSED: if the detection job itself did not succeed, `relevant` is
+          # empty and we must not let the gate pass an unbuilt PR.
+          changes='${{ needs.changes.result }}'
+          if [ "$changes" != "success" ]; then
+            echo "changes job did not succeed (result=$changes) — failing closed."
+            exit 1
+          fi
+          relevant='${{ needs.changes.outputs.relevant }}'
+          if [ "$relevant" != "true" ]; then
+            echo "PR touches no tool — gate passes."
+            exit 0
+          fi
+          go='${{ needs.go.result }}'
+          rust='${{ needs.rust.result }}'
+          echo "go=$go rust=$rust"
+          if [ "$go" = "success" ] && [ "$rust" = "success" ]; then
+            echo "builds passed."
+            exit 0
+          fi
+          echo "a build failed — blocking the merge."
+          exit 1

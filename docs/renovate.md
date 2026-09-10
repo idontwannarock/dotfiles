@@ -135,6 +135,11 @@ low-risk updates merge themselves once it passes.
   GitHub native auto-merge). **`major` stays manual** — it may carry breaking changes.
   A `minimumReleaseAge` of 3 days holds a bump back until the upstream release has
   settled (catches yanked/hotfixed releases for free).
+- **Two required checks:** `gate` (externals + gnupg) and `tools-gate` (the `tools/`
+  builds). Both always report, so an unrelated PR passes them instantly. Never require
+  `passgen` or `statusline (*)` directly: they report nothing on a PR that touches no
+  tool, and a required check that never reports blocks the merge forever. #194 merged
+  a red `passgen` because `gate` was the only required check at the time.
 - **The gate:** [`.github/workflows/validate-externals.yml`](../.github/workflows/validate-externals.yml)
   runs on every PR to `main`. It reports a single `gate` status check. On a PR that
   touches neither `home/.chezmoiexternal.toml` nor `home/run_onchange_install-gnupg.ps1.tmpl`

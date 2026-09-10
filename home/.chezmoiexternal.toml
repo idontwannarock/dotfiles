@@ -59,11 +59,11 @@
 # Bump versions below and rerun `chezmoi apply` to upgrade.
 {{- if eq .chezmoi.os "windows" }}
 # renovate: datasource=github-releases depName=starship/starship
-{{- $starshipVersion := "1.25.1" }}
+{{- $starshipVersion := "1.26.0" }}
 # renovate: datasource=github-releases depName=zellij-org/zellij
-{{- $zellijVersion   := "0.44.3" }}
+{{- $zellijVersion   := "0.45.1" }}
 # renovate: datasource=github-releases depName=astral-sh/uv
-{{- $uvVersion       := "0.12.9" }}
+{{- $uvVersion       := "0.12.10" }}
 # renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
 {{- $jqVersion       := "1.8.2" }}
 # renovate: datasource=github-releases depName=BurntSushi/ripgrep
@@ -106,7 +106,7 @@
 # renovate: datasource=github-releases depName=int128/kubelogin
 {{- $kubeloginVersion    := "1.36.3" }}
 # renovate: datasource=github-releases depName=yt-dlp/yt-dlp versioning=loose
-{{- $ytdlpVersion        := "2026.03.17" }}
+{{- $ytdlpVersion        := "2026.08.19" }}
 # renovate: datasource=github-releases depName=gohugoio/hugo
 {{- $hugoVersion         := "0.165.0" }}
 # renovate: datasource=github-releases depName=nxtrace/NTrace-V1
@@ -221,7 +221,7 @@
 # chezmoi caches by URL so the zip downloads once. Bump $ffmpegVersion + rerun
 # `chezmoi apply` (or merge Renovate's PR).
 # renovate: datasource=github-releases depName=GyanD/codexffmpeg
-{{- $ffmpegVersion := "8.1.2" }}
+{{- $ffmpegVersion := "9.0.1" }}
 
 [".local/bin/ffmpeg.exe"]
     type = "archive-file"
@@ -372,7 +372,7 @@
 # 2601). To upgrade: bump $sevenZipVersion AND delete ~/.local/opt/7zip so the
 # run_once re-extracts (the run_once is hash-keyed, not version-aware).
 # renovate: datasource=github-releases depName=ip7z/7zip versioning=loose
-{{- $sevenZipVersion := "26.02" }}
+{{- $sevenZipVersion := "26.03" }}
 {{- $sevenZipAsset := $sevenZipVersion | replace "." "" }}
 
 [".local/share/7zip/7zip-x64.msi"]
@@ -392,7 +392,7 @@
 # more that scoop's `extract_dir: fonts/ttf` excludes), so include +
 # stripComponents = 2 keeps only fonts/ttf/*.ttf, flattened into the dest dir.
 # renovate: datasource=github-releases depName=ryanoasis/nerd-fonts
-{{- $cascadiaNfVersion    := "3.4.0" }}
+{{- $cascadiaNfVersion    := "3.5.1" }}
 # renovate: datasource=github-releases depName=JetBrains/JetBrainsMono
 {{- $jetbrainsMonoVersion := "2.304" }}
 
