@@ -51,7 +51,7 @@ jobs:
           go build -trimpath -ldflags="-s -w -X main.Version=${VERSION}" -o ${{ matrix.artifact }} .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.artifact }}
           path: tools/statusline/${{ matrix.artifact }}
@@ -71,7 +71,7 @@ jobs:
           echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           merge-multiple: true
           path: dist/
