@@ -101,6 +101,7 @@ Optional fields: `versioning=<scheme>` (e.g. `loose` for CalVer), and
 | Tool | Why |
 |------|-----|
 | `statusline`, `passgen` | self-built (own GitHub Releases) |
+| `nvm-windows` | pinned to 1.x. v2 ships only an Inno Setup `-setup.exe`, and chezmoi has no external type that runs an installer. See the comment above `$nvmVersion` in `.chezmoiexternal.toml`. |
 
 ## Mirror phase (self-hosted tools)
 
