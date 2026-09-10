@@ -61,7 +61,8 @@ Dispatch with **`spawn_agent`**. Leave the `model` field unset: a spawned agent 
 your model, and the tier table's Claude column does not port across. The tier tells you how
 much care the pass needs, not which model to name.
 
-The directive must be self-contained, because the agent inherits no conversation: absolute
+Pass `fork_turns: "none"` — the default forks your whole conversation into the agent. The
+directive must therefore be self-contained: absolute
 paths to `metadata.md` and the transcript, the exact frontmatter block below, the body
 structure, and the instruction to reply with only the path it wrote, the line count, and
 the timestamp it used.

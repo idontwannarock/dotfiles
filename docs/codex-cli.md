@@ -37,7 +37,7 @@ Claude 端是 command 的能力（`/handoff`、`/pickup`、`/code:review-archite
 
 其中 `code:review-architecture` 的檔案方位與實跑經驗見 [claude-code.md](claude-code.md) 的 Arch Review 章節，行為契約見 [`openspec/specs/review-architecture/spec.md`](../openspec/specs/review-architecture/spec.md)。
 
-八支 `review-*` skill 同樣共用 body。它們的觀點放在 `~/.agent/reference/review-lenses/` —— tool-agnostic 的純檔案，兩端指向同一批路徑。這對 Codex 特別重要：Codex 沒有 agent 機制，改制前拿到的是一張列著 `subagent_type` 名字的表，那些 agent 只存在於 Claude 端，Codex 實際能讀到的只有表格裡那一行 focus 說明。派工方式是 body 裡少數的 reader-axis 分支之一：Claude 平行派 subagent，Codex 逐個 lens 依序做完再開下一個。細節見 [claude-code.md](claude-code.md) 的 Code Review 章節。
+八支 `review-*` skill 同樣共用 body。它們的觀點放在 `~/.agent/reference/review-lenses/` —— tool-agnostic 的純檔案，兩端指向同一批路徑。這對 Codex 特別重要：改制前拿到的是一張列著 `subagent_type` 名字的表，那些 agent 只存在於 Claude 端，Codex 實際能讀到的只有表格裡那一行 focus 說明。派工方式是 body 裡少數的 reader-axis 分支之一：Claude 用 Agent tool 派 `reviewer`，Codex 用 `spawn_agent` 派，兩端都是一個 lens 一個 agent、同一輪平行送出。差別在唯讀性怎麼來：Claude 的 `reviewer` 由 `tools` 欄位鎖死，Codex 的 spawned agent 與呼叫者同工具，唯讀只能寫進指令裡。細節見 [claude-code.md](claude-code.md) 的 Code Review 章節。
 
 唯一的例外是 `herdr`：它從上游同步而非自家撰寫，也不走 chezmoi 的檔案管理——
 `run_onchange_install-herdr-skill.sh.tmpl` 依本機 herdr 版本抓對應 tag 的 SKILL.md，
