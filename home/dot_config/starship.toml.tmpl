@@ -34,3 +34,30 @@ cmd_indicator = "cmd"
 unknown_indicator = "?sh"
 style = "bold yellow"
 format = "[$indicator]($style) "
+{{- if eq .chezmoi.os "windows" }}
+
+# Windows only: git modules off.
+# Finding a git repository costs about 775 ms on this machine, whatever the
+# repository size, and git_status adds 289 ms on top. Every module that needs the
+# repository pays that 775 ms, so turning off git_status alone saves little.
+# Measured in D:\ws\github\dotfiles: 1282 ms per prompt with these on, 200 ms off.
+# In D:\ws\github\OpenSearch: 2208 ms on, 352 ms off.
+# truncate_to_repo must go too. It is what makes the directory module ask for the
+# repository, so leaving it on keeps the 775 ms even with every git module off.
+# WSL is unaffected and keeps all git modules: it renders in 15 ms on a native
+# Linux path, because the cost is Windows process and file access, not starship.
+[directory]
+truncate_to_repo = false
+
+[git_branch]
+disabled = true
+
+[git_status]
+disabled = true
+
+[git_state]
+disabled = true
+
+[git_commit]
+disabled = true
+{{- end }}
