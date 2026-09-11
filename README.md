@@ -213,7 +213,7 @@ external archive 時把它映射成 Windows 的 `ReadOnly` 檔案屬性，下次
 
 | 設定 | 部署目標 | 平台 |
 |------|----------|------|
-| Shell prompt（[Starship](docs/starship.md)） | `~/.config/starship/starship.toml` | 跨平台 |
+| Shell prompt（[Starship](docs/starship.md)） | `~/.config/starship.toml` | 跨平台 |
 | [Vim](docs/vim.md) / IdeaVim | `~/.vimrc`, `~/.ideavimrc`, `~/.vim/` | 跨平台 |
 | Bash | `~/.bashrc`, `~/.shell_common` | Windows (Git Bash)、Linux/WSL |
 | Zsh | `~/.zshrc`, `~/.shell_common` | macOS |

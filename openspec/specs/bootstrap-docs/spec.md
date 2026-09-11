@@ -35,7 +35,7 @@ README SHALL 包含日常使用的常見操作說明，包含同步更新、查�
 
 #### Scenario: 日常同步指令說明
 - **WHEN** 使用者查閱日常操作章節
-- **THEN** 可找到：`chezmoi update`（pull + apply）、`chezmoi diff`（只看差異）、`chezmoi apply ~/.config/starship/starship.toml`（套用單一檔案）的說明
+- **THEN** 可找到：`chezmoi update`（pull + apply）、`chezmoi diff`（只看差異）、`chezmoi apply ~/.config/starship.toml`（套用單一檔案）的說明
 
 #### Scenario: 修改設定後同步到 repo 的說明
 - **WHEN** 使用者查閱如何將本機修改同步回 repo 的說明
