@@ -12,6 +12,8 @@ Windows PowerShell 設定檔（PS5 與 PS7 分開管理）。
 | `~/Documents/WindowsPowerShell/` | Windows PowerShell 5 profile |
 | `~/Documents/_shared-profile.d/` | PS5 + PS7 共用 fragments |
 
+Windows 上 `git` 指令的固定開銷,見 [Windows 上的 Git PATH](git-windows-path.md)。
+
 ## 依賴
 
 | 依賴 | 用途 | 備註 |

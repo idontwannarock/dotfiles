@@ -388,6 +388,7 @@ dotfiles/
 | [Corp SSH（Windows）](docs/corp-ssh-setup-windows.md) | 同上的 Windows 版 |
 | [Corp GitLab（glab）](docs/gitlab-corp-access.md) | glab 的權杖與 host 解析、每台機器的一次性設定 |
 | [Git 憑證管理](docs/git-credentials.md) | Git 遠端認證（GCM、SSH、WSL） |
+| [Windows 上的 Git PATH](docs/git-windows-path.md) | 為何 Machine PATH 要手動插一條，以及 Git 更新後要驗什麼 |
 | [herdr](docs/herdr.md) | Agent 多工器的實測行為與陷阱（Linux/macOS） |
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
 | [Renovate](docs/renovate.md) | external 工具版本自動追蹤與 auto-merge |
