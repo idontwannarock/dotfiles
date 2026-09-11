@@ -102,7 +102,9 @@ Windows 分支關掉 `git_branch` / `git_status` / `git_state` / `git_commit`，
 
 前兩項是內嵌省掉的。後兩項省不掉：**解析只要 12 ms**，貴的是執行，而 starship 的 init 程式碼自己會再開一次 `starship.exe` 去問接續提示字元。
 
-實測 `90-prompt.ps1`：**1043 ms → 477 ms**。pwsh 開機（含 profile）2.9 s → 1.95 s。
+實測 `90-prompt.ps1`：**1043 ms → 約 630 ms**（五次中位數 628 ms，散佈 609–1021）。pwsh 開機（含 profile）2.9 s → **約 1.9 s**。
+
+這台機器的單次量測跳動很大，五次裡常有一次是其他次的 1.6 倍。只取一次會得到 477 ms 這種偏樂觀的數字——任何一項量測都要取中位數並記下散佈。
 
 ### 為什麼不能在 CI 渲染
 
