@@ -131,7 +131,7 @@ chezmoi diff
 chezmoi apply
 
 # 只套用特定檔案
-chezmoi apply ~/.config/starship/starship.toml
+chezmoi apply ~/.config/starship.toml
 
 # 進入 source 目錄（編輯設定、commit、push）
 chezmoi cd
