@@ -67,3 +67,15 @@ function createnewlog {
 
     Write-Host '==> Workflow 完成。' -ForegroundColor Green
 }
+
+# gitk: point back at the .exe.
+# Machine PATH puts C:\Program Files\Git\mingw64\bin ahead of ...\Git\cmd, so that
+# git resolves to the real binary instead of the 46 KB launcher (see
+# docs/git-windows-path.md). mingw64\bin also holds `gitk` -- an extensionless
+# /bin/sh script -- which PowerShell picks before cmd\gitk.exe and then refuses to
+# run: "cannot run a document in the middle of a pipeline". cmd.exe is unaffected,
+# because PATHEXT makes it skip a file with no extension.
+# gitk is the only one of the 20 extensionless files in mingw64\bin that collides.
+if (Test-Path 'C:\Program Files\Git\cmd\gitk.exe') {
+    Set-Alias gitk 'C:\Program Files\Git\cmd\gitk.exe'
+}

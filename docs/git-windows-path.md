@@ -33,8 +33,37 @@ Windows 端 `git` 指令的固定成本，以及為什麼 Machine PATH 上要多
 **不要刪掉 `Git\cmd`。** 這些只存在於 `cmd\`，`mingw64\bin` 沒有：
 
 ```
-gitk.exe   git-gui.exe   tig.exe   start-ssh-agent.cmd
+git-gui.exe   tig.exe   start-ssh-agent.cmd
 ```
+
+`gitk` 是例外，而且是這次唯一的回歸——見下一節。
+
+## 唯一的回歸：PowerShell 裡的 `gitk`
+
+`mingw64\bin` 裡有一個**沒有副檔名**的 `gitk`，內容是 `#!/bin/sh` 腳本：
+
+```
+mingw64\bin\gitk       409 KB   #!/bin/sh ... exec wish "$0" -- "$@"
+cmd\gitk.exe           138 KB   真正的 Windows 執行檔
+```
+
+`mingw64\bin` 排在前面，所以 PowerShell 會先挑到那個腳本，然後拒絕執行：
+
+```
+無法在管線中間執行文件: C:\Program Files\Git\mingw64\bin\gitk
+```
+
+**cmd.exe 不受影響** —— `PATHEXT` 不含「無副檔名」，所以 cmd 會跳過它，直接找到 `cmd\gitk.exe`。
+
+修法在 `home/Documents/exact__shared-profile.d/10-aliases.ps1`：
+
+```powershell
+Set-Alias gitk 'C:\Program Files\Git\cmd\gitk.exe'
+```
+
+別名是純名稱代換，不做參數繫結，所以沒有包裝函式的參數問題。實測成本 0 ms。
+
+`mingw64\bin` 裡共有 20 個無副檔名的檔案（`bzgrep`、`xzless`、`wcurl`…），逐一比對過 `Git\cmd` 與 `System32`，**只有 `gitk` 一個有衝突**。
 
 ## 為什麼 chezmoi 管不到
 
@@ -133,4 +162,4 @@ $k.Dispose()
 - `ls-remote` 走 SSH 到 GitHub
 - `git --exec-path` 指向同一個 `libexec/git-core`
 
-**未測**：git-lfs、HTTPS 的 credential manager、`gitk` / `git gui`、互動式 rebase。
+**未測**：git-lfs、HTTPS 的 credential manager、`git gui`、互動式 rebase。
