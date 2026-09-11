@@ -6,9 +6,15 @@
 # silently (starship falls back to built-in defaults and still draws a prompt),
 # so a misplaced file looks exactly like a working one.
 
-# Increase command timeout to avoid git command timeouts on large repos
-# Default is 500ms, which is too short on Windows with Defender real-time scanning
-command_timeout = 1000
+# Increase command timeout so git_status can finish instead of being cut off.
+# The worst case is WSL reading a repo on a mounted Windows drive (/mnt/c, /mnt/d):
+# every file access crosses the filesystem boundary. Measured on /mnt/d with one
+# untracked file present: at 1000ms git_status returned an empty string and the
+# prompt showed a clean repo; at 5000ms it needed 1150-1560ms and reported "[?]".
+# A clean repo hides this, because an empty result is then the correct answer.
+# Raising the ceiling costs nothing where git is fast (10ms on native Linux paths,
+# 289ms on Windows) — the timeout only applies when it is exceeded.
+command_timeout = 5000
 
 # Shell indicator — show which shell the prompt belongs to, since every shell
 # shares this one config and otherwise looks identical.
