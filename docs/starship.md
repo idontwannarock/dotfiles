@@ -85,3 +85,43 @@ Windows 分支關掉 `git_branch` / `git_status` / `git_state` / `git_commit`，
 | `30000` | `[?]` ✅ |
 
 所以值定在 `5000`。提高上限在 git 夠快的地方沒有成本（Linux 原生路徑 9 ms、Windows 289 ms），**超時只在真的超過時才生效**。
+
+## init 在 apply 時內嵌，不在開機時執行
+
+`90-prompt.ps1` 的來源是 `home/Documents/exact__shared-profile.d/90-prompt.ps1.tmpl`。
+`chezmoi apply` 用 `output` 函式呼叫一次 `starship init powershell --print-full-init`，把結果寫進檔案。開機時只讀檔，不再開行程。
+
+原本的寫法每次開 shell 都問 starship 同一個問題：
+
+| 步驟 | 成本 |
+|---|---|
+| `Get-Command starship`（掃 PATH） | ~83 ms |
+| 開 `starship.exe` 拿 init 文字 | ~200 ms |
+| 解析那 10,636 個字元 | 12 ms |
+| 載入 PSReadLine + 執行 init（裡面**再開一次** starship.exe） | ~450 ms |
+
+前兩項是內嵌省掉的。後兩項省不掉：**解析只要 12 ms**，貴的是執行，而 starship 的 init 程式碼自己會再開一次 `starship.exe` 去問接續提示字元。
+
+實測 `90-prompt.ps1`：**1043 ms → 477 ms**。pwsh 開機（含 profile）2.9 s → 1.95 s。
+
+### 為什麼不能在 CI 渲染
+
+init 文字裡有這台機器的絕對路徑：
+
+```powershell
+Invoke-Native -Executable 'C:\Users\user\.local\bin\starship.exe' ...
+```
+
+CI 不知道目標機器的家目錄，也不知道它裝的是哪一版 starship。所以渲染必須發生在**目標機器的 `chezmoi apply`**，不是 CI。
+
+CI 仍然有用：`test-render.yml` 在三個 OS 上跑 `chezmoi apply --dry-run`，模板語法錯誤會被擋下。CI runner 上沒有 starship，`lookPath` 落空，走 fallback 分支——那條分支保留舊的開機時初始化寫法，所以沒裝 starship 的機器照樣能用。
+
+### 升級 starship 之後要重跑 apply
+
+內嵌的那段屬於「上次 apply 時的那個 binary」。版本對不上時 starship 會在每個 prompt 印：
+
+```
+error: Found argument '0' which wasn't expected, or isn't valid in this context
+```
+
+**是吵的，不是安靜的**（對照 `command_timeout` 那節，那個才會安靜消失）。再跑一次 `chezmoi apply` 即可。上游對這類不符有紀錄：[starship#3553](https://github.com/starship/starship/issues/3553)。
