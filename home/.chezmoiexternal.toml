@@ -104,7 +104,7 @@
 # renovate: datasource=github-releases depName=kubernetes/kubernetes extractVersion=^v(?<version>.+)$
 {{- $kubectlVersion      := "1.37.0" }}
 # renovate: datasource=github-releases depName=int128/kubelogin
-{{- $kubeloginVersion    := "1.36.3" }}
+{{- $kubeloginVersion    := "1.36.4" }}
 # renovate: datasource=github-releases depName=yt-dlp/yt-dlp versioning=loose
 {{- $ytdlpVersion        := "2026.08.19" }}
 # renovate: datasource=github-releases depName=gohugoio/hugo
