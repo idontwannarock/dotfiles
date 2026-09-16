@@ -37,29 +37,58 @@ worklog-record [okr] 解決 cache invalidation 的 edge case
 
 從 user-level system prompt 的 Worklog 段落取得 `github-repo`（已在 context 中）。
 
-### 2. 列出 Issues 讓使用者選擇
+### 2. 列出專案 Issue 讓使用者選擇
 
-用 `gh api repos/{github-repo}/issues?state=open&per_page=100` 列出所有 open Issues。
-Client-side 過濾掉帶有 `daily` label 的 Issues（gh api 不支援 exclude label）。
+Issue 的顆粒度是**一個專案一個 Issue**。用
+`gh api "repos/{github-repo}/issues?state=open&labels=project&per_page=100"`
+列出所有專案 Issue。
+
+各專案底下的 sub-issue 用
+`gh api repos/{github-repo}/issues/{number}/sub_issues`
+取得，附在該專案下面顯示。
 
 呈現選單：
 ```
-請選擇要記錄到哪個 Issue：
-1. #1 KWS 重構 [shoalter]
-2. #2 團隊管理 [shoalter]
+請選擇要記錄到哪個專案：
+1. #154 KWS: keyword search
+     └─ #106 replay load-test tool — GitLab CI pipeline
+2. #155 HKTV 商品資料 AI
+     ├─ #97 商品分類 PoC
+     └─ #132 product grouping QA portal
 3. (寫到今天的 Daily Issue)
-4. (開新 Issue)
+4. (開新專案 Issue)
 ```
 
-使用者選一個。如果選 Daily Issue，找今天的 daily Issue（title 為 `YYYY-MM-DD Worklog`）。
+使用者選專案後，再依步驟 2a 判斷要寫 comment 還是開 sub-issue。
+如果選 Daily Issue，找今天的 daily Issue（title 為 `YYYY-MM-DD Worklog`）。
 
-### 2a. 開新 Issue（僅在使用者選「開新 Issue」時執行）
+### 2a. 決定 comment 還是 sub-issue
 
-從當前對話上下文推斷以下資訊，組成草稿一次呈現給使用者確認：
+**預設寫 comment 到專案 Issue。** 只有符合下列任一條件才開 sub-issue：
 
-- **Title**（必填）— 從本次工作內容總結
-- **Label** — 用 `gh api repos/{github-repo}/labels` 列出現有 labels，從工作內容判斷最可能的 label
-- **描述**（選填）— 從工作內容摘要
+- 這個主題會跨多天或多個 session，不是一次做完。
+- 這個主題有自己的階段或 roadmap（例如 M0/M1、change 1/change 2）。
+- 這個主題預期會累積 5 則以上的紀錄，寫在專案 Issue 會蓋掉其他主題。
+
+不確定就寫 comment。sub-issue 事後隨時可以補開，把相關 comment 摘要進去即可。
+
+開 sub-issue 的步驟：
+
+1. 建立 Issue：`gh api repos/{github-repo}/issues` POST，帶 title、body、labels（沿用專案 Issue 的 company label，不要加 `project`）。
+2. 掛到專案 Issue 底下：
+   ```
+   gh api --method POST repos/{github-repo}/issues/{parent_number}/sub_issues \
+     -F sub_issue_id={新 Issue 的 id}
+   ```
+   `sub_issue_id` 要的是 Issue 的 `id`（database id），**不是** `number`。
+
+### 2b. 開新專案 Issue（僅在使用者選「開新專案 Issue」時執行）
+
+只有當現有專案都不涵蓋這次的工作時才開。從當前對話上下文推斷以下資訊，組成草稿一次呈現給使用者確認：
+
+- **Title**（必填）— 專案層級的名稱，不要寫成單一主題（寫 `KWS: keyword search`，不要寫 `KWS: CI pipeline 修復`）
+- **Label** — 必含 `project`；再用 `gh api repos/{github-repo}/labels` 列出現有 labels，補上最可能的 company label
+- **描述**（選填）— 專案範圍摘要
 
 若無法從上下文推斷某項，才詢問使用者。
 
