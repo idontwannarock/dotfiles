@@ -1,5 +1,6 @@
 {{- /* Claude name-map for the shared finish-branch body */ -}}
-{{- $n := dict -}}
+{{- $n := dict
+    "wtLeave" "Return with `ExitWorktree(action: \"keep\")`. `keep` is load-bearing: `remove` deletes the worktree that every disposal step below still operates on." -}}
 ---
 name: finish-branch
 description: "Use when implementation is complete and verified, to integrate a development branch — presents merge locally / push + PR / keep / discard, then rebases, merges from the main checkout, and disposes the branch and any linked worktree. Reads ~/.agent/reference/git-worktree-hazards.md for the directory rules and the merged-or-not test, since both fail silently when guessed."
