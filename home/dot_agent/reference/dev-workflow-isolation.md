@@ -17,8 +17,10 @@ A single git working directory can only have one branch checked out at a time. I
 1. Show the active workflows to the user. Ask: resume an existing one, or start a new one?
 2. If starting new: create the worktree per `~/.agent/reference/git-worktree-hazards.md`
    — from the main checkout, off an up-to-date `main`, with the start-point
-   spelled out, then `cd` into it and confirm you moved. Read that file; the
-   two steps it guards both fail without erroring.
+   spelled out. Then move the session into it and confirm the move; the
+   development workflow skill's "Move into the worktree" section names the
+   action for your harness. Read that file; the two steps it guards both fail
+   without erroring.
 3. Register the new row in `active_workflows.md` with Type=`worktree`, Path=the worktree directory.
    Register only after the worktree was actually created — a failed
    `worktree add` must not leave an orphan row.

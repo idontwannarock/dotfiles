@@ -18,6 +18,15 @@ from memory; the failures they prevent are all silent.
 - **Know where you stand.** Set `WORK`, `BRANCH`, `MAIN` and `LINKED` per the
   hazards file before anything else. Integration and disposal run in `$MAIN`;
   rebasing the feature branch is the one step that runs in `$WORK`.
+- **Return before writing to `$MAIN`.** A session that moved into the worktree
+  carries its write permission with it wherever the harness ties the two, so
+  integration and disposal fail there with `Read-only file system` — a message
+  that reads like a broken disk, not a missed step. Returning is the move-in
+  action run in reverse; it leaves the worktree on disk, which disposal still
+  needs. The blocks below mark the point with `# ← return`, and everything
+  after that mark runs in the main checkout.
+
+{{ .n.wtLeave }}
 
 ## 1. Verify before anything
 
@@ -33,6 +42,7 @@ Present once: **Merge locally** / **Push + PR** / **Keep branch as is** /
 
 ```bash
 cd "$WORK" && git rebase main            # conflict → stop, resolve, rerun tests
+# ← return                              # rebase needed $WORK; everything below needs $MAIN
 cd "$MAIN" && git merge --ff-only "$BRANCH"   # refused → stop, report (main moved?)
 # ── only continue once the merge above succeeded ──
 [ "$LINKED" = yes ] && git worktree remove "$WORK"
@@ -52,6 +62,7 @@ PR merges — review fixes need the workspace.
 When it merges, sync the base and confirm the work landed, from `$MAIN`:
 
 ```bash
+# ← return
 cd "$MAIN" && git switch main && git pull --ff-only
 ```
 
@@ -77,6 +88,7 @@ Destroys unmerged commits — **confirm with the user before deleting**, then
 from `$MAIN`:
 
 ```bash
+# ← return
 cd "$MAIN"
 [ "$LINKED" = yes ] && git worktree remove "$WORK"   # --force only if the tree
                                                     # is dirty AND user confirmed

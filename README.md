@@ -380,6 +380,7 @@ dotfiles/
 
 | 文件 | 說明 |
 |------|------|
+| [Agent 在 worktree 裡工作](docs/agent-worktree.md) | 三個 agent 各自怎麼把 session 搬進 worktree，以及誰搬不了 |
 | [Bash](docs/bash.md) | Bash 設定、worklogs、Windows Terminal 整合 |
 | [Claude Code](docs/claude-code.md) | Claude Code 設定、statusline、plugins、現成可用的 MCP 清單 |
 | [claude-zai wrapper](docs/claude-zai-wrapper.md) | 切換 Claude Code 後端的 wrapper |

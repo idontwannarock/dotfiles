@@ -1,5 +1,6 @@
 {{- /* Codex name-map for the shared finish-branch body */ -}}
-{{- $n := dict -}}
+{{- $n := dict
+    "wtLeave" "Return by handing the user this line to paste, then wait for them:\n\n    /cd <main checkout absolute path>\n\nThe worktree stays on disk, which the disposal steps below still need." -}}
 ---
 name: finish-branch
 description: "Use when implementation is complete and verified, to integrate a development branch — presents merge locally / push + PR / keep / discard, then rebases, merges from the main checkout, and disposes the branch and any linked worktree. Reads ~/.agent/reference/git-worktree-hazards.md for the directory rules and the merged-or-not test, since both fail silently when guessed."

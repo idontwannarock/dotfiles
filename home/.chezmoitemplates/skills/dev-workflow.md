@@ -54,6 +54,16 @@ The `active_workflows.md` row format:
 
 Update Current Step + Last Updated after each skill completes. Set Status to `paused` when switching workflows. `{{ .n.finishBranch }}` does not touch this file — once it reports the branch integrated and disposed, remove the row yourself.
 
+### 2d. Move into the worktree
+
+Isolation created a directory; it did not move you. Move the session in before
+editing anything, then confirm with `git rev-parse --show-toplevel` and
+`git branch --show-current`. `cd` cannot do this — see
+`~/.agent/reference/git-worktree-hazards.md` §2 for why, and for what the
+missed step costs.
+
+{{ .n.wtEnter }}
+
 ## Step 3: Run the Core Flow
 
 OpenSpec uses skill-based delivery — invoke by skill name (e.g. `{{ .n.sk }}openspec-new-change`),

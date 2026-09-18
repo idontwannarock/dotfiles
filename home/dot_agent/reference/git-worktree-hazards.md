@@ -35,12 +35,24 @@ work, one workspace.
 
 ## 2. `worktree add` does not move you
 
-The command creates the directory and leaves your shell where it was. Every
-later command for this work belongs in the new directory, so `cd` there and
-confirm both facts:
+The command creates the directory and leaves your session where it was. Every
+later command for this work belongs in the new directory.
+
+**`cd` does not move you.** An agent's shell calls do not share a working
+directory: each call starts at the session's own, so a `cd` inside one call is
+gone by the next. Moving the session is a harness action with a different name
+in each harness, and your development workflow skill carries the name for
+yours.
+
+This is more than convenience where the harness ties write permission to the
+session directory. Until the session moves, writes into the worktree are
+refused outright, and the refusal arrives as a filesystem error — `Read-only
+file system` — which reads like a broken disk rather than a step you skipped.
+
+After the move, confirm both facts:
 
 ```bash
-cd ../<repo>-<branch> && git rev-parse --show-toplevel && git branch --show-current
+git rev-parse --show-toplevel && git branch --show-current
 ```
 
 Both must name the new workspace. Editing the main checkout while believing
@@ -69,6 +81,15 @@ The first row of `git worktree list` is always the one holding `.git` itself.
   shell sits inside the directory it is deleting. It removes the tree, and
   every later command in that shell dies with `Unable to read current working
   directory`. `cd "$MAIN"` first. This is a hard ordering, not a preference.
+
+**A session that moved into the worktree moves back before any of this.** A
+`cd "$MAIN"` prefix covers only where the command runs. Where the harness ties
+write permission to the session directory, the permission moved too: every
+step above writes to the base branch, and each one fails from inside the
+worktree. Return the session first — the same harness action as the move in,
+run in reverse — and keep the worktree on disk, because the disposal steps
+still need it. Your development workflow skill names the action for your
+harness.
 
 Never `rm -rf` a worktree directory. `git worktree remove` also clears the
 bookkeeping under `.git/worktrees/`; `git worktree prune` afterwards.
