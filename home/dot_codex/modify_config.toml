@@ -21,7 +21,7 @@ existing="$(cat)"
 cat << 'GLOBAL'
 #:schema https://developers.openai.com/codex/config-schema.json
 
-model = "gpt-5.6-sol"
+model = "gpt-6-astra"
 model_reasoning_effort = "high"
 model_verbosity = "medium"
 hide_agent_reasoning = true
@@ -53,14 +53,23 @@ model_verbosity = "medium"
 web_search = "live"
 GLOBAL
 
-# ── 保留本機 per-machine 區塊：[projects.*] 與 [plugins.*] ───────────────────
+# ── 保留本機 per-machine 區塊 ────────────────────────────────────────────────
+# 保留 [projects.*]、[plugins.*]、[hooks]、[hooks.*] 與 [features]。前四者是
+# Codex 自己寫入的本機狀態；[features] 的 hooks 開關決定 ~/.codex/hooks.json
+# 跑不跑，而那個檔由 herdr 產生、不受 chezmoi 管，所以開關也只能保留不能管理。
+# 丟掉 [features] 不會報錯，只會讓 SessionStart hook 安靜地停止觸發。
+#
+# 兩條比對規則而非一條：[projects. 與 [plugins. 是帶點的子表，[features] 沒有
+# 點，同一條帶 \. 的樣式永遠比不中它。[hooks] 兩種形狀都出現過，所以兩條都列。
+#
 # 用命令替換取回，是為了它會移除結果尾端的所有換行——這是冪等性的關鍵。
 # awk 的保留範圍到下一個 section header 為止，所以最後一個保留區塊與下方
 # [mcp_servers.*] 之間的空行也會被一起保留；若原樣印出，就會和 MCP heredoc 開頭
 # 那個空行疊加。而 modify_ 腳本吃的是自己上一輪的輸出，於是每 apply 一次多一行。
 # 區塊之間的分隔一律由本腳本單方提供，被保留的內容不得自帶尾端空白。
 kept="$(echo "$existing" | awk '
-    /^\[(projects|plugins)\./ { in_keep=1; print; next }
+    /^\[(projects|plugins|hooks)\./ { in_keep=1; print; next }
+    /^\[(features|hooks)\]/ { in_keep=1; print; next }
     /^\[/ { in_keep=0 }
     in_keep { print }
 ')"

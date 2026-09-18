@@ -15,7 +15,7 @@
 
 ## 這套配置做了什麼
 
-預設使用 `gpt-5.6-sol`，reasoning effort 為 `high`。這個 dotfiles repo 透過
+預設使用 `gpt-6-astra`，reasoning effort 為 `high`。這個 dotfiles repo 透過
 `.codex/config.toml` 將 effort 覆寫為 `medium`；project config 只會在信任此 repo
 時載入。
 
@@ -100,6 +100,11 @@ codex mcp get slack  # 預期回報找不到名為 slack 的直接 MCP server
 
 Codex plugin registration 位於每台機器的 `[plugins.*]` config tables。chezmoi 會保留
 所有這類 tables，和既有的 `[projects.*]` per-machine 設定相同。
+
+`~/.codex/config.toml` 保留的 per-machine tables 共五種：`[projects.*]`、`[plugins.*]`、
+`[hooks]`、`[hooks.*]` 與 `[features]`。`[features]` 裡的 hooks 開關決定
+`~/.codex/hooks.json` 跑不跑；那個檔由 herdr 產生、不受 chezmoi 管，所以開關只能保留
+不能管理。丟掉它不會報錯，只會讓 SessionStart hook 安靜地停止觸發。
 
 ## 使用方式
 
