@@ -32,6 +32,14 @@ trust_level = "untrusted"
 [plugins."example@personal"]
 enabled = false
 
+[features]
+hooks = true
+
+[hooks.state]
+
+[hooks.state."/home/tester/.codex/hooks.json:session_start:0:0"]
+trusted_hash = "sha256:deadbeef"
+
 [mcp_servers.slack]
 url = "https://mcp.slack.com/mcp"
 EOF
@@ -43,16 +51,31 @@ for expected in \
     '[projects."/work/one"]' \
     '[projects."/work/two"]' \
     '[plugins."slack@openai-curated"]' \
-    '[plugins."example@personal"]'; do
+    '[plugins."example@personal"]' \
+    '[features]' \
+    '[hooks.state]' \
+    '[hooks.state."/home/tester/.codex/hooks.json:session_start:0:0"]'; do
     grep -Fqx "$expected" "$tmp/once.toml" || fail "Unix generator did not preserve $expected"
 done
 
+# The header alone proves nothing: an empty [features] table still disables hooks.
+grep -Fqx 'hooks = true' "$tmp/once.toml" || \
+    fail 'Unix generator did not preserve the hooks switch under [features]'
+grep -Fqx 'trusted_hash = "sha256:deadbeef"' "$tmp/once.toml" || \
+    fail 'Unix generator did not preserve the hooks trust state'
+
 cmp -s "$tmp/once.toml" "$tmp/twice.toml" || fail 'Unix generator output is not a fixed point'
 
-grep -Fq '/^\[(projects|plugins)\./' "$unix_generator" || \
-    fail 'Unix keep filter does not include both project and plugin tables'
-grep -Fq "'^\[(projects|plugins)\." "$windows_generator" || \
-    fail 'Windows keep filter does not include both project and plugin tables'
+# Both generators must carry both patterns. [features] has no dot, so the dotted
+# pattern alone can never match it.
+grep -Fq '/^\[(projects|plugins|hooks)\./' "$unix_generator" || \
+    fail 'Unix keep filter does not include the dotted project, plugin and hooks tables'
+grep -Fq '/^\[(features|hooks)\]/' "$unix_generator" || \
+    fail 'Unix keep filter does not include the undotted features and hooks tables'
+grep -Fq "'^\[(projects|plugins|hooks)\." "$windows_generator" || \
+    fail 'Windows keep filter does not include the dotted project, plugin and hooks tables'
+grep -Fq "'^\[(features|hooks)\]'" "$windows_generator" || \
+    fail 'Windows keep filter does not include the undotted features and hooks tables'
 
 for source in "$unix_generator" "$windows_generator"; do
     grep -Fq '[mcp_servers.slack]' "$source" && fail "direct Slack MCP table remains in $source"
@@ -64,4 +87,4 @@ if [ "$failures" -ne 0 ]; then
     exit 1
 fi
 
-printf 'ok: Codex config preserves project and plugin state without direct Slack MCP\n'
+printf 'ok: Codex config preserves project, plugin and hooks state without direct Slack MCP\n'
