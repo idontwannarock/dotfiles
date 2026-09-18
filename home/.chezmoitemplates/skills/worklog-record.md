@@ -1,6 +1,6 @@
 ---
 name: worklog-record
-description: "Record a work item as a GitHub Issue comment — supports manual invocation or assistant-initiated proposal. **When to proactively propose**: the user finished meaningful work and committed it, a technical exploration or design discussion reached a clear conclusion/decision, or the user signals end-of-conversation — including Chinese phrasings like 「差不多了」、「先這樣」、「今天到這」 — with substantive output this session. **Also applies when** the user explicitly mentions recording work, notes, admin items, OKR, or invokes the worklog-record skill directly. **Do not trigger on** trivial edits (typos, formatting, import reordering), pure Q&A or lookups with no substantive output, or when the user is already working inside the worklog repo (avoid double-recording). When in doubt, ask rather than skip — the user can decline, but missed work is gone."
+description: "Record a work item as a GitHub Issue comment — supports manual invocation or assistant-initiated proposal. Records are later mined for KPI and resume/CV material, so capture outcome and numbers, not just activity. **When to proactively propose**: the user finished meaningful work and committed it; a technical exploration or design discussion reached a clear conclusion/decision; an incident, outage, or hard bug was diagnosed or resolved; a measurement changed a number (latency, cost, disk, build time, error rate, coverage) — including a measurement that proved no change; a system, script, or dependency was migrated, upgraded, or retired; the session produced something other people will use (tooling, automation, docs, a runbook, a review); the user unblocked or advised someone else; or the user signals end-of-conversation — including Chinese phrasings like 「差不多了」、「先這樣」、「今天到這」 — with substantive output this session. A research or investigation session with a firm conclusion counts even when no code changed. **Also applies when** the user explicitly mentions recording work, notes, admin items, OKR, KPI, performance review, resume, or invokes the worklog-record skill directly. **Do not trigger on** trivial edits (typos, formatting, import reordering), lookups answered from memory with no conclusion, or when the user is already working inside the worklog repo (avoid double-recording). When in doubt, ask rather than skip — the user can decline, but missed work is gone."
 ---
 
 # Worklog Record — 記錄工作項目
@@ -11,7 +11,36 @@ description: "Record a work item as a GitHub Issue comment — supports manual i
 
 - **累積多個 commit 批次提議一次**：對話中連續產生多個 commit 時，不要每次 commit 都打斷提問；等自然段落（功能告一段落、準備收尾）再一次詢問是否記錄全部。
 - **在連續 commit 過程中保持安靜**：使用者正在 commit 的節奏裡，等收尾訊號再提；中途打斷會破壞心流。
+- **值得記錄的不只有 commit**：量測結果、事故處理、退役或遷移、寫給別人用的工具或文件、
+  幫別人解掉的問題、以及「試過但否決」的技術決策，都要提議記錄。否決的理由之後同樣是材料。
 - **詢問語氣要讓使用者容易拒絕**：例如「這次的工作要記到 worklog 嗎？（不用的話直接說 no）」——不要強迫性列選單。
+
+## 紀錄內容的形狀
+
+這些 comment 之後會被拿去寫 KPI、績效評估、履歷。純粹的活動描述（「修了 X」）在那時沒有用。
+每則紀錄盡量帶到下面四項：
+
+- **情境** — 為什麼要做這件事。觸發它的問題、風險或需求。
+- **行動** — 做了什麼。一句話，動詞開頭。
+- **結果** — 改變了什麼。**盡量帶數字**：前後對照、時間、金額、筆數、百分比、影響範圍。
+- **角色** — 自己做、主導、協作、或是給建議。只有在不是「自己做」時才寫。
+
+數字要從這個 session 真的量到或真的看到的來源抄，不要估、不要推算。沒有數字就寫 `(no metric)`，
+不要為了湊格式編一個。之後補到數字再追加一則 comment。
+
+草稿格式（一則 comment 就是一段，不要拆成表格）：
+
+```
+<一句話結論，動詞開頭，含結果>
+
+- 情境：...
+- 行動：...
+- 結果：... (數字或 no metric)
+- 角色：...（非獨力完成時才寫）
+```
+
+提議記錄時，assistant SHALL 從本次對話直接草擬這四項再呈給使用者，
+不要丟一個空模板叫使用者填。使用者可以直接說「就這樣」。
 
 ## 設定
 
@@ -103,7 +132,9 @@ Issue 的顆粒度是**一個專案一個 Issue**。用
 
 用 `gh api repos/{github-repo}/issues/{number}/comments` 寫入 Comment。
 
-Comment body 就是使用者提供的內容。如果內容帶 `[okr]` 前綴，保留前綴。
+Comment body 用「紀錄內容的形狀」的格式，經使用者確認後寫入。
+手動呼叫時若使用者只給一句話，仍照該格式把四項補齊再確認。
+如果內容帶 `[okr]` 前綴，保留前綴。
 
 ### 5. 確認
 
