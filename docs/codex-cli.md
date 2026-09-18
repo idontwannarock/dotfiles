@@ -15,7 +15,7 @@
 
 ## 這套配置做了什麼
 
-預設使用 `gpt-5.6-sol`，reasoning effort 為 `high`。這個 dotfiles repo 透過
+預設使用 `gpt-6-astra`，reasoning effort 為 `high`。這個 dotfiles repo 透過
 `.codex/config.toml` 將 effort 覆寫為 `medium`；project config 只會在信任此 repo
 時載入。
 
