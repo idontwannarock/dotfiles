@@ -29,16 +29,19 @@ jobs:
         uses: actions/checkout@v7
 
       # The runner image ships Pester 3.4 with Windows PowerShell; pin an explicit
-      # Pester 5 so the test files' v5 syntax (Should -Be, BeforeAll scoping) resolves.
-      - name: Install Pester 5
+      # Pester 6 so the test files' v5+ syntax (Should -Be, BeforeAll scoping) resolves.
+      # The floor is 6.0.0, not 5.5.0: -MinimumVersion installs the newest release
+      # above the floor, so the old 5.5.0 floor already pulled 6.x and the step name
+      # claimed a version the job did not run.
+      - name: Install Pester 6
         shell: pwsh
         run: |
-          Install-Module Pester -MinimumVersion 5.5.0 -Force -SkipPublisherCheck -Scope CurrentUser
+          Install-Module Pester -MinimumVersion 6.0.0 -Force -SkipPublisherCheck -Scope CurrentUser
 
       # -CI turns a failed assertion into a non-zero exit code, which is what makes
       # the job go red. Without it Invoke-Pester reports failures and exits 0.
       # No Import-Module needed: autoloading resolves Invoke-Pester to the highest
-      # installed version, which is the 5.5+ from the step above.
+      # installed version, which is the 6.x from the step above.
       - name: Run tests
         shell: pwsh
         run: Invoke-Pester -Path tests -CI
