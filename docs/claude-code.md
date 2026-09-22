@@ -474,6 +474,49 @@ find ~/.claude/projects -name '*.jsonl' -print0 \
 508 份 transcript 的統計裡，自家 `code:review-*` 合計 61 次、內建 `code-review` 0 次，
 所以內建那支關掉、自家的留著。兩張表都在 `dot_claude/modify_settings.json.sh.tmpl`。
 
+#### 旋鈕三：`enableArtifact`
+
+`enableArtifact = false` 讓 Artifact 工具不可用，預期同樣會把它的 schema 從 system prompt 移除。
+**尚未用旋鈕一的方法實測過 token 差額**，暫列為推論。
+差別是 Artifact 有專屬的設定 key，不必動 `permissions.deny`。
+
+### `/config` 中被 chezmoi 同步的 UI 偏好
+
+以下十二項寫在 `dot_claude/modify_settings.json.sh.tmpl`，目的是降低介面雜訊：
+
+| 設定 key | 值 | `/config` 上的名稱 |
+|----------|-----|-------------------|
+| `spinnerTipsEnabled` | `false` | Show tips |
+| `promptSuggestionEnabled` | `false` | Prompt suggestions |
+| `awaySummaryEnabled` | `false` | Session recap |
+| `workflowKeywordTriggerEnabled` | `false` | Ultracode keyword trigger |
+| `enableArtifact` | `false` | Artifacts |
+| `verbose` | `false` | Verbose output |
+| `preferredNotifChannel` | `notifications_disabled` | Local notifications |
+| `prefersReducedMotion` | `true` | Reduce motion |
+| `enableWorkflows` | `false` | Dynamic workflows |
+| `remoteControlAtStartup` | `true` | Enable Remote Control for all sessions |
+| `dialogExpiry` | `never` | Dialog expiry |
+| `remoteControl.shareHostProfile` | `basic` | （無對應列；僅 settings.json） |
+
+Workflows 有三道關：`permissions.deny` 已移除 `Workflow` 工具（第一道），
+`enableWorkflows = false` 關總開關（第二道），`workflowKeywordTriggerEnabled = false`
+關 `ultracode` 關鍵字觸發（第三道）。後兩道是保險：將來若把 `Workflow` 移出 deny，
+不會意外恢復。
+
+`dialogExpiry = "never"`：預設 5m 會讓無人回應的遠端對話框自動解為「取消/拒絕」。
+遠端操作時人常常不在螢幕前，那會讓執行結果不如預期。程式碼的「最嚴格值」對照表
+也把 `never` 列為最保守選項。代價是沒人回答時 session 會一直掛著等。
+
+`remoteControl.shareHostProfile = "basic"`：註冊時回報 OS、CPU 架構與偵測到的開發
+工具，不報 MCP server 名稱（那是 `"full"`）。純描述性欄位，不影響功能：
+`machine_name` / `machine_id` / `directory` / `branch` / `git_repo_url` 是分開送的，
+一律照送，設 `"off"` 也認得出這台機器。
+
+**同步不到的項目**：`copyOnSelect`、`copyFullResponse`、`respectGitignore`、`editorMode`、
+`theme` 存在 `~/.claude.json`（runtime global config），不屬於 `settings.json` schema。
+這些只能在每台機器用 `/config` 手動設定。
+
 #### 字元語言對 token 的影響（次要）
 
 Claude tokenizer 對英文較友善（~0.25 tokens/char）、對中文較不友善（~0.6-1.0 tokens/char）。同義內容英文約省 30-50% tokens。但對少量 description 來說節省 token 數通常 < 0.05% of context，遠小於拉 budget 的成本。**不建議**為了省 budget 把中文 description 強制改英文，除非寫的是長 paragraph。

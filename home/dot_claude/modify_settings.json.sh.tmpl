@@ -7,6 +7,23 @@
 #
 # 同步的欄位：
 # - model = claude-opus-5（1M context；不再壓成 200K）
+# - UI 降噪九項（2026-09-22）：spinnerTipsEnabled / promptSuggestionEnabled /
+#   awaySummaryEnabled / enableArtifact / verbose / prefersReducedMotion = true /
+#   preferredNotifChannel = "notifications_disabled"，目的是降噪與省渲染成本。
+# - Workflows 整組停用：enableWorkflows = false（總開關）加
+#   workflowKeywordTriggerEnabled = false（ultracode 關鍵字）。permissions.deny
+#   已移除 Workflow 工具，這兩項是第二、第三道保險：將來若把 Workflow 移出
+#   deny，不會意外恢復 workflow 與關鍵字觸發。
+# - enableArtifact = false 讓 Artifact 工具不可用，預期也會把其 schema 從
+#   system prompt 移除（未實測 token 差額）。
+# - remoteControlAtStartup = true：每個 session 自動啟動 Remote Control bridge。
+#   remoteControl.shareHostProfile = "basic"：註冊時回報 OS、CPU 架構與偵測到的
+#   開發工具，但不報 MCP server 名稱（那是 "full"）。純描述性欄位，不影響功能：
+#   machine_name / machine_id / directory / branch / git_repo_url 是分開送的，
+#   一律照送，設 "off" 也認得出這台機器。
+# - dialogExpiry = "never"：轉發到遠端的權限/詢問對話框不設死線。預設 5m 會在
+#   無人回應時自動解為「取消/拒絕」，遠端操作常常不在螢幕前，那會讓執行結果
+#   不如預期。程式碼的「最嚴格值」對照表也把 never 列為最保守選項。
 # - effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
 # - outputStyle = ELI5（output style 本體在 output-styles/ELI5.md）
 # - permissions.defaultMode = bypassPermissions
@@ -22,6 +39,10 @@
 #   memory-index-reminder.sh 看該 repo MEMORY.md 索引的位元組數）
 # - hooks.SessionStart（union-append claude-memory-seed；**不** hard-assign，
 #   以保留 herdr / agent-sessions 等工具於 runtime 註冊的 SessionStart entries）
+#
+# 刻意不管：copyOnSelect / copyFullResponse / respectGitignore / editorMode /
+#   theme 等存在 ~/.claude.json（runtime global config），不屬 settings.json
+#   schema，此 modify_ 腳本同步不到。
 #
 # 主動刪除（modify_ 是 patch 而非 render，停止寫入不會抹掉既有部署的舊值）：
 # - env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS —— 退役的 handoff-cleanup hook
@@ -70,6 +91,18 @@ echo "$input" | jq \
     | .autoUpdatesChannel = "latest"
     | .skipDangerousModePermissionPrompt = true
     | .skillListingBudgetFraction = 0.02
+    | .spinnerTipsEnabled = false
+    | .promptSuggestionEnabled = false
+    | .awaySummaryEnabled = false
+    | .workflowKeywordTriggerEnabled = false
+    | .enableArtifact = false
+    | .verbose = false
+    | .preferredNotifChannel = "notifications_disabled"
+    | .prefersReducedMotion = true
+    | .enableWorkflows = false
+    | .remoteControlAtStartup = true
+    | .dialogExpiry = "never"
+    | .remoteControl = ((.remoteControl // {}) + { shareHostProfile: "basic" })
     | .permissions = (.permissions // {})
     | .permissions.defaultMode = "bypassPermissions"
     | .permissions.allow = (((.permissions.allow // []) + ["Skill(*)"]) | unique)
