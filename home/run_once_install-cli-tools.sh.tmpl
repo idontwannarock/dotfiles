@@ -87,4 +87,22 @@ else
 fi
 
 {{- end }}
+
+log_section "install twg (Atlassian Teamwork Graph CLI) -- replaces the Atlassian MCP; login stays manual"
+# --skip-skills: the agent reads twg's bundled skills on demand via
+#   `twg help discover-skills`, and 10 of the 13 installed skills route to
+#   credit-consuming commands. -y records the terms consent unattended.
+# Credit-consuming commands are removed by TWG_COMMAND_SURFACE_RESTRICTION
+#   (shell-common/base), not here.
+if [ -x "$HOME/.local/bin/twg" ]; then
+    log_skip "[twg] already installed"
+else
+    log_step "[twg] installing via official installer"
+    curl -fsSL --retry 2 https://teamwork-graph.atlassian.com/cli/install \
+        | bash -s -- --skip-skills --skip-login -y \
+        || log_warn "[twg] install failed. See https://developer.atlassian.com/cloud/twg-cli/"
+    if [ -x "$HOME/.local/bin/twg" ]; then
+        log_step "[twg] run 'twg login' once in a terminal to authenticate"
+    fi
+fi
 {{ end -}}

@@ -22,6 +22,13 @@ if [ -d "$HOME/.local/go/bin" ]; then
     esac
 fi
 
+# ── twg (Atlassian Teamwork Graph CLI) ───────────────────────────────────────
+# basic-v1 removes every command and flag that consumes Rovo credits from twg
+# itself, for every caller (any agent, or a human). Run one command with the full
+# surface: TWG_COMMAND_SURFACE_RESTRICTION=full-v1 twg ...
+# Mirror: Documents/exact__shared-profile.d/27-twg.ps1, dot_claude/modify_settings.json.sh.tmpl
+export TWG_COMMAND_SURFACE_RESTRICTION=basic-v1
+
 # ── Aliases ──────────────────────────────────────────────────────────────────
 alias ll='ls -alF'
 

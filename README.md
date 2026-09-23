@@ -277,7 +277,6 @@ Go 的 base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本
 |------|------|
 | slack plugin | Claude Code plugin |
 | 清理 marketplace | `obra/superpowers-marketplace` 的三個 plugin（superpowers、episodic-memory、elements-of-style）全數退役後，連同 cache 目錄一併移除註冊 |
-| atlassian MCP | 由此腳本註冊的 user-scope MCP server；http transport，本機不 spawn process，OAuth 需自行 `/mcp` 完成 |
 | 清理 | 取消安裝已退役的 plugin／MCP server／npm 工具並清掉殘留 cache，使移除在每台機器上收斂 |
 
 > jdtls（Java LSP）已於 Wave 11 移出此腳本，改由 `.chezmoiexternal.toml` 提供（`~/.local/opt/jdtls` + `~/.local/bin/jdtls`）。
@@ -294,10 +293,11 @@ Windows 端為 no-op：docker / kubectl / kubelogin 皆由 external 提供，Len
 
 **CLI 工具（install-cli-tools）：**
 
-Windows 端為 no-op：每個舊有套件現在不是來自 external、就是來自 OS 內建，或不再納管。
+Windows 端只裝 twg：其他舊有套件現在不是來自 external、就是來自 OS 內建，或不再納管。
 
 | 工具 | Unix 來源 |
 |------|-----------|
+| twg（Atlassian Teamwork Graph CLI） | 官方 installer → `~/.local/bin`（三個 OS 都裝；取代 Atlassian MCP，登入要自己跑 `twg login`，見 [docs/claude-code.md](docs/claude-code.md)） |
 | 一般 CLI 工具 | brew（macOS）/ apt（Linux） |
 | libpq（psql） | brew，keg-only 故 force-link |
 | golangci-lint | 官方 installer → `~/.local/bin`（不在 apt） |

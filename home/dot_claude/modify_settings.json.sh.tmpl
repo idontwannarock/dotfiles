@@ -35,6 +35,9 @@
 # - skillOverrides 併入 13 個 "off"（object merge，不覆蓋其他 entries）：內建
 #   skill 中零使用、且與自訂 code:* / git:* 指令重疊的那些。
 # - statusLine（跨平台處理執行檔路徑）
+# - env.TWG_COMMAND_SURFACE_RESTRICTION = "basic-v1"：讓 twg CLI 移除所有會扣
+#   Rovo credits 的指令與旗標。shell 端已由 shell-common/base 與 27-twg.ps1
+#   export；這裡補給不是從 shell 啟動的 Claude Code（IDE、桌面版）。
 # - hooks.UserPromptSubmit（註冊兩支階梯提醒：handoff-reminder.sh 看 context 用量、
 #   memory-index-reminder.sh 看該 repo MEMORY.md 索引的位元組數）
 # - hooks.SessionStart（union-append claude-memory-seed；**不** hard-assign，
@@ -136,6 +139,7 @@ echo "$input" | jq \
       }
     | .env = (.env // {})
     | .env.CLAUDE_CODE_NO_FLICKER = "1"
+    | .env.TWG_COMMAND_SURFACE_RESTRICTION = "basic-v1"
     | .env |= del(.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS)
     | .env |= del(.CLAUDE_CODE_DISABLE_1M_CONTEXT)
 {{- if eq .chezmoi.os "windows" }}
