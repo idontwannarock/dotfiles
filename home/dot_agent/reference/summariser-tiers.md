@@ -46,7 +46,7 @@ picks how much care the pass gets, not which model runs it. Do not port the Clau
 across by setting `model` on a Codex spawn.
 
 Current Claude model ids, for the `summarized_by` field a caller records: Haiku 4.5 is
-`claude-haiku-4-5-20251001`, Sonnet 5 is `claude-sonnet-5`, Opus 5 is `claude-opus-5`.
+`claude-haiku-4-5-20251001`, Sonnet 5 is `claude-sonnet-5`, Opus 5.5 is `claude-opus-5-5`.
 Record the id that actually ran, never the tier name — the tier is a routing decision and
 the id is the fact.
 
