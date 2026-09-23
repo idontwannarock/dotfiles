@@ -1,8 +1,9 @@
 {{- if eq .chezmoi.os "windows" -}}
 # chezmoi run_once_ script — CLI 工具安裝（Windows）
 #
-# This script no longer installs anything -- all of its former packages have been
-# moved off scoop. Kept as a historical record of where each landed.
+# The only install left here is twg (Atlassian Teamwork Graph CLI), from its
+# official installer. Every former scoop package below has moved elsewhere; the
+# header is kept as a historical record of where each landed.
 #
 # Scoop uninstall for every package below is handled by the single
 # run_once_after_migrate-scoop-cleanup.ps1.tmpl (which merged the former
@@ -81,8 +82,28 @@ $ErrorActionPreference = "Stop"
 
 Log-Begin "Windows CLI tools"
 try {
-    Log-Section "no-op -- every former package now comes from chezmoi-external, the OS, or is unmanaged"
-    Log-Skip "[cli-tools] nothing to install here; see this file's header for where each landed"
+    Log-Section "install twg (Atlassian Teamwork Graph CLI) -- replaces the Atlassian MCP; login stays manual"
+    # -SkipSkills: the agent reads twg's bundled skills on demand via
+    #   `twg help discover-skills`, and 10 of the 13 installed skills route to
+    #   credit-consuming commands. -Yes records the terms consent unattended.
+    # Credit-consuming commands are removed by TWG_COMMAND_SURFACE_RESTRICTION
+    #   (Documents/exact__shared-profile.d/27-twg.ps1), not here.
+    $twgExe = Join-Path $env:LOCALAPPDATA "Programs\twg\bin\twg.exe"
+    if (Test-Path $twgExe) {
+        Log-Skip "[twg] already installed"
+    } else {
+        Log-Step "[twg] installing via official installer"
+        $installer = Join-Path $env:TEMP "twg-install.ps1"
+        curl.exe -fsSL --retry 2 https://teamwork-graph.atlassian.com/cli/install.ps1 -o $installer
+        if ($LASTEXITCODE -eq 0) {
+            powershell -NoProfile -ExecutionPolicy Bypass -File $installer -SkipSkills -SkipLogin -Yes
+        }
+        if (Test-Path $twgExe) {
+            Log-Step "[twg] run 'twg login' once in a terminal to authenticate"
+        } else {
+            Log-Warn "[twg] install failed. See https://developer.atlassian.com/cloud/twg-cli/"
+        }
+    }
 } catch {
     Log-End -ErrorRecord $_
     throw

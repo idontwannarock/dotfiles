@@ -12,7 +12,7 @@
     "reviewFull" "$review-comprehensive"
     "reviewCrossModel" "$review-cross-model"
     "teamDoc" "confluence-team-doc"
-    "teamDocGap" "This end has no Atlassian MCP and no `confluence-team-doc` skill, so it cannot run the step at all — when the answer is yes, say so plainly and ask the user to write it up from the Claude end. Never leave the step out silently."
+    "teamDocGap" "This end has no `confluence-team-doc` skill, so it cannot run the step at all — when the answer is yes, say so plainly and ask the user to write it up from the Claude end. Never leave the step out silently."
     "wtEnter" "`/cd` moves the session, and the user types it — no tool calls it and no shell command reaches it. Stop here and hand the user this line to paste:\n\n    /cd <worktree absolute path>\n\nWait for them, then confirm. The writable root moves with you: from then on the main checkout is readable and no longer writable, which is the intended shape for the rest of the flow."
     "reviewList" "`$review-surgical`, `$review-comprehensive`, `$review-cross-model`, `$review-architecture`" -}}
 ---

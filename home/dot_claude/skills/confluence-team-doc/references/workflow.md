@@ -41,14 +41,26 @@ If the findings include BOTH technical content (how it works internally) AND ope
 
 Edge case: pure technical reference with no maintenance procedure → ARCH only. (If maintenance procedure later arises, the RUNBOOK can be added without restructuring the ARCH.)
 
+## twg command conventions
+
+Every Confluence call in this workflow goes through the `twg` CLI. These rules apply to all of them:
+
+- Add `-o json --output-summary none` to get plain JSON on stdout. Without it, twg prints a YAML summary and writes the payload to a file.
+- Before the first body you write in a session, run `twg confluence content body-formats html` once. Create and update refuse a body without `--ack-body-formats`, which asserts that you read it.
+- To read a page for editing, write it to a file: `twg confluence content get <id> --detail full --format html -o json --output-summary none > page.json`. The body is at `.data.body.value` and the token at `.data.snapshotToken`. Without `--detail full` you get a summary and no body; printed to the terminal, a large body can be cut off.
+- An update needs the `snapshotToken` from a `get`, `create` or `update` of the same page that is still current. Read the page right before you update it. To check an update without writing, add `--dry-run`.
+- For a small change (add a panel, add a hub bullet), prefer a targeted edit over resending the whole body. Pass `--edits-file <file>` instead of `--body-file`. Each operation targets a node by the `data-local-id` attribute in the HTML body: `{"name":"insertNodeAfter","localId":"<id>","value":"<html>"}`. The names that work are `replaceNode`, `insertNodeAfter`, `insertNodeBefore` and `deleteNode`.
+- **An unknown operation name is not an error.** twg returns `ok: true` and changes nothing (`insertAfter`, `appendChild` and made-up names all do this). Before a targeted edit, run it with `--dry-run --output-file dry.json` and check that `.data.body.value` in that file contains your change.
+
 ## Step 3 — CQL collision search
 
 Before suggesting a title, search the space for any conflicting page name. Confluence rejects duplicate page titles space-wide.
 
-Use:
+Run `twg confluence search query --cql '<CQL>' -o json --output-summary none` with:
 ```
 space = "<spaceKey>" AND (title ~ "<keyword1>" OR title ~ "<keyword2>" ...)
 ```
+Titles and IDs are at `.data.results[].content.title` and `.content.id`.
 
 Pick keywords from the proposed subject (and translate Chinese ↔ English equivalents — search both). Examples:
 
@@ -82,13 +94,12 @@ For each page in the planned set (1 for single, 2 for ARCH+RUNBOOK pair):
 
 1. Read the matching template from Confluence (template IDs are in `.local/space.md`; the space-wide templates under folder 99 apply to every project). Use it as the structural starting point.
 2. Construct HTML body following `page-anatomy.md` §3 (ARCH) or §4 (RUNBOOK).
-3. Call `mcp__atlassian__createConfluencePage` with:
-   - `cloudId`, `spaceId` from `.local/space.md`
-   - `parentId` — the project's container under the relevant category; from the cache in `.local/space.md` if listed, else the `reference-<project>-docs` memory, else CQL discovery (step 3). If a cached ID 404s or resolves to an unexpected title, re-resolve by title and correct `.local/space.md`.
-   - `title` from step 4
-   - `contentFormat: "html"`
-   - `body` — the constructed HTML
-4. Capture the returned page ID.
+3. Write the HTML to a file, then run `twg confluence content create --content-type page --format html --ack-body-formats --yes -o json --output-summary none` with:
+   - `--space-id` from `.local/space.md`
+   - `--parent-id` — the project's container under the relevant category; from the cache in `.local/space.md` if listed, else the `reference-<project>-docs` memory, else CQL discovery (step 3). If a cached ID 404s or resolves to an unexpected title, re-resolve by title and correct `.local/space.md`.
+   - `--title` from step 4
+   - `--body-file` — the file with the constructed HTML
+4. Capture the returned page ID (`.data.id`).
 
 Create ARCH FIRST, then RUNBOOK — that way the RUNBOOK can link to the ARCH from the start (only ARCH needs a v2 update to add the RUNBOOK link, instead of both needing updates).
 
@@ -99,7 +110,7 @@ If you created only one page → skip to step 7.
 If you created ARCH + RUNBOOK (pair):
 
 1. RUNBOOK already has a top info panel pointing to ARCH (constructed in step 5).
-2. Update the ARCH page (v2) to add a top info panel pointing to RUNBOOK. Use `mcp__atlassian__updateConfluencePage` with `versionMessage: "Add cross-link to <RUNBOOK title>"`.
+2. Update the ARCH page (v2) to add a top info panel pointing to RUNBOOK. Read it as described in the conventions above, then run `twg confluence content update <id> --snapshot-token <token> --format html --body-file <file> --ack-body-formats --version-message "Add cross-link to <RUNBOOK title>" --yes`.
 3. Verify both panels exist by re-reading both pages.
 
 The cross-link pattern (per `feedback-doc-layering`):
@@ -129,7 +140,7 @@ Both branches are equally non-skippable. A general KB with no project hub is NOT
    - `[KB]` **that is project-specific** → "## Knowledge Base / Notes" (general KB does not come here — see §7b)
    - `[REPORT]` / `[POC]` / `[ROADMAP]` / `[POSTMORTEM]` → the project's working-records section (e.g. "## Reports & Records", "## Roadmap", "## Incidents"); if the hub has no matching section yet, **add one** rather than dropping the entry.
 3. Add the new page(s) as nested bullets under the parent folder bullet (match existing indentation — usually 2-space).
-4. Update via `mcp__atlassian__updateConfluencePage` with `contentFormat: "markdown"` (hubs are typically markdown-edited) and a clear `versionMessage`.
+4. Update via `twg confluence content update <id> --snapshot-token <token> --format html --body-file <file> --ack-body-formats --version-message "<message>" --yes`, with the token from the `get` in step 1. Use `html` both ways: twg marks `md` as lossy, and a markdown round trip can drop panels and macros from the hub.
 
 For ARCH+RUNBOOK pair: add BOTH entries (ARCH under Architecture section, RUNBOOK under Runbooks section).
 
@@ -139,7 +150,7 @@ For ARCH+RUNBOOK pair: add BOTH entries (ARCH under Architecture section, RUNBOO
 2. Find the `<h2>` matching the page's `[Topic]` bracket — the bracket IS the grouping key (see `doc-taxonomy.md`). `[KB][LiveKit] ICE/STUN 機制` goes under the `LiveKit` `<h2>`.
 3. If no `<h2>` for that `[Topic]` exists yet, **add one** — don't drop the entry into an unrelated section, and don't skip.
 4. Add the page as a link bullet under that `<h2>`. Layout per `page-anatomy.md` §9.
-5. Update via `mcp__atlassian__updateConfluencePage` with a clear `versionMessage`.
+5. Update via `twg confluence content update <id> --snapshot-token <token> --format html --body-file <file> --ack-body-formats --version-message "<message>" --yes`, with the token from the `get` in step 1.
 
 After updating — either branch — re-read the index page to verify the entries are visible. Don't trust the update API silently — verify.
 

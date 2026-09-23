@@ -260,15 +260,16 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 
 **chezmoi 只負責基礎設施。** `run_install-02-npm-tools` 把 `chrome-devtools-mcp`、`agent-browser-mcp`
 全域裝好（不走 `npx`，理由見上表），讓任何 repo 想用的時候「已經在那裡」；但
-`run_onchange_install-03-claude-config` **只註冊 `atlassian` 一個 user-scope server**。
+`run_onchange_install-03-claude-config` **不註冊任何 user-scope server**。
 
 判準對 stdio 與 http 不一樣，因為成本不一樣：
 
 - **stdio**：每個 session 一個 process，所以要問「**是不是每個 session 都真的會用到**」。
   目前**沒有任何 stdio server 通過這一關**。瀏覽器與 codex 只有特定工作才需要，
   放 user scope 等於讓每個純後端 repo 的 session 都替用不到的東西付錢。
-- **http**：本機不 spawn 任何 process，上面那個乘數根本不成立。`atlassian` 因此放 user scope，
-  代價接近零，換來的是任何 repo 隨時能查 Jira／Confluence 而不必逐一註冊。
+- **http**：本機不 spawn 任何 process，上面那個乘數根本不成立。但 schema 與 server 說明
+  每個 session 仍要載入。`atlassian` 曾因此放 user scope，2026-09-23 改用 `twg` CLI 後退役，
+  見下方〈Atlassian：改用 twg CLI〉。
 
 > **codegraph 是這條判準的反例，已於 2026-09-07 退役。** 它當初以「跨檔查 symbol 的通用工具」
 > 之名進 user scope，理由聽起來成立，但沒人量過。實際數字是**全部歷史 transcript 共 2 次呼叫**，
@@ -287,7 +288,6 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | `chrome-devtools` | 驅動 Chrome：導航、抓 DOM／console／network、效能 trace | binary 已裝，待註冊 | install-02（`chrome-devtools-mcp`） |
 | `agent-browser` | 較輕量的瀏覽器自動化（點擊、填表、截圖） | binary 已裝，待註冊 | install-02（`agent-browser-mcp`） |
 | `codex` | 把 Codex CLI 當 MCP server，交叉詢問另一個模型 | binary 已裝，待註冊 | install-02（`@openai/codex`） |
-| `atlassian` | Jira／Confluence／Compass／Teamwork Graph 讀寫 | **已在 user scope**，新機器只差 `/mcp` 完成 OAuth | 遠端 http，無需 binary |
 
 註冊指令（在該 repo 根目錄執行，選要的貼一行）：
 
@@ -304,76 +304,53 @@ claude mcp add --scope project codex -- codex mcp-server
   `--scope local`（寫進 `~/.claude.json` 的該專案區段，不進版控）。
 - 專案 scope 的 server 首次載入需要核准，記在 settings 的 `enabledMcpjsonServers`。
 - **一律指向全域 binary，不要寫 `npx -y <pkg>@latest`**——理由見上面的 process 數表。
-- `atlassian` 由 install-03 自動註冊，但**登入代不了**：新機器要自己 `/mcp` 選它完成 OAuth。
-  端點細節與兩個坑見下一節。
 - 換新機器時這些 binary 由 `chezmoi apply` 自動補齊；repo 裡的 `.mcp.json` 跟著 git 走，兩邊會合。
 
 清單要新增成員時，**同時改兩處**：`run_install-02-npm-tools.{sh,ps1}.tmpl` 加安裝、這張表加一列。
 只加安裝沒人知道它存在；只加表格則換機器就沒有。
 
-#### atlassian：端點選 `/v2/mcp`，以及三個坑
+#### Atlassian：改用 twg CLI（2026-09-23）
 
-install-03 註冊的端點是 `https://mcp.atlassian.com/v2/mcp`。它取代 `/v1/mcp/authv2`，差別不是
-版號而是架構：
+Jira 與 Confluence 改走 Atlassian 官方的 Teamwork Graph CLI（`twg`）。Atlassian MCP 已從 user scope
+退役：install-03 的 `RETIRED_MCP` 表會在每台機器上移除它。
 
-| | `/v1/mcp/authv2` | `/v2/mcp` |
+**為什麼換。** 兩項實測：
+
+| 比較 | Atlassian MCP | twg CLI |
 |---|---|---|
-| 工具形狀 | 40 支攤平，直接呼叫 | 約 10 支常用 + `discover` / `executeRead` / `executeWrite` / `executeDestructive` |
-| 可觸及操作 | 就那 40 支 | 243 個（121 個可被 `discover` 搜到） |
-| OAuth scope | 22 個，依產品切（`read:jira-work`） | 32 個，統一 `*:agent-interface` |
-| 產品覆蓋 | Jira、Confluence、Compass、Teamwork Graph | 前述扣掉 Compass，加上 Bitbucket、Loom、Talent、Goals、Focus、Projects、Artifacts |
+| Jira 指令數 | 部分（沒有刪除、封存、clone、dashboard/filter 管理、自訂欄位、PR 連結） | 161 支 |
+| Confluence 指令數 | 部分（沒有刪頁、發布草稿、匯出、公開連結、space 權限） | 115 支 |
+| Bitbucket、JSM、Assets、Trello、admin | 沒有 | 有 |
+| 開場 context | +1,075 token | 0（沒有裝 skill） |
+| 載入全部工具 schema | +23,308 token | 不適用 |
 
-**代價是 Compass 那組 scope 沒了**，換來的是常駐 schema 小很多，加上 v1 根本沒有的操作
-（例如 `listJiraFilters`——讀得出 saved filter 的 JQL，排查「為什麼這張票沒出現在 filter 裡」
-就靠它）。有在用 Compass 才需要留 v1。
+量法：`claude -p` 在乾淨目錄跑空白任務，讀 API 回報的 prompt token 數，只開一樣東西。
 
-要預先知道某端點會給哪些權限，讀它的 metadata 就好，不必先授權再數。兩邊 diff 一次最清楚：
+**安裝。** `run_once_install-cli-tools.{sh,ps1}.tmpl` 用官方安裝程式裝，帶 `--skip-skills --skip-login -y`：
 
-```sh
-for p in v1/mcp/authv2 v2/mcp; do
-  curl -s "https://mcp.atlassian.com/.well-known/oauth-protected-resource/$p" \
-    | jq -r '.scopes_supported[]' | sort > "/tmp/scopes-$(echo $p | tr / _).txt"
-done
-diff /tmp/scopes-v1_mcp_authv2.txt /tmp/scopes-v2_mcp.txt
-```
+- **不裝 skill。** 13 個 skill 裡有 10 個會導向扣 Rovo credits 的指令，而且開場多佔 1,114 token。
+  skill 內容本來就包在 binary 裡，`twg help discover-skills "<意圖>"` 可以按需讀，不用登入。
+  `user-system-prompt.md` 那一行就是叫 agent 這樣做。
+- **`-y` 會替使用者同意使用條款**，紀錄在 `~/.config/twg/consent.json`。無人值守安裝沒有別的方法。
+- **登入代不了。** 新機器要在真的終端機跑一次 `twg login`。
 
-裸 `/v1/mcp` 連這份 metadata 都回 `Not Found`，這本身就是它屬於舊世代的訊號。
+**Rovo credits。** twg 有 44 支指令與 9 組旗標會扣 Rovo credits（官方標為 Enriched）。環境變數
+`TWG_COMMAND_SURFACE_RESTRICTION=basic-v1` 會把它們從 CLI 裡整個移除：指令變成
+`unknown command`、旗標變成 `unknown option`，`twg help` 也看不到。這由 twg 自己執行，所以對
+所有 agent 與人都有效。設定位置有三處，要一起改：
 
-**坑一：改完 URL 一定要重啟 Claude Code。** MCP client 把 OAuth discovery 的結果快取在 process
-記憶體裡，不會因為設定檔改了就重新解析。沒重啟就跑 `/mcp`，它會拿**舊端點的** authorization
-server 去授權，token 存進舊的 key，而連線時查的是新端點的 key——症狀是「Got new credentials,
-but atlassian rejected them on reconnect」，log 裡會看到 `Saving tokens` 與 `No access token in
-storage` 只隔 100ms。那不是 OAuth 壞掉，是兩邊在講不同的 key。重啟後一次就過。
+- `.chezmoitemplates/shell-common/base`（bash／zsh，含 Git Bash）
+- `Documents/exact__shared-profile.d/27-twg.ps1`（PowerShell）
+- `dot_claude/modify_settings.json.sh.tmpl` 的 `env`（不是從 shell 啟動的 Claude Code）
 
-**坑二：不要啟用 claude.ai 內建的 Atlassian Rovo connector。** 那不是另一套 server，是 Anthropic
-預填的同一個 Atlassian 端點；而且它停在舊的 `/v1/mcp`（[claude-code#61288](https://github.com/anthropics/claude-code/issues/61288)
-提報後被 closed as not planned）。更麻煩的是內建 connector 會**依 URL 去重、遮蔽同 URL 的自註冊
-條目**——你 dotfiles 註冊的那筆會靜靜消失但行為看似正常，debug 時極易誤判。自註冊的好處正在於
-升級節奏握在自己手上。
+單次要用完整指令：`TWG_COMMAND_SURFACE_RESTRICTION=full-v1 twg ...`。有 shell 權限的 agent
+也能自己 unset 這個變數，本機沒有辦法 100% 擋住故意繞過。
 
-**坑三：403「The app is not installed on this instance」是 token 過期，不是端點壞掉。**
-症狀很會騙人：`claude mcp list` 顯示 `✔ Connected`，`atlassianUserInfo` 也正常回傳帳號，
-但**每一個** Jira 與 Confluence 呼叫都回這句 403。字面在講「站台沒裝這個 app」，極容易誤判成
-公司管理員把 Rovo MCP 移除了而放棄。**實際上重跑一次 `/mcp` 授權就好。**
-
-分辨方法：身分類呼叫（`atlassianUserInfo`、`getAccessibleAtlassianResources`）走 OAuth 本身，
-不經過 app；資料類呼叫才經過。**只有資料類全掛、身分類正常，就是 token 問題**——真被管理員
-移除時身分類不會單獨活著。
-
-同時換端點又重新授權會分不出是哪一個修好的。切回舊端點重測一次就分辨得出來，而且回應的
-`context.endpoint` 欄位會直說走的是哪個端點（`v1-authv2:streamable-http`），那是比「有沒有通」
-更強的證據。
-
-**既有機器要手動遷移。** `mcp_add_if_missing` 只比對 server 名稱，所以已經有 `atlassian` 的機器
-不會被 install-03 換掉端點。手動跑一次，然後**重啟** Claude Code 並 `/mcp` 重新授權：
+扣費清單的正本在 binary 的 help 索引，每支指令都帶 `tier` 欄位：
 
 ```sh
-claude mcp remove atlassian -s user
-claude mcp add atlassian -s user --transport http https://mcp.atlassian.com/v2/mcp
+jq -r 'select(.tier=="enriched" and .leaf==true) | .cmd' ~/.cache/twg/help-index/*.jsonl
 ```
-
-注意 `-s/--scope` 是每個子命令各自解析的，`add` 漏掉就會落在預設的 `local`（只在當前目錄生效，
-且優先序 local > project > user 會遮蔽 user scope 那筆，同樣是「改了沒反應」的來源）。
 
 #### 例外：已經在 user scope、想在特定 repo 關掉
 

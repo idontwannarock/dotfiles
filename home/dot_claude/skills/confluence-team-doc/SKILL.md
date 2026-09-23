@@ -90,4 +90,4 @@ and create the container pattern.
 
 ## Prerequisites
 
-Requires Atlassian MCP server (`mcp__atlassian__*` tools). If unavailable, stop and tell the user.
+Requires the `twg` CLI, logged in (`twg doctor` passes). If it is missing or not logged in, stop and tell the user: install comes from dotfiles, login is `twg login` in their own terminal. Command conventions are at the top of `references/workflow.md`.

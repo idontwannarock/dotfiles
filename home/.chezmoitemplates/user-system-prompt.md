@@ -90,3 +90,5 @@ do not. So the index is the only layer whose wording costs tokens on every turn.
 ---
 
 **Worklog repo:** `idontwannarock/worklogs`
+
+**Atlassian (Jira / Confluence):** use the `twg` CLI. When unsure of a command, run `twg help discover-skills "<intent>"` first.

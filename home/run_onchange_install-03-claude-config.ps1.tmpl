@@ -171,26 +171,12 @@ try {
         }
     }
 
-    Log-Section "register user-scope MCP servers -- a stdio server costs one process per session"
-    # The cost of user scope is per session, not per machine, so a stdio server
-    # earns the scope only if every session genuinely uses it. An http server
-    # spawns nothing locally and is close to free. Everything still out of
-    # scope (chrome-devtools, agent-browser, codex) is installed by install-02
-    # but left unregistered: each repo opts in with
-    # `claude mcp add --scope project`. See docs/claude-code.md.
-    #
-    # -AddArgs is handed to `claude mcp add` verbatim, so a row can carry
-    # `--transport http` ahead of a url or `--` ahead of a command.
-    function Add-McpIfMissing {
-        param([string]$Name, [string[]]$AddArgs)
-        $existing = claude mcp list 2>$null | Select-String -Pattern "^${Name}:" -Quiet
-        if ($existing) {
-            Log-Skip "[mcp] ${Name} already registered"
-        } else {
-            claude mcp add --scope user $Name @AddArgs
-            Log-Step "[mcp] ${Name} registered"
-        }
-    }
+    Log-Section "unregister retired MCP servers so their removal converges on every machine"
+    # No MCP server is registered at user scope any more: the cost of user scope
+    # is per session, and Atlassian now goes through the twg CLI. Servers
+    # installed by install-02 (chrome-devtools, agent-browser, codex) stay
+    # unregistered; each repo opts in with `claude mcp add --scope project`.
+    # See docs/claude-code.md.
 
     # Retired MCP servers. Same convergence rule as the retired plugins above:
     # dropping the add line leaves the entry in ~/.claude.json on every machine
@@ -201,6 +187,7 @@ try {
     # Keep this list identical to the bash twin in the .sh.tmpl.
     $retiredMcp = @{
         "codegraph" = "2 calls across the whole transcript history, one of them a status probe; its 9 tool schemas loaded every session regardless"
+        "atlassian" = "replaced by the twg CLI, which reaches the same Atlassian APIs and removes credit-consuming commands via TWG_COMMAND_SURFACE_RESTRICTION"
     }
     foreach ($name in $retiredMcp.Keys) {
         $present = claude mcp list 2>$null | Select-String -Pattern "^${name}:" -Quiet
@@ -214,17 +201,6 @@ try {
             Log-Skip "[mcp] ${name} not registered"
         }
     }
-
-    # http transport: no binary to guard on, and no per-session process. The
-    # script registers it but cannot log in -- run /mcp and pick atlassian to
-    # finish the OAuth flow on a new machine.
-    #
-    # /v2/mcp replaces /v1/mcp/authv2. It swaps 40 flat tools for ~10 plus a
-    # discover/execute layer over 243 operations, and reaches Bitbucket, Loom,
-    # Talent, Goals and Projects. It drops Compass. The guard above matches on
-    # name only, so a machine already holding the old url keeps it -- see
-    # docs/claude-code.md for the one-line migration.
-    Add-McpIfMissing -Name "atlassian" -AddArgs @("--transport", "http", "https://mcp.atlassian.com/v2/mcp")
 
     Log-Section "set user preferences in ~/.claude.json"
     $claudeJson = Join-Path $env:USERPROFILE ".claude.json"
