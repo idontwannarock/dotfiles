@@ -6,7 +6,7 @@
 # 等會被 Claude Code runtime 寫入的部分。
 #
 # 同步的欄位：
-# - model = claude-opus-5（1M context；不再壓成 200K）
+# - model = claude-opus-5-5（1M context；不再壓成 200K）
 # - UI 降噪九項（2026-09-22）：spinnerTipsEnabled / promptSuggestionEnabled /
 #   awaySummaryEnabled / enableArtifact / verbose / prefersReducedMotion = true /
 #   preferredNotifChannel = "notifications_disabled"，目的是降噪與省渲染成本。
@@ -60,7 +60,7 @@
 # per-session cache 成為主要來源；這個 env var 只保留給 debug/override 用
 # （需要時手動 export，不進 settings.json）。
 #
-# model 固定為 claude-opus-5，context 走 1M。若某台機器要壓回 200K，在該 repo 的
+# model 固定為 claude-opus-5-5，context 走 1M。若某台機器要壓回 200K，在該 repo 的
 # .claude/settings.local.json 設 env.CLAUDE_CODE_DISABLE_1M_CONTEXT = "1"；
 # 此處 patch 的是各機器的預設值。
 
@@ -85,7 +85,7 @@ echo "$input" | jq \
   --arg git_bash '{{ $gitBash }}' \
 {{- end }}
   '
-    .model = "claude-opus-5"
+    .model = "claude-opus-5-5"
     | .effortLevel = "high"
     | .outputStyle = "ELI5"
     | .autoUpdatesChannel = "latest"
