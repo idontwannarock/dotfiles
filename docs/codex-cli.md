@@ -106,6 +106,32 @@ Codex plugin registration 位於每台機器的 `[plugins.*]` config tables。ch
 `~/.codex/hooks.json` 跑不跑；那個檔由 herdr 產生、不受 chezmoi 管，所以開關只能保留
 不能管理。丟掉它不會報錯，只會讓 SessionStart hook 安靜地停止觸發。
 
+### 單一 repo 的設定要放 repo 內，不要放 `[projects."<路徑>"]`
+
+`~/.codex/config.toml` 的 `[projects."<路徑>"]` 不是設定層。Codex 只從這張表讀
+`trust_level`，其他 key 一律不讀，也不驗證。寫進去的 `model`、`reasoning_effort`、
+`approval_policy`、`sandbox_mode` 都不會生效，而且不會報錯。
+
+單一 repo 的設定放在該 repo 的 `.codex/config.toml`。這一層有兩個條件：
+
+- **repo 必須被信任。** 這一層只在 `[projects."<路徑>"]` 有 `trust_level = "trusted"`
+  時才載入。信任是每台機器各自的狀態，不隨 chezmoi 同步。
+- **key 用頂層的名字。** 寫 `model_reasoning_effort`，不寫 `reasoning_effort`。
+  `approval_policy` 的合法值只有 `on-failure`、`on-request`、`never`。
+
+| 想要的範圍 | 放哪裡 | 是否跨機器同步 |
+|------------|--------|----------------|
+| 所有 repo | `home/dot_codex/modify_config.toml` 的全域區塊 | 是，經 chezmoi |
+| 單一 repo | 該 repo 的 `.codex/config.toml` | 是，經 git |
+| 信任某個目錄 | `~/.codex/config.toml` 的 `[projects."<路徑>"]` | 否，每台機器各自建立 |
+
+repo 內的 `.codex/config.toml` 會跟著 repo 公開。內容不適合公開時，不要放進 repo。
+
+實測(codex-cli 0.155.0，2026-09-18)：在乾淨的 `CODEX_HOME` 裡，`sandbox_mode = 12345`
+放在檔案頂層會讓 config 載入失敗，放在 `[projects."<路徑>"]` 裡則 parse ok。同樣四個
+key 放進 repo 的 `.codex/config.toml`，四個都生效。拿掉 `trust_level` 之後，repo 的
+`.codex/config.toml` 不再載入。
+
 ## 使用方式
 
 ```bash
