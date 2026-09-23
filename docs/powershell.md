@@ -34,6 +34,20 @@ Windows 上 `git` 指令的固定開銷,見 [Windows 上的 Git PATH](git-window
 - **apply 提醒**：`run_warn-pwsh-msix.ps1.tmpl` 會在每次 `chezmoi apply` 偵測到 MSIX pwsh 時 `Write-Warning` 提示（不自動切換 —— 需 admin、具破壞性、且 pwsh 是 `.ps1` interpreter 的 chicken-and-egg）。
 - **後續更新**：winget 仍把它視為 MSIX，`winget upgrade` 可能想換回 Store；改用 GitHub MSI 覆蓋安裝，或 `winget pin add --id Microsoft.PowerShell`。
 
+## ls / ll
+
+`Documents/_shared-profile.d/10-aliases.ps1` 定義 `ls` 與 `ll`，PS5 與 PS7 都生效：
+
+| 情況 | `ls` | `ll` |
+|------|------|------|
+| 有裝 uutils coreutils（`C:\Program Files\coreutils\cmd\ls.cmd`） | GNU ls（`--color=auto`） | GNU `ls -alF`，與 Linux 相同 |
+| 沒裝 | 內建 `Get-ChildItem` alias | `Get-ChildItem -Force` |
+
+- coreutils 不由此 repo 安裝，所以要保留「沒裝」的退路。
+- 呼叫 `.cmd` 而非 `.exe`：`.cmd` 讓 PS7 走 legacy 參數傳遞，`"*"` 才會保持字面值。
+- PS7 profile 尾端的 coreutils 區塊本來就會把打出來的 `ls` 改寫成 GNU ls；這兩個 function 讓 PS5 有相同行為。
+- GNU ls 輸出的是文字，不是物件。要接 `Where-Object` 之類的管線時，改用 `Get-ChildItem`。
+
 ## Worklog workflow trigger
 
 `Documents/_shared-profile.d/10-aliases.ps1` 內建 `createnewlog` 函式，行為與 Bash 版完全一致：觸發遠端 `create-daily.yml` GitHub Actions workflow 並等待完成，不讀任何環境變數、不依賴 CWD、不做本地 git 操作。

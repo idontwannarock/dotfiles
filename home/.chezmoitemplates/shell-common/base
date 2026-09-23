@@ -22,6 +22,9 @@ if [ -d "$HOME/.local/go/bin" ]; then
     esac
 fi
 
+# ── Aliases ──────────────────────────────────────────────────────────────────
+alias ll='ls -alF'
+
 # ── Starship prompt ──────────────────────────────────────────────────────────
 # 由各 rc 檔依 shell 類型初始化（eval "$(starship init bash/zsh)"）
 

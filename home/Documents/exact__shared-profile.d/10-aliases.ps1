@@ -79,3 +79,16 @@ function createnewlog {
 if (Test-Path 'C:\Program Files\Git\cmd\gitk.exe') {
     Set-Alias gitk 'C:\Program Files\Git\cmd\gitk.exe'
 }
+
+# ls / ll: GNU ls from uutils coreutils when it is installed, same as Linux.
+# PS7 already rewrites a typed `ls` to coreutils (the injected block at the end of
+# the PS7 profile); these functions give PS5 the same behaviour. The .cmd shim, not
+# the .exe, keeps PS7 on legacy argument passing, so a quoted "*" stays literal.
+# Without coreutils, ls stays the built-in Get-ChildItem alias.
+if (Test-Path 'C:\Program Files\coreutils\cmd\ls.cmd') {
+    Remove-Item Alias:ls -Force -ErrorAction SilentlyContinue
+    function ls { & 'C:\Program Files\coreutils\cmd\ls.cmd' --color=auto @args }
+    function ll { & 'C:\Program Files\coreutils\cmd\ls.cmd' --color=auto -alF @args }
+} else {
+    function ll { Get-ChildItem -Force @args }
+}

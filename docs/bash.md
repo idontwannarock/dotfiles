@@ -10,6 +10,14 @@
 | Linux/WSL | `bashrc/linux` | `shell-common/linux` → `shell-common/base` |
 | macOS | 不部署（使用 zsh） | `shell-common/darwin` → `shell-common/base` |
 
+## Aliases
+
+`shell-common/base` 定義共用 alias，三個平台都生效（WSL bash、Git Bash、macOS zsh）：
+
+| Alias | 展開 |
+|-------|------|
+| `ll` | `ls -alF` |
+
 ## Linux/WSL 預設 editor
 
 Linux/WSL 的 `shell-common/linux` 會設定：
