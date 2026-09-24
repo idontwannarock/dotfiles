@@ -14,6 +14,20 @@ The wrapper resolves the token **at call time** — vault first, `GITLAB_TOKEN`
 second — so no shell startup path decrypts anything and no gpg prompt appears
 when you open a terminal.
 
+On Linux, the bash/zsh wrapper can start a passphrase prompt only from your own
+terminal. With a cold gpg cache, pinentry draws on the terminal that `GPG_TTY`
+names. An agent inherits `GPG_TTY` from someone else's terminal, so its prompt
+destroys that session. This happened on 2026-09-24, after a reboot.
+
+The wrapper therefore reads the vault only in two cases:
+
+- The controlling terminal of the shell is `GPG_TTY`. This is you, in your own shell.
+- `~/.local/bin/gpg-cache-warm` reports a warm cache. No prompt can appear.
+
+Otherwise the wrapper skips the vault and falls back to `GITLAB_TOKEN`. A retry
+loop gets the same fast failure every time, so it cannot start a new pinentry.
+Warm the cache from your own terminal with `pass show gitlab/corp-token >/dev/null`.
+
 ## What stays on the machine
 
 **The token**, in the local vault. Secrets never enter this repo.
@@ -82,6 +96,7 @@ Both wrappers emit the same two strings, on purpose:
 |---|---|
 | `GITLAB_HOST 未設定；…` | Step 2 is missing or the shell predates it. Without the guard `glab` would target gitlab.com and return `401`, which reads like a token problem and is not. |
 | `no token (vault entry gitlab/corp-token unreadable and GITLAB_TOKEN unset)` | Step 1 is missing, or the vault is locked and no fallback is exported. |
+| `gpg 快取是冷的，沒有終端機可以輸入密語，略過 vault。…` | bash/zsh on Linux only. The gpg cache is cold, and the caller is not in the terminal that `GPG_TTY` names. The wrapper skips the vault instead of starting pinentry. |
 | `config store 內有明文 token（…）` | Something wrote a token into `glab`'s own config file. See below. |
 
 To reach gitlab.com deliberately, bypass the wrapper: `command glab …` in bash,

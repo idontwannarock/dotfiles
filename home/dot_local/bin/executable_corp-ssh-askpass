@@ -72,12 +72,24 @@ if [[ -f "${PASSWORD_STORE_DIR:-$HOME/.password-store}/$host_entry.gpg" ]]; then
 fi
 
 # 4. Dispatch by prompt content. pass uses gpg → gpg-agent must already have
-#    the key passphrase cached. We have no TTY here for pinentry to prompt on,
-#    so a cold cache makes pass fail silently; post-hoc check below converts
-#    that into a useful stderr hint (visible in `ssh -v` and journals).
+#    the key passphrase cached. A cold cache does not merely fail: gpg hands
+#    the inherited GPG_TTY to pinentry, and pinentry draws on that terminal.
+#    An agent inherits someone else's GPG_TTY, so its ssh would destroy that
+#    session — and a retry loop spawns a new pinentry every time one is killed.
+#    So allow a prompt only when our controlling terminal is GPG_TTY (a human
+#    running ssh in their own shell). Otherwise ask the guard, by path, and
+#    fail fast when the cache is cold. The post-hoc check below turns any other
+#    pass failure into a useful stderr hint (visible in `ssh -v` and journals).
 #
 #    Match order matters: "One-time Password:" must come first because bash
 #    `case` is first-match and "*Password:*" would otherwise swallow it.
+guard="$(dirname "$(readlink -f "$0")")/gpg-cache-warm"
+if [[ -x "$guard" && "/dev/$(ps -o tty= -p $$ | tr -d ' ')" != "${GPG_TTY:-}" ]] && ! "$guard"; then
+  echo "corp-ssh-askpass: gpg-agent cache cold and no terminal of your own — skipping pass." >&2
+  echo "corp-ssh-askpass: Warm cache: pass show $password_entry >/dev/null" >&2
+  exit 1
+fi
+
 rc=0
 case "$prompt" in
   *"One-time Password:"*)          out=$(pass otp  "$pass_path/totp"  2>/dev/null) || rc=$? ;;

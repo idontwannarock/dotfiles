@@ -11,6 +11,8 @@ on:
     paths:
       - 'tests/*.test.sh'
       - 'home/dot_local/bin/**'
+      # gpg-prompt-guard.test.sh also reads the glab wrapper from here.
+      - 'home/.chezmoitemplates/shell-common/base'
       - 'home/dot_codex/modify_config.toml'
       - 'home/run_after_modify-codex-config.ps1.tmpl'
       - 'home/run_install-04-codex-plugins.sh.tmpl'

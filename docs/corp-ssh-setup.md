@@ -150,6 +150,12 @@ encryption subkey**: `pass` decrypts and never signs, so a warm signing key says
 nothing about whether a prompt will appear. Every headless caller of `pass`
 should guard on it and fail with a message instead of summoning pinentry.
 
+The guarded callers are `dex-auto-login`, `corp-ssh-askpass`, and the bash/zsh
+`glab` wrapper. `corp-ssh-askpass` and `glab` skip the guard only when their
+controlling terminal is `GPG_TTY`: a human in their own shell, where a prompt is
+wanted. Do not use `[ -t 0 ]` for this test. An agent that runs in a PTY passes
+it, while its `GPG_TTY` still names another terminal.
+
 `~/.local/bin/gpg-cache-keepalive`, run every six hours by
 `gpg-cache-keepalive.timer`, does one cache-hit decrypt. Because
 `default-cache-ttl` is an idle timer, that single access pushes the 24-hour
