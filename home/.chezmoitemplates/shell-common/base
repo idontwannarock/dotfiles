@@ -159,9 +159,18 @@ glab() {
         return 1
     done
 
-    local token=""
+    # 快取冷時，pinentry 畫在 GPG_TTY 指的終端上。agent 會繼承別人的 GPG_TTY，所以
+    # 2026-09-24 一個 agent 的 glab 呼叫蓋掉了另一個 session。只有當本行程的控制終端
+    # 就是 GPG_TTY 時才允許提示。不用 [ -t 0 ]：agent 在 PTY 裡跑時它也成立。
+    # 守衛用路徑呼叫：PATH 不含 ~/.local/bin 時，裸名找不到會變成「不守」。
+    # gpg-cache-warm 只有 Linux 有；其他平台沒有這支，照舊直接讀。
+    local token="" guard="$HOME/.local/bin/gpg-cache-warm"
     if command -v pass >/dev/null 2>&1; then
-        token="$(pass show gitlab/corp-token 2>/dev/null)"
+        if [ ! -x "$guard" ] || [ "/dev/$(ps -o tty= -p $$ | tr -d ' ')" = "$GPG_TTY" ] || "$guard"; then
+            token="$(pass show gitlab/corp-token 2>/dev/null)"
+        else
+            printf >&2 'glab: gpg 快取是冷的，沒有終端機可以輸入密語，略過 vault。請在自己的終端機跑一次 `pass show gitlab/corp-token >/dev/null` 暖機\n'
+        fi
     fi
     if [ -z "$token" ]; then
         token="$GITLAB_TOKEN"
