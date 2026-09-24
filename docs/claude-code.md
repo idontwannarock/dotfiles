@@ -566,7 +566,7 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 | Effort | 等級徽章，`ultracode` 為獨立的 ⚡ 徽章 |
 | Context | 進度條、百分比、`已用/上限` token 數（上限取 stdin JSON 的 `context_window.context_window_size`） |
 | Rate limits | ⏳ 5h／7d 使用率與重置倒數（僅 Pro／Max，且首次 API 回應之後才有） |
-| 位置 | 專案目錄名、git 分支（worktree session 前綴 🌿，未提交變更加 `*`）、`+N -N` diff 統計。分支取當前目錄，子目錄亦適用 |
+| 位置 | 專案目錄名、git 分支（worktree session 前綴 🌿，未提交變更加 `*`）、與 upstream 的差距 `↑N ↓N`（比對上次 fetch 的結果，statusline 本身不 fetch；沒有 upstream 則不顯示）、`+N -N` diff 統計。分支取當前目錄，子目錄亦適用 |
 
 沒有資料的段落整段省略，不留空的 `│`。
 
@@ -667,7 +667,7 @@ go build -o ~/.claude/statusline .       # macOS/Linux
 
 主流程用 goroutine 平行跑慢源 + 1 秒 `asyncTimeout`：
 
-- `getGitInfo()` — 內部再分 3 個 goroutine：`git branch --show-current` / `git status --porcelain` / `git diff --shortstat`。Wall time = max(spawn) 而非 sum，Windows warm 中位數 428 ms（2026-04-24 平行化前為 1111 ms，常超時導致 branch/diff 段被吞掉）。
+- `getGitInfo()` — 內部再分 3 個 goroutine：`git branch --show-current` / `git status --porcelain=v2 --branch`（同一個行程同時給出未提交變更與 ahead/behind）/ `git diff --shortstat`。Wall time = max(spawn) 而非 sum，Windows warm 中位數 428 ms（2026-04-24 平行化前為 1111 ms，常超時導致 branch/diff 段被吞掉）。
 
 未在 1 秒內完成時，對應段落會以空字串呈現（不阻塞 statusline 渲染）。
 

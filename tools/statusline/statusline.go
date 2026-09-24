@@ -80,6 +80,8 @@ const (
 type GitInfo struct {
 	Branch     string
 	Dirty      bool
+	Ahead      int // commits on HEAD that the upstream lacks
+	Behind     int // commits on the upstream that HEAD lacks
 	Insertions int
 	Deletions  int
 }
@@ -107,10 +109,19 @@ func getGitInfo(dir string) GitInfo {
 
 	go func() {
 		defer wg.Done()
-		cmd := exec.Command("git", "status", "--porcelain")
+		// --branch adds "# branch.ab +A -B" when an upstream exists, so the
+		// same process that reports dirtiness also reports ahead/behind.
+		// The counts compare against the last fetch; nothing here fetches.
+		cmd := exec.Command("git", "status", "--porcelain=v2", "--branch")
 		cmd.Dir = dir
 		out, _ := cmd.Output()
-		info.Dirty = len(strings.TrimSpace(string(out))) > 0
+		for _, line := range strings.Split(string(out), "\n") {
+			if ab, ok := strings.CutPrefix(line, "# branch.ab "); ok {
+				fmt.Sscanf(ab, "+%d -%d", &info.Ahead, &info.Behind)
+			} else if line != "" && !strings.HasPrefix(line, "#") {
+				info.Dirty = true
+			}
+		}
 	}()
 
 	go func() {
@@ -390,7 +401,7 @@ func main() {
 	case <-time.After(asyncTimeout):
 	}
 
-	// === Model │ Effort │ Context bar % tokens/limit │ Rate limits │ Dir [worktree] ⚡branch* +N -N ===
+	// === Model │ Effort │ Context bar % tokens/limit │ Rate limits │ Dir [worktree] ⚡branch* ↑N ↓N +N -N ===
 	line1 := fmt.Sprintf("%s %s%s%s", emoji, cBlue, model, cReset)
 
 	if effort != "" {
@@ -437,6 +448,12 @@ func main() {
 		line1 += formatBranch(inWorktree, branch)
 		if gitInfo.Dirty {
 			line1 += cRed + "*" + cReset
+		}
+		if gitInfo.Ahead > 0 {
+			line1 += fmt.Sprintf(" %s↑%d%s", cYellow, gitInfo.Ahead, cReset)
+		}
+		if gitInfo.Behind > 0 {
+			line1 += fmt.Sprintf(" %s↓%d%s", cYellow, gitInfo.Behind, cReset)
 		}
 		if gitInfo.Insertions > 0 || gitInfo.Deletions > 0 {
 			if gitInfo.Insertions > 0 {
