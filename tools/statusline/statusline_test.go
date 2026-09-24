@@ -99,3 +99,44 @@ func TestGetGitInfoFromSubdirectory(t *testing.T) {
 		t.Errorf("getGitInfo(non-repo).Branch = %q, want empty", got)
 	}
 }
+
+// getGitInfo reports how far HEAD is ahead of and behind its upstream.
+func TestGetGitInfoAheadBehind(t *testing.T) {
+	git := func(dir string, args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-c", "user.email=t@t", "-c", "user.name=t"}, args...)...)
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+
+	remote := t.TempDir()
+	git(remote, "init", "-q", "--bare", "-b", "main")
+	other := t.TempDir()
+	git(other, "clone", "-q", remote, ".")
+	git(other, "commit", "-q", "--allow-empty", "-m", "base")
+	git(other, "push", "-q", "origin", "main")
+
+	local := t.TempDir()
+	git(local, "clone", "-q", remote, ".")
+	if got := getGitInfo(local); got.Ahead != 0 || got.Behind != 0 || got.Dirty {
+		t.Errorf("fresh clone: got %+v, want in sync and clean", got)
+	}
+
+	git(other, "commit", "-q", "--allow-empty", "-m", "theirs")
+	git(other, "push", "-q", "origin", "main")
+	git(local, "fetch", "-q")
+	git(local, "commit", "-q", "--allow-empty", "-m", "mine1")
+	git(local, "commit", "-q", "--allow-empty", "-m", "mine2")
+	if got := getGitInfo(local); got.Ahead != 2 || got.Behind != 1 {
+		t.Errorf("diverged: Ahead=%d Behind=%d, want 2 and 1", got.Ahead, got.Behind)
+	}
+
+	if err := os.WriteFile(filepath.Join(local, "f"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !getGitInfo(local).Dirty {
+		t.Error("untracked file: Dirty = false, want true")
+	}
+}
