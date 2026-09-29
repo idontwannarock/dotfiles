@@ -22,7 +22,7 @@ destroys that session. This happened on 2026-09-24, after a reboot.
 The wrapper therefore reads the vault only in two cases:
 
 - The controlling terminal of the shell is `GPG_TTY`. This is you, in your own shell.
-- `~/.local/bin/gpg-cache-warm` reports a warm cache. No prompt can appear.
+- `~/.local/bin/gpg-cache-warm` reports a warm cache. No prompt can appear. See [gpg-agent-cache.md](gpg-agent-cache.md).
 
 Otherwise the wrapper skips the vault and falls back to `GITLAB_TOKEN`. A retry
 loop gets the same fast failure every time, so it cannot start a new pinentry.

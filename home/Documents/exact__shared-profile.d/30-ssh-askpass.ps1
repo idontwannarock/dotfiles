@@ -5,9 +5,7 @@
 # Helper declines (exit 1) for unknown prompts, so non-corp ssh is unaffected.
 #
 # Mirror of .chezmoitemplates/shell-common/linux's SSH_ASKPASS block.
-# Note: no GPG_TTY equivalent — Windows pinentry is GUI-based (pinentry-w32.exe
-# from Git for Windows; configured in gpg-agent.conf by
-# run_onchange_install-gnupg.ps1.tmpl, which manages the self-hosted GnuPG).
+# The helper reads credentials from bw serve, not gpg, so no pinentry is involved.
 #
 # Constraint (same as Linux): SSH keys with passphrases must be unencrypted,
 # or override per-session: $env:SSH_ASKPASS_REQUIRE='never'.

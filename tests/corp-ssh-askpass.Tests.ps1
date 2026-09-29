@@ -1,12 +1,47 @@
 # corp-ssh-askpass.Tests.ps1 — Pester 5 tests for home/dot_local/bin/corp-ssh-askpass.ps1
 #
 # Black-box: invokes the helper as a child process with controlled $env:USERPROFILE,
-# a mock gopass.cmd on PATH, and various prompt strings. Asserts exit code,
-# stdout, and stderr.
+# a mock bw serve (HttpListener on a free port, reached via CORP_SSH_BW_API), and
+# various prompt strings. Asserts exit code, stdout, and stderr.
 
 BeforeAll {
     $script:RepoRoot   = Split-Path -Parent $PSScriptRoot
     $script:HelperPath = Join-Path $RepoRoot 'home\dot_local\bin\corp-ssh-askpass.ps1'
+
+    # Mock bw serve. Each test sets $Mock.Mode ('ok' | 'locked') and $Mock.Items.
+    # The listener runs in its own runspace so the helper, a child process, can
+    # call it while the test thread waits.
+    $script:Mock = [hashtable]::Synchronized(@{ Mode = 'ok'; Items = @() })
+    $tcp = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, 0)
+    $tcp.Start(); $port = $tcp.LocalEndpoint.Port; $tcp.Stop()
+    $script:MockUrl  = "http://localhost:$port"
+    $script:Listener = [System.Net.HttpListener]::new()
+    $Listener.Prefixes.Add("$MockUrl/")
+    $Listener.Start()
+    $script:Server = [powershell]::Create().AddScript({
+        param($l, $m)
+        while ($l.IsListening) {
+            try { $ctx = $l.GetContext() } catch { break }
+            $path = $ctx.Request.Url.AbsolutePath
+            $body = if ($path -eq '/sync') { @{ success = $true } }
+                elseif ($m.Mode -eq 'locked') { @{ success = $false; message = 'Vault is locked.' } }
+                elseif ($path -eq '/list/object/items') { @{ success = $true; data = @{ object = 'list'; data = @($m.Items) } } }
+                elseif ($path -like '/object/totp/*') {
+                    $id = $path.Substring('/object/totp/'.Length)
+                    $it = @($m.Items) | Where-Object { $_.id -eq $id } | Select-Object -First 1
+                    if ($it) { @{ success = $true; data = @{ object = 'string'; data = $it.code } } } else { @{ success = $false } }
+                } else { @{ success = $false } }
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes(($body | ConvertTo-Json -Depth 6))
+            $ctx.Response.ContentType = 'application/json'
+            $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
+            $ctx.Response.Close()
+        }
+    }).AddArgument($Listener).AddArgument($Mock)
+    $null = $Server.BeginInvoke()
+
+    function New-Item-Fixture([string]$Id, [string]$Name, [string]$Password, [string]$Code) {
+        @{ id = $Id; name = $Name; code = $Code; login = @{ password = $Password; totp = $(if ($Code) { 'otpauth://x' }) } }
+    }
 
     function Invoke-Helper {
         param([string]$Prompt)
@@ -23,12 +58,7 @@ BeforeAll {
         $psi.UseShellExecute        = $false
         $psi.EnvironmentVariables['USERPROFILE']          = $env:USERPROFILE
         $psi.EnvironmentVariables['PATH']                 = $env:PATH
-        if ($env:MOCK_GOPASS_PASSWORD) { $psi.EnvironmentVariables['MOCK_GOPASS_PASSWORD'] = $env:MOCK_GOPASS_PASSWORD }
-        if ($env:MOCK_GOPASS_OTP)      { $psi.EnvironmentVariables['MOCK_GOPASS_OTP']      = $env:MOCK_GOPASS_OTP }
-        if ($env:MOCK_GOPASS_RC)       { $psi.EnvironmentVariables['MOCK_GOPASS_RC']       = $env:MOCK_GOPASS_RC }
-        if ($env:MOCK_GOPASS_LS_RC)    { $psi.EnvironmentVariables['MOCK_GOPASS_LS_RC']    = $env:MOCK_GOPASS_LS_RC }
-        if ($env:MOCK_GOPASS_ENTRIES_FILE)  { $psi.EnvironmentVariables['MOCK_GOPASS_ENTRIES_FILE']  = $env:MOCK_GOPASS_ENTRIES_FILE }
-        if ($env:MOCK_GOPASS_ECHO_ENTRY)    { $psi.EnvironmentVariables['MOCK_GOPASS_ECHO_ENTRY']    = $env:MOCK_GOPASS_ECHO_ENTRY }
+        $psi.EnvironmentVariables['CORP_SSH_BW_API']      = $env:CORP_SSH_BW_API
         $proc = [System.Diagnostics.Process]::Start($psi)
         $proc.StandardInput.Close()
         $stdout = $proc.StandardOutput.ReadToEnd()
@@ -42,6 +72,11 @@ BeforeAll {
     }
 }
 
+AfterAll {
+    $Listener.Stop()
+    $Server.Dispose()
+}
+
 Describe 'corp-ssh-askpass.ps1' {
 
     BeforeEach {
@@ -50,55 +85,18 @@ Describe 'corp-ssh-askpass.ps1' {
         New-Item -ItemType Directory -Path $Sandbox -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $Sandbox '.corp-ssh') -Force | Out-Null
 
-        # Mock gopass.cmd lives in $Sandbox\bin and prepends to PATH.
-        # Behaviour controlled by $env:MOCK_GOPASS_PASSWORD / MOCK_GOPASS_OTP / MOCK_GOPASS_RC.
-        $script:MockBin = Join-Path $Sandbox 'bin'
-        New-Item -ItemType Directory -Path $MockBin -Force | Out-Null
-        # `ls` is a separate path: the helper calls it to pick the password entry
-        # WITHOUT decrypting, so it must not share MOCK_GOPASS_RC with show/otp.
-        # MOCK_GOPASS_ECHO_ENTRY makes `show` echo the entry it was asked for,
-        # which is how the per-host selection tests assert what was chosen.
-        # `exit /b N` inside a parenthesized block returns 0 to the caller, so the
-        # ls branch is a :label at the end rather than an if-block. The existing
-        # MOCK_GOPASS_RC exit works only because it sits at top level.
-        $mockGopass = @'
-@echo off
-if "%1"=="ls" goto :ls
-if "%1"=="otp" (
-  if defined MOCK_GOPASS_OTP echo %MOCK_GOPASS_OTP%
-) else (
-  if defined MOCK_GOPASS_ECHO_ENTRY (
-    echo %3
-  ) else (
-    if defined MOCK_GOPASS_PASSWORD echo %MOCK_GOPASS_PASSWORD%
-  )
-)
-if defined MOCK_GOPASS_RC exit /b %MOCK_GOPASS_RC%
-exit /b 0
-
-:ls
-if defined MOCK_GOPASS_ENTRIES_FILE type "%MOCK_GOPASS_ENTRIES_FILE%"
-if defined MOCK_GOPASS_LS_RC exit /b %MOCK_GOPASS_LS_RC%
-exit /b 0
-'@
-        Set-Content -Path (Join-Path $MockBin 'gopass.cmd') -Value $mockGopass -Encoding ascii
+        $Mock.Mode  = 'ok'
+        $Mock.Items = @(New-Item-Fixture 'id-corp' 'corp' 'secret-password' '123456')
 
         # Save and override env.
         $script:OrigUserprofile = $env:USERPROFILE
-        $script:OrigPath        = $env:PATH
         $env:USERPROFILE        = $Sandbox
-        $env:PATH               = "$MockBin;$env:PATH"
+        $env:CORP_SSH_BW_API    = $MockUrl
     }
 
     AfterEach {
-        $env:USERPROFILE          = $OrigUserprofile
-        $env:PATH                 = $OrigPath
-        $env:MOCK_GOPASS_PASSWORD = $null
-        $env:MOCK_GOPASS_OTP      = $null
-        $env:MOCK_GOPASS_RC           = $null
-        $env:MOCK_GOPASS_LS_RC        = $null
-        $env:MOCK_GOPASS_ENTRIES_FILE = $null
-        $env:MOCK_GOPASS_ECHO_ENTRY   = $null
+        $env:USERPROFILE     = $OrigUserprofile
+        $env:CORP_SSH_BW_API = $null
         Remove-Item -Path $Sandbox -Recurse -Force -ErrorAction SilentlyContinue
     }
 
@@ -114,7 +112,6 @@ password_otp_hosts:
         }
 
         It 'returns password for known FQDN host with standard prompt' {
-            $env:MOCK_GOPASS_PASSWORD = 'secret-password'
             $r = Invoke-Helper -Prompt '(user@corp-host.example.com) Password:'
             $r.ExitCode | Should -Be 0
             $r.Stdout.TrimEnd("`r","`n") | Should -Be 'secret-password'
@@ -124,20 +121,17 @@ password_otp_hosts:
             # Critical regression test: bash version's case-statement was wrong-order
             # in the original 2026-04-24 draft. "Password:" matches "One-time Password:"
             # as a substring; OTP branch must come first.
-            $env:MOCK_GOPASS_OTP = '123456'
             $r = Invoke-Helper -Prompt '(user@corp-host.example.com) One-time Password:'
             $r.ExitCode | Should -Be 0
             $r.Stdout.TrimEnd("`r","`n") | Should -Be '123456'
         }
 
         It 'matches short-form hostname against FQDN-prefix allowlist entry' {
-            $env:MOCK_GOPASS_PASSWORD = 'secret-password'
             $r = Invoke-Helper -Prompt '(user@other-short-host) Password:'
             $r.ExitCode | Should -Be 0
         }
 
         It 'parses double-@ prompt (user principal contains @)' {
-            $env:MOCK_GOPASS_PASSWORD = 'secret-password'
             $r = Invoke-Helper -Prompt '(ad-user@realm@corp-host.example.com) Password:'
             $r.ExitCode | Should -Be 0
             $r.Stdout.TrimEnd("`r","`n") | Should -Be 'secret-password'
@@ -147,14 +141,13 @@ password_otp_hosts:
             # Hosts answering with the `password` method rather than
             # keyboard-interactive produce a client-side prompt of the form
             # "user@host's password: ". The original regex required parens.
-            $env:MOCK_GOPASS_PASSWORD = 'secret-password'
             $r = Invoke-Helper -Prompt "root@corp-host.example.com's password: "
             $r.ExitCode | Should -Be 0
             $r.Stdout.TrimEnd("`r","`n") | Should -Be 'secret-password'
         }
 
         It 'declines unknown host (exit 1, no stdout)' {
-            $env:MOCK_GOPASS_PASSWORD = 'should-not-leak'
+            $Mock.Items = @(New-Item-Fixture 'id-corp' 'corp' 'should-not-leak' '123456')
             $r = Invoke-Helper -Prompt '(user@some-other-host.example.com) Password:'
             $r.ExitCode | Should -Be 1
             $r.Stdout | Should -BeNullOrEmpty
@@ -191,7 +184,7 @@ password_otp_hosts:
         }
 
         It 'declines a host-key prompt when stdin is redirected (nobody to ask)' {
-            $env:MOCK_GOPASS_PASSWORD = 'should-not-leak'
+            $Mock.Items = @(New-Item-Fixture 'id-corp' 'corp' 'should-not-leak' '123456')
             $r = Invoke-Helper -Prompt "The authenticity of host 'new.example.com (1.2.3.4)' can't be established.`nAre you sure you want to continue connecting (yes/no/[fingerprint])? "
             $r.ExitCode | Should -Be 1
             $r.Stdout | Should -BeNullOrEmpty
@@ -200,7 +193,7 @@ password_otp_hosts:
         It 'declines the truncated host-key prompt Windows actually receives' {
             # corp-ssh-askpass.cmd passes %* and cmd.exe cuts the argument at its
             # first newline, so this single line is all the helper ever sees.
-            $env:MOCK_GOPASS_PASSWORD = 'should-not-leak'
+            $Mock.Items = @(New-Item-Fixture 'id-corp' 'corp' 'should-not-leak' '123456')
             $r = Invoke-Helper -Prompt "The authenticity of host 'new.example.com (1.2.3.4)' can't be established."
             $r.ExitCode | Should -Be 1
             $r.Stdout | Should -BeNullOrEmpty
@@ -208,8 +201,8 @@ password_otp_hosts:
 
         It 'never sends a corp credential to a host-key prompt' {
             # Guards the ordering: the prompt parses as neither shape, so it must
-            # reach Invoke-AskHuman before any gopass call.
-            $env:MOCK_GOPASS_PASSWORD = 'should-not-leak'
+            # reach Invoke-AskHuman before any bw serve call.
+            $Mock.Items = @(New-Item-Fixture 'id-corp' 'corp' 'should-not-leak' '123456')
             $r = Invoke-Helper -Prompt 'Are you sure you want to continue connecting (yes/no/[fingerprint])? '
             $r.Stdout | Should -Not -Match 'should-not-leak'
         }
@@ -224,37 +217,37 @@ password_otp_hosts:
   - corp-host.example.com
   - db-host.example.com
 "@ -Encoding ascii
-            $script:EntriesFile = Join-Path $Sandbox 'entries.txt'
-            $env:MOCK_GOPASS_ECHO_ENTRY   = '1'
-            $env:MOCK_GOPASS_ENTRIES_FILE = $EntriesFile
+            $Mock.Items = @(
+                (New-Item-Fixture 'id-corp' 'corp'                 'ad-secret' '123456'),
+                (New-Item-Fixture 'id-db'   'corp/hosts/db-host'   'db-secret' ''),
+                (New-Item-Fixture 'id-db2'  'corp/hosts/db-host-2' 'wrong'     '')
+            )
         }
 
-        It 'uses the per-host entry when the store has one' {
-            Set-Content -Path $EntriesFile -Value "corp/password`ncorp/hosts/db-host" -Encoding ascii
+        It 'uses the per-host item when the vault has one' {
             $r = Invoke-Helper -Prompt "root@db-host.example.com's password: "
             $r.ExitCode | Should -Be 0
-            $r.Stdout.TrimEnd("`r","`n") | Should -Be 'corp/hosts/db-host'
+            $r.Stdout.TrimEnd("`r","`n") | Should -Be 'db-secret'
         }
 
-        It 'falls back to the shared entry when no per-host entry exists' {
-            Set-Content -Path $EntriesFile -Value "corp/password`ncorp/hosts/db-host" -Encoding ascii
+        It 'falls back to the shared item when no per-host item exists' {
             $r = Invoke-Helper -Prompt '(user@corp-host.example.com) Password:'
             $r.ExitCode | Should -Be 0
-            $r.Stdout.TrimEnd("`r","`n") | Should -Be 'corp/password'
+            $r.Stdout.TrimEnd("`r","`n") | Should -Be 'ad-secret'
         }
 
-        It 'fails closed when the store cannot be listed' {
-            # Must NOT fall back to the shared entry: that would send the AD
+        It 'fails closed when the vault is locked' {
+            # Must NOT fall back to the shared item: that would send the AD
             # password to a host that has its own local account.
-            Set-Content -Path $EntriesFile -Value 'corp/password' -Encoding ascii
-            $env:MOCK_GOPASS_LS_RC = '1'
+            $Mock.Mode = 'locked'
             $r = Invoke-Helper -Prompt "root@db-host.example.com's password: "
             $r.ExitCode | Should -Be 1
             $r.Stdout | Should -BeNullOrEmpty
+            $r.Stderr | Should -Match 'bw serve not reachable or locked'
         }
     }
 
-    Context 'gopass failure' {
+    Context 'bw serve failure' {
         BeforeEach {
             Set-Content -Path (Join-Path $Sandbox '.corp-ssh\hosts.yaml') -Value @"
 pass_path: corp
@@ -264,20 +257,21 @@ password_otp_hosts:
 "@ -Encoding ascii
         }
 
-        It 'emits diagnostic to stderr when gopass returns non-zero' {
-            $env:MOCK_GOPASS_RC = '2'
+        It 'emits diagnostic to stderr when bw serve is not running' {
+            # Port 1 has no listener, so the request is refused.
+            $env:CORP_SSH_BW_API = 'http://localhost:1'
             $r = Invoke-Helper -Prompt '(user@corp-host.example.com) Password:'
             $r.ExitCode | Should -Be 1
-            $r.Stderr | Should -Match 'corp-ssh-askpass: gopass failed'
-            $r.Stderr | Should -Match 'Warm cache'
+            $r.Stdout | Should -BeNullOrEmpty
+            $r.Stderr | Should -Match 'bw serve not reachable or locked'
+            $r.Stderr | Should -Match 'Start-ScheduledTask -TaskName bw-serve-unlock'
         }
 
-        It 'emits diagnostic to stderr when gopass returns empty stdout' {
-            # MOCK_GOPASS_OUTPUT unset → echo skipped → empty stdout, rc=0
-            $env:MOCK_GOPASS_RC = $null
-            $r = Invoke-Helper -Prompt '(user@corp-host.example.com) Password:'
+        It 'emits diagnostic to stderr when the shared item is missing' {
+            $Mock.Items = @()
+            $r = Invoke-Helper -Prompt '(user@corp-host.example.com) One-time Password:'
             $r.ExitCode | Should -Be 1
-            $r.Stderr | Should -Match 'corp-ssh-askpass: gopass failed'
+            $r.Stderr | Should -Match 'no Bitwarden item named corp'
         }
     }
 }

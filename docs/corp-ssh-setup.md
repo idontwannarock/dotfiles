@@ -2,36 +2,41 @@
 
 A native-OpenSSH approach to handling corporate SSH targets that require
 interactive password + TOTP one-time-password authentication. Designed for
-WSL/Ubuntu; Windows and macOS support is future work.
+WSL/Ubuntu on a Windows host. Credentials come from a Bitwarden vault through
+`bw serve`, which runs on Windows. The Windows setup guide is
+[`corp-ssh-setup-windows.md`](corp-ssh-setup-windows.md). Native Linux is
+untested. macOS support is future work.
 
 Design rationale and considered alternatives: see
 [`openspec/changes/archive/2026-04-24-corp-ssh-redesign/design.md`](../openspec/changes/archive/2026-04-24-corp-ssh-redesign/design.md).
+That design predates the move from `pass` to Bitwarden; the two-layer
+architecture is unchanged.
 
 ## What this does
 
 After setup:
 
-- First ssh to a corp host per working session requires **zero manual input**
-  (credentials supplied automatically from `pass`, decrypted via gpg-agent).
+- First ssh to a corp host per working session requires **zero manual input**.
+  The helper reads the credentials from `bw serve` on Windows.
 - Subsequent ssh/scp/rsync/git-ssh calls to the same host within 8 hours use a
   cached multiplex socket — zero authentication at all.
 - Non-interactive callers (cron, `claude -p`, harness scripts) work
-  transparently as long as the gpg-agent passphrase cache is warm.
+  transparently as long as `bw serve` is unlocked. The Windows logon unlocks
+  it with no prompt.
+- To rotate the AD password, update the `corp` item in Bitwarden. Nothing
+  else changes.
 
 ## Prerequisites
 
 | Dependency | Used for | Install |
 |---|---|---|
 | OpenSSH client | Everything | Pre-installed on Ubuntu |
-| `gnupg` (≥ 2.2) | Encrypts the credential store | Pre-installed on Ubuntu |
-| `pinentry-curses` | Passphrase prompt in TTY | Pre-installed on Ubuntu |
-| `pass` | Password store CLI | `sudo apt install pass` |
-| `pass-extension-otp` | TOTP code generation from `pass` entries | `sudo apt install pass-extension-otp` |
-| `oathtool` | Pulled in as dep; useful for ad-hoc TOTP debugging | `sudo apt install oathtool` |
+| `jq` | Parses the JSON that `bw serve` returns | `sudo apt install jq` |
+| `curl.exe` (Windows) | Reaches `bw serve` on Windows localhost from WSL | Ships with Windows 10 and later; WSL interop puts it on `PATH` |
+| Bitwarden account + `bw serve` on Windows | The vault that holds the corp credentials | See [`corp-ssh-setup-windows.md`](corp-ssh-setup-windows.md) |
+| `curl` + Bitwarden CLI (native Linux only) | A local `bw serve` when there is no `curl.exe` | Untested — see [Known limitations](#known-limitations-and-future-work) |
 
-No cloud account required. The credential store is local-only, encrypted with
-your GPG key, decrypted on demand via gpg-agent (cached until a full day
-idle — see the TTL notes below).
+The WSL side has no local credential store. It holds no secret on disk.
 
 ## One-time setup
 
@@ -44,189 +49,69 @@ chezmoi apply
 ls -l ~/.local/bin/corp-ssh-askpass    # should be executable
 echo "$SSH_ASKPASS"                     # should be .../corp-ssh-askpass
 echo "$SSH_ASKPASS_REQUIRE"             # should be "force"
-echo "$GPG_TTY"                         # should be your tty (e.g. /dev/pts/N)
+command -v curl.exe jq                  # both should resolve
 ```
 
 If any of these are empty, source your shell rc (`source ~/.bashrc`) or
 start a new shell session.
 
-### 2. Generate a GPG key for the credential store
+### 2. Set up the Bitwarden account and items
 
-If you already have a usable GPG key (with an `[E]` encryption capability),
-skip to step 3 with that key's fingerprint. Otherwise:
+**Account.** Use a Bitwarden account that holds **only** corp items. Keep
+private passwords in a different vault. `bw serve` exposes the whole vault to
+local processes while it is unlocked (see [How it works](#how-it-works)), so
+the vault must not hold anything else.
 
-```bash
-export GPG_TTY=$(tty)
-gpg --quick-generate-key 'corp-ssh local <your.email@example.com>' future-default default 0
+- Register the account with a personal email address, not the company email.
+  The company can disable the company mailbox, and a new-device login can
+  send a verification code by email.
+- TOTP storage requires Bitwarden Premium.
+- Turn on two-step login for the Bitwarden account. Do not store the TOTP
+  seed of the Bitwarden account itself in Bitwarden.
+
+**Items.** Create these items in any Bitwarden client (web vault, desktop
+app, browser extension, or `bw`). Names must match exactly, including case.
+
+| Item name | Field | Value |
+|---|---|---|
+| `corp` | `login.password` | The AD password |
+| `corp` | `login.totp` | The full `otpauth://totp/...` URI, or the base32 secret only |
+| `corp/hosts/<short-host>` | `login.password` | The local-account password of one host (optional) |
+
+`corp` is the value of `pass_path` in `hosts.yaml` (step 4). The key keeps the
+name `pass_path` for compatibility, but it now names a Bitwarden item prefix.
+
+**Hosts with their own local account.** The `corp` item holds the shared AD
+password. A host that authenticates against a *local* account instead (a DB
+box with its own `root` password, say) needs its own item. Name the item
+`corp/hosts/<short-host>`, where `<short-host>` is the **first DNS label of
+its HostName**:
+
+```
+corp/hosts/mms-product-grouping-api-db-dev
 ```
 
-You'll be prompted twice for a passphrase — this becomes the master secret
-that unlocks the credential store. Choose something memorable and strong
-(diceware-style 4–6 random words is a good baseline). `future-default` produces
-an `ed25519` (sign+cert) primary key with a `cv25519` (encrypt) subkey;
-`pass` requires the encryption subkey.
+The helper prefers `corp/hosts/<short-host>` when that item exists and falls
+back to `corp` otherwise — no configuration needed beyond creating the item.
+Such hosts still need their FQDN on the `hosts.yaml` allowlist below.
 
-Note the fingerprint from the output (40-char hex on the second line). You
-can also retrieve it later with `gpg --list-secret-keys`.
+### 3. Start and unlock `bw serve` on Windows
 
-**Tune gpg-agent cache TTL.** These are two timers with different meanings, and
-giving them the same value silently disables the first one:
-
-- `default-cache-ttl` is an **idle** timer. Per `man gpg-agent`: *"Each time a
-  cache entry is accessed, the entry's timer is reset."* Continuous work
-  extends it indefinitely.
-- `max-cache-ttl` is an **absolute** ceiling measured from the moment the
-  passphrase was entered: *"expired even if it has been accessed recently."*
-
-Set to the same value, the ceiling always wins — the idle timer can never fire,
-because any day you are still working is a day you kept resetting it. The
-symptom is a prompt that interrupts you at the same elapsed mark regardless of
-what you are doing. Give the ceiling plenty of room and let the idle timer
-decide:
+One `bw serve` on Windows serves both Windows and WSL. Install it, log in,
+and register the logon unlock as described in
+[`corp-ssh-setup-windows.md`](corp-ssh-setup-windows.md). Then verify from WSL:
 
 ```bash
-mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
-cat > ~/.gnupg/gpg-agent.conf <<'EOF'
-default-cache-ttl 86400     # idle: a full day untouched forces a re-entry
-max-cache-ttl 2592000       # ceiling: 30 days, a backstop rather than a limit
-pinentry-program /home/YOU/.local/bin/pinentry-timeout   # absolute path; ~ is not expanded
-EOF
-chmod 600 ~/.gnupg/gpg-agent.conf
-gpg-connect-agent reloadagent /bye
+curl.exe -s http://localhost:8087/status
 ```
 
-`reloadagent` clears every cached passphrase, so run it when you do not mind
-re-entering.
-
-**Cap abandoned prompts — but not with `pinentry-timeout`.** gpg-agent keeps
-exactly **one** pinentry child, so a prompt nobody answers blocks every later
-passphrase request until it is killed by hand. Worse, it has already painted
-over whatever terminal gpg-agent was told to use, which may be another session.
-
-The obvious knob does not work. gpg-agent does send the Assuan `SETTIMEOUT`
-command and pinentry-curses 1.1.1 answers `OK` — then ignores it. Measured
-2026-09-04: under `SETTIMEOUT 5` a prompt was still waiting at 57 seconds. The
-same binary's command-line `--timeout` flag expired at exactly 5 seconds and
-returned `ERR 83886142 Timeout <Pinentry>`. So `pinentry-timeout` in this file
-is not a loose setting; it is no setting at all, and leaving it in only makes
-you believe you are protected.
-
-`~/.local/bin/pinentry-timeout` (chezmoi-managed, Linux only) injects the flag
-that does work:
-
-```bash
-exec /usr/bin/pinentry-curses --timeout "${PINENTRY_TIMEOUT:-120}" "$@"
-```
-
-Verifying it takes three checks, and the first two alone are a false green:
-
-1. gpg-agent really calls the wrapper — trigger a prompt, then read
-   `/proc/$(pgrep pinentry)/cmdline` and confirm `--timeout 120` is there.
-   Reading `gpg-agent.conf` proves only that you edited a file.
-2. The normal path still works — enter the passphrase, confirm `pass show`
-   succeeds and column 7 of `gpg-connect-agent 'keyinfo --list' /bye` turns `1`.
-3. The timeout path completes — the wrapper is re-read on every exec, so
-   `sed` its default down to 15 seconds *without* reloading the agent (and
-   therefore without clearing the cache), force a prompt with
-   `gpg-connect-agent "GET_PASSPHRASE throwaway-id X Prompt Desc" /bye`, and
-   leave it alone. The prompt must vanish on schedule and a later `pass show`
-   must still succeed, proving the agent's single pinentry slot was released.
-   Restore the default afterwards.
-
-`GET_PASSPHRASE` with a throwaway cache-id is the trick that makes step 3 cheap:
-it touches no keygrip, so a warm key cache survives the test.
-
-**Keep the cache warm, and refuse to run when it is not.** The timeout above
-caps a single prompt. It does not help against the shape that actually hurts: a
-background poll loop. On 2026-09-09 a `kubectl` loop retried every three
-seconds with a cold cache, so killing one pinentry only made room for the next,
-and the terminal it painted over belonged to a different session. Two pieces
-address that, and neither replaces the other.
-
-`~/.local/bin/gpg-cache-warm` (chezmoi-managed, Linux only) exits 0 when the
-password store's decryption key is cached and 1 when it is not. It derives the
-keygrip from `.gpg-id` rather than hardcoding it, and it reads **only the
-encryption subkey**: `pass` decrypts and never signs, so a warm signing key says
-nothing about whether a prompt will appear. Every headless caller of `pass`
-should guard on it and fail with a message instead of summoning pinentry.
-
-The guarded callers are `dex-auto-login`, `corp-ssh-askpass`, and the bash/zsh
-`glab` wrapper. `corp-ssh-askpass` and `glab` skip the guard only when their
-controlling terminal is `GPG_TTY`: a human in their own shell, where a prompt is
-wanted. Do not use `[ -t 0 ]` for this test. An agent that runs in a PTY passes
-it, while its `GPG_TTY` still names another terminal.
-
-`~/.local/bin/gpg-cache-keepalive`, run every six hours by
-`gpg-cache-keepalive.timer`, does one cache-hit decrypt. Because
-`default-cache-ttl` is an idle timer, that single access pushes the 24-hour
-window forward, so the cache survives a working week and expires only at the
-30-day ceiling. It calls the guard first and exits quietly when the cache is
-cold: warming needs a passphrase, a passphrase needs pinentry, and pinentry from
-a timer draws on whatever terminal it finds.
-
-Two details make the difference between this working and only looking like it:
-
-- **Call the guard by path.** systemd's user PATH does not include
-  `~/.local/bin`. A bare `gpg-cache-warm` there resolves to nothing, exits 127,
-  and reads as "cold" — a keepalive that silently refreshes nothing forever.
-- **Log which branch ran.** Both paths exit 0, because a cold cache is not a
-  failure. Without a line in the journal, a keepalive that never warms anything
-  is indistinguishable from one that works. Check with
-  `journalctl --user -u gpg-cache-keepalive -n 5`; it must say `cache refreshed`.
-
-Neither piece survives a reboot or a gpg-agent restart. Both clear the cache
-outright, and only a human can refill it.
-
-**Back up the GPG private key.** If you lose it, every secret in `pass` is
-unrecoverable. Recommended:
-
-```bash
-gpg --export-secret-keys --armor <FPR> > corp-ssh-key.asc   # then store offline
-```
-
-### 3. Initialize `pass` and store credentials
-
-```bash
-pass init <FPR>                # FPR = the GPG fingerprint from step 2
-pass insert corp/password      # interactive: type AD password twice (hidden)
-pass otp insert corp/totp      # interactive: paste full otpauth://totp/... URI
-```
-
-If you only have the base32 TOTP secret (no full URI), use:
-
-```bash
-pass otp insert -s corp/totp   # interactive: paste base32 secret only
-```
-
-Defaults to TOTP / SHA1 / 30s / 6 digits per RFC 6238.
-
-Verify:
-
-```bash
-pass show corp/password >/dev/null && echo "password OK"
-pass otp corp/totp     # should print a 6-digit code matching your authenticator app
-```
-
-**Hosts with their own local account.** `corp/password` is the shared AD
-password. A host that authenticates against a *local* account instead (a DB box
-with its own `root` password, say) keeps its own entry under `corp/hosts/`,
-named by the **first segment of its HostName**:
-
-```bash
-pass insert corp/hosts/mms-product-grouping-api-db-dev
-```
-
-The helper prefers `corp/hosts/<short-host>` when that entry exists and falls
-back to `corp/password` otherwise — no configuration needed beyond creating the
-entry. Such hosts still need their FQDN on the `hosts.yaml` allowlist below.
-
-The first `pass show` will trigger pinentry to ask for the GPG passphrase.
-Subsequent calls within `default-cache-ttl` (8h) skip the prompt.
+The JSON must contain `"status":"unlocked"`. `"locked"` means `bw serve` runs
+but is not unlocked. No output means `bw serve` is not running.
 
 ### 4. Create `~/.corp-ssh/hosts.yaml` (local only, never committed)
 
 This file is the allowlist of corp targets that the askpass helper will
-answer for, plus the `pass` path prefix.
+answer for, plus the Bitwarden item prefix.
 
 ```bash
 mkdir -p ~/.corp-ssh
@@ -235,7 +120,7 @@ chmod 700 ~/.corp-ssh
 
 ```bash
 cat > ~/.corp-ssh/hosts.yaml <<'EOF'
-pass_path: corp     # matches `pass insert corp/password` and `pass otp insert corp/totp`
+pass_path: corp     # Bitwarden item name: "corp", plus "corp/hosts/<short-host>"
 
 password_otp_hosts:
   # Entries must match the hostname openssh actually connects to
@@ -298,6 +183,84 @@ mkdir -p ~/.ssh/cm
 chmod 755 ~/.ssh/cm
 ```
 
+### Migrating from `pass` (one time)
+
+Earlier versions of this setup kept the credentials in `pass` (WSL) and
+`gopass` (Windows). To move them, create the Bitwarden items from these
+`pass` entries:
+
+| `pass` entry | Bitwarden item and field |
+|---|---|
+| `corp/password` | `corp` → `login.password` |
+| The `otpauth://` line of `corp/totp` | `corp` → `login.totp` |
+| Each `corp/hosts/<short-host>` | `corp/hosts/<short-host>` → `login.password` |
+
+The simplest way is the Bitwarden desktop app or web vault: copy each value
+and paste it into the item.
+
+To script it, run the script below in your own WSL terminal. It was used for
+the real migration on 2026-09-29. It asks for the Bitwarden master password,
+and `pass` may ask for the gpg passphrase. Secrets travel through environment
+variables and stdin, never through a command line. An item that already
+exists is skipped, so a second run is safe. Set `BW` to your `bw.exe` path
+first (see the Windows guide).
+
+```bash
+#!/usr/bin/env bash
+# One-time migration: copy corp credentials from pass into Bitwarden.
+#   pass corp/password + corp/totp  -> Bitwarden item "corp" (password + totp)
+#   pass corp/hosts/<h>             -> Bitwarden item "corp/hosts/<h>" (password)
+# Skips an item that already exists by exact name, so a rerun is safe.
+set -euo pipefail
+
+BW=/mnt/c/Users/user/AppData/Local/Microsoft/WinGet/Packages/Bitwarden.CLI_Microsoft.Winget.Source_8wekyb3d8bbwe/bw.exe
+STORE="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+cd /mnt/c   # bw.exe warns when started from a WSL UNC path
+
+echo "Bitwarden master password:"
+S=$("$BW" unlock --raw)
+[ -n "$S" ] || { echo "unlock failed" >&2; exit 1; }
+
+"$BW" sync --session "$S" >/dev/null
+
+exists() {
+  "$BW" list items --search "$1" --session "$S" \
+    | jq -e --arg n "$1" 'any(.[]; .name == $n)' >/dev/null
+}
+
+# Secrets travel in env vars and stdin, never in argv.
+create() {  # $1 = name; PW and TOTP env vars hold the secrets
+  if exists "$1"; then echo "skip   $1 (already exists)"; return; fi
+  NAME="$1" jq -n '{
+      type: 1, name: $ENV.NAME, notes: null, favorite: false, fields: [],
+      organizationId: null, folderId: null, collectionIds: null, reprompt: 0,
+      login: { uris: [], username: null, password: $ENV.PW,
+               totp: (if $ENV.TOTP == "" then null else $ENV.TOTP end) } }' \
+    | base64 -w0 | "$BW" create item --session "$S" >/dev/null
+  echo "create $1"
+}
+
+# Plain assignments, so set -e stops the script when pass or grep fails,
+# instead of creating an item with an empty secret.
+PW=$(pass show corp/password | head -1)
+TOTP=$(pass show corp/totp | grep -m1 '^otpauth://')
+[ -n "$PW" ] && [ -n "$TOTP" ] || { echo "empty corp secret" >&2; exit 1; }
+PW="$PW" TOTP="$TOTP" create corp
+
+for f in "$STORE"/corp/hosts/*.gpg; do
+  h=$(basename "$f" .gpg)
+  PW=$(pass show "corp/hosts/$h" | head -1)
+  [ -n "$PW" ] || { echo "empty secret: corp/hosts/$h" >&2; exit 1; }
+  PW="$PW" TOTP="" create "corp/hosts/$h"
+done
+
+"$BW" lock >/dev/null
+echo "done"
+```
+
+Nothing deletes the old `pass`/`gopass` store. You can keep it as a fallback
+or remove it by hand. The helpers no longer read it.
+
 ## How it works
 
 Two layers, both native to OpenSSH, composed:
@@ -313,9 +276,9 @@ the socket — zero auth, sub-200ms connect time.
 auth to a host, master expired, etc.), instead of reading from the terminal
 it invokes the helper `corp-ssh-askpass` with the prompt text as `argv[1]`.
 The helper parses the hostname out of the prompt, looks it up in
-`~/.corp-ssh/hosts.yaml`, and — if the host is on the allowlist — calls
-`pass show` (for password prompts) or `pass otp` (for OTP prompts) and
-writes the result to stdout. OpenSSH reads stdout as the credential.
+`~/.corp-ssh/hosts.yaml`, and — if the host is on the allowlist — asks
+`bw serve` for the item and writes the password or the current TOTP code to
+stdout. OpenSSH reads stdout as the credential.
 
 The prompt arrives in one of two shapes, depending on which auth method the
 server offers, and the helper recognizes both:
@@ -325,17 +288,40 @@ server offers, and the helper recognizes both:
 | `keyboard-interactive` (PAM) | `(user@host.fqdn) Password:` | server, wrapped in context by openssh |
 | `password` (openssh builtin) | `user@host.fqdn's password: ` | openssh client |
 
-For password prompts the helper picks the entry by checking whether
-`~/.password-store/<pass_path>/hosts/<short-host>.gpg` exists, preferring it
-over the shared `<pass_path>/password`. It tests the **file**, not `pass show`:
-probing by decryption would make a cold gpg-agent cache indistinguishable from
-"no per-host entry", and the helper would then send the shared AD password to a
-host that never wanted it.
+**Where `bw serve` runs.** `bw serve` runs on Windows and listens on
+`localhost:8087` (it binds `::1`). WSL uses the default NAT networking, where
+WSL `localhost` is not Windows `localhost`. So the helper calls `curl.exe`, the
+Windows curl. `curl.exe` runs on the Windows side and sees Windows `localhost`.
+Do not expose `bw serve` on another interface to reach it from WSL: that puts
+an unauthenticated vault API on the network. When `curl.exe` is not on `PATH`
+(native Linux), the helper uses `curl` against a local `bw serve`.
 
-`pass` decrypts via gpg-agent. As long as the agent has the passphrase cached
-(8h TTL), no pinentry prompt fires and the helper completes silently. Once
-the cache expires, `pass` fails (no TTY available under sshd), the helper
-exits 1, and ssh aborts with an error visible in `ssh -v` output.
+**Requests per prompt.** For a Password prompt the helper first sends
+`POST /sync`, so a password rotated in the vault reaches ssh at once. An
+offline sync is not fatal: the cached vault still answers. The sync costs
+about 0.5 s per real login; `ControlPersist 8h` makes real logins rare. The
+OTP prompt skips the sync. Then one `GET /list/object/items?search=<pass_path>`
+returns both the `corp` item and any `corp/hosts/<short-host>` item. The
+helper matches the item names exactly. For the OTP prompt it calls
+`GET /object/totp/<id>` on the `corp` item.
+
+**Per-host selection.** For a Password prompt the helper uses
+`corp/hosts/<short-host>` when that item exists, and the `corp` item
+otherwise. Both come from the same list response, so a per-host lookup
+cannot fail on its own.
+
+**Fail closed.** When `bw serve` is stopped or locked, the list request fails.
+The helper then exits 1 with `corp-ssh-askpass: bw serve not reachable or
+locked.` on stderr. It never falls back to the shared password. ssh aborts,
+and the message is visible in `ssh -v` output.
+
+**ProxyJump and stdin.** Under `ProxyJump` the jump ssh runs with `-W`, so its
+stdin is the tunnel, and the helper inherits it. WSL interop forwards stdin
+to `curl.exe`, which then ate tunnel bytes. The inner connection broke with
+`Bad packet length 1231976033` (`Inva` in ASCII) or
+`message authentication code incorrect`. The helper runs `exec </dev/null`
+before it calls curl. `tests/corp-ssh-askpass.test.sh` guards this. Keep that
+line when you edit the helper.
 
 The helper never sends a credential for a prompt it doesn't recognize, and
 never for a host missing from `hosts.yaml`. No corp credentials are leaked to
@@ -351,15 +337,26 @@ and it declines with `exit 1` as before.
 
 ## Troubleshooting
 
+These checks are safe to run at any time. They print no secret.
+
+- `curl.exe -s http://localhost:8087/status` — shows whether `bw serve` is
+  running, and `locked` or `unlocked`.
+- `powershell.exe -NoProfile -Command "Get-ScheduledTaskInfo -TaskName bw-serve-unlock"`
+  — shows when the logon unlock task last ran and its result.
+- `ssh -v <corp-host>` — the helper's own messages start with
+  `corp-ssh-askpass:`.
+
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `ssh <corp-host>` still prompts interactively for password | Shell env not updated after chezmoi apply | `source ~/.bashrc`, or start a fresh shell; verify `echo "$SSH_ASKPASS_REQUIRE"` is `force` and `$GPG_TTY` is set |
-| `ssh <corp-host>` fails with "permission denied", helper logs "gpg-agent cache cold" | First call of the session and gpg-agent has no cached passphrase | Run `pass show corp/password >/dev/null` interactively to warm the cache, then retry |
+| `ssh <corp-host>` still prompts interactively for password | Shell env not updated after chezmoi apply | `source ~/.bashrc`, or start a fresh shell; verify `echo "$SSH_ASKPASS_REQUIRE"` is `force` |
+| `ssh -v` shows `corp-ssh-askpass: bw serve not reachable or locked.` | `bw serve` on Windows is stopped or locked | Run `Start-ScheduledTask -TaskName bw-serve-unlock` on Windows, then retry. Check with `curl.exe -s http://localhost:8087/status` |
+| `ssh -v` shows `corp-ssh-askpass: no Bitwarden item named corp.` | The item name does not match `pass_path` exactly | Rename the item in Bitwarden, or fix `pass_path` in `hosts.yaml`. Names are case-sensitive |
+| `ssh -v` shows `corp-ssh-askpass: empty answer from bw serve for <host>.` | The item has no password, or no TOTP for the OTP prompt | Fill in `login.password` or `login.totp` on the item |
+| `command -v curl.exe` prints nothing on WSL | WSL interop or the Windows `PATH` is off in this distro | Check `/etc/wsl.conf` for `[interop] enabled=false` or `appendWindowsPath=false` |
 | `ControlPath too long` error before any auth | Using `%r@%h:%p` in ControlPath; corp FQDN + user principal exceeds 108 bytes | Switch to `ControlPath ~/.ssh/cm/%C` |
-| `Permission denied` even after creds supplied | `pass_path` in `hosts.yaml` mismatch, or wrong host on allowlist | `pass ls` to confirm entries; check `hosts.yaml` entry uses HostName not alias |
+| `Permission denied` even after creds supplied | Wrong value in the item, wrong host on allowlist, or a per-host item missing | Check the item in Bitwarden; check `hosts.yaml` entry uses HostName not alias |
 | Helper not invoked; ssh still asks on TTY | `SSH_ASKPASS_REQUIRE` not `force`, or helper not executable | `ls -l ~/.local/bin/corp-ssh-askpass` (should have x bit); `echo $SSH_ASKPASS_REQUIRE` |
-| Helper invoked but `pass` fails | gpg-agent down, or store missing | `gpg-connect-agent /bye` to restart agent; check `~/.password-store/` exists |
-| Auth succeeds manually but cron/harness still fails | Harness env doesn't share gpg-agent | gpg-agent runs as a per-user daemon; any process as same uid can talk to it via `~/.gnupg/S.gpg-agent`. Make sure cron isn't using a different uid or chrooted env |
+| `Bad packet length ...` or `message authentication code incorrect` through a `ProxyJump` host | The helper's `exec </dev/null` line is missing, so `curl.exe` read the tunnel's stdin | Re-apply the helper (`chezmoi apply ~/.local/bin/corp-ssh-askpass`); see [How it works](#how-it-works) |
 | Host listed in `hosts.yaml` but helper declines | Entry is ssh alias, not HostName | Regenerate using the `ssh -G` recipe in step 4 |
 | Passphrase-protected SSH key no longer works | `SSH_ASKPASS_REQUIRE=force` intercepts passphrase prompt too | Use unencrypted keys, OR `SSH_ASKPASS_REQUIRE=never ssh host` per session |
 | `Host key verification failed.` on first connect to a new host, **no** yes/no prompt shown | Helper predates `ask_human()`, or the shell has no controlling terminal | Update `~/.local/bin/corp-ssh-askpass` (`chezmoi apply ~/.local/bin/corp-ssh-askpass`). In a real terminal the yes/no prompt should appear. From a script or agent, verify the fingerprint out of band with `ssh-keyscan -t ed25519 <target>` and then `ssh -o StrictHostKeyChecking=accept-new <host>` once |
@@ -399,11 +396,11 @@ Verify: `ssh -G <host> | grep pubkeyauthentication` must print `false`.
 **Cause B — a wrong credential is retried every round.** If pubkey is already
 off but the error persists, `ssh -v` shows repeated
 `read_passphrase: requested to askpass` followed by
-`Authentications that can continue`, with **no** `corp-ssh-askpass: pass failed`
+`Authentications that can continue`, with **no** `corp-ssh-askpass:` error
 line. That means the helper *did* return a credential and the server *rejected*
 it every keyboard-interactive round — again burning the attempt budget. The
 usual cause is an **expired AD password** (see next section); the tell is that
-`~/.password-store/corp/password.gpg` is ~90 days old. Rule out a wrong OTP
+the password in the `corp` item is ~90 days old. Rule out a wrong OTP
 first by confirming the clock: `date -u` vs any network time source — TOTP
 breaks past ~30s skew; a 0s drift points squarely at the password.
 
@@ -416,20 +413,23 @@ credential is retried until `MaxAuthTries` is hit. When it happens:
 1. Complete the password-change flow manually (bypass this automation — call
    `/usr/bin/ssh <corp-host>` directly and follow server prompts, or use a
    web SSO portal if available).
-2. Update the entry: `pass insert -f corp/password` (`-f` overwrites without prompting).
-3. No sync step needed — `pass` reads from local files on every call.
+2. Update `login.password` of the `corp` item in any Bitwarden client.
+3. Nothing else. The helper syncs `bw serve` before every Password prompt, so
+   the next login uses the new password.
 
-### When the GPG passphrase needs re-entry
+### Locking the vault
 
-`default-cache-ttl` is an idle timer that every decrypt resets, so a working
-stretch never expires mid-flow. To force a re-prompt anyway (e.g. before
-stepping away from the machine):
+`bw serve` has no idle timeout. One unlock lasts until `bw serve` stops
+(Windows logoff or reboot) or until something calls `/lock`. To lock it by
+hand (e.g. before stepping away from the machine):
 
 ```bash
-gpg-connect-agent reloadagent /bye   # clears all cached passphrases
+curl.exe -s -X POST http://localhost:8087/lock
 ```
 
-Next `pass show` / `pass otp` (or first corp ssh) will prompt again.
+To unlock it again, run `Start-ScheduledTask -TaskName bw-serve-unlock` on
+Windows. See [`corp-ssh-setup-windows.md`](corp-ssh-setup-windows.md) for the
+unlock details.
 
 ### When remote group membership changes
 
@@ -462,17 +462,18 @@ on group membership, etc.).
 
 ## Known limitations and future work
 
-- **WSL/Ubuntu and Windows supported; macOS deferred.** Phase 2 (Windows
-  native) shipped 2026-04-30 — see [`corp-ssh-setup-windows.md`](corp-ssh-setup-windows.md)
-  for the Windows setup guide. macOS port is Phase 3+ (same architecture
-  expected to apply: `gopass` from Homebrew, `pinentry-mac` for the dialog).
-- **No automated GPG passphrase entry.** If you want to drive the helper
-  from a fully unattended context (e.g., a daemon started before any
-  interactive login), you'd need to either pre-warm gpg-agent at boot via
-  `gpg-preset-passphrase` (requires storing passphrase somewhere) or accept
-  that the first call after boot fails. `gpg-cache-keepalive` narrows this but
-  does not close it: it holds an already-warm cache open, and a reboot or a
-  gpg-agent restart still needs one interactive `pass show`.
+- **WSL/Ubuntu and Windows supported; macOS deferred.** See
+  [`corp-ssh-setup-windows.md`](corp-ssh-setup-windows.md) for the Windows
+  setup guide. The macOS port is Phase 3+.
+- **Native Linux is untested.** Without `curl.exe` the helper uses `curl`
+  against a `bw serve` on the same machine. Nothing in this repo starts or
+  unlocks that `bw serve`.
+- **`bw serve` is an unauthenticated localhost API.** While it is unlocked,
+  any local process on Windows can call `localhost:8087` and read the vault.
+  The default origin protection of `bw serve` blocks browsers. That is why
+  the account holds only corp items.
+- **WSL depends on Windows.** When `bw serve` on Windows is stopped or locked,
+  corp ssh from WSL fails closed.
 - **Password rotation is manual.** The design detects expired passwords via
   auth failures, not via proactive notification.
 

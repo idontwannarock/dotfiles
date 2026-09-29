@@ -1,5 +1,5 @@
 #!/bin/sh
-# gpg-prompt-guard.test.sh — the headless `pass` callers must not start pinentry
+# gpg-prompt-guard.test.sh — the headless `pass` caller (glab) must not start pinentry
 # on a terminal that belongs to someone else.
 #
 # With a cold gpg cache, pinentry draws on the terminal that GPG_TTY names. An
@@ -23,14 +23,12 @@ t=$(mktemp -d) || exit 1
 trap 'rm -rf "$t"' EXIT
 failures=0
 
-mkdir -p "$t/.local/bin" "$t/stub" "$t/.corp-ssh" "$t/.password-store"
+mkdir -p "$t/.local/bin" "$t/stub" "$t/.password-store"
 sed -n '/^glab() {/,/^}/p' "$repo/home/.chezmoitemplates/shell-common/base" > "$t/glab.sh"
 [ -s "$t/glab.sh" ] || { echo "FAIL: glab() not found in shell-common/base"; exit 1; }
-cp "$repo/home/dot_local/bin/executable_corp-ssh-askpass" "$t/.local/bin/corp-ssh-askpass"
 printf '#!/bin/sh\necho x >> "$HOME/pass.log"; echo secret\n' > "$t/stub/pass"
 printf '#!/bin/sh\nexit 0\n' > "$t/stub/glab"
 printf '#!/bin/sh\n[ "$WARM" = 1 ]\n' > "$t/.local/bin/gpg-cache-warm"
-printf 'pass_path: corp\nhosts:\n  - host1\n' > "$t/.corp-ssh/hosts.yaml"
 chmod +x "$t/stub/"* "$t/.local/bin/"*
 
 # One subject script per caller. $1 = "own" sets GPG_TTY to our own terminal,
@@ -39,10 +37,6 @@ cat > "$t/glab-subject.sh" <<'EOF'
 [ "$1" = own ] && export GPG_TTY=$(tty)
 . "$HOME/glab.sh"
 glab api >/dev/null 2>&1
-EOF
-cat > "$t/askpass-subject.sh" <<'EOF'
-[ "$1" = own ] && export GPG_TTY=$(tty)
-"$HOME/.local/bin/corp-ssh-askpass" '(u@host1.corp) Password:' >/dev/null 2>&1
 EOF
 
 envs="HOME=$t PATH=$t/stub:/usr/bin:/bin GITLAB_HOST=x GITLAB_TOKEN=envtok GLAB_CONFIG_DIR=$t GPG_TTY=/dev/pts/999"
@@ -62,7 +56,7 @@ check() {
     fi
 }
 
-for subject in glab askpass; do
+for subject in glab; do
     check "$subject" 0 noctty 0   # agent Bash tool, cold: must not prompt
     check "$subject" 0 pty    0   # agent in a PTY, foreign GPG_TTY, cold: must not prompt
     check "$subject" 0 own    1   # human in own shell, cold: prompt is wanted
@@ -73,7 +67,7 @@ done
 
 # A retry loop must get a fast failure every time, never a pass call.
 rm -f "$t/pass.log"
-setsid -w env -i $envs WARM=0 bash -c "for i in 1 2 3 4 5 6 7 8 9 10; do bash $t/glab-subject.sh x; bash $t/askpass-subject.sh x; done" </dev/null
+setsid -w env -i $envs WARM=0 bash -c "for i in 1 2 3 4 5 6 7 8 9 10; do bash $t/glab-subject.sh x; done" </dev/null
 got=$(cat "$t/pass.log" 2>/dev/null | wc -l | tr -d ' ')
 [ "$got" = 0 ] || { echo "FAIL: retry loop, cold: pass called $got time(s), expected 0"; failures=$((failures + 1)); }
 
