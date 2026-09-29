@@ -10,27 +10,40 @@ shell wrapper; two pieces of state stay on the machine and are set once by hand.
 | `glab` binary | `.chezmoiexternal.toml` → `~/.local/bin/glab` (all three OSes, one pinned entry, Renovate-tracked) |
 | `glab` wrapper | `.chezmoitemplates/shell-common/base` (bash/zsh) and `Documents/exact__shared-profile.d/26-glab.ps1` (PowerShell) |
 
-The wrapper resolves the token **at call time** — vault first, `GITLAB_TOKEN`
-second — so no shell startup path decrypts anything and no gpg prompt appears
-when you open a terminal.
+The wrapper resolves the token **at call time**. It reads the Bitwarden item
+`gitlab/corp-token` first and `GITLAB_TOKEN` second. No shell startup path reads
+a secret.
 
-On Linux, the bash/zsh wrapper can start a passphrase prompt only from your own
-terminal. With a cold gpg cache, pinentry draws on the terminal that `GPG_TTY`
-names. An agent inherits `GPG_TTY` from someone else's terminal, so its prompt
-destroys that session. This happened on 2026-09-24, after a reboot.
+The item comes from `bw serve`, the same one that corp-ssh uses. One `bw serve`
+runs on Windows, on `localhost:8087`, and serves both Windows and WSL. The
+`bw-serve-unlock` logon task starts and unlocks it. See
+[corp-ssh-setup.md](corp-ssh-setup.md) and
+[corp-ssh-setup-windows.md](corp-ssh-setup-windows.md) for the `bw serve` setup.
 
-The wrapper therefore reads the vault only in two cases:
+| Platform | Reader | Where |
+|---|---|---|
+| Linux / WSL (bash/zsh) | `~/.local/bin/bw-get gitlab/corp-token` | `home/dot_local/bin/executable_bw-get` |
+| Windows (PowerShell) | `Get-BwSecret -Name gitlab/corp-token` | `Documents/exact__shared-profile.d/24-bw-get.ps1` |
+| macOS | none; `GITLAB_TOKEN` only | see [Known limits](#known-limits) |
 
-- The controlling terminal of the shell is `GPG_TTY`. This is you, in your own shell.
-- `~/.local/bin/gpg-cache-warm` reports a warm cache. No prompt can appear. See [gpg-agent-cache.md](gpg-agent-cache.md).
+Both readers return the item's `login.password`. Both sync `bw serve` only when
+its vault copy is older than 10 minutes. `bw-get` exits 0 on success, 1 when the
+item is missing or the field is empty, and 2 when `bw serve` is not reachable or
+is locked. `Get-BwSecret` returns `$null` on any failure. On any failure the
+wrapper uses `GITLAB_TOKEN`.
 
-Otherwise the wrapper skips the vault and falls back to `GITLAB_TOKEN`. A retry
-loop gets the same fast failure every time, so it cannot start a new pinentry.
-Warm the cache from your own terminal with `pass show gitlab/corp-token >/dev/null`.
+The bash/zsh wrapper calls `bw-get` by path, so `~/.local/bin` need not be on
+`PATH`. Under WSL, `bw-get` reaches `bw serve` through `curl.exe`. It never
+forwards its stdin to `curl.exe`.
+
+Until 2026-09-29 the token lived in `pass` (Linux/WSL/macOS) and `gopass`
+(Windows). The bash/zsh wrapper then had a gpg-cache guard, because a cold
+cache could start pinentry on another terminal. Nothing reads `pass` now, so no
+pinentry can appear and the guard is gone.
 
 ## What stays on the machine
 
-**The token**, in the local vault. Secrets never enter this repo.
+**The token**, in the Bitwarden item `gitlab/corp-token`. Secrets never enter this repo.
 
 **The instance FQDN**, in `HKCU\Environment`. This is deliberate and worth
 stating plainly: this repository is public and contains **no** corp hostnames.
@@ -41,22 +54,28 @@ uses `gitlab.example.com` as a stand-in; substitute the real host.
 
 ## One-time setup
 
-### 1. Store the token in the vault
+### 1. Store the token in Bitwarden
 
-Create a personal access token in the GitLab UI (`api` scope), then:
+Create a personal access token in the GitLab UI (`api` scope). Then create a
+Bitwarden item in any Bitwarden client (web vault, desktop app, browser
+extension, or `bw`):
+
+| Item name | Field | Value |
+|---|---|---|
+| `gitlab/corp-token` | `login.password` | The token |
+
+The name must match exactly, including case. Use the same Bitwarden account as
+corp-ssh. That account holds only company items. One item serves both Windows
+and WSL.
+
+`bw serve` must run and be unlocked. Verify from WSL:
 
 ```bash
-# WSL / Linux / macOS
-printf '%s\n' '<token>' | pass insert -m gitlab/corp-token
+curl.exe -s http://localhost:8087/status    # must contain "status":"unlocked"
 ```
 
-```powershell
-# Windows
-gopass insert gitlab/corp-token
-```
-
-Encryption needs only the public key, so this step does not prompt for a
-passphrase — only reading it back does.
+The migration from `pass` was done on 2026-09-29. Nothing deletes the old
+`pass` entry `gitlab/corp-token`.
 
 ### 2. Point `glab` at the instance
 
@@ -95,8 +114,7 @@ Both wrappers emit the same two strings, on purpose:
 | Message | Meaning |
 |---|---|
 | `GITLAB_HOST 未設定；…` | Step 2 is missing or the shell predates it. Without the guard `glab` would target gitlab.com and return `401`, which reads like a token problem and is not. |
-| `no token (vault entry gitlab/corp-token unreadable and GITLAB_TOKEN unset)` | Step 1 is missing, or the vault is locked and no fallback is exported. |
-| `gpg 快取是冷的，沒有終端機可以輸入密語，略過 vault。…` | bash/zsh on Linux only. The gpg cache is cold, and the caller is not in the terminal that `GPG_TTY` names. The wrapper skips the vault instead of starting pinentry. |
+| `no token (Bitwarden item gitlab/corp-token unreadable and GITLAB_TOKEN unset)` | Step 1 is missing, or `bw serve` is not running or is locked, and no fallback is exported. On Linux/WSL, run `~/.local/bin/bw-get gitlab/corp-token >/dev/null; echo $?` to see which: 1 means no item, 2 means `bw serve`. |
 | `config store 內有明文 token（…）` | Something wrote a token into `glab`'s own config file. See below. |
 
 To reach gitlab.com deliberately, bypass the wrapper: `command glab …` in bash,
@@ -120,7 +138,7 @@ the file by hand. Note that `XDG_CONFIG_HOME` does **not** move this — only
 
 The wrapper now scans both stores before every call. A non-empty `token:` or
 `job_token:` makes it refuse, name the file, and exit 1 — before it reads the
-vault, so a refused call raises no gpg prompt. An empty `token:` (what `glab`
+item, so a refused call never touches `bw serve`. An empty `token:` (what `glab`
 leaves for a host it has never authenticated) and `glab`'s own comment lines are
 not matched.
 
@@ -128,18 +146,19 @@ not matched.
 line would erase the only thing that matters: the token was on disk in plain
 text and has to be rotated. Do both, in this order:
 
-```bash
-# 1. rotate: revoke the old token in the GitLab UI, create a new one, then
-printf '%s\n' '<new token>' | pass insert -m gitlab/corp-token
+1. Rotate. Revoke the old token in the GitLab UI and create a new one. Put
+   the new token in `login.password` of the item `gitlab/corp-token`, in any
+   Bitwarden client. One edit serves both Windows and WSL.
+2. Clear the store:
 
-# 2. clear the store. `command` is load-bearing -- the guard refuses every call
-#    through the wrapper, including this one. `--host`, not `-h`; `-h` is help.
+```bash
+# `command` is load-bearing -- the guard refuses every call through the
+# wrapper, including this one. `--host`, not `-h`; `-h` is help.
 command glab config set token "" --host gitlab.example.com
 ```
 
 ```powershell
-# Windows: same two steps, and the same bypass
-gopass insert gitlab/corp-token
+# Windows: the same bypass
 & (Get-Command glab -CommandType Application | Select-Object -First 1).Source config set token "" --host gitlab.example.com
 ```
 
@@ -165,9 +184,14 @@ byte-identical strings. It points here instead.
   which is what the vault move was undoing.
   The config-store guard is skipped for the same reason, so a leaked token can
   still go unnoticed until the next interactive call.
-- **`gopass` on Windows has an open upstream bug** (see
-  [`claude-zai-wrapper.md`](claude-zai-wrapper.md)); the `GITLAB_TOKEN` fallback
-  covers it there and here alike.
+- **A rotated token can take up to 10 minutes to arrive.** The readers sync
+  `bw serve` only when its vault copy is older than 10 minutes. A corp ssh
+  login syncs at once, so the next `glab` call after it gets the new token.
+- **`bw serve` must run and be unlocked.** When it is stopped or locked, the
+  wrapper uses `GITLAB_TOKEN`, or fails with the `no token` message.
+- **macOS has no Bitwarden reader.** chezmoi deploys `bw-get` on Linux/WSL
+  only. On macOS the wrapper uses `GITLAB_TOKEN` only. Before 2026-09-29 macOS
+  read `pass`.
 
 ## GitLab native MCP — probed, not adopted
 

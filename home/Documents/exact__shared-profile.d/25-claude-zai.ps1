@@ -1,7 +1,8 @@
 ﻿# 25-claude-zai.ps1 — Route Claude Code to z.ai's Anthropic-compatible endpoint.
 #
-# Token source: gopass z.ai/claude-code-token (shared vault with WSL `pass`).
-# Falls back to $env:ZAI_API_KEY if gopass unavailable or entry missing.
+# Token source: Bitwarden item z.ai/claude-code-token, via Get-BwSecret
+# (24-bw-get.ps1). Falls back to $env:ZAI_API_KEY if bw serve is unavailable
+# or the item is missing.
 #
 # PowerShell $env:* assignments leak to process scope (unlike bash's inline
 # VAR=val), so the 6 ANTHROPIC_* env vars are snapshotted + restored via
@@ -21,13 +22,12 @@ function claude-zai {
     )
 
     $token = $null
-    if (Get-Command gopass -ErrorAction SilentlyContinue) {
-        $token = & gopass show -o z.ai/claude-code-token 2>$null
-        if ($LASTEXITCODE -ne 0) { $token = $null }
+    if (Get-Command Get-BwSecret -ErrorAction SilentlyContinue) {
+        $token = Get-BwSecret -Name z.ai/claude-code-token
     }
     if (-not $token) { $token = $env:ZAI_API_KEY }
     if (-not $token) {
-        Write-Error "claude-zai: no token (gopass z.ai/claude-code-token unreadable and `$env:ZAI_API_KEY unset)"
+        Write-Error "claude-zai: no token (Bitwarden item z.ai/claude-code-token unreadable and `$env:ZAI_API_KEY unset)"
         return
     }
 

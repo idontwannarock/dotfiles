@@ -100,18 +100,18 @@ createnewlog() {
 }
 
 # ── claude-zai: route Claude Code to z.ai Anthropic-compatible endpoint ─────
-# 從 pass vault 取 token；vault 不可用時 fallback 到 $ZAI_API_KEY env var。
+# 從 Bitwarden（bw-get z.ai/claude-code-token）取 token；取不到時 fallback 到 $ZAI_API_KEY env var。
 # 每次呼叫可覆寫 model：ZAI_OPUS_MODEL=GLM-4.6 claude-zai
 claude-zai() {
     local token=""
-    if command -v pass >/dev/null 2>&1; then
-        token="$(pass show z.ai/claude-code-token 2>/dev/null)"
+    if [ -x "$HOME/.local/bin/bw-get" ]; then
+        token="$("$HOME/.local/bin/bw-get" z.ai/claude-code-token 2>/dev/null)"
     fi
     if [ -z "$token" ]; then
         token="$ZAI_API_KEY"
     fi
     if [ -z "$token" ]; then
-        printf >&2 'claude-zai: no token (pass z.ai/claude-code-token unreadable and $ZAI_API_KEY unset)\n'
+        printf >&2 'claude-zai: no token (Bitwarden item z.ai/claude-code-token unreadable and $ZAI_API_KEY unset)\n'
         return 1
     fi
 
@@ -143,7 +143,7 @@ glab() {
     # 就是靠人工翻檔才發現一顆躺了不知多久的明文權杖。
     #
     # 只擋不改：自動清掉會讓「權杖曾經落地、必須輪替」這個唯一重要的後果無聲消失。
-    # 位置在 vault 讀取之前，讓一個注定被拒絕的呼叫不觸發 gpg pinentry。
+    # 位置在 vault 讀取之前，讓一個注定被拒絕的呼叫不去讀 vault。
     # 不在 repo 內時 git rev-parse 回空字串，路徑成為 /glab-cli/config.yml —— 不存在，
     # 因此自然略過，不需要額外分支。用 --absolute-git-dir 而非 --git-dir：後者回相對
     # 路徑，訊息裡的檔案位置會隨當下的 cwd 而變，貼給別人時失去意義。
@@ -159,24 +159,18 @@ glab() {
         return 1
     done
 
-    # 快取冷時，pinentry 畫在 GPG_TTY 指的終端上。agent 會繼承別人的 GPG_TTY，所以
-    # 2026-09-24 一個 agent 的 glab 呼叫蓋掉了另一個 session。只有當本行程的控制終端
-    # 就是 GPG_TTY 時才允許提示。不用 [ -t 0 ]：agent 在 PTY 裡跑時它也成立。
-    # 守衛用路徑呼叫：PATH 不含 ~/.local/bin 時，裸名找不到會變成「不守」。
-    # gpg-cache-warm 只有 Linux 有；其他平台沒有這支，照舊直接讀。
-    local token="" guard="$HOME/.local/bin/gpg-cache-warm"
-    if command -v pass >/dev/null 2>&1; then
-        if [ ! -x "$guard" ] || [ "/dev/$(ps -o tty= -p $$ | tr -d ' ')" = "$GPG_TTY" ] || "$guard"; then
-            token="$(pass show gitlab/corp-token 2>/dev/null)"
-        else
-            printf >&2 'glab: gpg 快取是冷的，沒有終端機可以輸入密語，略過 vault。請在自己的終端機跑一次 `pass show gitlab/corp-token >/dev/null` 暖機\n'
-        fi
+    # token 從 Bitwarden 取（bw-get 連 bw serve，見 docs/gitlab-corp-access.md）。
+    # 用路徑呼叫：PATH 不含 ~/.local/bin 時，裸名會找不到。bw-get 只有 Linux/WSL 有；
+    # 其他平台沒有這支，直接用 GITLAB_TOKEN。
+    local token=""
+    if [ -x "$HOME/.local/bin/bw-get" ]; then
+        token="$("$HOME/.local/bin/bw-get" gitlab/corp-token 2>/dev/null)"
     fi
     if [ -z "$token" ]; then
         token="$GITLAB_TOKEN"
     fi
     if [ -z "$token" ]; then
-        printf >&2 'glab: no token (vault entry gitlab/corp-token unreadable and GITLAB_TOKEN unset)\n'
+        printf >&2 'glab: no token (Bitwarden item gitlab/corp-token unreadable and GITLAB_TOKEN unset)\n'
         return 1
     fi
 

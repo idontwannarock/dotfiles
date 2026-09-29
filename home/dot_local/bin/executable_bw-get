@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# bw-get — print one field of a Bitwarden item from a running, unlocked
+# `bw serve` on localhost:8087. See docs/corp-ssh-setup.md for bw serve.
+#
+#   bw-get <item-name>           the item's login.password
+#   bw-get <item-name> totp      the current TOTP code
+#
+# Exit codes: 0 printed the value; 1 no such item or the field is empty;
+# 2 bw serve is not reachable or is locked. Callers that have a fallback
+# (an env var) use it on any non-zero code.
+set -u
+
+name="${1:-}"
+field="${2:-password}"
+[[ -n "$name" ]] || { echo "usage: bw-get <item-name> [password|totp]" >&2; exit 1; }
+
+# bw serve listens on localhost only. Under WSL, localhost is the Linux VM, so
+# reach a Windows-side bw serve through curl.exe, which runs on the Windows side.
+curl_bin=curl
+command -v curl.exe >/dev/null 2>&1 && curl_bin=curl.exe
+api=http://localhost:8087
+
+# WSL interop forwards stdin to curl.exe. A caller's stdin can be a pipe that
+# is not ours to read (see corp-ssh-askpass), so never hand it over.
+exec </dev/null
+
+# Test the curl exit code, not only the JSON: jq -e on empty input exits 0.
+if ! status=$("$curl_bin" -s "$api/status" 2>/dev/null) \
+   || ! jq -e '.data.template.status == "unlocked"' >/dev/null 2>&1 <<<"$status"; then
+  echo "bw-get: bw serve not reachable or locked." >&2
+  exit 2
+fi
+
+# Sync when the local copy is over 10 minutes old, so a secret rotated in the
+# vault arrives soon without paying ~0.5 s for a sync on every call.
+last=$(jq -r '.data.template.lastSync // empty' <<<"$status")
+age=$(( $(date +%s) - $(date -d "${last:-@0}" +%s 2>/dev/null || echo 0) ))
+if (( age > 600 )); then
+  "$curl_bin" -s -X POST "$api/sync" >/dev/null 2>&1 || true
+fi
+
+item=$("$curl_bin" -s "$api/list/object/items?search=$name" 2>/dev/null \
+  | jq -c --arg n "$name" 'first(.data.data[] | select(.name == $n)) // empty' 2>/dev/null)
+[[ -n "$item" ]] || { echo "bw-get: no Bitwarden item named $name." >&2; exit 1; }
+
+case "$field" in
+  password) out=$(jq -r '.login.password // empty' <<<"$item") ;;
+  totp)     out=$("$curl_bin" -s "$api/object/totp/$(jq -r .id <<<"$item")" 2>/dev/null \
+                  | jq -r '.data.data // empty' 2>/dev/null) ;;
+  *)        echo "bw-get: unknown field $field (use password or totp)." >&2; exit 1 ;;
+esac
+[[ -n "$out" ]] || { echo "bw-get: $name has no $field." >&2; exit 1; }
+printf '%s\n' "$out"

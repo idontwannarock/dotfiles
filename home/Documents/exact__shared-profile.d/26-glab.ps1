@@ -1,12 +1,9 @@
 ﻿# 26-glab.ps1 — corp GitLab CLI wrapper.
 #
-# Token source: this machine's own gopass store, entry gitlab/corp-token. It is
-# NOT shared with WSL's `pass` — they are two separate stores
-# (C:\Users\<user>\.password-store here, ~/.password-store in WSL), each filled by
-# its own one-time insert; see docs/gitlab-corp-access.md. Skipping the Windows
-# insert because the WSL one is already done yields a 401, an error that points at
-# the token when the fault is that this store has no entry.
-# Falls back to $env:GITLAB_TOKEN if gopass unavailable or entry missing.
+# Token source: Bitwarden item gitlab/corp-token, via Get-BwSecret
+# (24-bw-get.ps1). WSL reads the same item from the same bw serve, so one item
+# serves both; see docs/gitlab-corp-access.md.
+# Falls back to $env:GITLAB_TOKEN if bw serve is unavailable or the item is missing.
 #
 # The host comes from machine-local state (HKCU\Environment), deliberately not
 # from this repo — see docs/gitlab-corp-access.md. Without it glab targets
@@ -50,7 +47,7 @@ function glab {
     # 就是靠人工翻檔才發現一顆躺了不知多久的明文權杖。
     #
     # 只擋不改：自動清掉會讓「權杖曾經落地、必須輪替」這個唯一重要的後果無聲消失。
-    # 位置在 vault 讀取之前，讓一個注定被拒絕的呼叫不觸發 gopass 的密碼提示。
+    # 位置在 vault 讀取之前，讓一個注定被拒絕的呼叫不去讀 vault。
     $configDir = if ($env:GLAB_CONFIG_DIR) { $env:GLAB_CONFIG_DIR }
                  else { Join-Path (Join-Path $HOME '.config') 'glab-cli' }
     $stores = @(Join-Path $configDir 'config.yml')
@@ -75,14 +72,13 @@ function glab {
     }
 
     $token = $null
-    if (Get-Command gopass -CommandType Application -ErrorAction SilentlyContinue) {
-        $token = & gopass show -o gitlab/corp-token 2>$null
-        if ($LASTEXITCODE -ne 0) { $token = $null }
+    if (Get-Command Get-BwSecret -ErrorAction SilentlyContinue) {
+        $token = Get-BwSecret -Name gitlab/corp-token
     }
     if (-not $token) { $token = $env:GITLAB_TOKEN }
     if (-not $token) {
         $global:LASTEXITCODE = 1
-        [Console]::Error.WriteLine('glab: no token (vault entry gitlab/corp-token unreadable and GITLAB_TOKEN unset)')
+        [Console]::Error.WriteLine('glab: no token (Bitwarden item gitlab/corp-token unreadable and GITLAB_TOKEN unset)')
         return
     }
 

@@ -2,10 +2,15 @@
 
 `pass` decrypts with gpg, and gpg asks gpg-agent for the passphrase. This page
 covers the gpg-agent settings and helpers that keep a headless `pass` call from
-opening pinentry on the wrong terminal. The callers today are the bash/zsh
-`glab` wrapper (see [gitlab-corp-access.md](gitlab-corp-access.md)) and
-`dex-auto-login`. corp-ssh no longer uses `pass`; it reads Bitwarden
-`bw serve` (see [corp-ssh-setup.md](corp-ssh-setup.md)).
+opening pinentry on the wrong terminal.
+
+No caller in this repo reads `pass` any more. corp-ssh, the `glab` wrapper, and
+the `claude-zai` wrapper read Bitwarden through `bw serve` (see
+[corp-ssh-setup.md](corp-ssh-setup.md) and
+[gitlab-corp-access.md](gitlab-corp-access.md)). The machine-local
+`dex-auto-login` also moved to `bw-get`. The helpers below (`gpg-cache-warm`,
+`gpg-cache-keepalive` and its timer, `pinentry-timeout`) stay installed until a
+later retirement. This page documents them as they are.
 
 **Tune gpg-agent cache TTL.** These are two timers with different meanings, and
 giving them the same value silently disables the first one:
@@ -88,10 +93,11 @@ encryption subkey**: `pass` decrypts and never signs, so a warm signing key says
 nothing about whether a prompt will appear. Every headless caller of `pass`
 should guard on it and fail with a message instead of summoning pinentry.
 
-The guarded callers are `dex-auto-login` and the bash/zsh `glab` wrapper.
-`glab` skips the guard only when its controlling terminal is `GPG_TTY`: a human
-in their own shell, where a prompt is wanted. Do not use `[ -t 0 ]` for this test. An agent that runs in a PTY passes
-it, while its `GPG_TTY` still names another terminal.
+No caller in this repo uses the guard any more (see the top of this page). A
+future caller should skip the guard only when its controlling terminal is
+`GPG_TTY`: a human in their own shell, where a prompt is wanted. Do not use
+`[ -t 0 ]` for this test. An agent that runs in a PTY passes it, while its
+`GPG_TTY` still names another terminal.
 
 `~/.local/bin/gpg-cache-keepalive`, run every six hours by
 `gpg-cache-keepalive.timer`, does one cache-hit decrypt. Because
