@@ -3,8 +3,8 @@
 # Invoked indirectly by ssh.exe via corp-ssh-askpass.cmd shim, when
 # SSH_ASKPASS_REQUIRE=force is set and ssh.exe would otherwise prompt via TTY.
 # Reads ~/.corp-ssh/hosts.yaml (local-only, not in the dotfiles repo) to decide
-# which hosts to answer for; credentials come from gopass, decrypted via the
-# user's gpg-agent cache.
+# which hosts to answer for; credentials come from a running, unlocked
+# `bw serve` (Bitwarden CLI) on localhost:8087 -- see bw-serve-unlock.ps1.
 #
 # Mirrors dot_local/bin/executable_corp-ssh-askpass (Linux/WSL bash version),
 # including its Invoke-AskHuman / ask_human fallback.
@@ -12,14 +12,8 @@
 
 $ErrorActionPreference = 'Stop'
 
-# Self-contained: ssh.exe hands this helper a minimal environment (no profile,
-# possibly no PATH). gopass locates gpg via PATH, so ensure the self-managed
-# GnuPG (run_onchange_install-gnupg.ps1.tmpl) is discoverable and points at the
-# user keyring. Without this, corp-ssh breaks once the scoop gpg shim (which used
-# to be on PATH everywhere) is gone.
-$gpgBin = Join-Path $env:USERPROFILE '.local\opt\gnupg\bin'
-if (Test-Path -LiteralPath $gpgBin) { $env:Path = "$gpgBin;$env:Path" }
-if (-not $env:GNUPGHOME) { $env:GNUPGHOME = Join-Path $env:USERPROFILE '.gnupg' }
+# CORP_SSH_BW_API exists for the tests, which serve a fixture on another port.
+$api = if ($env:CORP_SSH_BW_API) { $env:CORP_SSH_BW_API } else { 'http://localhost:8087' }
 
 $prompt    = if ($args.Count -ge 1) { $args[0] } else { '' }
 $hostsFile = Join-Path $env:USERPROFILE '.corp-ssh\hosts.yaml'
@@ -87,7 +81,8 @@ $shortRe = [regex]::Escape($shortHost)
 $fqdnRe  = [regex]::Escape($targetHost)
 if (-not ($lines -match "^\s*-\s*($shortRe|$fqdnRe)\s*$")) { Invoke-AskHuman }   # not a corp host -> ask the human, as plain ssh would
 
-# 3. Resolve pass_path from yaml.
+# 3. Resolve the Bitwarden item prefix from yaml. The shared AD credential is
+#    the item named "$passPath" (password + TOTP seed).
 $passPath = $null
 foreach ($line in $lines) {
     if ($line -match '^\s*pass_path:\s*(\S+)') {
@@ -97,38 +92,41 @@ foreach ($line in $lines) {
 }
 if ([string]::IsNullOrEmpty($passPath)) { Invoke-AskHuman }
 
-# 3b. Hosts with their own local account (not the shared AD principal) keep
-#     their password at "$passPath/hosts/<shortHost>". Select by listing entry
-#     names — `gopass show` would decrypt, and a cold gpg-agent cache would then
-#     look identical to "no per-host entry", silently sending the shared
-#     password to the wrong host. Fail closed if the store can't be listed.
-$entries = & gopass ls --flat 2>$null
-if ($LASTEXITCODE -ne 0) {
-    [Console]::Error.WriteLine('corp-ssh-askpass: gopass ls failed -- store missing or unreadable.')
+function Stop-WithHint([string]$msg) {
+    [Console]::Error.WriteLine("corp-ssh-askpass: $msg")
+    [Console]::Error.WriteLine('corp-ssh-askpass: Start and unlock bw serve: Start-ScheduledTask -TaskName bw-serve-unlock')
     exit 1
 }
-$passwordEntry = "$passPath/password"
-$hostEntry     = "$passPath/hosts/$shortHost"
-if ($entries -contains $hostEntry) { $passwordEntry = $hostEntry }
 
-# 4. Dispatch. OTP branch FIRST — "Password:" is a substring of "One-time Password:".
+# 3b. Hosts with their own local account (not the shared AD principal) keep
+#     their password in the item "$passPath/hosts/<shortHost>". One list
+#     request answers both lookups. A locked or stopped bw serve fails the
+#     request, and the helper fails closed -- it never falls back to the shared
+#     password because a per-host lookup failed.
+$isOtp = $prompt -like '*One-time Password:*'
+if (-not $isOtp) {
+    # Sync first, so a password rotated in the vault reaches ssh at once.
+    # An offline sync is not fatal: the cached vault still answers.
+    try { $null = Invoke-RestMethod -Method Post -Uri "$api/sync" -TimeoutSec 10 } catch { }
+}
+try { $list = Invoke-RestMethod -Uri "$api/list/object/items?search=$passPath" -TimeoutSec 10 } catch { $list = $null }
+if (-not $list -or -not $list.success) { Stop-WithHint 'bw serve not reachable or locked.' }
+$items   = @($list.data.data)
+$shared  = $items | Where-Object { $_.name -ceq $passPath } | Select-Object -First 1
+$perHost = $items | Where-Object { $_.name -ceq "$passPath/hosts/$shortHost" } | Select-Object -First 1
+
+# 4. Dispatch. OTP branch FIRST -- "Password:" is a substring of "One-time Password:".
 $out = $null
-$rc  = 0
-if ($prompt -like '*One-time Password:*') {
-    $out = & gopass otp     "$passPath/totp"  2>$null
-    $rc  = $LASTEXITCODE
+if ($isOtp) {
+    if (-not $shared) { Stop-WithHint "no Bitwarden item named $passPath." }
+    try { $out = (Invoke-RestMethod -Uri "$api/object/totp/$($shared.id)" -TimeoutSec 10).data.data } catch { }
 } elseif (($prompt -like '*Password:*') -or ($prompt -like "*'s password:*")) {
-    $out = & gopass show -o "$passwordEntry" 2>$null
-    $rc  = $LASTEXITCODE
+    $out = if ($perHost) { $perHost.login.password } elseif ($shared) { $shared.login.password }
 } else {
     Invoke-AskHuman
 }
 
-if ($rc -ne 0 -or [string]::IsNullOrEmpty($out)) {
-    [Console]::Error.WriteLine("corp-ssh-askpass: gopass failed (rc=$rc) -- gpg-agent cache cold or store missing.")
-    [Console]::Error.WriteLine("corp-ssh-askpass: Warm cache: gopass show -o $passwordEntry >`$null")
-    exit 1
-}
+if ([string]::IsNullOrEmpty($out)) { Stop-WithHint "empty answer from bw serve for $targetHost." }
 
 # Bare LF, no BOM. Avoid Write-Output (adds CRLF on Windows; sshd rejects \r in password).
 [Console]::Out.Write(($out -replace "[`r`n]+$", '') + "`n")

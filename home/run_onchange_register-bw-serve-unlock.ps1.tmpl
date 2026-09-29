@@ -1,0 +1,38 @@
+{{- if and (eq .chezmoi.os "windows") (stat (joinPath .chezmoi.homeDir ".corp-ssh/hosts.yaml")) -}}
+# chezmoi run_onchange_ -- register the logon task that starts and unlocks
+# `bw serve` for corp-ssh-askpass (Windows).
+#
+# Renders only on machines with ~/.corp-ssh/hosts.yaml, so machines without
+# corp ssh get no task and no password prompt at logon. Creating hosts.yaml
+# later changes this script's rendered content, so the next apply runs it.
+
+{{ template "scripts/log.ps1" }}
+
+Log-Begin "bw serve logon task"
+try {
+    Log-Section "register bw-serve-unlock so corp-ssh-askpass has an unlocked bw serve after each logon"
+    $name = 'bw-serve-unlock'
+    $taskArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$env:USERPROFILE\.local\bin\bw-serve-unlock.ps1`""
+    $existing = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
+    if ($existing -and $existing.Actions[0].Arguments -eq $taskArgs) {
+        Log-Skip "[task] $name already registered"
+        return
+    }
+
+    $me = "$env:USERDOMAIN\$env:USERNAME"
+    $action    = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $taskArgs
+    $trigger   = New-ScheduledTaskTrigger -AtLogOn -User $me
+    $principal = New-ScheduledTaskPrincipal -UserId $me -LogonType Interactive -RunLevel Limited
+    # No time limit: bw serve is started by this task and must outlive it.
+    $settings  = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) `
+        -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+    $null = Register-ScheduledTask -TaskName $name -Action $action -Trigger $trigger `
+        -Principal $principal -Settings $settings -Force
+    Log-Step "[task] registered $name (runs bw-serve-unlock.ps1 at logon)"
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
+{{ end -}}

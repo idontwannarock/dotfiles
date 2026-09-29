@@ -388,6 +388,7 @@ dotfiles/
 | [Corp SSH（Linux/WSL）](docs/corp-ssh-setup.md) | 公司 SSH 密碼 + OTP 自動化 |
 | [Corp SSH（Windows）](docs/corp-ssh-setup-windows.md) | 同上的 Windows 版 |
 | [Corp GitLab（glab）](docs/gitlab-corp-access.md) | glab 的權杖與 host 解析、每台機器的一次性設定 |
+| [gpg-agent 快取](docs/gpg-agent-cache.md) | `pass` 在背景呼叫時，怎麼避免 pinentry 畫到別的終端 |
 | [Git 憑證管理](docs/git-credentials.md) | Git 遠端認證（GCM、SSH、WSL） |
 | [Windows 上的 Git PATH](docs/git-windows-path.md) | 為何 Machine PATH 要手動插一條，以及 Git 更新後要驗什麼 |
 | [herdr](docs/herdr.md) | Agent 多工器的實測行為與陷阱（Linux/macOS） |

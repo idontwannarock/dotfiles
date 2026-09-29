@@ -4,7 +4,7 @@
 # Invoked by openssh when SSH_ASKPASS_REQUIRE=force is set and openssh would
 # otherwise prompt via the TTY. Reads ~/.corp-ssh/hosts.yaml (local-only, not
 # in the dotfiles repo) to decide which hosts to answer for; credentials come
-# from `pass` (passwordstore.org), decrypted via the user's gpg-agent cache.
+# from a running, unlocked `bw serve` (Bitwarden CLI) on localhost:8087.
 #
 # See docs/corp-ssh-setup.md for the full setup guide.
 
@@ -55,52 +55,59 @@ if ! grep -qE "^[[:space:]]*-[[:space:]]*(${short_host}|${target_host})[[:space:
   ask_human   # not a corp host → ask the human, as plain ssh would
 fi
 
-# 3. Resolve pass_path prefix from yaml. Shared corp credentials live at
-#    "$pass_path/password" and "$pass_path/totp".
+# 3. Resolve the Bitwarden item prefix from yaml. The shared AD credential is
+#    the item named "$pass_path" (password + TOTP seed).
 pass_path=$(awk -F: '/^pass_path:/ { print $2 }' "$hosts_file" | tr -d ' ')
 [[ -n "$pass_path" ]] || ask_human
 
-# 3b. Hosts with their own local account (not the shared AD principal) keep
-#     their password at "$pass_path/hosts/<short_host>". Select by checking the
-#     store file directly — probing with `pass show` would decrypt, and a cold
-#     gpg-agent cache would then look identical to "no per-host entry" and
-#     silently send the shared password to the wrong host.
-password_entry="$pass_path/password"
-host_entry="$pass_path/hosts/$short_host"
-if [[ -f "${PASSWORD_STORE_DIR:-$HOME/.password-store}/$host_entry.gpg" ]]; then
-  password_entry="$host_entry"
-fi
+# bw serve listens on localhost only. Under WSL, localhost is the Linux VM, so
+# reach a Windows-side bw serve through curl.exe, which runs on the Windows side.
+curl_bin=curl
+command -v curl.exe >/dev/null 2>&1 && curl_bin=curl.exe
+api=http://localhost:8087
 
-# 4. Dispatch by prompt content. pass uses gpg → gpg-agent must already have
-#    the key passphrase cached. A cold cache does not merely fail: gpg hands
-#    the inherited GPG_TTY to pinentry, and pinentry draws on that terminal.
-#    An agent inherits someone else's GPG_TTY, so its ssh would destroy that
-#    session — and a retry loop spawns a new pinentry every time one is killed.
-#    So allow a prompt only when our controlling terminal is GPG_TTY (a human
-#    running ssh in their own shell). Otherwise ask the guard, by path, and
-#    fail fast when the cache is cold. The post-hoc check below turns any other
-#    pass failure into a useful stderr hint (visible in `ssh -v` and journals).
-#
+# Under ProxyJump the jump ssh runs with -W, so its stdin is the tunnel, and
+# this helper inherits it. WSL interop forwards stdin to curl.exe, which then
+# eats tunnel bytes and breaks the inner connection ("Bad packet length").
+exec </dev/null
+
+fail() {
+  echo "corp-ssh-askpass: $1" >&2
+  echo "corp-ssh-askpass: Start and unlock bw serve — see docs/corp-ssh-setup.md." >&2
+  exit 1
+}
+
+# 3b. Hosts with their own local account (not the shared AD principal) keep
+#     their password in the item "$pass_path/hosts/<short_host>". One list
+#     request answers both lookups. A locked or stopped bw serve fails the
+#     request, and the helper fails closed — it never falls back to the shared
+#     password because a per-host lookup failed.
+if [[ "$prompt" != *"One-time Password:"* ]]; then
+  # Sync first, so a password rotated in the vault reaches ssh at once.
+  # An offline sync is not fatal: the cached vault still answers.
+  "$curl_bin" -s -X POST "$api/sync" >/dev/null 2>&1 || true
+fi
+items=$("$curl_bin" -s "$api/list/object/items?search=$pass_path" 2>/dev/null) \
+  && jq -e '.success == true' >/dev/null 2>&1 <<<"$items" \
+  || fail "bw serve not reachable or locked."
+host_entry="$pass_path/hosts/$short_host"
+pick() { jq -r --arg n "$1" --arg f "$2" \
+  'first(.data.data[] | select(.name == $n) | .[$f] // .login[$f]) // empty' <<<"$items"; }
+
+# 4. Dispatch by prompt content.
 #    Match order matters: "One-time Password:" must come first because bash
 #    `case` is first-match and "*Password:*" would otherwise swallow it.
-guard="$(dirname "$(readlink -f "$0")")/gpg-cache-warm"
-if [[ -x "$guard" && "/dev/$(ps -o tty= -p $$ | tr -d ' ')" != "${GPG_TTY:-}" ]] && ! "$guard"; then
-  echo "corp-ssh-askpass: gpg-agent cache cold and no terminal of your own — skipping pass." >&2
-  echo "corp-ssh-askpass: Warm cache: pass show $password_entry >/dev/null" >&2
-  exit 1
-fi
-
-rc=0
 case "$prompt" in
-  *"One-time Password:"*)          out=$(pass otp  "$pass_path/totp"  2>/dev/null) || rc=$? ;;
-  *"Password:"*|*"'s password:"*) out=$(pass show "$password_entry" 2>/dev/null) || rc=$? ;;
+  *"One-time Password:"*)
+    id=$(pick "$pass_path" id)
+    [[ -n "$id" ]] || fail "no Bitwarden item named $pass_path."
+    out=$("$curl_bin" -s "$api/object/totp/$id" 2>/dev/null | jq -r '.data.data // empty') ;;
+  *"Password:"*|*"'s password:"*)
+    out=$(pick "$host_entry" password)
+    [[ -n "$out" ]] || out=$(pick "$pass_path" password) ;;
   *) ask_human ;;
 esac
 
-if [[ $rc -ne 0 || -z "$out" ]]; then
-  echo "corp-ssh-askpass: pass failed (rc=$rc) — gpg-agent cache cold or store missing." >&2
-  echo "corp-ssh-askpass: Warm cache: pass show $password_entry >/dev/null" >&2
-  exit 1
-fi
+[[ -n "$out" ]] || fail "empty answer from bw serve for ${target_host}."
 
 printf '%s\n' "$out"
