@@ -2,14 +2,14 @@
 # home/Documents/exact__shared-profile.d/26-glab.ps1
 #
 # Black-box: dot-sources the profile fragment in a child PowerShell whose PATH is
-# headed by a mock glab.cmd (echoes the argv it received) and a mock gopass.cmd,
-# then asserts on that argv, on stderr, and on the exit code. A child process is
+# headed by a mock glab.cmd (echoes the argv it received), with a stub
+# Get-BwSecret defined after the fragment, then asserts on that argv, on stderr, and on the exit code. A child process is
 # required because the fragment defines a function named `glab`, which would
 # otherwise shadow the real binary for the rest of the test session — and because
 # the guard paths must run with GITLAB_HOST / GITLAB_TOKEN controlled.
 #
-# The mock gopass returns $env:MOCK_GOPASS_TOKEN when set and fails otherwise, so
-# the real vault (and its pinentry prompt) never enters the test. Giving the vault
+# The stub Get-BwSecret returns $env:MOCK_BW_TOKEN for gitlab/corp-token and
+# $null otherwise, so the real bw serve never enters the test. Giving the vault
 # and the environment different token values is what makes the snapshot/restore
 # assertion meaningful.
 
@@ -66,15 +66,6 @@ goto loop
 exit /b 0
 '@ | Set-Content -Path (Join-Path $MockDir 'glab.cmd') -Encoding ascii
 
-    @'
-@echo off
-if not "%MOCK_GOPASS_TOKEN%"=="" (
-  echo %MOCK_GOPASS_TOKEN%
-  exit /b 0
-)
-exit /b 1
-'@ | Set-Content -Path (Join-Path $MockDir 'gopass.cmd') -Encoding ascii
-
     function Invoke-Glab {
         param(
             [string]$Arguments,
@@ -90,7 +81,9 @@ exit /b 1
         $psi.FileName               = (Get-Process -Id $PID).Path
         # Single quotes only inside this string: it becomes a Windows command line,
         # whose parser strips double quotes before PowerShell ever sees them.
-        $psi.Arguments              = "-NoProfile -ExecutionPolicy Bypass -Command `". '$FragmentPath'; glab $Arguments; $Trailer exit `$LASTEXITCODE`""
+        # The stub stands in for 24-bw-get.ps1, which the real profile loads first.
+        $stub = "function Get-BwSecret { param(`$Name) if (`$Name -eq 'gitlab/corp-token') { `$env:MOCK_BW_TOKEN } }"
+        $psi.Arguments              = "-NoProfile -ExecutionPolicy Bypass -Command `". '$FragmentPath'; $stub; glab $Arguments; $Trailer exit `$LASTEXITCODE`""
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError  = $true
         $psi.UseShellExecute        = $false
@@ -100,8 +93,8 @@ exit /b 1
         # the suite is launched from \\wsl.localhost\...
         $psi.WorkingDirectory       = if ($WorkingDirectory) { $WorkingDirectory } else { $MockDir }
         $psi.EnvironmentVariables['PATH'] = if ($Path) { $Path } else { "$MockDir;$env:PATH" }
-        if ($VaultToken) { $psi.EnvironmentVariables['MOCK_GOPASS_TOKEN'] = $VaultToken }
-        else { $psi.EnvironmentVariables.Remove('MOCK_GOPASS_TOKEN') | Out-Null }
+        if ($VaultToken) { $psi.EnvironmentVariables['MOCK_BW_TOKEN'] = $VaultToken }
+        else { $psi.EnvironmentVariables.Remove('MOCK_BW_TOKEN') | Out-Null }
         if ($GitlabHost) { $psi.EnvironmentVariables['GITLAB_HOST'] = $GitlabHost }
         else { $psi.EnvironmentVariables.Remove('GITLAB_HOST') | Out-Null }
         if ($Token) { $psi.EnvironmentVariables['GITLAB_TOKEN'] = $Token }

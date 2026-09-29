@@ -31,9 +31,10 @@ AppData
 .bashrc
 {{- end }}
 
-# ── corp-ssh-askpass: bash helper deploys on Linux/WSL only ─────────
+# ── corp-ssh-askpass + bw-get: bash helpers deploy on Linux/WSL only ──
 {{- if ne .chezmoi.os "linux" }}
 .local/bin/corp-ssh-askpass
+.local/bin/bw-get
 {{- end }}
 
 # ── gpg cache keepalive: systemd user timer, so Linux/WSL only ────────
