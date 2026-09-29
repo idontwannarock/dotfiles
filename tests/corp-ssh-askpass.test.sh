@@ -39,7 +39,7 @@ in=$(cat)
 [ "$STUB_MODE" = down ] && exit 7
 for a; do url=$a; done
 case $url in
-  */sync) echo '{"success":true}' ;;
+  */sync) echo "$*" >> "$HOME/sync-args.log"; echo '{"success":true}' ;;
   */list/object/items*)
     if [ "$STUB_MODE" = locked ]; then echo '{"success":false,"message":"Vault is locked."}'
     else cat "$HOME/items.json"; fi ;;
@@ -71,5 +71,14 @@ check "per-host password"      ok     "root@db-host.example.com's password: "   
 check "locked fails closed"    locked "root@db-host.example.com's password: "        1 ''
 check "bw serve down"          down   '(u@corp-host.example.com) Password:'          1 ''
 check "unknown host, no tty"   ok     '(u@elsewhere.example.com) Password:'          1 ''
+
+# The sync is the one request that leaves the machine: bw serve forwards it to
+# the Bitwarden server. A firewall that drops packets would hang ssh on it, so
+# the call must carry a time limit.
+rm -f "$t/sync-args.log"
+echo | setsid -w env -i HOME="$t" PATH="$t/stub:/usr/bin:/bin" STUB_MODE=ok \
+  "$t/askpass" '(u@corp-host.example.com) Password:' >/dev/null 2>&1
+grep -qE -- '(^| )(-m|--max-time) [0-9]+' "$t/sync-args.log" 2>/dev/null \
+  || { echo "FAIL: sync request has no time limit (-m)"; failures=$((failures + 1)); }
 
 [ "$failures" -eq 0 ] && echo "ok: corp-ssh-askpass" || exit 1

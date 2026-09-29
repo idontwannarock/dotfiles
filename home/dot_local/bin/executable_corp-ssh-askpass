@@ -84,8 +84,10 @@ fail() {
 #     password because a per-host lookup failed.
 if [[ "$prompt" != *"One-time Password:"* ]]; then
   # Sync first, so a password rotated in the vault reaches ssh at once.
-  # An offline sync is not fatal: the cached vault still answers.
-  "$curl_bin" -s -X POST "$api/sync" >/dev/null 2>&1 || true
+  # An offline sync is not fatal: the cached vault still answers. The sync is
+  # the one request bw serve forwards to the Bitwarden server, so cap it at 5 s:
+  # a firewall that drops packets would otherwise hang ssh here.
+  "$curl_bin" -s -m 5 -X POST "$api/sync" >/dev/null 2>&1 || true
 fi
 items=$("$curl_bin" -s "$api/list/object/items?search=$pass_path" 2>/dev/null) \
   && jq -e '.success == true' >/dev/null 2>&1 <<<"$items" \

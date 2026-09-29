@@ -39,7 +39,7 @@ case $url in
   */status)
     st=unlocked; [ "$STUB_MODE" = locked ] && st=locked
     printf '{"success":true,"data":{"object":"template","template":{"status":"%s","lastSync":"%s"}}}\n' "$st" "$STUB_LASTSYNC" ;;
-  */sync) echo sync >> "$HOME/sync.log"; echo '{"success":true}' ;;
+  */sync) echo "$*" >> "$HOME/sync-args.log"; echo sync >> "$HOME/sync.log"; echo '{"success":true}' ;;
   */list/object/items*) cat "$HOME/items.json" ;;
   */object/totp/id-corp) echo '{"success":true,"data":{"object":"string","data":"123456"}}' ;;
   *) echo '{"success":false}' ;;
@@ -54,7 +54,7 @@ stale=2020-01-01T00:00:00.000Z
 
 run() {  # $1 mode, $2 lastSync, rest = command; stdin is a pipe with data
   mode=$1; last=$2; shift 2
-  rm -f "$t/stdin.log" "$t/sync.log" "$t/pass.log"
+  rm -f "$t/stdin.log" "$t/sync.log" "$t/sync-args.log" "$t/pass.log"
   echo NOT-YOURS | env -i HOME="$t" PATH="$t/stub:/usr/bin:/bin" STUB_MODE="$mode" \
     STUB_LASTSYNC="$last" GITLAB_HOST=x GLAB_CONFIG_DIR="$t" GITLAB_TOKEN="${ENV_TOKEN:-}" \
     "$@" 2>/dev/null
@@ -85,6 +85,9 @@ run ok "$fresh" "$B" corp >/dev/null
 [ -s "$t/sync.log" ] && { echo "FAIL: synced although lastSync is fresh"; failures=$((failures + 1)); }
 run ok "$stale" "$B" corp >/dev/null
 [ -s "$t/sync.log" ] || { echo "FAIL: did not sync although lastSync is stale"; failures=$((failures + 1)); }
+# The sync leaves the machine (bw serve forwards it); a dropped packet must not hang the caller.
+grep -qE -- '(^| )(-m|--max-time) [0-9]+' "$t/sync-args.log" 2>/dev/null \
+  || { echo "FAIL: sync request has no time limit (-m)"; failures=$((failures + 1)); }
 
 # glab: the subject script sources the wrapper, as an interactive shell would.
 printf '. "$HOME/glab.sh"\nglab api\n' > "$t/glab-subject.sh"
