@@ -73,6 +73,9 @@ if ($prompt -match '\((.+@)?([^)]+)\) ') {
     Invoke-AskHuman   # prompt format unrecognized -> not ours, ask the human
 }
 $shortHost = $targetHost.Split('.')[0]
+# The per-host item key. An IP has no meaningful first label: "14" would
+# match every 14.x.x.x host. Use the whole address.
+$hostKey = if ($targetHost -match '^[0-9.]+$') { $targetHost } else { $shortHost }
 
 # 2. Allowlist check.
 if (-not (Test-Path -LiteralPath $hostsFile)) { Invoke-AskHuman }
@@ -99,8 +102,11 @@ function Stop-WithHint([string]$msg) {
 }
 
 # 3b. Hosts with their own local account (not the shared AD principal) keep
-#     their password in the item "$passPath/hosts/<shortHost>". One list
-#     request answers both lookups. A locked or stopped bw serve fails the
+#     their password in an item named "ssh-local/<label>/<hostKey>". <label>
+#     is for people only, usually the jump host ("via-stg156"); the helper
+#     matches the last segment. Two matches fail closed: the helper does not
+#     guess which local password a host takes. One list request answers both
+#     lookups. A locked or stopped bw serve fails the
 #     request, and the helper fails closed -- it never falls back to the shared
 #     password because a per-host lookup failed.
 $isOtp = $prompt -like '*One-time Password:*'
@@ -109,11 +115,15 @@ if (-not $isOtp) {
     # An offline sync is not fatal: the cached vault still answers.
     try { $null = Invoke-RestMethod -Method Post -Uri "$api/sync" -TimeoutSec 10 } catch { }
 }
-try { $list = Invoke-RestMethod -Uri "$api/list/object/items?search=$passPath" -TimeoutSec 10 } catch { $list = $null }
+try { $list = Invoke-RestMethod -Uri "$api/list/object/items" -TimeoutSec 10 } catch { $list = $null }
 if (-not $list -or -not $list.success) { Stop-WithHint 'bw serve not reachable or locked.' }
 $items   = @($list.data.data)
 $shared  = $items | Where-Object { $_.name -ceq $passPath } | Select-Object -First 1
-$perHost = $items | Where-Object { $_.name -ceq "$passPath/hosts/$shortHost" } | Select-Object -First 1
+$perHost = @($items | Where-Object { $_.name.StartsWith('ssh-local/') -and $_.name.Split('/')[-1] -ceq $hostKey })
+if ($perHost.Count -gt 1) {
+    [Console]::Error.WriteLine("corp-ssh-askpass: more than one item ends in /${hostKey}: $(($perHost | ForEach-Object name) -join ', '). Keep one.")
+    exit 1
+}
 
 # 4. Dispatch. OTP branch FIRST -- "Password:" is a substring of "One-time Password:".
 $out = $null
@@ -121,7 +131,7 @@ if ($isOtp) {
     if (-not $shared) { Stop-WithHint "no Bitwarden item named $passPath." }
     try { $out = (Invoke-RestMethod -Uri "$api/object/totp/$($shared.id)" -TimeoutSec 10).data.data } catch { }
 } elseif (($prompt -like '*Password:*') -or ($prompt -like "*'s password:*")) {
-    $out = if ($perHost) { $perHost.login.password } elseif ($shared) { $shared.login.password }
+    $out = if ($perHost) { $perHost[0].login.password } elseif ($shared) { $shared.login.password }
 } else {
     Invoke-AskHuman
 }

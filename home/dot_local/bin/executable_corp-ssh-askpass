@@ -48,6 +48,10 @@ else
   ask_human   # prompt format unrecognized → not ours, ask the human
 fi
 short_host="${target_host%%.*}"
+# The per-host item key. An IP has no meaningful first label: "14" would
+# match every 14.x.x.x host. Use the whole address.
+host_key=$short_host
+[[ "$target_host" =~ ^[0-9.]+$ ]] && host_key=$target_host
 
 # 2. Only answer for hosts listed in hosts.yaml (either FQDN or short form).
 [[ -r "$hosts_file" ]] || ask_human
@@ -78,8 +82,11 @@ fail() {
 }
 
 # 3b. Hosts with their own local account (not the shared AD principal) keep
-#     their password in the item "$pass_path/hosts/<short_host>". One list
-#     request answers both lookups. A locked or stopped bw serve fails the
+#     their password in an item named "ssh-local/<label>/<host_key>". <label>
+#     is for people only, usually the jump host ("via-stg156"); the helper
+#     matches the last segment. Two matches fail closed: the helper does not
+#     guess which local password a host takes. One list request answers both
+#     lookups. A locked or stopped bw serve fails the
 #     request, and the helper fails closed — it never falls back to the shared
 #     password because a per-host lookup failed.
 if [[ "$prompt" != *"One-time Password:"* ]]; then
@@ -89,12 +96,19 @@ if [[ "$prompt" != *"One-time Password:"* ]]; then
   # a firewall that drops packets would otherwise hang ssh here.
   "$curl_bin" -s -m 5 -X POST "$api/sync" >/dev/null 2>&1 || true
 fi
-items=$("$curl_bin" -s "$api/list/object/items?search=$pass_path" 2>/dev/null) \
+items=$("$curl_bin" -s "$api/list/object/items" 2>/dev/null) \
   && jq -e '.success == true' >/dev/null 2>&1 <<<"$items" \
   || fail "bw serve not reachable or locked."
-host_entry="$pass_path/hosts/$short_host"
 pick() { jq -r --arg n "$1" --arg f "$2" \
   'first(.data.data[] | select(.name == $n) | .[$f] // .login[$f]) // empty' <<<"$items"; }
+local_items=$(jq -c --arg k "$host_key" '[.data.data[]
+  | select((.name | startswith("ssh-local/")) and (.name | split("/") | last) == $k)]' <<<"$items")
+case $(jq length <<<"$local_items") in
+  0) local_pw= ;;
+  1) local_pw=$(jq -r '.[0].login.password // empty' <<<"$local_items") ;;
+  *) echo "corp-ssh-askpass: more than one item ends in /$host_key: $(jq -r 'map(.name) | join(", ")' <<<"$local_items"). Keep one." >&2
+     exit 1 ;;
+esac
 
 # 4. Dispatch by prompt content.
 #    Match order matters: "One-time Password:" must come first because bash
@@ -105,7 +119,7 @@ case "$prompt" in
     [[ -n "$id" ]] || fail "no Bitwarden item named $pass_path."
     out=$("$curl_bin" -s "$api/object/totp/$id" 2>/dev/null | jq -r '.data.data // empty') ;;
   *"Password:"*|*"'s password:"*)
-    out=$(pick "$host_entry" password)
+    out=$local_pw
     [[ -n "$out" ]] || out=$(pick "$pass_path" password) ;;
   *) ask_human ;;
 esac

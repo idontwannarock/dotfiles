@@ -216,11 +216,18 @@ pass_path: corp
 password_otp_hosts:
   - corp-host.example.com
   - db-host.example.com
+  - dup-host.example.com
+  - 10.0.0.5
+  - 10.0.0.6
 "@ -Encoding ascii
             $Mock.Items = @(
-                (New-Item-Fixture 'id-corp' 'corp'                 'ad-secret' '123456'),
-                (New-Item-Fixture 'id-db'   'corp/hosts/db-host'   'db-secret' ''),
-                (New-Item-Fixture 'id-db2'  'corp/hosts/db-host-2' 'wrong'     '')
+                (New-Item-Fixture 'id-corp' 'corp'                          'ad-secret'  '123456'),
+                (New-Item-Fixture 'id-db'   'ssh-local/via-jump1/db-host'   'db-secret'  ''),
+                (New-Item-Fixture 'id-db2'  'ssh-local/via-jump1/db-host-2' 'wrong'      ''),
+                (New-Item-Fixture 'id-old'  'corp/hosts/corp-host'          'old-scheme' ''),
+                (New-Item-Fixture 'id-dup1' 'ssh-local/via-jump1/dup-host'  'dup-1'      ''),
+                (New-Item-Fixture 'id-dup2' 'ssh-local/via-jump2/dup-host'  'dup-2'      ''),
+                (New-Item-Fixture 'id-ip'   'ssh-local/direct/10.0.0.5'     'ip-secret'  '')
             )
         }
 
@@ -231,7 +238,28 @@ password_otp_hosts:
         }
 
         It 'falls back to the shared item when no per-host item exists' {
+            # Also proves the old "corp/hosts/<host>" name is no longer read.
             $r = Invoke-Helper -Prompt '(user@corp-host.example.com) Password:'
+            $r.ExitCode | Should -Be 0
+            $r.Stdout.TrimEnd("`r","`n") | Should -Be 'ad-secret'
+        }
+
+        It 'fails closed when two per-host items end in the same host' {
+            $r = Invoke-Helper -Prompt "root@dup-host.example.com's password: "
+            $r.ExitCode | Should -Be 1
+            $r.Stdout | Should -BeNullOrEmpty
+            $r.Stderr | Should -Match 'more than one item ends in /dup-host'
+        }
+
+        It 'keys an IP host on the whole address' {
+            $r = Invoke-Helper -Prompt "root@10.0.0.5's password: "
+            $r.ExitCode | Should -Be 0
+            $r.Stdout.TrimEnd("`r","`n") | Should -Be 'ip-secret'
+        }
+
+        It 'does not give one IP host the per-host item of another' {
+            # The first label of both addresses is "10".
+            $r = Invoke-Helper -Prompt "root@10.0.0.6's password: "
             $r.ExitCode | Should -Be 0
             $r.Stdout.TrimEnd("`r","`n") | Should -Be 'ad-secret'
         }
