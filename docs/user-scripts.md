@@ -12,6 +12,7 @@
 | `switch-pwsh-to-msi.ps1` | Windows | 將 Microsoft Store（MSIX）版 PowerShell 7 換成官方 MSI 版 | 手動執行，需系統管理員權限 |
 | `sdkupdate` | Linux/WSL、macOS | 互動式更新 SDKMAN 套件（JDK、Maven、Gradle…） | `sdkupdate`（`~/.local/bin` 已在 PATH，不需 alias） |
 | `yt-transcribe` | Linux/WSL、macOS | 把一支 YouTube 影片存成影片檔、音檔、逐字稿、縮圖與完整 metadata | `yt-transcribe <url>` |
+| `mermaid-ascii` | 全平台（Windows 走 Git Bash） | 把 Mermaid 轉成框線字元的純文字圖，給畫不出 Mermaid 的地方用（Slack、Mermaid 外掛壞掉的 Confluence） | `mermaid-ascii [--ascii] <file>` 或從 stdin 讀；Confluence 要加 `--ascii` |
 
 ## 依賴
 
@@ -21,6 +22,7 @@
 | [SDKMAN!](https://sdkman.io/) | `sdkupdate` | 僅 Unix；SDKMAN 不支援 Windows 原生 |
 | [uv](https://docs.astral.sh/uv/) | `yt-transcribe` | 透過 `uvx` 取用 yt-dlp 與 whisper，不裝進系統 |
 | ffmpeg | `yt-transcribe` | 合併影音軌、從影片抽音軌 |
+| Node + npm | `mermaid-ascii` | 第一次執行時把 `beautiful-mermaid` 裝到 `~/.local/share/beautiful-mermaid/<版本>/` |
 | JS runtime（deno / node / bun）| `yt-transcribe` | YouTube 的 token 檢查需要；缺了字幕端點會回 429 |
 
 ## `sdkupdate` 設計備忘
@@ -95,3 +97,17 @@ SDKMAN 沒有 scoop `update` 那種「原地升級」指令：`sdk upgrade` 只�
   端點吃到 `HTTP 429`；腳本會自動找 deno / node / bun 並接上。
 - **`--convert-subs srt` 不保證產出 `.srt`。** 只找 `.srt` 的話，字幕明明抓到了也會
   被判定失敗而白跑一次 whisper。收檔要同時接受 `.srt` 與 `.vtt`。
+
+## `mermaid-ascii` 設計備忘
+
+- **為什麼不全域安裝。** `beautiful-mermaid` 只是函式庫，沒有 CLI。全域裝了也沒有指令可以叫，
+  所以 `npm_install` 的 `command -v` 守衛用不上。腳本改成在第一次執行時，把套件裝進自己的目錄。
+  版本寫死在腳本的 `VERSION`；要升級就改這個值。
+- **標籤只能用 ASCII。** 函式庫把一個中文字算成一格寬，但終端機會畫成兩格寬，所以框線會歪。
+  上游 issue：lukilabs/beautiful-mermaid#119、#122。寫法是：圖上的標籤用英文；概念太長就標
+  `(1)`、`(2)`，再在圖下面用中文解釋。
+- **標號用 `(1)`，不用 `[1]`。** `A[Auth [1]]` 會被截成 `Auth [1`，加引號也一樣。
+- **Confluence 要加 `--ascii`。** Confluence code block 的字型畫框線字元（`┌─┐`）時寬度不固定，
+  框線會對不齊。`--ascii` 改用 `+`、`-`、`|` 來畫。
+- **第一行要單獨寫圖的類型。** `graph LR; A --> B` 這種寫在同一行的格式會報錯；要寫成
+  `graph LR` 再換行。
