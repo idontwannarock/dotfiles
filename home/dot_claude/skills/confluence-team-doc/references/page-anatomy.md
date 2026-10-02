@@ -135,6 +135,8 @@ Confluence Cloud renders `<pre><code class="language-mermaid">...</code></pre>` 
 - ARCH §5 execution sequences (`sequenceDiagram`)
 - RUNBOOK rarely needs diagrams; if used, prefer a simple decision tree
 
+If the space's Mermaid extension does not render (pages show "Error loading the extension!"), render the diagram with `mermaid-ascii --ascii` into a `language-plaintext` block instead. `--ascii` is required: the Confluence code block font misaligns box-drawing characters. Keep labels ASCII, mark long concepts as `(1)`, `(2)`, and explain them in zh-tw under the diagram.
+
 Avoid raw images — they don't render in HTML format updates.
 
 ## §7 — Status lozenge colors

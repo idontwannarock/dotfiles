@@ -1,0 +1,42 @@
+#!/usr/bin/env node
+// Render a Mermaid diagram as Unicode box-drawing text, for places that cannot
+// render Mermaid: Confluence spaces with a broken Mermaid extension, Slack.
+//
+// Usage: mermaid-ascii [--ascii] [file]     (reads stdin when no file is given)
+//
+// --ascii draws with + - | instead of box-drawing characters. Use it for
+// Confluence: its code block font does not draw box-drawing characters at a
+// fixed width, so the borders do not line up.
+//
+// beautiful-mermaid is a library with no CLI, so this script installs it into
+// its own prefix on first run instead of a global npm install.
+//
+// Labels must be ASCII. The library counts a CJK character as one column, but a
+// terminal draws it as two, so every box with Chinese in it comes out crooked
+// (upstream issues #119, #122).
+'use strict';
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFileSync } = require('child_process');
+const { pathToFileURL } = require('url');
+
+const VERSION = '1.1.3';
+const prefix = path.join(os.homedir(), '.local', 'share', 'beautiful-mermaid', VERSION);
+const pkgDir = path.join(prefix, 'node_modules', 'beautiful-mermaid');
+
+if (!fs.existsSync(pkgDir)) {
+  process.stderr.write(`[mermaid-ascii] installing beautiful-mermaid@${VERSION} into ${prefix}\n`);
+  fs.mkdirSync(prefix, { recursive: true });
+  execFileSync('npm', ['install', '--prefix', prefix, '--no-save', '--silent', `beautiful-mermaid@${VERSION}`],
+    { stdio: ['ignore', 'ignore', 'inherit'], shell: process.platform === 'win32' });
+}
+
+const args = process.argv.slice(2);
+const useAscii = args.includes('--ascii');
+const src = fs.readFileSync(args.find((a) => a !== '--ascii') || 0, 'utf8');
+const entry = require(path.join(pkgDir, 'package.json')).exports['.'];
+const file = typeof entry === 'string' ? entry : entry.import || entry.default;
+import(pathToFileURL(path.join(pkgDir, file)).href).then(({ renderMermaidASCII }) => {
+  process.stdout.write(renderMermaidASCII(src, { useAscii }) + '\n');
+});
