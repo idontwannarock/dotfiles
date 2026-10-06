@@ -393,6 +393,7 @@ dotfiles/
 | [Windows 上的 Git PATH](docs/git-windows-path.md) | 為何 Machine PATH 要手動插一條，以及 Git 更新後要驗什麼 |
 | [herdr](docs/herdr.md) | Agent 多工器的實測行為與陷阱（Linux/macOS） |
 | [PowerShell](docs/powershell.md) | PowerShell profile 設定與依賴 |
+| [Private workspaces](docs/private-workspaces.md) | 不公開的設定放在獨立 private repo，每台機器選要裝哪些 |
 | [Renovate](docs/renovate.md) | external 工具版本自動追蹤與 auto-merge |
 | [SSH](docs/ssh.md) | SSH key 設定教學、`~/.ssh/config.d/` Include 慣例 |
 | [Windows SSH 與 junction](docs/windows-ssh-junction.md) | SSH session 走不進 junction 的根因，工具選型的第一道篩子 |
