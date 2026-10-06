@@ -45,13 +45,14 @@ powershell.exe -NoProfile -Command "(Get-CimInstance Win32_Process -Filter \"Nam
 
 ## 2. Forward the port into WSL (needs UAC)
 
-Chrome binds 127.0.0.1 only — current versions ignore `--remote-debugging-address=0.0.0.0`.
+Chrome binds the IPv6 loopback `::1` only (Chrome 154, seen 2026-09-29) and ignores
+`--remote-debugging-address`. So the forward goes from IPv4 to IPv6 (`v4tov6`).
 WSL2 is NAT'd, so the Windows side must forward:
 
 Both commands need elevation, so they run in a second shell raised with `-Verb RunAs`:
 
 ```
-powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','netsh interface portproxy add v4tov4 listenport=9222 listenaddress=0.0.0.0 connectport=9222 connectaddress=127.0.0.1; New-NetFirewallRule -DisplayName WSL-CDP-9222 -Direction Inbound -LocalPort 9222 -Protocol TCP -Action Allow -Profile Any'"
+powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','netsh interface portproxy add v4tov6 listenport=9222 listenaddress=0.0.0.0 connectport=9222 connectaddress=::1; New-NetFirewallRule -DisplayName WSL-CDP-9222 -Direction Inbound -LocalPort 9222 -Protocol TCP -Action Allow -Profile Any'"
 ```
 
 The elevated window closes instantly and its output never comes back — no news is good news.
@@ -103,7 +104,7 @@ powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"Name
 **5b — needs UAC, so hand it to the user.**
 
 ```
-powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','netsh interface portproxy delete v4tov4 listenport=9222 listenaddress=0.0.0.0; Remove-NetFirewallRule -DisplayName WSL-CDP-9222'"
+powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','netsh interface portproxy delete v4tov6 listenport=9222 listenaddress=0.0.0.0; Remove-NetFirewallRule -DisplayName WSL-CDP-9222'"
 ```
 
 ## Limitations (state these to the user, don't paper over them)
