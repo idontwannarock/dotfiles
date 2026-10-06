@@ -23,7 +23,7 @@ sed -n '/^glab() {/,/^}/p' "$repo/home/.chezmoitemplates/shell-common/base" > "$
 
 cat > "$t/items.json" <<'EOF'
 {"success":true,"data":{"object":"list","data":[
- {"id":"id-corp","name":"corp","login":{"password":"ad-secret","totp":"otpauth://x"}},
+ {"id":"id-corp","name":"corp","login":{"username":"ad-user","password":"ad-secret","totp":"otpauth://x"}},
  {"id":"id-gl","name":"gitlab/corp-token","login":{"password":"glpat-vault","totp":null}},
  {"id":"id-gl2","name":"gitlab/corp-token-old","login":{"password":"wrong","totp":null}}]}}
 EOF
@@ -75,6 +75,8 @@ expect() {
 B="$t/.local/bin/bw-get"
 out=$(run ok "$fresh" "$B" corp);                   expect "password"       0 ad-secret "$?" "$out"
 out=$(run ok "$fresh" "$B" corp totp);              expect "totp"           0 123456    "$?" "$out"
+out=$(run ok "$fresh" "$B" corp username);          expect "username"       0 ad-user   "$?" "$out"
+out=$(run ok "$fresh" "$B" gitlab/corp-token username); expect "no username" 1 ''        "$?" "$out"
 out=$(run ok "$fresh" "$B" gitlab/corp-token);      expect "exact name"     0 glpat-vault "$?" "$out"
 out=$(run ok "$fresh" "$B" nope);                   expect "missing item"   1 ''        "$?" "$out"
 out=$(run ok "$fresh" "$B" gitlab/corp-token totp); expect "missing field"  1 ''        "$?" "$out"

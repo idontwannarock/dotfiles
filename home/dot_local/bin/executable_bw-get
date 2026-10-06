@@ -4,6 +4,7 @@
 #
 #   bw-get <item-name>           the item's login.password
 #   bw-get <item-name> totp      the current TOTP code
+#   bw-get <item-name> username  the item's login.username
 #
 # Exit codes: 0 printed the value; 1 no such item or the field is empty;
 # 2 bw serve is not reachable or is locked. Callers that have a fallback
@@ -12,7 +13,7 @@ set -u
 
 name="${1:-}"
 field="${2:-password}"
-[[ -n "$name" ]] || { echo "usage: bw-get <item-name> [password|totp]" >&2; exit 1; }
+[[ -n "$name" ]] || { echo "usage: bw-get <item-name> [password|totp|username]" >&2; exit 1; }
 
 # bw serve listens on localhost only. Under WSL, localhost is the Linux VM, so
 # reach a Windows-side bw serve through curl.exe, which runs on the Windows side.
@@ -46,9 +47,10 @@ item=$("$curl_bin" -s "$api/list/object/items?search=$name" 2>/dev/null \
 
 case "$field" in
   password) out=$(jq -r '.login.password // empty' <<<"$item") ;;
+  username) out=$(jq -r '.login.username // empty' <<<"$item") ;;
   totp)     out=$("$curl_bin" -s "$api/object/totp/$(jq -r .id <<<"$item")" 2>/dev/null \
                   | jq -r '.data.data // empty' 2>/dev/null) ;;
-  *)        echo "bw-get: unknown field $field (use password or totp)." >&2; exit 1 ;;
+  *)        echo "bw-get: unknown field $field (use password, totp or username)." >&2; exit 1 ;;
 esac
 [[ -n "$out" ]] || { echo "bw-get: $name has no $field." >&2; exit 1; }
 printf '%s\n' "$out"
