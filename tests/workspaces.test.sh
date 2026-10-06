@@ -60,9 +60,9 @@ git_quiet -C "$tmp/ws-work" add -A
 git_quiet -C "$tmp/ws-work" commit -m ws
 git_quiet -C "$tmp/ws-work" push "$tmp/ws.git" HEAD:main
 
-entry() { # id name os retired
-    printf '[%s]\nname = "%s"\ndesc = "test workspace"\nurl = "%s"\nos = %s\nretired = %s\n' \
-        "$1" "$2" "$tmp/ws.git" "$3" "$4"
+entry() { # id name retired
+    printf '[%s]\nname = "%s"\ndesc = "test workspace"\nurl = "%s"\nretired = %s\n' \
+        "$1" "$2" "$tmp/ws.git" "$3"
 }
 
 failures=0
@@ -83,8 +83,8 @@ run() {
 seed() { mkdir -p "$tmp/case-$1/home/.config/chezmoi"; printf '%s\n' "$2" >"$tmp/case-$1/home/.config/chezmoi/workspaces.json"; }
 jqs() { jq -r "$1" "$state"; }
 
-list_ok="schema = 1
-$(entry w1 private '["linux", "darwin", "windows"]' false)"
+list_ok="schema = 2
+$(entry w1 private false)"
 make_list "$list_ok"
 
 # 1. No TTY and no saved list repo: nothing is asked and nothing is written.
@@ -125,7 +125,7 @@ run newid update 0
 [ "$(jqs '.answers | has("w1")')" = false ] || fail "newid: answered without a TTY"
 
 # 6. apply never touches the network: the saved clone is applied as is.
-seed apply "{\"listRepo\": \"$tmp/missing.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"os\": [\"linux\"], \"retired\": false}}}"
+seed apply "{\"listRepo\": \"$tmp/missing.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"retired\": false}}}"
 mkdir -p "$tmp/case-apply/ws/dotfiles-private"
 run apply apply 0
 [ "$rc" -eq 0 ] || fail "apply: rc=$rc"
@@ -133,7 +133,7 @@ grep -q 'cannot reach' "$case_dir/out" && fail "apply: tried to fetch the list"
 [ -s "$case_dir/init.log" ] || fail "apply: did not apply the clone"
 
 # 7. Offline update: warns, keeps the answers, still applies.
-seed offline "{\"listRepo\": \"$tmp/missing.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"os\": [\"linux\"], \"retired\": false}}}"
+seed offline "{\"listRepo\": \"$tmp/missing.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"retired\": false}}}"
 run offline update 0
 [ "$rc" -eq 0 ] || fail "offline: rc=$rc"
 grep -q 'cannot reach the workspace list' "$case_dir/out" || fail "offline: no warning"
@@ -141,44 +141,46 @@ grep -q 'cannot reach the workspace list' "$case_dir/out" || fail "offline: no w
 [ -s "$case_dir/init.log" ] || fail "offline: did not apply"
 
 # 8. A field left out is an error, not a default.
-make_list "schema = 1
+make_list "schema = 2
 [w1]
 name = \"private\"
 desc = \"d\"
 url = \"$tmp/ws.git\"
-os = [\"linux\"]"
+retired_typo = false"
 seed missing "{\"listRepo\": \"$tmp/list.git\"}"
 run missing update 1
 [ "$rc" -ne 0 ] || fail "missing field: rc=0"
 grep -q 'fields must be exactly' "$case_dir/out" || fail "missing field: no message"
 
 # 9. A newer schema says to update the public repo.
-make_list "schema = 2
-$(entry w1 private '["linux"]' false)"
+make_list "schema = 3
+$(entry w1 private false)"
 seed schema "{\"listRepo\": \"$tmp/list.git\"}"
 run schema update 1
 [ "$rc" -ne 0 ] || fail "schema: rc=0"
 grep -q 'update the public dotfiles repo' "$case_dir/out" || fail "schema: no update hint"
 
-# 10. An unknown os value is an error.
+# 10. A schema 1 list (it had os fields) says how to migrate it.
 make_list "schema = 1
-$(entry w1 private '["linux", "bsd"]' false)"
-seed bados "{\"listRepo\": \"$tmp/list.git\"}"
-run bados update 1
-[ "$rc" -ne 0 ] || fail "bad os: rc=0"
+$(entry w1 private false)
+os = [\"linux\"]"
+seed oldschema "{\"listRepo\": \"$tmp/list.git\"}"
+run oldschema update 1
+[ "$rc" -ne 0 ] || fail "old schema: rc=0"
+grep -q 'remove every os field' "$case_dir/out" || fail "old schema: no migration hint"
 
-# 11. A workspace that does not list this OS is not asked about.
-make_list "schema = 1
-$(entry w1 private '["windows"]' false)"
-seed otheros "{\"listRepo\": \"$tmp/list.git\"}"
-run otheros update 1 "y
-"
-[ "$(jqs '.answers | has("w1")')" = false ] || fail "other os: asked anyway"
+# 11. Answers saved under schema 1 still carry os; they are applied and refreshed.
+make_list "$list_ok"
+seed oldanswer "{\"listRepo\": \"$tmp/list.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"os\": [\"windows\"], \"retired\": false}}}"
+run oldanswer update 0
+[ "$rc" -eq 0 ] || fail "old answer: rc=$rc"
+[ -s "$case_dir/init.log" ] || fail "old answer: not applied"
+[ "$(jqs '.answers.w1 | has("os")')" = false ] || fail "old answer: os not dropped on refresh"
 
 # 12. Retiring an enabled workspace stops applying it and leaves the clone.
-make_list "schema = 1
-$(entry w1 private '["linux"]' true)"
-seed retired "{\"listRepo\": \"$tmp/list.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"os\": [\"linux\"], \"retired\": false}}}"
+make_list "schema = 2
+$(entry w1 private true)"
+seed retired "{\"listRepo\": \"$tmp/list.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"retired\": false}}}"
 mkdir -p "$tmp/case-retired/ws/dotfiles-private"
 run retired update 0
 [ "$rc" -eq 0 ] || fail "retired: rc=$rc"

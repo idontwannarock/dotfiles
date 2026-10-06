@@ -17,7 +17,6 @@ log_begin "private workspaces"
 
 state="$HOME/.config/chezmoi/workspaces.json"
 cfg_root="$HOME/.config/chezmoi/workspaces"
-os=${CHEZMOI_OS:-}
 parent=$(dirname "${CHEZMOI_WORKING_TREE:-}")
 cz=${CHEZMOI_EXECUTABLE:-chezmoi}
 # Test seam: the suite cannot give the script a TTY.
@@ -67,10 +66,11 @@ if [ "${CHEZMOI_COMMAND:-}" = update ]; then
         exit 1
     else
         errors=$(jq -r '
-            def fields: ["desc", "name", "os", "retired", "url"];
+            def fields: ["desc", "name", "retired", "url"];
             if (.schema | type) != "number" then "schema: missing or not a number"
-            elif .schema > 1 then "schema \(.schema): this checkout reads schema 1 -- update the public dotfiles repo"
-            elif .schema != 1 then "schema \(.schema): unknown"
+            elif .schema > 2 then "schema \(.schema): this checkout reads schema 2 -- update the public dotfiles repo"
+            elif .schema == 1 then "schema 1 is no longer read: remove every os field and set schema = 2"
+            elif .schema != 2 then "schema \(.schema): unknown"
             else
               (del(.schema) | to_entries[] | .key as $k | .value as $v |
                 if ($k | test("^w[0-9]+$") | not) then "\($k): id must be w<number>"
@@ -79,8 +79,6 @@ if [ "${CHEZMOI_COMMAND:-}" = update ]; then
                 elif ($v.name | type) != "string" or ($v.name | test("^[a-z0-9][a-z0-9-]*$") | not) then "\($k): name must match [a-z0-9-]"
                 elif ($v.desc | type) != "string" or $v.desc == "" then "\($k): desc must be a non-empty string"
                 elif ($v.url | type) != "string" or $v.url == "" then "\($k): url must be a non-empty string"
-                elif ($v.os | type) != "array" or ($v.os | length) == 0
-                     or ($v.os - ["linux", "darwin", "windows"] | length) > 0 then "\($k): os must list linux, darwin or windows"
                 elif ($v.retired | type) != "boolean" then "\($k): retired must be true or false"
                 else empty end),
               (del(.schema) | [.[].name?] | group_by(.)[] | select(length > 1) | "name \(.[0]): used by more than one id")
@@ -102,10 +100,6 @@ if [ "${CHEZMOI_COMMAND:-}" = update ]; then
             name=$(jq -r '.name' <<<"$entry")
             if [ "$(jq -r '.retired' <<<"$entry")" = true ]; then
                 log_skip "$id ($name) is retired"
-                continue
-            fi
-            if [ "$(jq -r --arg os "$os" '.os | index($os) != null' <<<"$entry")" != true ]; then
-                log_skip "$id ($name) does not support $os"
                 continue
             fi
             if [ "$interactive" != 1 ]; then
@@ -137,10 +131,6 @@ for id in $(jq -r '(.answers // {}) | to_entries[] | select(.value.enabled == tr
 
     if [ "$(jq -r --arg id "$id" '.answers[$id].retired' "$state")" = true ]; then
         log_warn "workspace $name is retired -- no longer applied; its clone stays at $dir"
-        continue
-    fi
-    if [ "$(jq -r --arg id "$id" --arg os "$os" '.answers[$id].os | index($os) != null' "$state")" != true ]; then
-        log_warn "workspace $name no longer supports $os -- not applied"
         continue
     fi
 
