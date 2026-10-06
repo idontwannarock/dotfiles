@@ -198,6 +198,29 @@ run cleanup update 0
 if [ -n "$old_tmpdir" ]; then TMPDIR=$old_tmpdir; else unset TMPDIR; fi
 [ -z "$(ls -A "$probe")" ] || fail "cleanup: left $(ls -A "$probe") in TMPDIR"
 
+# 14. jq.exe on Windows writes \r\n. Ids read in a loop must not keep the \r.
+mkdir -p "$tmp/crlf-bin"
+cat >"$tmp/crlf-bin/jq" <<STUB
+#!/bin/bash
+"$(command -v jq)" "\$@" | sed 's/\$/\r/'
+exit "\${PIPESTATUS[0]}"
+STUB
+chmod +x "$tmp/crlf-bin/jq"
+make_list "schema = 2
+$(entry w1 private false)
+$(entry w2 work false)"
+seed crlf "{\"listRepo\": \"$tmp/list.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"retired\": false}}}"
+old_path=$PATH
+PATH="$tmp/crlf-bin:$PATH"
+run crlf update 1 "y
+"
+PATH=$old_path
+[ "$rc" -eq 0 ] || fail "crlf: rc=$rc $(cat "$case_dir/out")"
+[ "$(jq -c '.answers | keys' "$state")" = '["w1","w2"]' ] || fail "crlf: answers are $(jq -c '.answers | keys' "$state")"
+[ "$(jqs '.answers.w2.name')" = work ] || fail "crlf: w2 saved without its entry"
+grep -q 'no longer in the list' "$case_dir/out" && fail "crlf: saved ids not matched to the list"
+[ "$(wc -l <"$case_dir/init.log")" -eq 2 ] || fail "crlf: applied $(wc -l <"$case_dir/init.log") workspaces, want 2"
+
 if [ "$failures" -gt 0 ]; then
     printf '%d failure(s)\n' "$failures" >&2
     exit 1
