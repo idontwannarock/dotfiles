@@ -76,7 +76,7 @@ app, browser extension, or `bw`). Names must match exactly, including case.
 |---|---|---|
 | `corp` | `login.password` | The AD password |
 | `corp` | `login.totp` | The full `otpauth://totp/...` URI, or the base32 secret only |
-| `corp/hosts/<short-host>` | `login.password` | The local-account password of one host (optional) |
+| `ssh-local/<label>/<host-key>` | `login.password` | The local-account password of one host (optional) |
 
 `corp` is the value of `pass_path` in `hosts.yaml` (step 4). The key keeps the
 name `pass_path` for compatibility, but it now names a Bitwarden item prefix.
@@ -84,16 +84,26 @@ name `pass_path` for compatibility, but it now names a Bitwarden item prefix.
 **Hosts with their own local account.** The `corp` item holds the shared AD
 password. A host that authenticates against a *local* account instead (a DB
 box with its own `root` password, say) needs its own item. Name the item
-`corp/hosts/<short-host>`, where `<short-host>` is the **first DNS label of
-its HostName**:
+`ssh-local/<label>/<host-key>`:
+
+- `<host-key>` is the **first DNS label of its HostName**. For an IP address,
+  it is the whole address: the first label `14` would match every `14.x.x.x`
+  host.
+- `<label>` is for people only. Write the jump host that reaches the box, so
+  the name tells you the route. The helper ignores it. It can also be left out.
 
 ```
-corp/hosts/mms-product-grouping-api-db-dev
+ssh-local/via-dev157/mms-product-grouping-api-db-dev
+ssh-local/via-stg156/mms-db-staging
+ssh-local/direct/14.198.248.156
 ```
 
-The helper prefers `corp/hosts/<short-host>` when that item exists and falls
-back to `corp` otherwise — no configuration needed beyond creating the item.
-Such hosts still need their FQDN on the `hosts.yaml` allowlist below.
+The prefix `ssh-local/` is fixed and does not depend on `pass_path`, because
+these items are not the shared AD credential. The helper uses the item whose
+last segment equals `<host-key>`, and falls back to `corp` when there is none.
+No configuration is needed beyond creating the item. When two items end in
+the same `<host-key>`, the helper does not guess: it exits 1 and names both
+items. Such hosts still need their FQDN on the `hosts.yaml` allowlist below.
 
 ### 3. Start and unlock `bw serve` on Windows
 
@@ -120,7 +130,7 @@ chmod 700 ~/.corp-ssh
 
 ```bash
 cat > ~/.corp-ssh/hosts.yaml <<'EOF'
-pass_path: corp     # Bitwarden item name: "corp", plus "corp/hosts/<short-host>"
+pass_path: corp     # Bitwarden item name of the shared AD credential
 
 password_otp_hosts:
   # Entries must match the hostname openssh actually connects to
@@ -193,7 +203,7 @@ Earlier versions of this setup kept the credentials in `pass` (WSL) and
 |---|---|
 | `corp/password` | `corp` → `login.password` |
 | The `otpauth://` line of `corp/totp` | `corp` → `login.totp` |
-| Each `corp/hosts/<short-host>` | `corp/hosts/<short-host>` → `login.password` |
+| Each `corp/hosts/<short-host>` | `ssh-local/<short-host>` → `login.password` |
 
 The simplest way is the Bitwarden desktop app or web vault: copy each value
 and paste it into the item.
@@ -209,7 +219,7 @@ first (see the Windows guide).
 #!/usr/bin/env bash
 # One-time migration: copy corp credentials from pass into Bitwarden.
 #   pass corp/password + corp/totp  -> Bitwarden item "corp" (password + totp)
-#   pass corp/hosts/<h>             -> Bitwarden item "corp/hosts/<h>" (password)
+#   pass corp/hosts/<h>             -> Bitwarden item "ssh-local/<h>" (password)
 # Skips an item that already exists by exact name, so a rerun is safe.
 set -euo pipefail
 
@@ -251,7 +261,7 @@ for f in "$STORE"/corp/hosts/*.gpg; do
   h=$(basename "$f" .gpg)
   PW=$(pass show "corp/hosts/$h" | head -1)
   [ -n "$PW" ] || { echo "empty secret: corp/hosts/$h" >&2; exit 1; }
-  PW="$PW" TOTP="" create "corp/hosts/$h"
+  PW="$PW" TOTP="" create "ssh-local/$h"
 done
 
 "$BW" lock >/dev/null
@@ -300,14 +310,14 @@ an unauthenticated vault API on the network. When `curl.exe` is not on `PATH`
 `POST /sync`, so a password rotated in the vault reaches ssh at once. An
 offline sync is not fatal: the cached vault still answers. The sync costs
 about 0.5 s per real login; `ControlPersist 8h` makes real logins rare. The
-OTP prompt skips the sync. Then one `GET /list/object/items?search=<pass_path>`
-returns both the `corp` item and any `corp/hosts/<short-host>` item. The
-helper matches the item names exactly. For the OTP prompt it calls
+OTP prompt skips the sync. Then one `GET /list/object/items` returns both the
+`corp` item and any `ssh-local/<label>/<host-key>` item. The helper matches
+the item names exactly. For the OTP prompt it calls
 `GET /object/totp/<id>` on the `corp` item.
 
 **Per-host selection.** For a Password prompt the helper uses
-`corp/hosts/<short-host>` when that item exists, and the `corp` item
-otherwise. Both come from the same list response, so a per-host lookup
+the one `ssh-local/*/<host-key>` item when it exists, and the `corp` item
+otherwise. Two such items make it exit 1. Both come from the same list response, so a per-host lookup
 cannot fail on its own.
 
 **Fail closed.** When `bw serve` is stopped or locked, the list request fails.

@@ -21,14 +21,18 @@ command -v jq >/dev/null || { echo "FATAL: jq is required (the helper parses bw 
 mkdir -p "$t/stub" "$t/.corp-ssh"
 cp "$repo/home/dot_local/bin/executable_corp-ssh-askpass" "$t/askpass"
 chmod +x "$t/askpass"
-printf 'pass_path: corp\n\npassword_otp_hosts:\n  - corp-host.example.com\n  - db-host.example.com\n' \
+printf 'pass_path: corp\n\npassword_otp_hosts:\n  - corp-host.example.com\n  - db-host.example.com\n  - dup-host.example.com\n  - 10.0.0.5\n  - 10.0.0.6\n' \
   > "$t/.corp-ssh/hosts.yaml"
 
 cat > "$t/items.json" <<'EOF'
 {"success":true,"data":{"object":"list","data":[
  {"id":"id-corp","name":"corp","login":{"password":"ad-secret","totp":"otpauth://x"}},
- {"id":"id-db","name":"corp/hosts/db-host","login":{"password":"db-secret","totp":null}},
- {"id":"id-other","name":"corp/hosts/db-host-2","login":{"password":"wrong","totp":null}}]}}
+ {"id":"id-db","name":"ssh-local/via-jump1/db-host","login":{"password":"db-secret","totp":null}},
+ {"id":"id-other","name":"ssh-local/via-jump1/db-host-2","login":{"password":"wrong","totp":null}},
+ {"id":"id-old","name":"corp/hosts/corp-host","login":{"password":"old-scheme","totp":null}},
+ {"id":"id-dup1","name":"ssh-local/via-jump1/dup-host","login":{"password":"dup-1","totp":null}},
+ {"id":"id-dup2","name":"ssh-local/via-jump2/dup-host","login":{"password":"dup-2","totp":null}},
+ {"id":"id-ip","name":"ssh-local/direct/10.0.0.5","login":{"password":"ip-secret","totp":null}}]}}
 EOF
 
 # STUB_MODE: ok | locked | down
@@ -68,6 +72,10 @@ check() {
 check "shared password"        ok     '(u@corp-host.example.com) Password:'          0 ad-secret
 check "OTP before Password"    ok     '(u@corp-host.example.com) One-time Password:' 0 123456
 check "per-host password"      ok     "root@db-host.example.com's password: "        0 db-secret
+check "old corp/hosts ignored"  ok     '(u@corp-host.example.com) Password:'          0 ad-secret
+check "two per-host items"     ok     "root@dup-host.example.com's password: "       1 ''
+check "IP host, full-IP item"  ok     "root@10.0.0.5's password: "                   0 ip-secret
+check "IP host, no item"       ok     "root@10.0.0.6's password: "                   0 ad-secret
 check "locked fails closed"    locked "root@db-host.example.com's password: "        1 ''
 check "bw serve down"          down   '(u@corp-host.example.com) Password:'          1 ''
 check "unknown host, no tty"   ok     '(u@elsewhere.example.com) Password:'          1 ''

@@ -88,7 +88,7 @@ If `bw` is not found, use the full path from [Prerequisites](#prerequisites).
 
 ### A.2 Create the items
 
-Create the `corp` item and any `corp/hosts/<short-host>` items as described in
+Create the `corp` item and any `ssh-local/<label>/<host-key>` items as described in
 [`corp-ssh-setup.md` § Set up the Bitwarden account and items](corp-ssh-setup.md#2-set-up-the-bitwarden-account-and-items).
 If the credentials are still in `pass`, follow
 [`corp-ssh-setup.md` § Migrating from `pass`](corp-ssh-setup.md#migrating-from-pass-one-time).
@@ -257,8 +257,8 @@ as the response.
 `POST /sync`, so a password rotated in the vault reaches ssh at once. An
 offline sync is not fatal: the cached vault still answers. The sync costs
 about 0.5 s per real login. The OTP prompt skips the sync. One
-`GET /list/object/items?search=<pass_path>` returns the `corp` item and any
-`corp/hosts/<short-host>` item; the helper matches names exactly and
+`GET /list/object/items` returns the `corp` item and any
+`ssh-local/<label>/<host-key>` item; the helper matches names exactly and
 case-sensitively. The OTP answer comes from `GET /object/totp/<id>`.
 
 **Fail closed.** When `bw serve` is stopped or locked, the helper exits 1
