@@ -2,7 +2,15 @@
 // Render a Mermaid diagram as Unicode box-drawing text, for places that cannot
 // render Mermaid: Confluence spaces with a broken Mermaid extension, Slack.
 //
-// Usage: mermaid-ascii [--ascii] [file]     (reads stdin when no file is given)
+// Usage: mermaid-ascii [options] [file]     (reads stdin when no file is given)
+//
+// Options map one-to-one to beautiful-mermaid's renderMermaidASCII options:
+//   --ascii                    useAscii: true
+//   --padding-x N              paddingX, space between nodes left to right (default 5)
+//   --padding-y N              paddingY, space between nodes top to bottom (default 5)
+//   --box-border-padding N     boxBorderPadding, space inside a box (default 1)
+//   --color-mode MODE          colorMode: none | auto | ansi16 | ansi256 | truecolor | html
+//   --theme JSON               theme, e.g. '{"border":"#888888"}'
 //
 // --ascii draws with + - | instead of box-drawing characters. Use it for
 // Confluence: its code block font does not draw box-drawing characters at a
@@ -20,6 +28,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { pathToFileURL } = require('url');
+const { parseArgs } = require('util');
 
 const VERSION = '1.1.3';
 const prefix = path.join(os.homedir(), '.local', 'share', 'beautiful-mermaid', VERSION);
@@ -32,11 +41,29 @@ if (!fs.existsSync(pkgDir)) {
     { stdio: ['ignore', 'ignore', 'inherit'], shell: process.platform === 'win32' });
 }
 
-const args = process.argv.slice(2);
-const useAscii = args.includes('--ascii');
-const src = fs.readFileSync(args.find((a) => a !== '--ascii') || 0, 'utf8');
+const { values: v, positionals } = parseArgs({
+  allowPositionals: true,
+  options: {
+    ascii: { type: 'boolean' },
+    'padding-x': { type: 'string' },
+    'padding-y': { type: 'string' },
+    'box-border-padding': { type: 'string' },
+    'color-mode': { type: 'string' },
+    theme: { type: 'string' },
+  },
+});
+const num = (x) => (x === undefined ? undefined : Number(x));
+const options = {
+  useAscii: v.ascii,
+  paddingX: num(v['padding-x']),
+  paddingY: num(v['padding-y']),
+  boxBorderPadding: num(v['box-border-padding']),
+  colorMode: v['color-mode'],
+  theme: v.theme && JSON.parse(v.theme),
+};
+const src = fs.readFileSync(positionals[0] || 0, 'utf8');
 const entry = require(path.join(pkgDir, 'package.json')).exports['.'];
 const file = typeof entry === 'string' ? entry : entry.import || entry.default;
 import(pathToFileURL(path.join(pkgDir, file)).href).then(({ renderMermaidASCII }) => {
-  process.stdout.write(renderMermaidASCII(src, { useAscii }) + '\n');
+  process.stdout.write(renderMermaidASCII(src, options) + '\n');
 });

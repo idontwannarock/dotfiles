@@ -12,7 +12,7 @@
 | `switch-pwsh-to-msi.ps1` | Windows | 將 Microsoft Store（MSIX）版 PowerShell 7 換成官方 MSI 版 | 手動執行，需系統管理員權限 |
 | `sdkupdate` | Linux/WSL、macOS | 互動式更新 SDKMAN 套件（JDK、Maven、Gradle…） | `sdkupdate`（`~/.local/bin` 已在 PATH，不需 alias） |
 | `yt-transcribe` | Linux/WSL、macOS | 把一支 YouTube 影片存成影片檔、音檔、逐字稿、縮圖與完整 metadata | `yt-transcribe <url>` |
-| `mermaid-ascii` | 全平台（Windows 走 Git Bash） | 把 Mermaid 轉成框線字元的純文字圖，給畫不出 Mermaid 的地方用（Slack、Mermaid 外掛壞掉的 Confluence） | `mermaid-ascii [--ascii] <file>` 或從 stdin 讀；Confluence 要加 `--ascii` |
+| `mermaid-ascii` | 全平台（Windows 走 Git Bash） | 把 Mermaid 轉成框線字元的純文字圖，給畫不出 Mermaid 的地方用（Slack、Mermaid 外掛壞掉的 Confluence） | `mermaid-ascii [options] <file>` 或從 stdin 讀；Confluence 要加 `--ascii` |
 
 ## 依賴
 
@@ -109,5 +109,8 @@ SDKMAN 沒有 scoop `update` 那種「原地升級」指令：`sdk upgrade` 只�
 - **標號用 `(1)`，不用 `[1]`。** `A[Auth [1]]` 會被截成 `Auth [1`，加引號也一樣。
 - **Confluence 要加 `--ascii`。** Confluence code block 的字型畫框線字元（`┌─┐`）時寬度不固定，
   框線會對不齊。`--ascii` 改用 `+`、`-`、`|` 來畫。
+- **選項跟函式庫一對一。** `--ascii`、`--padding-x`、`--padding-y`、`--box-border-padding`、
+  `--color-mode`、`--theme <json>` 直接對應 `renderMermaidASCII` 的選項，說明寫在腳本開頭。
+  圖太寬時，先把 `flowchart LR` 改成 `flowchart TD`；還是太寬，再調小 `--padding-x`。
 - **第一行要單獨寫圖的類型。** `graph LR; A --> B` 這種寫在同一行的格式會報錯；要寫成
   `graph LR` 再換行。
