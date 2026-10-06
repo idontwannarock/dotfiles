@@ -17,6 +17,9 @@ on:
       - 'home/run_after_modify-codex-config.ps1.tmpl'
       - 'home/run_install-04-codex-plugins.sh.tmpl'
       - 'home/run_install-04-codex-plugins.ps1.tmpl'
+      # workspaces.test.sh renders this script with the log.sh fragment.
+      - 'home/run_after_workspaces.sh.tmpl'
+      - 'home/.chezmoitemplates/scripts/log.sh'
       # The shared skill bodies and the cross-tool reference tree are subjects
       # too: path-format-flag-order.test.sh reads them rather than any script
       # under bin/. A guard that does not run when the files it guards change is
@@ -43,6 +46,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      # workspaces.test.sh renders its subject and parses TOML with chezmoi,
+      # exactly as the script does in production.
+      - name: Install chezmoi
+        run: |
+          sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # No prerequisite step: the scripts under test silently no-op when jq is
       # missing, so each test file asserts on jq and git itself and exits with a
