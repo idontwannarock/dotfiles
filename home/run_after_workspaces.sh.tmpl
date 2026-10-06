@@ -24,6 +24,9 @@ interactive=${DOTFILES_WS_INTERACTIVE:-}
 [ -n "$interactive" ] || { [ -t 0 ] && interactive=1 || interactive=0; }
 
 command -v jq >/dev/null 2>&1 || { log_warn "jq not found -- workspaces not processed"; exit 0; }
+# jq.exe on Windows ends each output line with \r\n. Git Bash strips only the
+# last one, so ids read in a loop keep a \r and match nothing in the list.
+jq() { command jq "$@" | tr -d '\r'; return "${PIPESTATUS[0]}"; }
 [ -f "$state" ] || { mkdir -p "${state%/*}"; printf '{}\n' >"$state"; }
 
 save() { jq "$@" "$state" >"$state.tmp" && mv "$state.tmp" "$state"; }
