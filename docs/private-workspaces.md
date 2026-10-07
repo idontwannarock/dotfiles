@@ -84,6 +84,21 @@ retired = false
 - 換清單 repo：刪掉 `listRepo` 這個 key。
 - 看細節：`DOTFILES_LOG_VERBOSE=1 chezmoi update`。
 
+## Shell 函式的插座
+
+workspace 不能改 public 產生的檔案，所以 public 留了兩個插座，讓 workspace 放自己的 shell 函式：
+
+| Shell | workspace 放檔案的位置 | 誰載入 |
+|---|---|---|
+| bash / zsh | `~/.shell_common.d/*.sh` | `~/.shell_common` 的最後面，照檔名順序 |
+| PowerShell 7 | `~/Documents/PowerShell/profile.d/*.ps1` | profile loader，在 `_shared-profile.d` 之後 |
+| PowerShell 5 | `~/Documents/WindowsPowerShell/profile.d/*.ps1` | 同上 |
+
+- 檔案載入時，public 的函式都已經定義好了，例如 `Get-BwSecret`。
+- 不要放進 `~/Documents/_shared-profile.d/`。那是 `exact_` 目錄，public 的 `chezmoi apply` 會刪掉它不認得的檔案。
+- PowerShell 的兩個 `profile.d` 要各放一份。在 workspace 裡用 `{{ include }}` 讓第二份引用第一份。
+- 實例：`dotfiles-shoalter` 的 `claude-zai`。
+
 ## 為什麼這樣做
 
 - **不用 git submodule**：一個 submodule 只能對應到 `~` 底下的一個目錄；`.gitmodules` 會公開網址；
