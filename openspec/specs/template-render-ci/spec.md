@@ -23,7 +23,7 @@
 ### Requirement: 三個 OS 都要跑
 Workflow SHALL 在 `ubuntu-latest`、`macos-latest`、`windows-latest` 上各跑一次，且 `fail-fast` SHALL 為 false。
 
-兩處會依平台分歧：`.chezmoiignore.tmpl` 在 Linux 上排除約 31 個 target（`.cmd` shim、Windows-only askpass），其 template 在該 OS 上根本不會被 render；`.chezmoi.toml.tmpl` 自身有 Windows 分支會讀 registry。單一 OS 的綠燈 SHALL NOT 被視為全部 template 都通過。
+兩處會依平台分歧：`.chezmoiignore.tmpl` 在 Linux 上排除約 30 個 target（`.cmd` shim、Windows-only helper），其 template 在該 OS 上根本不會被 render；`.chezmoi.toml.tmpl` 自身有 Windows 分支會讀 registry。單一 OS 的綠燈 SHALL NOT 被視為全部 template 都通過。
 
 #### Scenario: 只在 Windows 部署的 template 壞掉
 - **WHEN** 某個被 `.chezmoiignore.tmpl` 在 Linux 上排除的 target，其 template 壞掉

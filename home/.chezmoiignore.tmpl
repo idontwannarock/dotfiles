@@ -31,12 +31,6 @@ AppData
 .bashrc
 {{- end }}
 
-# ── corp-ssh-askpass + bw-get: bash helpers deploy on Linux/WSL only ──
-{{- if ne .chezmoi.os "linux" }}
-.local/bin/corp-ssh-askpass
-.local/bin/bw-get
-{{- end }}
-
 # ── gpg cache keepalive: systemd user timer, so Linux/WSL only ────────
 # gpg-cache-warm is the guard every caller uses before a headless `pass`; the
 # keepalive and its units only make sense where systemd --user runs. Windows and
@@ -50,7 +44,7 @@ AppData
 # ── pinentry-timeout: wraps /usr/bin/pinentry-curses, so Linux/WSL only ──
 # Windows uses pinentry-w32 and macOS pinentry-mac; neither needs the wrapper.
 # It is inert unless ~/.gnupg/gpg-agent.conf names it as pinentry-program, and
-# that file is deliberately machine-local. See docs/corp-ssh-setup.md.
+# that file is deliberately machine-local. See docs/gpg-agent-cache.md.
 {{- if ne .chezmoi.os "linux" }}
 .local/bin/pinentry-timeout
 {{- end }}
@@ -68,13 +62,6 @@ AppData
 .local/bin/cdp.py
 {{- end }}
 
-# ── corp-ssh-askpass: PowerShell helper + .cmd shim deploy on Windows only ──
-{{- if ne .chezmoi.os "windows" }}
-.local/bin/corp-ssh-askpass.ps1
-.local/bin/corp-ssh-askpass.cmd
-.local/bin/bw-serve-unlock.ps1
-{{- end }}
-
 # ── sdkupdate: SDKMAN is Unix-only, so the helper is too ──────────────
 # The Windows counterpart is scoop-interactive-update.ps1 (excluded below on
 # non-Windows). See docs/user-scripts.md.
@@ -88,11 +75,6 @@ AppData
 {{- if ne .chezmoi.os "windows" }}
 .local/bin/switch-pwsh-to-msi.ps1
 .local/bin/scoop-interactive-update.ps1
-{{- end }}
-
-# ── PowerShell profile fragment 30-ssh-askpass: Windows only ───────────
-{{- if ne .chezmoi.os "windows" }}
-Documents/_shared-profile.d/30-ssh-askpass.ps1
 {{- end }}
 
 # ── vim wrappers: deploy only on Windows (paired with chezmoi-external archive) ──

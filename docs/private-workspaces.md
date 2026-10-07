@@ -94,7 +94,8 @@ workspace 不能改 public 產生的檔案，所以 public 留了兩個插座，
 | PowerShell 7 | `~/Documents/PowerShell/profile.d/*.ps1` | profile loader，在 `_shared-profile.d` 之後 |
 | PowerShell 5 | `~/Documents/WindowsPowerShell/profile.d/*.ps1` | 同上 |
 
-- 檔案載入時，public 的函式都已經定義好了，例如 `Get-BwSecret`。
+- 檔案載入時，public `_shared-profile.d` 的函式都已經定義好了，例如 `use-java`。
+- workspace 自己的函式靠檔名順序：`dotfiles-shoalter` 的 `24-bw-get.ps1` 定義 `Get-BwSecret`，排在使用它的 `50-claude-zai.ps1` 之前。
 - 不要放進 `~/Documents/_shared-profile.d/`。那是 `exact_` 目錄，public 的 `chezmoi apply` 會刪掉它不認得的檔案。
 - PowerShell 的兩個 `profile.d` 要各放一份。在 workspace 裡用 `{{ include }}` 讓第二份引用第一份。
 - 實例：`dotfiles-shoalter` 的 `claude-zai` 與 `glab`。

@@ -18,7 +18,7 @@ name: Render templates
 # destination leaves it empty.
 #
 # Three OSes because two things branch on the platform. `.chezmoiignore.tmpl`
-# excludes ~31 targets on Linux (the .cmd shims, the Windows-only askpass), so
+# excludes ~30 targets on Linux (the .cmd shims, the Windows-only helpers), so
 # their templates are never rendered there; and templates themselves branch --
 # run_onchange_before_clear-readonly-externals.ps1.tmpl opens with
 # `{{ if eq .chezmoi.os "windows" }}`, so its entire body, including an
