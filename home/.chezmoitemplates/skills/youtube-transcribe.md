@@ -123,7 +123,7 @@ how much they should trust the result.
 
 **Status as of 2026-09-10: there is no knowledge system on this machine yet.** The
 artifacts land in `~/.agent/media/`, which has no version control and no cross-machine
-sync — the same terms as `~/.agent/local/`. A rebuilt machine loses them.
+sync. A rebuilt machine loses them.
 
 That directory is a holding area chosen because nothing better existed, **not** a decision
 that video artifacts belong outside a knowledge base. When the user builds one, reopen
