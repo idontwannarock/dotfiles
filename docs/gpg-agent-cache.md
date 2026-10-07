@@ -4,10 +4,8 @@
 covers the gpg-agent settings and helpers that keep a headless `pass` call from
 opening pinentry on the wrong terminal.
 
-No caller in this repo reads `pass` any more. corp-ssh and the `glab` wrapper
-read Bitwarden through `bw serve` (see
-[corp-ssh-setup.md](corp-ssh-setup.md) and
-[gitlab-corp-access.md](gitlab-corp-access.md)). The machine-local
+No caller in this repo reads `pass` any more. corp-ssh reads Bitwarden through
+`bw serve` (see [corp-ssh-setup.md](corp-ssh-setup.md)). The machine-local
 `dex-auto-login` also moved to `bw-get`. The helpers below (`gpg-cache-warm`,
 `gpg-cache-keepalive` and its timer, `pinentry-timeout`) stay installed until a
 later retirement. This page documents them as they are.

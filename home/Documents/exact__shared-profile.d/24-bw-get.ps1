@@ -1,7 +1,7 @@
 ﻿# 24-bw-get.ps1 -- Get-BwSecret: read one field of a Bitwarden item from a
 # running, unlocked `bw serve` on localhost:8087.
 #
-# Used by 26-glab.ps1 and by private workspace fragments. bw serve is started and unlocked
+# Used by private workspace fragments. bw serve is started and unlocked
 # at logon by the bw-serve-unlock scheduled task; see docs/corp-ssh-setup-windows.md.
 # Returns $null when bw serve is not reachable or locked, the item does not
 # exist, or the field is empty. Callers fall back to an env var.

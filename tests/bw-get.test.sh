@@ -1,14 +1,9 @@
 #!/bin/sh
-# bw-get.test.sh — black-box tests for home/dot_local/bin/executable_bw-get and
-# for the bash/zsh glab wrapper that reads its token through it.
+# bw-get.test.sh — black-box tests for home/dot_local/bin/executable_bw-get.
 #
 # `curl` is a stub that answers from a fixture, so no Bitwarden and no network
 # are needed. PATH holds only the stub dir and /usr/bin:/bin, so bw-get picks
 # `curl`, not a real `curl.exe` on a WSL /mnt/c PATH.
-#
-# The glab rows replace gpg-prompt-guard.test.sh. glab used to read `pass`,
-# and a cold gpg cache then painted pinentry over another session. glab now
-# reads Bitwarden, so the rule under test is simpler: glab never calls `pass`.
 
 repo=$(cd "$(dirname "$0")/.." && pwd -P)
 t=$(mktemp -d) || exit 1
@@ -18,8 +13,6 @@ command -v jq >/dev/null || { echo "FATAL: jq is required (bw-get parses bw serv
 
 mkdir -p "$t/.local/bin" "$t/stub"
 cp "$repo/home/dot_local/bin/executable_bw-get" "$t/.local/bin/bw-get"
-sed -n '/^glab() {/,/^}/p' "$repo/home/.chezmoitemplates/shell-common/base" > "$t/glab.sh"
-[ -s "$t/glab.sh" ] || { echo "FAIL: glab() not found in shell-common/base"; exit 1; }
 
 cat > "$t/items.json" <<'EOF'
 {"success":true,"data":{"object":"list","data":[
@@ -45,8 +38,6 @@ case $url in
   *) echo '{"success":false}' ;;
 esac
 EOF
-printf '#!/bin/sh\necho x >> "$HOME/pass.log"; echo pass-secret\n' > "$t/stub/pass"
-printf '#!/bin/sh\necho "TOKEN:$GITLAB_TOKEN"\n' > "$t/stub/glab"
 chmod +x "$t/stub/"* "$t/.local/bin/bw-get"
 
 fresh=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
@@ -54,9 +45,9 @@ stale=2020-01-01T00:00:00.000Z
 
 run() {  # $1 mode, $2 lastSync, rest = command; stdin is a pipe with data
   mode=$1; last=$2; shift 2
-  rm -f "$t/stdin.log" "$t/sync.log" "$t/sync-args.log" "$t/pass.log"
+  rm -f "$t/stdin.log" "$t/sync.log" "$t/sync-args.log"
   echo NOT-YOURS | env -i HOME="$t" PATH="$t/stub:/usr/bin:/bin" STUB_MODE="$mode" \
-    STUB_LASTSYNC="$last" GITLAB_HOST=x GLAB_CONFIG_DIR="$t" GITLAB_TOKEN="${ENV_TOKEN:-}" \
+    STUB_LASTSYNC="$last" \
     "$@" 2>/dev/null
 }
 
@@ -90,13 +81,5 @@ run ok "$stale" "$B" corp >/dev/null
 # The sync leaves the machine (bw serve forwards it); a dropped packet must not hang the caller.
 grep -qE -- '(^| )(-m|--max-time) [0-9]+' "$t/sync-args.log" 2>/dev/null \
   || { echo "FAIL: sync request has no time limit (-m)"; failures=$((failures + 1)); }
-
-# glab: the subject script sources the wrapper, as an interactive shell would.
-printf '. "$HOME/glab.sh"\nglab api\n' > "$t/glab-subject.sh"
-out=$(run ok "$fresh" bash "$t/glab-subject.sh");   expect "glab uses the vault" 0 TOKEN:glpat-vault "$?" "$out"
-out=$(ENV_TOKEN=envtok run locked "$fresh" bash "$t/glab-subject.sh")
-expect "glab falls back to GITLAB_TOKEN" 0 TOKEN:envtok "$?" "$out"
-out=$(run locked "$fresh" bash "$t/glab-subject.sh"); expect "glab with no token" 1 '' "$?" "$out"
-[ -s "$t/pass.log" ] && { echo "FAIL: glab called pass"; failures=$((failures + 1)); }
 
 [ "$failures" -eq 0 ] && echo "ok: bw-get" || exit 1
