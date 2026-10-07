@@ -22,7 +22,7 @@ Use `bin/bash.exe`, NOT `usr/bin/bash.exe`:
 - `bin/bash.exe` is a wrapper that sets `MSYSTEM` then exec's the real bash; works when invoked from a non-MSYS parent (PowerShell, chezmoi)
 - `usr/bin/bash.exe` is the real bash directly — coreutils DLLs fail to load from a non-MSYS parent
 
-Detection lives in `.chezmoi.toml.tmpl` `[interpreters.sh]` (Go `stat` static list, render-time) and `run_onchange_before_patch-chezmoi-config.ps1.tmpl` (PowerShell self-heal, same list + a `HKLM/HKCU\SOFTWARE\GitForWindows\InstallPath` registry probe for non-default install dirs). The same candidate roots are mirrored in `dot_claude/modify_settings.json.sh.tmpl` (git_bash arg) and `run_onchange_install-gnupg.ps1.tmpl` (pinentry-w32). git is a manual bootstrap prerequisite installed before `chezmoi init` (winget/PortableGit/scoop) — it can't be a chezmoi-external because chezmoi needs it to run `.sh` scripts.
+Detection lives in `.chezmoi.toml.tmpl` `[interpreters.sh]` (Go `stat` static list, render-time) and `run_onchange_before_patch-chezmoi-config.ps1.tmpl` (PowerShell self-heal, same list + a `HKLM/HKCU\SOFTWARE\GitForWindows\InstallPath` registry probe for non-default install dirs). The same candidate roots are mirrored in `dot_claude/modify_settings.json.sh.tmpl` (git_bash arg). git is a manual bootstrap prerequisite installed before `chezmoi init` (winget/PortableGit/scoop) — it can't be a chezmoi-external because chezmoi needs it to run `.sh` scripts.
 
 ## `modify_*` Scripts — Extension Dispatch
 

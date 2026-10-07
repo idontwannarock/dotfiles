@@ -35,7 +35,7 @@ description: "跨 change 反覆適用的長青判斷依據,分五組:source 與�
 - **要在既有 CLI 外面加行為,包 shell function,不放 PATH shim。** 同名 function 遮蔽 binary、內部用 `command <name>`(pwsh 用 `Get-Command -CommandType Application`)避免遞迴,兩邊的訊息字串刻意保持一致。它只影響互動 shell,腳本與 CI 不受污染;PATH shim 則是全域且會跟著被繼承。pwsh 那側有三個必踩的坑:`Get-Command` 回傳 PATH 上的每一個同名執行檔,對多元素結果取 `.Source` 會得到串在一起、跑不動的路徑,要 `Select-Object -First 1`;**不要用 `[CmdletBinding()]` + `ValueFromRemainingArguments`** 收參數,具名繫結先於 remaining 收集且 common parameter 支援前綴比對,於是被包的 CLI 的短旗標會被吃掉(`-v` 綁到 `-Verbose` 後消失、`-D <dir>` 綁到 `-Debug` 後把 `<dir>` 留成孤兒),裸 function 的 `$args` 才不做繫結;`Write-Host` 走的是 information stream,`2>` 撈不到,要跨平台一致就寫 `[Console]::Error`。bash 那側則不能用 `command -v <name>` 判斷 binary 在不在 —— 它回報的是「這個名字會被解讀成什麼」,而那正是 wrapper 自己,永遠為真;要判斷就看退出碼 127。
 - **測試框架跟著被測物的直譯器走,不跟著 repo 慣例走;production 用什麼呼叫,測試就要涵蓋什麼。** 這個 repo 同時養 PowerShell、POSIX sh 與 Go 三種產物,「統一用 Pester」聽起來像一致性,實際代價是本地紅綠迴路消失 —— 開發機(WSL)沒有原生 `pwsh`,測一支 sh script 只能走 Windows interop(git-bash vs ubuntu bash、`\\wsl$` UNC 路徑),兩個變數都與 CI 不同,本地綠燈不代表 CI 綠燈,等於每改一行都要 push 才知道結果。判準是**被測物在 production 被誰執行**:`claude-memory-seed` 由 SessionStart hook 用 `bash`、post-checkout hook 用 `/bin/sh` 呼叫,兩個都是正式路徑,所以測試要對兩種直譯器各跑一輪 —— 兩者的差異會咬人(`cd ""` 在 bash 失敗、在 dash 卻原地成功回傳 cwd,足以讓「非 git 時該回報失敗」的分支靜默走成「回報當前目錄」)。
 - **Codex frontmatter 要嚴格 YAML。** skill `description:` 若含 `:`/`#`/開頭 `[`{` 必須加引號;Claude 容忍、Codex 會報錯。用真的 YAML parser 驗,不要只 grep。
-- **Windows toolchain 脫離 Scoop。** Go/JDK/GnuPG 等從官方第一手來源經 `.chezmoiexternal.toml` / 官方安裝器 provision,搭配一次性 `run_once_after_migrate-scoop-*` 清理。
+- **Windows toolchain 脫離 Scoop。** Go/JDK 等從官方第一手來源經 `.chezmoiexternal.toml` / 官方安裝器 provision,搭配一次性 `run_once_after_migrate-scoop-*` 清理。
 - **Windows PATH 要 SSH-safe。** Win32-OpenSSH 不展開 PATH 裡的 `%JAVA_HOME%`;用 wrapper `.cmd` shim,別把原始 JDK bin 放進 PATH。
 
 ## 規範與文件寫法
@@ -61,8 +61,8 @@ description: "跨 change 反覆適用的長青判斷依據,分五組:source 與�
 
 ## 祕密與把關
 
-- **祕密只留本機,且要加密。** 兩個軸。**本機 vs 雲端**:corp-ssh、local-files 的祕密都在本機磁碟或使用者腦中,雲端密碼管理器(cloud Bitwarden)明確排除,因為情境是單機、無跨機同步需求。**明文 vs 加密**:`HKCU\Environment` 與 `~/.bashrc` 的 export 都是明文,任何能讀使用者環境的程式都看得到,所以走 GPG 加密的 vault、gpg-agent 短期 unlock;代價是 agent 沒 warm 時要打一次 passphrase、跨機器要複製 encrypted blob。已套用於 corp-ssh(`pass`/`gopass`)、claude-zai token 與 corp GitLab token。
-- **祕密與 corp 識別資訊是兩個問題,答案不同。** 祕密進本機加密 vault;corp 識別資訊(實例 FQDN、內部主機名)留在 OS 的機器本地狀態(`HKCU\Environment`、機器本地的 `~/.ssh/config`)。兩者都不進 repo,但混為一談會導致把 FQDN 塞進 `pass` —— 在那裡它既不好找又不合用,因為它根本不是祕密,只是不該公開。本 repo 為公開 repo,「零 corp 主機名」是可機械驗證的硬邊界:全文搜尋 corp 網域,命中必須為零。
+- **祕密不進 repo,也不落成明文。** `HKCU\Environment` 與 `~/.bashrc` 的 export 都是明文,任何能讀使用者環境的程式都看得到,所以祕密放在加密的密碼管理器,用到時才取。2026-09-29 起是 Bitwarden:程式經 `bw serve` 讀取,reader 與解鎖流程由 private workspace `dotfiles-shoalter` 部署。已套用於 corp-ssh、claude-zai token 與 corp GitLab token。之前的 GPG vault(`pass`/`gopass`)已退役。
+- **祕密與 corp 識別資訊是兩個問題,答案不同。** 祕密進密碼管理器;corp 識別資訊(實例 FQDN、內部主機名)留在 OS 的機器本地狀態(`HKCU\Environment`、機器本地的 `~/.ssh/config`)。兩者都不進 repo,但混為一談會導致把 FQDN 塞進密碼管理器 —— 在那裡它既不好找又不合用,因為它根本不是祕密,只是不該公開。本 repo 為公開 repo,「零 corp 主機名」是可機械驗證的硬邊界:全文搜尋 corp 網域,命中必須為零。
 - **自動化不在無把關的情況下落到機器上。** 把關形式可以是人審或自動驗證,但不得沒有 —— Renovate / mirror workflow 只開 PR,低風險更新由 CI gate 放行、`major` 仍需人審。無論哪一種,最後都還要一次明確的 `chezmoi apply` 才會改到機器。把關機制的細節屬各案文件,不寫在這裡。
 - **不可回復的操作要問「誤判時損失什麼」,不是「正確時損失什麼」。** 「內容已經備份在別處」不足以支持 `rm` —— 它只證明*判斷正確時*沒有損失,而風險全在判斷錯誤的那些。當保守選項的代價是可忽略的雜訊(多一層永遠不看的 `archive/` 目錄)、激進選項的代價是不可回復的資料消失時,選保守。版控之外的路徑(`~/.agent/`、`~/.claude/`)沒有 undo,這條在那裡尤其硬。2026-08-03 一個 session 拿 slug 字面相似度判定 5 份 handoff 已完成並當場 `rm`,其中 2 份根本沒開始做。
 - **agent 產物依「它的壽命」分流,不依它產生在哪裡。** 一次工作會同時產出三種東西,落點不同:**裁決**(為什麼選這條路、什麼刻意不做)進 memory —— 永久、有索引、跨 session 撿得到;**待辦**進 handoff —— 做完即歸檔,目錄本身就是清單;**盤點與參考**(端點狀態表、依賴圖、批次計畫)留在原檔,但必須被活著的 artifact 用**歸檔後**的絕對路徑指名。歸檔不等於丟棄,前提是有人指得回去 —— `archive/` 的存在意義正是讓檔案**掉出所有 lookup**,所以凡是還需要被找到的,都得在 `mv` 之前先搬走或先被指名。用當前路徑寫的引用會在建立它的同一步壞掉。

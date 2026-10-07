@@ -133,24 +133,22 @@ low-risk updates merge themselves once it passes.
   GitHub native auto-merge). **`major` stays manual** — it may carry breaking changes.
   A `minimumReleaseAge` of 3 days holds a bump back until the upstream release has
   settled (catches yanked/hotfixed releases for free).
-- **Two required checks:** `gate` (externals + gnupg) and `tools-gate` (the `tools/`
+- **Two required checks:** `gate` (externals) and `tools-gate` (the `tools/`
   builds). Both always report, so an unrelated PR passes them instantly. Never require
   `passgen` or `statusline (*)` directly: they report nothing on a PR that touches no
   tool, and a required check that never reports blocks the merge forever. #194 merged
   a red `passgen` because `gate` was the only required check at the time.
 - **The gate:** [`.github/workflows/validate-externals.yml`](../.github/workflows/validate-externals.yml)
   runs on every PR to `main`. It reports a single `gate` status check. On a PR that
-  touches neither `home/.chezmoiexternal.toml` nor `home/run_onchange_install-gnupg.ps1.tmpl`
-  the gate passes instantly (so unrelated PRs are never blocked). On a bump PR it, per
-  OS (ubuntu/macos/windows), renders the externals with chezmoi and HEAD-checks every
-  download URL, and verifies the gnupg pin's SHA-256 against the real installer. Any
-  failure fails the gate and blocks the merge.
+  does not touch `home/.chezmoiexternal.toml` the gate passes instantly (so unrelated
+  PRs are never blocked). On a bump PR it, per OS (ubuntu/macos/windows), renders the
+  externals with chezmoi and HEAD-checks every download URL. Any failure fails the gate
+  and blocks the merge.
 - **Mirror PRs too:** the `mirror-externals` workflow opens its PRs with a PAT (not the
   default token, whose PRs don't trigger other workflows) and enables squash auto-merge,
-  so vim/jdtls/dos2unix/gnupg bumps flow through the same gate.
+  so vim/jdtls/dos2unix bumps flow through the same gate.
 - **Machines are still safe:** auto-merge only lands the pin on `main`. Nothing changes
-  a machine until you run `chezmoi apply`, where the install scripts re-verify (e.g. the
-  gnupg SHA-256).
+  a machine until you run `chezmoi apply`.
 
 ### PR throughput, and why a tool can starve
 

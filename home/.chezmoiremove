@@ -190,3 +190,15 @@ AppData/Local/rtk
 .claude/skills/worktree
 .codex/skills/verify-done
 .codex/skills/worktree
+
+# gpg / pass / gopass stack retired. corp-ssh, glab and claude-zai read Bitwarden
+# through `bw serve` since 2026-09-29, so nothing reads `pass` or `gopass`. The
+# keepalive timer is disabled first by run_once_before_retire-gpg-cache-keepalive;
+# GnuPG itself is uninstalled by run_once_after_retire-gnupg (Windows). The stores
+# (~/.password-store, gopass) and ~/.gnupg are user data and are left alone.
+.local/bin/gpg-cache-warm
+.local/bin/gpg-cache-keepalive
+.local/bin/pinentry-timeout
+.config/systemd/user/gpg-cache-keepalive.service
+.config/systemd/user/gpg-cache-keepalive.timer
+.local/bin/gopass.exe

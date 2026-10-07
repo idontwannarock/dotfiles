@@ -151,24 +151,6 @@
     path = "golangci-lint-{{ $golangciLintVersion }}-windows-amd64/golangci-lint.exe"
     executable = true
 
-# Scoop migration — Wave 3 (2026-05-20)
-# Final wave for single-binary GitHub-release tools. gopass was the corp-ssh-askpass
-# password store CLI; corp-ssh now reads Bitwarden (private workspace dotfiles-shoalter).
-# The gpg suite is provisioned off scoop by Wave 8 (gpg-off-scoop):
-# run_onchange_install-gnupg.ps1.tmpl installs it from the gnupg.org NSIS into
-# ~/.local/opt/gnupg (auto-bumped by mirror-externals.yml's gnupg detector).
-# Bump version below and rerun `chezmoi apply` to upgrade.
-# renovate: datasource=github-releases depName=gopasspw/gopass
-{{- $gopassVersion := "1.17.3" }}
-
-# URL tag uses `v` prefix; archive filename version string omits `v`. Same
-# variable injected to both (cf. golangci-lint pattern in Wave 2).
-[".local/bin/gopass.exe"]
-    type = "archive-file"
-    url = "https://github.com/gopasspw/gopass/releases/download/v{{ $gopassVersion }}/gopass-{{ $gopassVersion }}-windows-amd64.zip"
-    path = "gopass.exe"
-    executable = true
-
 # Scoop migration — Wave 5 (2026-05-25)
 # Docker CLI client + docker-compose. WSL Ubuntu hosts the engine; Windows side
 # is CLI-only (no dockerd.exe, no Docker Desktop). DOCKER_HOST=tcp://127.0.0.1:2375
@@ -202,7 +184,7 @@
 # at runtime). GyanD publishes clean semver tags, so unlike the old BtbN dated
 # autobuild this is a normal Renovate-tracked pin. The .zip's versioned inner dir
 # (ffmpeg-<v>-full_build/) is addressed via the $ffmpegVersion path variable, the
-# same trick as golangci-lint/gopass. Three archive-file entries share one URL;
+# same trick as golangci-lint. Three archive-file entries share one URL;
 # chezmoi caches by URL so the zip downloads once. Bump $ffmpegVersion + rerun
 # `chezmoi apply` (or merge Renovate's PR).
 # renovate: datasource=github-releases depName=GyanD/codexffmpeg

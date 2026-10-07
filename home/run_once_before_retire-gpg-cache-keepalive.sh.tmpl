@@ -1,0 +1,31 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# chezmoi run_once_before_ -- disable the retired gpg-agent cache keepalive timer.
+#
+# The keepalive held the passphrase cache open for headless `pass` calls. Nothing
+# reads `pass` since corp-ssh, glab and claude-zai moved to Bitwarden, so the
+# helpers and units are listed in .chezmoiremove. Removing the unit files does not
+# stop an enabled timer, so this runs in the before phase, while the unit still
+# exists for `systemctl disable` to find.
+set -eu
+
+{{ template "scripts/log.sh" }}
+
+log_begin "retire gpg cache keepalive timer"
+
+log_section "disable the timer before .chezmoiremove deletes its unit files"
+
+if ! systemctl --user show-environment >/dev/null 2>&1; then
+    log_skip "[gpg] no systemd user session; no timer to disable"
+    exit 0
+fi
+
+if [ "$(systemctl --user is-enabled gpg-cache-keepalive.timer 2>/dev/null || true)" != "enabled" ] \
+   && ! systemctl --user is-active gpg-cache-keepalive.timer >/dev/null 2>&1; then
+    log_skip "[gpg] keepalive timer not enabled"
+    exit 0
+fi
+
+log_step "[gpg] disabling gpg-cache-keepalive.timer"
+systemctl --user disable --now gpg-cache-keepalive.timer
+{{ end -}}

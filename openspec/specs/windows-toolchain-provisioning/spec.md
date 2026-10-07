@@ -99,5 +99,5 @@ Wave 10 migration script SHALL 冪等：重複執行不報錯、不重複破壞�
 
 #### Scenario: 卸載 scoop git 後互動環境不破壞
 - **WHEN** 執行 `scoop uninstall git` 後，於全新登入 shell 檢查
-- **THEN** `scoop list` 不含 `git`；`git`、`gpg`、`ssh` 仍正常解析（`git` → `C:\Program Files\Git\cmd`、`gpg` → `~\.local\opt\gnupg\bin`、`ssh` → `C:\Windows\System32\OpenSSH`），且 Windows Terminal「Git Bash」分頁仍可開啟
+- **THEN** `scoop list` 不含 `git`；`git`、`ssh` 仍正常解析（`git` → `C:\Program Files\Git\cmd`、`ssh` → `C:\Windows\System32\OpenSSH`），且 Windows Terminal「Git Bash」分頁仍可開啟
 
