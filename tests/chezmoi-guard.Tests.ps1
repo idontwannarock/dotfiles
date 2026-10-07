@@ -133,7 +133,7 @@ Describe '96-chezmoi-guard.ps1' {
             $r.ExitCode | Should -Be 0
         }
 
-        # 127 is the command-not-found convention, matching 26-glab.ps1.
+        # 127 is the command-not-found convention, matching the glab wrapper in dotfiles-shoalter.
         It 'reports 127 when no chezmoi binary is on PATH' {
             $r = Invoke-Guard -Arguments 'apply' -Rc 1 -Path 'C:\Windows\System32'
             $r.Stderr | Should -Match 'chezmoi: binary not on PATH'

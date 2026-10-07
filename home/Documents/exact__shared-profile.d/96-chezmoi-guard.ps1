@@ -21,7 +21,7 @@
 # 刻意不用 [CmdletBinding()] + ValueFromRemainingArguments：具名參數繫結先於 remaining
 # 收集，且 common parameter 支援前綴比對，於是 chezmoi 的短旗標會被吃掉 —— `-v` 綁到
 # -Verbose 後消失，`-D <dir>` 綁到 -Debug 後把 <dir> 留成孤兒位置參數。裸 function 的
-# $args 不做任何繫結。26-glab.ps1 曾是那個形狀，代價見該檔檔頭。
+# $args 不做任何繫結。glab 的 wrapper 曾是那個形狀，代價見 dotfiles-shoalter 的 51-glab.ps1 檔頭。
 
 function chezmoi {
     # -CommandType Application skips this function, so no recursion. Select-Object
