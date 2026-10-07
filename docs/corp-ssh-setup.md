@@ -118,7 +118,11 @@ curl.exe -s http://localhost:8087/status
 The JSON must contain `"status":"unlocked"`. `"locked"` means `bw serve` runs
 but is not unlocked. No output means `bw serve` is not running.
 
-### 4. Create `~/.corp-ssh/hosts.yaml` (local only, never committed)
+### 4. Create `~/.corp-ssh/hosts.yaml` (never in this public repo)
+
+If a private workspace deploys this file (see
+[private-workspaces.md](private-workspaces.md)), skip this step: `chezmoi update`
+writes it. The commands below are for a machine without such a workspace.
 
 This file is the allowlist of corp targets that the askpass helper will
 answer for, plus the Bitwarden item prefix.

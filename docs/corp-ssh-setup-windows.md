@@ -98,6 +98,11 @@ If the credentials are still in `pass`, follow
 Do this **before** `chezmoi apply`. The logon task is registered only on a
 machine that has `~/.corp-ssh/hosts.yaml` at apply time.
 
+If a private workspace deploys `hosts.yaml` (see
+[private-workspaces.md](private-workspaces.md)), skip the copy. Run
+`chezmoi update` twice instead: the workspace writes the file after the public
+scripts run, so the second run registers the logon task.
+
 ```powershell
 $src = '\\wsl$\Ubuntu\home\<wsl-user>\.corp-ssh\hosts.yaml'
 $dst = Join-Path $env:USERPROFILE '.corp-ssh\hosts.yaml'
