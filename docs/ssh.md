@@ -123,7 +123,7 @@ ssh 對每個關鍵字取**第一個看到的值**（first-match-wins），不�
 | 檔案 | 內容 | 平台 |
 |------|------|------|
 | `config.d/00-common` | `Host *` 的 `ServerAliveInterval 30` | 全平台 |
-| `config.d/corp-multiplex` | 公司主機的 `ControlMaster` + `PubkeyAuthentication no`。由 private workspace `dotfiles-shoalter` 部署，見 [private-workspaces.md](private-workspaces.md) | WSL/Linux/macOS（Win32-OpenSSH 無 ControlMaster，見 [corp-ssh-setup.md](corp-ssh-setup.md)） |
+| `config.d/corp-multiplex` | 公司主機的 `ControlMaster` + `PubkeyAuthentication no`。由 private workspace `dotfiles-shoalter` 部署，見 [private-workspaces.md](private-workspaces.md) | WSL/Linux/macOS（Win32-OpenSSH 無 ControlMaster，見 `dotfiles-shoalter` 的 `docs/corp-ssh-setup.md`） |
 
 ### 預設層：成組的主機抽成獨立檔案
 

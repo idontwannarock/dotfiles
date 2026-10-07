@@ -7,21 +7,7 @@ export EDITOR="vim"
 export VISUAL="vim"
 
 # ── GPG agent TTY (required by pinentry-curses for `pass`/`gpg` unlock) ────
-# `pass` (used by corp-ssh-askpass) decrypts via gpg, which prompts for the
+# `pass` decrypts via gpg, which prompts for the
 # GPG key passphrase via pinentry. pinentry-curses needs to know which TTY to
 # display on; this export must run for every interactive shell.
 export GPG_TTY="$(tty)"
-
-# ── SSH askpass for hosts requiring password + OTP ─────────────────────────
-# Set SSH_ASKPASS_REQUIRE=force so openssh uses the helper regardless of TTY
-# state. `force` routes EVERY openssh question to the helper, host-key
-# confirmations included, so the helper must never answer a prompt it does not
-# own with exit 1 -- that reads as "no" and breaks `ssh` to any new host with
-# "Host key verification failed." The helper's ask_human() fallback re-asks the
-# human on /dev/tty instead; keep it when editing. Known constraint: SSH keys
-# must be unencrypted, or the user must unset SSH_ASKPASS_REQUIRE
-# (e.g. `SSH_ASKPASS_REQUIRE=never ssh host`) for those sessions.
-if [ -x "$HOME/.local/bin/corp-ssh-askpass" ]; then
-    export SSH_ASKPASS="$HOME/.local/bin/corp-ssh-askpass"
-    export SSH_ASKPASS_REQUIRE=force
-fi
