@@ -12,7 +12,7 @@ The location is user-level and AI-agnostic on purpose: a handoff produced by Cla
 
   | | global (version-controlled, travels) | machine (this box only) |
   |---|---|---|
-  | user | dotfiles repo -> `home/dot_agent/reference/` | `~/.agent/local/` |
+  | user | dotfiles repo -> `home/dot_agent/reference/`; non-public: a private workspace -> `~/.agent/local/` | -- |
   | project | the project repo -> `context/`, `docs/` | `~/.agent/memory/<repo-slug>/` |
 
   Write it to its home **first**, then leave a breadcrumb -- an absolute path plus a one-line "why it matters". A handoff is a transient artifact that leaves every lookup the moment it is archived; anything that has to be findable later must not depend on someone opening an old handoff to find it.

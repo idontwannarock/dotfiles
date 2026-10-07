@@ -56,7 +56,7 @@ it as passing" (report the environment problem instead).
   is for aircraft maintenance manuals and makes ordinary prose sound machine-made.
   Rhetorical style guides (Strunk, *Elements of Style*) optimise for a reader who
   wants to keep reading; these artifacts have a reader who wants to stop.
-- **Local conventions**: Before writing a project's configuration — service config files, local DB containers, deployment env vars, integration-test setup — read `~/.agent/local/index.md` if it exists. It holds cross-project conventions kept deliberately outside every repo, so no repo, no search, and no other reference will surface them. No such file means this machine has none.
+- **Local conventions**: Before writing a project's configuration — service config files, local DB containers, deployment env vars, integration-test setup — read `~/.agent/local/index.md` if it exists. It holds cross-project conventions kept deliberately out of every project repo and out of the public dotfiles, so no project repo, no search, and no other reference will surface them. No such file means this machine has none.
 - **Text diagrams**: Where Mermaid does not render (Slack, a Confluence space with a broken Mermaid extension), write Mermaid and pipe it through `mermaid-ascii`; paste the output in a code block. For Confluence add `--ascii`: its code block font misaligns box-drawing characters. Labels must be ASCII — CJK labels break the box borders. Put long or subtle concepts in the label as `(1)`, `(2)`, and explain each one under the diagram in the reader's language. Do not write `[1]`: a `]` inside a `[...]` node label cuts the label short.
 
 ## 4. Subagent Dispatch

@@ -75,13 +75,6 @@ AppData
 .local/bin/bw-serve-unlock.ps1
 {{- end }}
 
-# ── corp SSH multiplex drop-in: WSL/Linux/macOS only ──────────────────
-# Win32-OpenSSH has no ControlMaster; `PubkeyAuthentication no` could break
-# Windows corp ssh. Machine-local ~/.ssh/config Includes this. See corp-ssh-setup.md.
-{{- if eq .chezmoi.os "windows" }}
-.ssh/config.d/corp-multiplex
-{{- end }}
-
 # ── sdkupdate: SDKMAN is Unix-only, so the helper is too ──────────────
 # The Windows counterpart is scoop-interactive-update.ps1 (excluded below on
 # non-Windows). See docs/user-scripts.md.

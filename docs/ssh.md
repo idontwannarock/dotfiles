@@ -99,15 +99,15 @@ Host github.com                ← 常用、各自獨立的主機
 Host dev157
 ...
 
-Host *                         ← 預設層（機器本地）
+Host *                         ← 預設層（private workspace 部署）
   Include ~/.ssh/hosts.d/*
 ```
 
 | 層 | 目錄 | 位置 | 語意 | 誰維護 |
 |---|---|---|---|---|
-| 覆寫層 | `~/.ssh/config.d/` | 檔首 | 蓋過下方所有 host 區塊 | chezmoi（來源 `home/private_dot_ssh/private_config.d/`）|
+| 覆寫層 | `~/.ssh/config.d/` | 檔首 | 蓋過下方所有 host 區塊 | chezmoi（`00-common` 來自本 repo，`corp-multiplex` 來自 private workspace `dotfiles-shoalter`）|
 | 主體 | `~/.ssh/config` | 中間 | 常用、不成組的主機 | 手動，機器本地 |
-| 預設層 | `~/.ssh/hosts.d/` | 檔尾 | 被上方所有區塊覆寫 | 手動，機器本地 |
+| 預設層 | `~/.ssh/hosts.d/` | 檔尾 | 被上方所有區塊覆寫 | chezmoi，private workspace `dotfiles-shoalter`（含公司 FQDN，不進本 repo）|
 
 ### 為什麼位置就是語意
 
@@ -125,7 +125,7 @@ ssh 對每個關鍵字取**第一個看到的值**（first-match-wins），不�
 | 檔案 | 內容 | 平台 |
 |------|------|------|
 | `config.d/00-common` | `Host *` 的 `ServerAliveInterval 30` | 全平台 |
-| `config.d/corp-multiplex` | 公司主機的 `ControlMaster` + `PubkeyAuthentication no` | WSL/Linux/macOS（Win32-OpenSSH 無 ControlMaster，見 [corp-ssh-setup.md](corp-ssh-setup.md)） |
+| `config.d/corp-multiplex` | 公司主機的 `ControlMaster` + `PubkeyAuthentication no`。由 private workspace `dotfiles-shoalter` 部署，見 [private-workspaces.md](private-workspaces.md) | WSL/Linux/macOS（Win32-OpenSSH 無 ControlMaster，見 [corp-ssh-setup.md](corp-ssh-setup.md)） |
 
 ### 預設層：成組的主機抽成獨立檔案
 
@@ -134,17 +134,17 @@ ssh 對每個關鍵字取**第一個看到的值**（first-match-wins），不�
 ```
 # ~/.ssh/hosts.d/devkws
 Host devkwsxcm01
-  HostName dev-zone-x-keywordsearch-clustermanager01.devstg.cti.hk
+  HostName kws-cm01.dev.corp.example
 
 ... （其餘 devkws* 主機）
 
 Host devkwsmongo
-  HostName hktv-keyword-search-mongodb-dev.nat.hkmpcl.com.hk
+  HostName kws-mongo.dev.corp.example
   User root              # 例外：覆寫下方群組預設（先出現先贏）
 
 # ── 群組預設（必須是本檔最後一個區塊）──
 Host devkws*
-  User howard.wang@shoalter.com
+  User me@corp.example
   ProxyJump dev157
 ```
 
@@ -156,7 +156,7 @@ Host devkws*
 
 ```
 Host dev-livekit
-  HostName zoom-live-dev01.devstg.cti.hk
+  HostName livekit01.dev.corp.example
 
 Include ~/.ssh/hosts.d/*       # ← 錯：這行屬於 Host dev-livekit
 ```

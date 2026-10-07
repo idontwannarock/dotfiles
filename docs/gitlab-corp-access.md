@@ -47,8 +47,8 @@ pinentry can appear and the guard is gone.
 
 **The instance FQDN**, in `HKCU\Environment`. This is deliberate and worth
 stating plainly: this repository is public and contains **no** corp hostnames.
-The same rule governs `~/.ssh/config` — see the note in
-`home/private_dot_ssh/config.d/corp-multiplex` — and `context/principles.md`
+The same rule governs `~/.ssh/config` and the corp ssh host groups, which live in
+a private workspace (see `docs/private-workspaces.md`) — and `context/principles.md`
 lists this state among what is intentionally not reproduced. Every command below
 uses `gitlab.example.com` as a stand-in; substitute the real host.
 

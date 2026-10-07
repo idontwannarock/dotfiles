@@ -95,7 +95,7 @@ box with its own `root` password, say) needs its own item. Name the item
 ```
 ssh-local/via-dev157/mms-product-grouping-api-db-dev
 ssh-local/via-stg156/mms-db-staging
-ssh-local/direct/14.198.248.156
+ssh-local/direct/203.0.113.10
 ```
 
 The prefix `ssh-local/` is fixed and does not depend on `pass_path`, because
@@ -156,10 +156,11 @@ Paste the output into the `password_otp_hosts:` section.
 ### 5. ControlMaster drop-in (chezmoi-managed) + Include
 
 `~/.ssh/config` itself stays **machine-local** — it holds corp FQDNs/IPs that must
-not enter the repo. The generic multiplex + no-pubkey policy, which carries no
-secrets, *is* reproduced: chezmoi deploys it as a drop-in at
-`~/.ssh/config.d/corp-multiplex` (source `home/private_dot_ssh/private_config.d/private_corp-multiplex`,
-WSL/Linux/macOS only — Win32-OpenSSH has no ControlMaster):
+not enter this public repo. The multiplex + no-pubkey policy is reproduced as a
+drop-in at `~/.ssh/config.d/corp-multiplex`. The private workspace
+`dotfiles-shoalter` deploys it, together with the host groups in `~/.ssh/hosts.d/`
+(see [private-workspaces.md](private-workspaces.md)). WSL/Linux/macOS only —
+Win32-OpenSSH has no ControlMaster:
 
 ```
 # ──── Corp hosts authenticating by password — enable connection multiplexing ────
@@ -389,9 +390,9 @@ password prompt is ever reached. In `ssh -v` you'll see multiple
 
 Fix — the corp host block must disable pubkey auth. It lives in the
 chezmoi-managed drop-in `~/.ssh/config.d/corp-multiplex` (see
-[section 5](#5-controlmaster-drop-in-chezmoi-managed--include)), so `chezmoi apply`
-plus the one-line `Include ~/.ssh/config.d/*` in the machine-local `~/.ssh/config`
-reproduces it on every machine:
+[section 5](#5-controlmaster-drop-in-chezmoi-managed--include)), so `chezmoi update`
+with the `dotfiles-shoalter` workspace, plus the one-line `Include ~/.ssh/config.d/*`
+in the machine-local `~/.ssh/config`, reproduces it on every machine:
 
 ```
 Host devkws* dev-livekit devdb-* stgdb-*

@@ -45,7 +45,7 @@
 
 ### Requirement: repo 不得含有 corp FQDN
 
-corp GitLab 的實際主機名 SHALL NOT 出現在本 repo 的任何檔案中 —— 本 repo 為公開 repo,且此慣例已由 `private_corp-multiplex`(「FQDN/IP host blocks stay machine-local」)與 `context/principles.md` 的刻意不重現機器狀態清單所確立。
+corp GitLab 的實際主機名 SHALL NOT 出現在本 repo 的任何檔案中 —— 本 repo 為公開 repo,且此慣例已由 `docs/private-workspaces.md`(公司主機只放 private workspace)與 `context/principles.md` 的刻意不重現機器狀態清單所確立。
 
 `GITLAB_HOST` 的值 SHALL 由機器本地狀態提供(Windows registry `HKCU\Environment` 加上 `WSLENV` 傳遞進 WSL),SHALL NOT 由 chezmoi 管理。
 
