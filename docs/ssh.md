@@ -89,15 +89,13 @@ Host myserver
 
 ## `~/.ssh/config` 的三層結構
 
-`~/.ssh/config` 本身**永遠是機器本地的、不進這個 repo**：它含有內網 IP、公司 FQDN、主機別名，這些都算內部資訊。
+`~/.ssh/config` 本身**永遠是機器本地的、不進這個 repo**。公司的主機（內網 IP、公司 FQDN、主機別名）都放在 `~/.ssh/hosts.d/`，由 private workspace 部署；`~/.ssh/config` 只留個人主機。
 結構分三層，用兩個 `Include` 夾住中間的主機區塊：
 
 ```
 Include ~/.ssh/config.d/*      ← 覆寫層（chezmoi 部署）
 
-Host github.com                ← 常用、各自獨立的主機
-Host dev157
-...
+Host github.com                ← 個人主機
 
 Host *                         ← 預設層（private workspace 部署）
   Include ~/.ssh/hosts.d/*
@@ -106,8 +104,8 @@ Host *                         ← 預設層（private workspace 部署）
 | 層 | 目錄 | 位置 | 語意 | 誰維護 |
 |---|---|---|---|---|
 | 覆寫層 | `~/.ssh/config.d/` | 檔首 | 蓋過下方所有 host 區塊 | chezmoi（`00-common` 來自本 repo，`corp-multiplex` 來自 private workspace `dotfiles-shoalter`）|
-| 主體 | `~/.ssh/config` | 中間 | 常用、不成組的主機 | 手動，機器本地 |
-| 預設層 | `~/.ssh/hosts.d/` | 檔尾 | 被上方所有區塊覆寫 | chezmoi，private workspace `dotfiles-shoalter`（含公司 FQDN，不進本 repo）|
+| 主體 | `~/.ssh/config` | 中間 | 個人主機 | 手動，機器本地 |
+| 預設層 | `~/.ssh/hosts.d/` | 檔尾 | 被上方所有區塊覆寫 | chezmoi，private workspace `dotfiles-shoalter`：公司的全部主機，含跳板機（含公司 FQDN，不進本 repo）|
 
 ### 為什麼位置就是語意
 
