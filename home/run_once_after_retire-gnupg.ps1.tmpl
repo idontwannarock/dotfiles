@@ -1,0 +1,75 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_once_after_ script -- remove the self-managed GnuPG.
+#
+# GnuPG was installed to ~/.local/opt/gnupg for the corp-ssh password store
+# (pass/gopass). corp-ssh, glab and claude-zai read Bitwarden now, so the
+# installer is gone. Deleting the installer does not uninstall it from machines
+# that already applied; this script does.
+#
+# Keeps ~/.gnupg: it holds the key for the old password store, which the user
+# deletes by hand once Bitwarden holds every entry.
+#
+# Idempotent: each step is a no-op when its target is already gone.
+
+$ErrorActionPreference = "Stop"
+
+{{ template "scripts/log.ps1" }}
+
+$optDir = Join-Path $env:USERPROFILE ".local\opt\gnupg"
+$bin    = Join-Path $optDir "bin"
+
+Log-Begin "retire GnuPG"
+try {
+    Log-Section "stop gpg daemons from $optDir -- they hold files the delete needs"
+    $procs = Get-Process gpg-agent,keyboxd,dirmngr,scdaemon -ErrorAction SilentlyContinue |
+        Where-Object { $_.Path -like "$optDir\*" }
+    if ($procs) {
+        $procs | Stop-Process -Force
+        Log-Step "[gnupg] stopped $($procs.Name -join ', ')"
+    } else {
+        Log-Skip "[gnupg] no daemons running"
+    }
+
+    Log-Section "delete $optDir -- nothing reads gpg since the move to Bitwarden"
+    if (Test-Path $optDir) {
+        Remove-Item -LiteralPath $optDir -Recurse -Force
+        Log-Step "[gnupg] deleted $optDir"
+    } else {
+        Log-Skip "[gnupg] $optDir already gone"
+    }
+
+    Log-Section "drop $bin from User PATH and the User GNUPGHOME the installer set"
+    $userPath = [Environment]::GetEnvironmentVariable('Path','User')
+    $parts = $userPath -split ';'
+    if ($parts -contains $bin) {
+        [Environment]::SetEnvironmentVariable('Path', (($parts | Where-Object { $_ -ne $bin }) -join ';'), 'User')
+        Log-Step "[gnupg] removed $bin from User PATH"
+    } else {
+        Log-Skip "[gnupg] $bin not on User PATH"
+    }
+    if ([Environment]::GetEnvironmentVariable('GNUPGHOME','User')) {
+        [Environment]::SetEnvironmentVariable('GNUPGHOME', $null, 'User')
+        Log-Step "[gnupg] removed User GNUPGHOME"
+    } else {
+        Log-Skip "[gnupg] User GNUPGHOME not set"
+    }
+
+    Log-Section "delete HKLM\Software\GnuPG -- the installer's pointer to $optDir"
+    $key = 'HKLM:\Software\GnuPG'
+    if (Test-Path $key) {
+        try {
+            Remove-Item -Path $key -Recurse -Force
+            Log-Step "[gnupg] deleted $key"
+        } catch {
+            Log-Warn "[gnupg] cannot delete $key without admin; run in an elevated shell: Remove-Item '$key' -Recurse"
+        }
+    } else {
+        Log-Skip "[gnupg] $key already gone"
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
+{{ end -}}

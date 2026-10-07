@@ -3,9 +3,8 @@ name: validate-externals
 # Required status check for every PR to main (see docs/renovate.md "Auto-merge").
 # Runs on ALL PRs with no paths filter so the required `gate` check always reports
 # — an unrelated PR passes instantly, avoiding the "required check never runs → PR
-# stuck" trap. When a PR touches the externals config or the gnupg install script it
-# renders the externals per-OS and HEAD-checks every download URL, and verifies the
-# gnupg pin's SHA-256 against the real file. Auto-merge is gated on this check.
+# stuck" trap. When a PR touches the externals config it renders the externals per-OS
+# and HEAD-checks every download URL. Auto-merge is gated on this check.
 
 on:
   pull_request:
@@ -32,7 +31,7 @@ jobs:
             "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
             --jq '.[].filename')
           echo "changed files:"; echo "$files"
-          if echo "$files" | grep -qE '^home/(\.chezmoiexternal\.toml|run_onchange_install-gnupg\.ps1\.tmpl|run_install-00-opt-archives\.ps1\.tmpl)$'; then
+          if echo "$files" | grep -qE '^home/(\.chezmoiexternal\.toml|run_install-00-opt-archives\.ps1\.tmpl)$'; then
             echo "relevant=true" >> "$GITHUB_OUTPUT"
           else
             echo "relevant=false" >> "$GITHUB_OUTPUT"
@@ -91,33 +90,9 @@ jobs:
           done <<< "$urls"
           exit $fail
 
-  # Verify the gnupg pin's SHA-256 matches the real gnupg.org installer.
-  gnupg:
-    needs: changes
-    if: needs.changes.outputs.relevant == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Verify gnupg SHA-256
-        run: |
-          f=home/run_onchange_install-gnupg.ps1.tmpl
-          ver=$(sed -nE 's/.*\$gpgVersion[[:space:]]*:=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -n1)
-          date=$(sed -nE 's/.*\$gpgDate[[:space:]]*:=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -n1)
-          sha=$(sed -nE 's/.*\$gpgSha256[[:space:]]*:=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -n1)
-          [ -n "$ver" ] && [ -n "$date" ] && [ -n "$sha" ] || { echo "could not read gnupg pin vars"; exit 1; }
-          url="https://www.gnupg.org/ftp/gcrypt/binary/gnupg-w32-${ver}_${date}.exe"
-          echo "checking $url"
-          curl -fsSL --retry 2 --max-time 120 -o gnupg.exe "$url"
-          got=$(sha256sum gnupg.exe | cut -d' ' -f1 | tr 'A-Z' 'a-z')
-          want=$(echo "$sha" | tr 'A-Z' 'a-z')
-          if [ "$got" != "$want" ]; then
-            echo "SHA-256 mismatch: got $got want $want"; exit 1
-          fi
-          echo "gnupg SHA-256 OK ($ver $date)"
-
-  # Single stable required check. Passes for irrelevant PRs; else needs render+gnupg green.
+  # Single stable required check. Passes for irrelevant PRs; else needs render green.
   gate:
-    needs: [changes, render, gnupg]
+    needs: [changes, render]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -132,13 +107,12 @@ jobs:
           fi
           relevant='${{ needs.changes.outputs.relevant }}'
           if [ "$relevant" != "true" ]; then
-            echo "PR does not touch externals/gnupg — gate passes."
+            echo "PR does not touch externals — gate passes."
             exit 0
           fi
           render='${{ needs.render.result }}'
-          gnupg='${{ needs.gnupg.result }}'
-          echo "render=$render gnupg=$gnupg"
-          if [ "$render" = "success" ] && [ "$gnupg" = "success" ]; then
+          echo "render=$render"
+          if [ "$render" = "success" ]; then
             echo "validation passed."
             exit 0
           fi

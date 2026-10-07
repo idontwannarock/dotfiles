@@ -241,12 +241,18 @@ Windows 上 golangci-lint SHALL 由 `.chezmoiexternal.toml` 下載 GitHub Releas
 - **WHEN** PowerShell session 載入 `90-prompt.ps1`
 - **THEN** `Invoke-Starship-PreCommand` 函式仍被定義，OSC 9;12/9;9 escape sequence 仍輸出，Windows Terminal duplicate-pane 仍能繼承目錄
 
-### Requirement: gopass 在 Windows 上由 chezmoi-external 安裝
-Windows 上 gopass SHALL 由 `.chezmoiexternal.toml` 下載 GitHub Release `gopasspw/gopass` 的 `gopass-<version>-windows-amd64.zip`，抽出 archive 根目錄的 `gopass.exe` 至 `~/.local/bin/gopass.exe`。版本以 `$gopassVersion` 變數 pinned；URL 中的 tag 帶 `v` prefix，archive 內檔名版本字串不帶 `v`，須以同一變數雙重 inject。
+### Requirement: GPG / pass / gopass 已退役並主動移除
+corp-ssh、claude-zai 與 corp GitLab token 自 2026-09-29 起改讀 Bitwarden，所以 dotfiles SHALL NOT 再安裝 GnuPG、gopass，也 SHALL NOT 再部署 gpg-agent 快取 helper（`gpg-cache-warm`、`gpg-cache-keepalive`、`pinentry-timeout`）與其 systemd user unit。已 apply 過的機器 SHALL 由腳本主動移除：刪掉 source 只會停止管理，不會移除已部署的東西。
 
-#### Scenario: Windows 上下載 gopass binary
-- **WHEN** chezmoi apply 在 Windows 執行
-- **THEN** `.chezmoiexternal.toml` 從 `https://github.com/gopasspw/gopass/releases/download/v<version>/gopass-<version>-windows-amd64.zip` 下載並抽出 `gopass.exe` 至 `~/.local/bin/gopass.exe`，設為 executable
+使用者資料 SHALL NOT 被自動刪除：`~/.gnupg`、`~/.password-store` 與 gopass store 留給使用者手動處理。
+
+#### Scenario: WSL 上停用 keepalive timer
+- **WHEN** chezmoi apply 在曾啟用 `gpg-cache-keepalive.timer` 的 Linux 機器上執行
+- **THEN** `run_once_before_retire-gpg-cache-keepalive.sh.tmpl` 先 `systemctl --user disable --now` 這個 timer，`.chezmoiremove` 再移除 helper 與 unit 檔
+
+#### Scenario: Windows 上移除 GnuPG 與 gopass
+- **WHEN** chezmoi apply 在 Windows 上執行
+- **THEN** `.chezmoiremove` 移除 `~/.local/bin/gopass.exe`；`run_once_after_retire-gnupg.ps1.tmpl` 解除安裝 `~/.local/opt/gnupg`，並從 User PATH 移除它的 `bin`、刪掉 User `GNUPGHOME`
 
 #### Scenario: Windows 上 gopass 不再經由 Scoop
 - **WHEN** 在 Windows 上的 `run_once_install-cli-tools.ps1.tmpl` 執行

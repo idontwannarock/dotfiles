@@ -5,9 +5,3 @@
 # opening an external editor for prompt composition.
 export EDITOR="vim"
 export VISUAL="vim"
-
-# ── GPG agent TTY (required by pinentry-curses for `pass`/`gpg` unlock) ────
-# `pass` decrypts via gpg, which prompts for the
-# GPG key passphrase via pinentry. pinentry-curses needs to know which TTY to
-# display on; this export must run for every interactive shell.
-export GPG_TTY="$(tty)"

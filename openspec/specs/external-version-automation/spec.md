@@ -74,25 +74,19 @@ The repository SHALL contain a workflow `.github/workflows/validate-externals.ym
 that runs on every pull request to `main` and reports a single stable status check
 (the branch-protection required check). To avoid blocking unrelated PRs, the workflow
 SHALL use an always-run gate: it SHALL detect whether the PR changed
-`home/.chezmoiexternal.toml` or `home/run_onchange_install-gnupg.ps1.tmpl`, and if
-neither changed the gate SHALL report success immediately without running the
-validation steps. When a relevant file changed, the workflow SHALL, on each of
-ubuntu/macos/windows, render `home/.chezmoiexternal.toml` with chezmoi and confirm
-every rendered download `url` resolves (HTTP success, non-empty), and SHALL verify
-that gnupg's pinned `$gpgVersion`/`$gpgDate`/`$gpgSha256` produce a download whose
-SHA-256 matches the pin. Any failure SHALL fail the required check.
+`home/.chezmoiexternal.toml`, and if not the gate SHALL report success immediately
+without running the validation steps. When a relevant file changed, the workflow
+SHALL, on each of ubuntu/macos/windows, render `home/.chezmoiexternal.toml` with
+chezmoi and confirm every rendered download `url` resolves (HTTP success,
+non-empty). Any failure SHALL fail the required check.
 
 #### Scenario: An unrelated PR passes the gate instantly
-- **WHEN** a PR that touches neither the externals file nor the gnupg script is opened against `main`
-- **THEN** the `validate-externals` gate reports success without running the render/URL/SHA steps, so the PR is not blocked
+- **WHEN** a PR that does not touch the externals file is opened against `main`
+- **THEN** the `validate-externals` gate reports success without running the render/URL steps, so the PR is not blocked
 
 #### Scenario: A bump with a dead URL fails the gate
 - **WHEN** a PR bumps a pin to a version whose download URL returns a non-success status on any OS
 - **THEN** the render/URL step fails and the required gate check fails
-
-#### Scenario: A wrong gnupg SHA fails the gate
-- **WHEN** a PR changes the gnupg pin such that the downloaded installer's SHA-256 does not match `$gpgSha256`
-- **THEN** the gnupg verification step fails and the required gate check fails
 
 ### Requirement: Messy-upstream tools are mirrored, not Renovate-tracked
 Tools whose upstream detection or on-disk layout is messy — jdtls, vim, and dos2unix — SHALL NOT receive a Renovate bump-enabling annotation. Instead, each SHALL be mirrored to this repo's own GitHub Releases by the `external-tool-mirroring` workflow, and its external in `home/.chezmoiexternal.toml` SHALL point at that mirror release. Each SHALL carry a short `# renovate: ignore` comment recording that it is mirrored by `mirror-externals.yml`. Renovate SHALL NOT open bump PRs for these pins (the mirror workflow opens them instead). ffmpeg is NOT in this set — it is a directly-annotated Renovate pin.
