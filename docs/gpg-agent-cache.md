@@ -4,8 +4,8 @@
 covers the gpg-agent settings and helpers that keep a headless `pass` call from
 opening pinentry on the wrong terminal.
 
-No caller in this repo reads `pass` any more. corp-ssh, the `glab` wrapper, and
-the `claude-zai` wrapper read Bitwarden through `bw serve` (see
+No caller in this repo reads `pass` any more. corp-ssh and the `glab` wrapper
+read Bitwarden through `bw serve` (see
 [corp-ssh-setup.md](corp-ssh-setup.md) and
 [gitlab-corp-access.md](gitlab-corp-access.md)). The machine-local
 `dex-auto-login` also moved to `bw-get`. The helpers below (`gpg-cache-warm`,

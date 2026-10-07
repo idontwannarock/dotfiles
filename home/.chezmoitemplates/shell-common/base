@@ -99,33 +99,8 @@ createnewlog() {
     printf '==> Workflow 完成。\n'
 }
 
-# ── claude-zai: route Claude Code to z.ai Anthropic-compatible endpoint ─────
-# 從 Bitwarden（bw-get z.ai/claude-code-token）取 token；取不到時 fallback 到 $ZAI_API_KEY env var。
-# 每次呼叫可覆寫 model：ZAI_OPUS_MODEL=GLM-4.6 claude-zai
-claude-zai() {
-    local token=""
-    if [ -x "$HOME/.local/bin/bw-get" ]; then
-        token="$("$HOME/.local/bin/bw-get" z.ai/claude-code-token 2>/dev/null)"
-    fi
-    if [ -z "$token" ]; then
-        token="$ZAI_API_KEY"
-    fi
-    if [ -z "$token" ]; then
-        printf >&2 'claude-zai: no token (Bitwarden item z.ai/claude-code-token unreadable and $ZAI_API_KEY unset)\n'
-        return 1
-    fi
-
-    ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic" \
-    ANTHROPIC_AUTH_TOKEN="$token" \
-    ANTHROPIC_DEFAULT_OPUS_MODEL="${ZAI_OPUS_MODEL:-GLM-5.2}" \
-    ANTHROPIC_DEFAULT_SONNET_MODEL="${ZAI_SONNET_MODEL:-GLM-5.1}" \
-    ANTHROPIC_DEFAULT_HAIKU_MODEL="${ZAI_HAIKU_MODEL:-GLM-5}" \
-    API_TIMEOUT_MS="${ZAI_TIMEOUT_MS:-3000000}" \
-    claude "$@"
-}
-
 # ── glab: corp GitLab CLI ───────────────────────────────────────────────────
-# 與 claude-zai 同形：從 pass vault 惰性取 token（shell 啟動時不解密，故不跳
+# 從 pass vault 惰性取 token（shell 啟動時不解密，故不跳
 # pinentry），vault 不可用時 fallback 到 $GITLAB_TOKEN。
 # 這個 function 以 glab 為名遮蔽 binary，轉呼叫用 `command glab` 避免遞迴。
 # host 由機器本地狀態提供，刻意不在此 repo 裡（見 docs/gitlab-corp-access.md）。

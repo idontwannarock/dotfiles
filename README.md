@@ -383,7 +383,6 @@ dotfiles/
 | [Agent 在 worktree 裡工作](docs/agent-worktree.md) | 三個 agent 各自怎麼把 session 搬進 worktree，以及誰搬不了 |
 | [Bash](docs/bash.md) | Bash 設定、worklogs、Windows Terminal 整合 |
 | [Claude Code](docs/claude-code.md) | Claude Code 設定、statusline、plugins、現成可用的 MCP 清單 |
-| [claude-zai wrapper](docs/claude-zai-wrapper.md) | 切換 Claude Code 後端的 wrapper |
 | [Codex CLI](docs/codex-cli.md) | Codex CLI 設定、skills、Claude workflow 對齊 |
 | [Corp SSH（Linux/WSL）](docs/corp-ssh-setup.md) | 公司 SSH 密碼 + OTP 自動化 |
 | [Corp SSH（Windows）](docs/corp-ssh-setup-windows.md) | 同上的 Windows 版 |
