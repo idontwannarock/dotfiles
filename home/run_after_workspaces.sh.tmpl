@@ -174,8 +174,20 @@ for id in $(jq -r '(.answers // {}) | to_entries[] | select(.value.enabled == tr
         fi
         set -- apply
     fi
-    if ! "$cz" "$@" --source "$dir" --config "$cfg" \
-        --persistent-state "$cfg_root/$id/chezmoistate.boltdb"; then
+    # chezmoi remembers every target it wrote. When one is gone (a workspace
+    # deletes the files of a feature turned off), the next apply that deploys it
+    # again stops to ask whether to overwrite a changed file -- and without a TTY
+    # the whole apply aborts. Forget the targets that are gone first, so they are
+    # created again like new ones.
+    st="$cfg_root/$id/chezmoistate.boltdb"
+    if [ -f "$st" ]; then
+        for t in $("$cz" state dump --format json --config "$cfg" --persistent-state "$st" 2>/dev/null |
+            jq -r '.entryState // {} | keys[]'); do
+            [ -e "$t" ] || [ -L "$t" ] || "$cz" state delete --bucket entryState --key "$t" \
+                --config "$cfg" --persistent-state "$st"
+        done
+    fi
+    if ! "$cz" "$@" --source "$dir" --config "$cfg" --persistent-state "$st"; then
         log_warn "$name: chezmoi apply failed"
         failed=1
     fi

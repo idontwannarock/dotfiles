@@ -34,6 +34,10 @@ cat >"$tmp/cz-stub" <<STUB
 case "\$1" in
     execute-template) exec "$real_cz" "\$@" ;;
     init|apply) printf '%s\n' "\$*" >>"\$CZ_STUB_LOG" ;;
+    state) case "\$2" in
+        dump) printf '%s\n' "\${CZ_STUB_STATE:-{\}}" ;;
+        delete) printf '%s\n' "\$*" >>"\$CZ_STUB_LOG" ;;
+        esac ;;
     *) exit 64 ;;
 esac
 STUB
@@ -243,6 +247,22 @@ mkdir -p "$case_dir/home/.config/chezmoi/workspaces/w1"
 : >"$case_dir/home/.config/chezmoi/workspaces/w1/chezmoi.toml"
 run notty-ask apply 0
 grep -q '^apply ' "$case_dir/init.log" || fail "notty: did not apply once answers are saved"
+
+# 16. Before applying, state entries for targets that are gone are deleted,
+#     and entries for targets that exist are kept.
+seed prune "{\"listRepo\": \"$tmp/missing.git\", \"answers\": {\"w1\": $ws_seed}}"
+mkdir -p "$tmp/case-prune/ws/dotfiles-private" "$tmp/case-prune/home/.config/chezmoi/workspaces/w1"
+: >"$tmp/case-prune/home/.config/chezmoi/workspaces/w1/chezmoistate.boltdb"
+: >"$tmp/case-prune/kept"
+CZ_STUB_STATE="{\"entryState\": {\"$tmp/case-prune/kept\": {}, \"$tmp/case-prune/gone\": {}}}"
+export CZ_STUB_STATE
+run prune apply 0
+unset CZ_STUB_STATE
+grep -q "^state delete --bucket entryState --key $tmp/case-prune/gone " "$case_dir/init.log" ||
+    fail "prune: did not forget a target that is gone: $(cat "$case_dir/init.log")"
+grep -q -- "--key $tmp/case-prune/kept " "$case_dir/init.log" && fail "prune: forgot a target that exists"
+[ "$(grep -n '^state delete' "$case_dir/init.log" | cut -d: -f1)" -lt "$(grep -n '^apply ' "$case_dir/init.log" | cut -d: -f1)" ] ||
+    fail "prune: forgot after apply, not before"
 
 if [ "$failures" -gt 0 ]; then
     printf '%d failure(s)\n' "$failures" >&2
