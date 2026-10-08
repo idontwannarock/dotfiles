@@ -33,7 +33,7 @@ The chezmoi source SHALL provide platform-specific `run_` installers that ensure
 
 ### Requirement: Codex plugin reconciliation SHALL behave consistently across platforms
 
-The Unix/macOS/WSL and Windows installers SHALL reconcile the same plugin identifier with the same installed-and-enabled condition. Both installers SHALL follow the repository's shared logging contract and SHALL run after the npm-tools installer that provides Codex.
+The Unix/macOS/WSL and Windows installers SHALL reconcile the same plugin identifier with the same installed-and-enabled condition. Both installers SHALL follow the repository's shared logging contract and SHALL run after the Codex CLI installer that provides Codex.
 
 #### Scenario: Platform templates declare the same required plugin
 - **WHEN** the bash and PowerShell installer sources are compared
@@ -41,7 +41,7 @@ The Unix/macOS/WSL and Windows installers SHALL reconcile the same plugin identi
 
 #### Scenario: Installer order follows the Codex CLI installation
 - **WHEN** chezmoi orders the rendered install scripts by filename
-- **THEN** `run_install-04-codex-plugins` runs after `run_install-02-npm-tools`
+- **THEN** `run_install-04-codex-plugins` runs after `run_install-04-codex-cli`
 
 #### Scenario: Platform guard selects one installer
 - **WHEN** chezmoi renders the templates for a supported operating system

@@ -5,8 +5,9 @@
 #
 # 用 run_（每次 apply 都重跑），而非 run_once_：Node runtime 一旦被換掉（nvm 換版
 # 等）會換成空的 global node_modules，舊 Node 底下的 npm 全域套件就全部失效。每次
-# apply 重新檢查、缺什麼補什麼即可自動補回；每個安裝都有 command -v idempotent
-# 守衛，已安裝者直接略過，重跑成本極低。
+# apply 重新檢查、缺什麼補什麼即可自動補回；每個安裝都檢查目前 npm 的 global
+# node_modules（npm root -g），已安裝者直接略過，重跑成本極低。不用 command -v：
+# PATH 上舊 Node 的副本會讓它以為已經裝好。
 
 set -euo pipefail
 
@@ -35,64 +36,15 @@ if npm ls -g --depth=0 @colbymchenry/codegraph &>/dev/null; then
 else
     log_skip "[npm-tools] codegraph not installed"
 fi
+if npm ls -g --depth=0 @openai/codex &>/dev/null; then
+    log_step "[npm-tools] removing @openai/codex -- install-04-codex-cli installs Codex with the official standalone installer"
+    npm uninstall -g @openai/codex 2>&1 || true
+else
+    log_skip "[npm-tools] @openai/codex not installed"
+fi
 
 log_section "install Claude Code CLI"
 npm_install claude @anthropic-ai/claude-code
-
-log_section "install Codex CLI"
-npm_install codex @openai/codex
-
-# The app-server daemon keeps its own copy of Codex and, by default, updates it
-# hourly. npm never updates the CLI on its own, so the CLI falls behind and the
-# daemon refuses it ("Background server has incompatible feature settings").
-# Fix: chezmoi owns the version. Upgrade the CLI here, turn the daemon updater
-# off, and pin the daemon to the CLI package. rc and the mobile app need the
-# daemon, so turning the daemon itself off is not an option.
-log_section "upgrade Codex CLI -- the daemon gets pinned to this package below"
-codex_current=$(codex --version 2>/dev/null | awk '{print $2}')
-codex_latest=$(npm view @openai/codex version 2>/dev/null || true)
-if [[ -z "$codex_latest" ]]; then
-    log_warn "[codex] npm registry unreachable; keeping $codex_current"
-elif [[ "$codex_current" == "$codex_latest" ]]; then
-    log_skip "[codex] already at $codex_latest"
-else
-    log_step "[codex] upgrading $codex_current -> $codex_latest"
-    npm install -g "@openai/codex@$codex_latest"
-fi
-
-log_section "turn off the daemon updater -- otherwise the daemon moves ahead of the CLI within an hour"
-codex_home="${CODEX_HOME:-$HOME/.codex}"
-daemon_settings="$codex_home/app-server-daemon/settings.json"
-daemon_settings_changed=false
-if [[ "$(jq -r '.updater.autoUpdateEnabled' "$daemon_settings" 2>/dev/null)" == "false" ]]; then
-    log_skip "[codex] daemon updater already off"
-else
-    log_step "[codex] setting updater.autoUpdateEnabled=false in $daemon_settings"
-    mkdir -p "$(dirname "$daemon_settings")"
-    { cat "$daemon_settings" 2>/dev/null || echo '{}'; } \
-        | jq '.updater.autoUpdateEnabled = false' > "$daemon_settings.tmp"
-    mv "$daemon_settings.tmp" "$daemon_settings"
-    daemon_settings_changed=true
-fi
-
-# Also pin when the settings just changed: a running updater only reads the
-# new setting after a daemon restart, and the pin restarts the daemon.
-log_section "pin the daemon to the CLI package -- a running daemon restarts"
-daemon_codex="$codex_home/packages/app-server-daemon/current/bin/codex"
-codex_current=$(codex --version 2>/dev/null | awk '{print $2}')
-if [[ ! -x "$daemon_codex" ]]; then
-    log_skip "[codex] no daemon package yet; the first daemon start copies the CLI package"
-else
-    daemon_version=$("$daemon_codex" --version 2>/dev/null | awk '{print $2}')
-    if [[ "$daemon_version" == "$codex_current" && "$daemon_settings_changed" == false ]]; then
-        log_skip "[codex] daemon already at $codex_current"
-    else
-        log_step "[codex] pinning daemon ${daemon_version:-unknown} -> CLI $codex_current"
-        if ! pin_out=$(codex app-server daemon update --from-cli --yes 2>&1); then
-            log_warn "[codex] daemon pin failed: $pin_out"
-        fi
-    fi
-fi
 
 # The two browser MCP servers are INSTALLED here but deliberately NOT
 # registered by install-03: user scope would spawn them in every session,
@@ -107,7 +59,7 @@ log_section "install agent-browser-mcp -- same deal as chrome-devtools-mcp"
 npm_install agent-browser-mcp agent-browser-mcp
 
 log_section "install OpenSpec CLI -- spec/change tracking used by dev-workflow"
-if command -v openspec &>/dev/null; then
+if npm_has_global @fission-ai/openspec; then
     log_skip "[openspec] already installed"
 else
     log_step "[openspec] installing @fission-ai/openspec"

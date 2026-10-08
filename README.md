@@ -268,8 +268,9 @@ Go 的 base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本
 | 工具 | 說明 |
 |------|------|
 | Claude Code | AI CLI（`@anthropic-ai/claude-code`） |
-| Codex CLI | AI CLI（`@openai/codex`） |
 | OpenSpec | 結構化開發流程（`@fission-ai/openspec`） |
+
+**Codex CLI（install-04-codex-cli）：** 用 OpenAI 官方 installer 安裝，不用 npm。每次 apply 升到最新版，並把背景 daemon 釘在同一個版本。細節見 [docs/codex-cli.md](docs/codex-cli.md#安裝)。
 
 **Claude Code 設定（install-03-claude-config）：**
 

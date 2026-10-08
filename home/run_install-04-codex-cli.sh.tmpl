@@ -1,0 +1,85 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_ script — Codex CLI (Unix/macOS/WSL)
+# Installs Codex with the official standalone installer and keeps the
+# app-server daemon on the same version as the CLI.
+#
+# The daemon keeps its own copy of Codex and, by default, updates it hourly.
+# When the CLI and the daemon differ, the daemon refuses the CLI ("Background
+# server has incompatible feature settings"). Fix: chezmoi owns the version.
+# Upgrade the CLI here, turn the daemon updater off, and pin the daemon to the
+# CLI package. rc and the mobile app need the daemon, so turning the daemon
+# itself off is not an option. Keep this logic identical to the PowerShell twin.
+#
+# Sorts after install-02-npm-tools, which removes the old npm copy. That
+# order matters: the installer edits a shell profile when it finds an npm
+# copy, and chezmoi manages those profiles.
+
+set -euo pipefail
+
+{{ template "scripts/log.sh" }}
+
+log_begin "Codex CLI"
+
+# Read the version from the standalone path, NOT command -v: under WSL the
+# Windows-side codex can be on PATH and would hide a missing Linux install.
+log_section "install or upgrade Codex CLI with the official standalone installer -- the daemon gets pinned to this CLI below"
+codex_bin="$HOME/.local/bin/codex"
+codex_current=""
+if [[ -x "$codex_bin" ]]; then
+    codex_current=$("$codex_bin" --version 2>/dev/null | awk '{print $2}')
+fi
+codex_latest=$(curl -fsSL -m 30 https://releases.openai.com/codex/channels/latest 2>/dev/null \
+    | jq -r '.tag_name // empty' 2>/dev/null | sed -E 's/^(rust-v|v)//' || true)
+if [[ -z "$codex_latest" ]]; then
+    if [[ -z "$codex_current" ]]; then
+        log_warn "[codex] release server unreachable and Codex not installed; retrying on the next apply"
+        exit 0
+    fi
+    log_warn "[codex] release server unreachable; keeping $codex_current"
+elif [[ "$codex_current" == "$codex_latest" ]]; then
+    log_skip "[codex] already at $codex_current"
+else
+    log_step "[codex] installing ${codex_current:-none} -> $codex_latest"
+    # The installer appends a PATH block to a shell profile unless its bin
+    # dir is already on PATH. shell-common already adds ~/.local/bin, so put
+    # it on PATH here to keep the installer out of chezmoi-managed profiles.
+    export PATH="$HOME/.local/bin:$PATH"
+    curl -fsSL https://chatgpt.com/codex/install.sh \
+        | CODEX_NON_INTERACTIVE=1 CODEX_RELEASE="$codex_latest" sh
+fi
+
+log_section "turn off the daemon updater -- otherwise the daemon moves ahead of the CLI within an hour"
+codex_home="${CODEX_HOME:-$HOME/.codex}"
+daemon_settings="$codex_home/app-server-daemon/settings.json"
+daemon_settings_changed=false
+if [[ "$(jq -r '.updater.autoUpdateEnabled' "$daemon_settings" 2>/dev/null)" == "false" ]]; then
+    log_skip "[codex] daemon updater already off"
+else
+    log_step "[codex] setting updater.autoUpdateEnabled=false in $daemon_settings"
+    mkdir -p "$(dirname "$daemon_settings")"
+    { cat "$daemon_settings" 2>/dev/null || echo '{}'; } \
+        | jq '.updater.autoUpdateEnabled = false' > "$daemon_settings.tmp"
+    mv "$daemon_settings.tmp" "$daemon_settings"
+    daemon_settings_changed=true
+fi
+
+# Also pin when the settings just changed: a running updater only reads the
+# new setting after a daemon restart, and the pin restarts the daemon.
+log_section "pin the daemon to the CLI package -- a running daemon restarts"
+daemon_codex="$codex_home/packages/app-server-daemon/current/bin/codex"
+codex_current=$("$codex_bin" --version 2>/dev/null | awk '{print $2}')
+if [[ ! -x "$daemon_codex" ]]; then
+    log_skip "[codex] no daemon package yet; the first daemon start copies the CLI package"
+else
+    daemon_version=$("$daemon_codex" --version 2>/dev/null | awk '{print $2}')
+    if [[ "$daemon_version" == "$codex_current" && "$daemon_settings_changed" == false ]]; then
+        log_skip "[codex] daemon already at $codex_current"
+    else
+        log_step "[codex] pinning daemon ${daemon_version:-unknown} -> CLI $codex_current"
+        if ! pin_out=$("$codex_bin" app-server daemon update --from-cli --yes 2>&1); then
+            log_warn "[codex] daemon pin failed: $pin_out"
+        fi
+    fi
+fi
+{{ end -}}
