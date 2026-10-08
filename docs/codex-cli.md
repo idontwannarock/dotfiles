@@ -4,6 +4,25 @@
 
 > 本文件記載 Codex 端的設定內容與操作方式。跨 change 反覆適用的判斷依據(為什麼這樣設計)在 [`context/`](../context/index.md);可驗收的行為契約在 `openspec/specs/`。
 
+## 安裝
+
+`run_install-04-codex-cli` 用 OpenAI 官方 installer 安裝 Codex CLI。官方 README 把這個方式列在第一位。
+
+| 平台 | installer | 執行檔位置 |
+|------|-----------|-----------|
+| Windows | `https://chatgpt.com/codex/install.ps1` | `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin\codex.exe` |
+| macOS / Linux / WSL | `https://chatgpt.com/codex/install.sh` | `~/.local/bin/codex` |
+
+- 兩個平台的實際檔案都放在 `~/.codex/packages/standalone/`。
+- 每次 apply，腳本從 `https://releases.openai.com/codex/channels/latest` 讀最新版本號。版本和本機不同時，才執行 installer。
+- 版本由 chezmoi 管，不由 Codex 自己更新。原因見下面的「CLI 與背景 daemon 的版本由 chezmoi 統一」。
+- 腳本用執行檔的完整路徑讀版本，不用 `Get-Command` / `command -v`。舊 Node 留下的 `codex` shim 曾經讓檢查以為已經裝好，結果跳過安裝。
+- Windows 的 installer 會把它的 bin 目錄加到 User PATH 最前面。新開的 shell 才看得到。
+- Unix 的 installer 在 bin 目錄不在 PATH 上時，會在 shell profile 加一段 PATH。這些 profile 由 chezmoi 管理，所以腳本先把 `~/.local/bin` 放進 PATH，讓 installer 跳過這一步。
+- 以前用 npm 的 `@openai/codex` 安裝。`run_install-02-npm-tools` 現在會移除它。installer 發現 npm 版時也會改 shell profile，所以移除必須在 install-04 之前。
+
+npm 版只是一層 Node wrapper，裡面跑的是同一個 `codex.exe`。換成官方 installer 後，Codex 不再依賴 Node：換 Node 版本或位置時，Codex 不會跟著消失。
+
 ## 設定位置
 
 | 項目 | 部署目標 | 說明 |
@@ -138,13 +157,16 @@ Codex 的背景 daemon（app-server daemon）有自己的一份 Codex，位置�
 `~/.codex/packages/app-server-daemon/current/bin/codex`。rc（`codex remote-control`）和
 手機、桌面 app 都連到這個 daemon，所以 daemon 不能關。
 
-預設情況下，daemon 每小時自己更新一次。npm 裝的 CLI 不會自己更新。CLI 落後之後，
+預設情況下，daemon 每小時自己更新一次。以前用 npm 裝的 CLI 不會自己更新。CLI 落後之後，
 daemon 會拒絕 CLI，畫面顯示「Background server has incompatible feature settings」。
 這是官方的已知問題（[#51763](https://github.com/openai/codex/issues/51763)）。
 
-`run_install-02-npm-tools` 在每次 apply 時做三件事：
+改用官方 installer 之後，仍然保留這個做法。官方 installer 裡有一個更新程式，看起來會同時更新
+CLI 和 daemon。但官方文件沒有寫這件事，所以不依賴它。
 
-1. 把 npm 的 `@openai/codex` 升到最新版。
+`run_install-04-codex-cli` 在每次 apply 時做三件事：
+
+1. 用官方 installer 把 CLI 升到最新版。
 2. 在 `~/.codex/app-server-daemon/settings.json` 寫入 `updater.autoUpdateEnabled = false`，
    關掉 daemon 的自動更新。
 3. daemon 的版本和 CLI 不同時，執行 `codex app-server daemon update --from-cli --yes`。
@@ -158,6 +180,10 @@ daemon 會拒絕 CLI，畫面顯示「Background server has incompatible feature
 
 實測（codex-cli 0.161.0，2026-10-08，WSL）：`--from-cli` 執行後，daemon 的更新程式
 （`app-server daemon pid-update-loop`）停止，`releases/` 下的套件名稱變成 `local-<hash>`。
+
+已知問題（2026-10-09，Windows）：`codex app-server daemon start` 失敗，訊息是
+「socket directory is not private to the current user」。這台機器的 daemon 起不來，
+所以第 3 步一直跳過。官方 installer 版的第 3 步只在 bash 上用 stub 測過。
 
 ## 使用方式
 

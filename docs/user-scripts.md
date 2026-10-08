@@ -101,7 +101,7 @@ SDKMAN 沒有 scoop `update` 那種「原地升級」指令：`sdk upgrade` 只�
 ## `mermaid-ascii` 設計備忘
 
 - **為什麼不全域安裝。** `beautiful-mermaid` 只是函式庫，沒有 CLI。全域裝了也沒有指令可以叫，
-  所以 `npm_install` 的 `command -v` 守衛用不上。腳本改成在第一次執行時，把套件裝進自己的目錄。
+  所以 `npm_install` 的守衛用不上。腳本改成在第一次執行時，把套件裝進自己的目錄。
   版本寫死在腳本的 `VERSION`；要升級就改這個值。
 - **標籤只能用 ASCII。** 函式庫把一個中文字算成一格寬，但終端機會畫成兩格寬，所以框線會歪。
   上游 issue：lukilabs/beautiful-mermaid#119、#122。寫法是：圖上的標籤用英文；概念太長就標
