@@ -132,6 +132,33 @@ repo 內的 `.codex/config.toml` 會跟著 repo 公開。內容不適合公開�
 key 放進 repo 的 `.codex/config.toml`，四個都生效。拿掉 `trust_level` 之後，repo 的
 `.codex/config.toml` 不再載入。
 
+### CLI 與背景 daemon 的版本由 chezmoi 統一
+
+Codex 的背景 daemon（app-server daemon）有自己的一份 Codex，位置在
+`~/.codex/packages/app-server-daemon/current/bin/codex`。rc（`codex remote-control`）和
+手機、桌面 app 都連到這個 daemon，所以 daemon 不能關。
+
+預設情況下，daemon 每小時自己更新一次。npm 裝的 CLI 不會自己更新。CLI 落後之後，
+daemon 會拒絕 CLI，畫面顯示「Background server has incompatible feature settings」。
+這是官方的已知問題（[#51763](https://github.com/openai/codex/issues/51763)）。
+
+`run_install-02-npm-tools` 在每次 apply 時做三件事：
+
+1. 把 npm 的 `@openai/codex` 升到最新版。
+2. 在 `~/.codex/app-server-daemon/settings.json` 寫入 `updater.autoUpdateEnabled = false`，
+   關掉 daemon 的自動更新。
+3. daemon 的版本和 CLI 不同時，執行 `codex app-server daemon update --from-cli --yes`。
+   這個指令把 CLI 的套件複製給 daemon，並且釘住這個版本。
+
+第 3 步會重啟 daemon。正在跑的 codex session 最多等 60 秒，然後被中斷。
+新機器還沒有 daemon 時，第 3 步會跳過。第一次啟動 daemon 時，daemon 會複製 CLI 的套件。
+
+不要執行不帶 `--from-cli` 的 `codex app-server daemon update`。這個指令會拔掉版本釘子，
+並且讓 daemon 換成最新的正式版。下次 apply 會再把 daemon 釘回 CLI 的版本。
+
+實測（codex-cli 0.161.0，2026-10-08，WSL）：`--from-cli` 執行後，daemon 的更新程式
+（`app-server daemon pid-update-loop`）停止，`releases/` 下的套件名稱變成 `local-<hash>`。
+
 ## 使用方式
 
 ```bash

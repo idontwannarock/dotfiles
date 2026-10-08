@@ -44,6 +44,65 @@ try {
     Log-Section "install Codex CLI"
     Install-NpmPackage -Command "codex" -Package "@openai/codex"
 
+    # The app-server daemon keeps its own copy of Codex and, by default,
+    # updates it hourly. npm never updates the CLI on its own, so the CLI falls
+    # behind and the daemon refuses it ("Background server has incompatible
+    # feature settings"). Fix: chezmoi owns the version. Upgrade the CLI here,
+    # turn the daemon updater off, and pin the daemon to the CLI package.
+    # Keep this logic identical to the bash twin in the .sh.tmpl.
+    Log-Section "upgrade Codex CLI -- the daemon gets pinned to this package below"
+    $codexCurrent = ((codex --version 2>$null) -split ' ')[-1]
+    $codexLatest = npm view "@openai/codex" version 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $codexLatest) {
+        Log-Warn "[codex] npm registry unreachable; keeping $codexCurrent"
+    } elseif ($codexCurrent -eq $codexLatest.Trim()) {
+        Log-Skip "[codex] already at $codexCurrent"
+    } else {
+        $codexLatest = $codexLatest.Trim()
+        Log-Step "[codex] upgrading $codexCurrent -> $codexLatest"
+        npm install -g "@openai/codex@$codexLatest"
+    }
+
+    Log-Section "turn off the daemon updater -- otherwise the daemon moves ahead of the CLI within an hour"
+    $codexHome = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME ".codex" }
+    $daemonSettings = Join-Path $codexHome "app-server-daemon\settings.json"
+    $settings = if (Test-Path $daemonSettings) { Get-Content -Raw $daemonSettings | ConvertFrom-Json } else { [pscustomobject]@{} }
+    $daemonSettingsChanged = $false
+    if ($settings.updater -and $settings.updater.autoUpdateEnabled -eq $false) {
+        Log-Skip "[codex] daemon updater already off"
+    } else {
+        Log-Step "[codex] setting updater.autoUpdateEnabled=false in $daemonSettings"
+        if (-not $settings.updater) {
+            $settings | Add-Member -NotePropertyName updater -NotePropertyValue ([pscustomobject]@{}) -Force
+        }
+        $settings.updater | Add-Member -NotePropertyName autoUpdateEnabled -NotePropertyValue $false -Force
+        New-Item -ItemType Directory -Force -Path (Split-Path $daemonSettings) | Out-Null
+        # WriteAllText, not Set-Content: PowerShell 5.1 writes a BOM with
+        # -Encoding utf8, and the daemon's JSON parser may reject it.
+        [IO.File]::WriteAllText($daemonSettings, ($settings | ConvertTo-Json -Depth 10))
+        $daemonSettingsChanged = $true
+    }
+
+    # Also pin when the settings just changed: a running updater only reads
+    # the new setting after a daemon restart, and the pin restarts the daemon.
+    Log-Section "pin the daemon to the CLI package -- a running daemon restarts"
+    $daemonCodex = Join-Path $codexHome "packages\app-server-daemon\current\bin\codex.exe"
+    $codexCurrent = ((codex --version 2>$null) -split ' ')[-1]
+    if (-not (Test-Path $daemonCodex)) {
+        Log-Skip "[codex] no daemon package yet; the first daemon start copies the CLI package"
+    } else {
+        $daemonVersion = ((& $daemonCodex --version 2>$null) -split ' ')[-1]
+        if ($daemonVersion -eq $codexCurrent -and -not $daemonSettingsChanged) {
+            Log-Skip "[codex] daemon already at $codexCurrent"
+        } else {
+            Log-Step "[codex] pinning daemon $daemonVersion -> CLI $codexCurrent"
+            $pinOut = codex app-server daemon update --from-cli --yes 2>$null
+            if ($LASTEXITCODE -ne 0) {
+                Log-Warn "[codex] daemon pin failed: $pinOut"
+            }
+        }
+    }
+
     # The two browser MCP servers are INSTALLED here but deliberately NOT
     # registered by install-03: user scope would spawn them in every session,
     # including the many that never touch a browser. A repo that needs one
