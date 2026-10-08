@@ -42,6 +42,58 @@ npm_install claude @anthropic-ai/claude-code
 log_section "install Codex CLI"
 npm_install codex @openai/codex
 
+# The app-server daemon keeps its own copy of Codex and, by default, updates it
+# hourly. npm never updates the CLI on its own, so the CLI falls behind and the
+# daemon refuses it ("Background server has incompatible feature settings").
+# Fix: chezmoi owns the version. Upgrade the CLI here, turn the daemon updater
+# off, and pin the daemon to the CLI package. rc and the mobile app need the
+# daemon, so turning the daemon itself off is not an option.
+log_section "upgrade Codex CLI -- the daemon gets pinned to this package below"
+codex_current=$(codex --version 2>/dev/null | awk '{print $2}')
+codex_latest=$(npm view @openai/codex version 2>/dev/null || true)
+if [[ -z "$codex_latest" ]]; then
+    log_warn "[codex] npm registry unreachable; keeping $codex_current"
+elif [[ "$codex_current" == "$codex_latest" ]]; then
+    log_skip "[codex] already at $codex_latest"
+else
+    log_step "[codex] upgrading $codex_current -> $codex_latest"
+    npm install -g "@openai/codex@$codex_latest"
+fi
+
+log_section "turn off the daemon updater -- otherwise the daemon moves ahead of the CLI within an hour"
+codex_home="${CODEX_HOME:-$HOME/.codex}"
+daemon_settings="$codex_home/app-server-daemon/settings.json"
+daemon_settings_changed=false
+if [[ "$(jq -r '.updater.autoUpdateEnabled' "$daemon_settings" 2>/dev/null)" == "false" ]]; then
+    log_skip "[codex] daemon updater already off"
+else
+    log_step "[codex] setting updater.autoUpdateEnabled=false in $daemon_settings"
+    mkdir -p "$(dirname "$daemon_settings")"
+    { cat "$daemon_settings" 2>/dev/null || echo '{}'; } \
+        | jq '.updater.autoUpdateEnabled = false' > "$daemon_settings.tmp"
+    mv "$daemon_settings.tmp" "$daemon_settings"
+    daemon_settings_changed=true
+fi
+
+# Also pin when the settings just changed: a running updater only reads the
+# new setting after a daemon restart, and the pin restarts the daemon.
+log_section "pin the daemon to the CLI package -- a running daemon restarts"
+daemon_codex="$codex_home/packages/app-server-daemon/current/bin/codex"
+codex_current=$(codex --version 2>/dev/null | awk '{print $2}')
+if [[ ! -x "$daemon_codex" ]]; then
+    log_skip "[codex] no daemon package yet; the first daemon start copies the CLI package"
+else
+    daemon_version=$("$daemon_codex" --version 2>/dev/null | awk '{print $2}')
+    if [[ "$daemon_version" == "$codex_current" && "$daemon_settings_changed" == false ]]; then
+        log_skip "[codex] daemon already at $codex_current"
+    else
+        log_step "[codex] pinning daemon ${daemon_version:-unknown} -> CLI $codex_current"
+        if ! pin_out=$(codex app-server daemon update --from-cli --yes 2>&1); then
+            log_warn "[codex] daemon pin failed: $pin_out"
+        fi
+    fi
+fi
+
 # The two browser MCP servers are INSTALLED here but deliberately NOT
 # registered by install-03: user scope would spawn them in every session,
 # including the many that never touch a browser. A repo that needs one opts
