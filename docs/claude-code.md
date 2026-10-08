@@ -783,6 +783,18 @@ session 都在付 description 的 token。`code:review-architecture` 同時併�
 `conventions`、`security`。切法的原則是**一條 finding 只屬於一個 lens**；兩個
 lens 同時回報同一件事是邊界沒切好，不是互相佐證。
 
+`security` lens 涵蓋 OWASP Top 10 中 diff 看得出來的部分：injection（含 XXE）、
+SSRF、CSRF、設定錯誤、身分驗證、密碼外洩、加密、反序列化。
+
+### 範圍判定
+
+surgical 與 comprehensive 共用 `.chezmoitemplates/skills/code-review-scope.md`。
+
+- 給 branch 名稱時，比對的基準是 remote 的預設分支（`origin/HEAD`）。查不到時依序用
+  `main`、`master`，都沒有就問使用者。不寫死 `main`，因為本機有 `master` 為預設的 repo。
+- 給 PR 編號要靠 `gh`，只對 GitHub 有效。沒有 `gh`、未登入，或 remote 不是 GitHub
+  （例如公司 GitLab）時，flow 停下來請使用者改給 branch 名稱或 commit 範圍。
+
 ### 為什麼是檔案，不是 agent
 
 agent 與 skill 的 `description` 會**預載入每個 session** 的 system prompt——模型

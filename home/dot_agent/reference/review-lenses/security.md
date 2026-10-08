@@ -16,6 +16,13 @@ from a database another user can write to.
   hand is a finding in itself.
 - Path traversal: user input reaching a filesystem path without normalisation
   and a containment check.
+- XML parsed with external entities or DTD processing enabled (XXE).
+
+**Server-side requests**
+- A URL, hostname, or IP from the caller reaching an HTTP client, a fetch, a
+  webhook, or an image or PDF renderer without an allow-list (SSRF).
+- Redirects followed to a host the allow-list never checked, and internal
+  addresses such as `localhost` or `169.254.169.254` left reachable.
 
 **Authentication and authorisation**
 - A new route, handler, command, or exported function reachable without a check
@@ -24,6 +31,8 @@ from a database another user can write to.
   role in a token that is never verified.
 - Checks performed once at the edge while the inner call is also reachable.
 - Comparison of secrets with a non-constant-time equality.
+- A state-changing request authenticated by a cookie alone, with no CSRF
+  token, `SameSite` setting, or origin check.
 
 **Secrets and exposure**
 - Credentials, tokens, keys, or connection strings in source, config, test
@@ -33,6 +42,14 @@ from a database another user can write to.
 - Error responses that reveal internals — paths, versions, queries, stack
   traces — to an untrusted caller.
 - Personal data widened without the handling the repo already applies to it.
+
+**Configuration**
+- Debug mode, verbose errors, or admin endpoints switched on in a path that
+  reaches production.
+- CORS that reflects any origin, or allows credentials together with a
+  wildcard.
+- Default or sample credentials, and security headers the repo sets elsewhere
+  but omits here.
 
 **Crypto and randomness**
 - A general-purpose PRNG where an unpredictable value is needed — tokens,
