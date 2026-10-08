@@ -158,10 +158,23 @@ for id in $(jq -r '(.answers // {}) | to_entries[] | select(.value.enabled == tr
         continue
     fi
     mkdir -p "$cfg_root/$id"
+    cfg="$cfg_root/$id/chezmoi.toml"
     # init regenerates the workspace's own config, so a prompt it gains is asked
-    # here; --apply then applies it with its own persistent state.
-    if ! "$cz" init --apply --source "$dir" \
-        --config "$cfg_root/$id/chezmoi.toml" \
+    # here; --apply then applies it with its own persistent state. A prompt needs
+    # a TTY, so without one apply runs on the saved config instead, and a new
+    # question waits for the next run in a terminal.
+    if [ "$interactive" = 1 ]; then
+        set -- init --apply
+    else
+        root="$dir"
+        [ -f "$dir/.chezmoiroot" ] && root="$dir/$(tr -d '\r\n' <"$dir/.chezmoiroot")"
+        if [ ! -f "$cfg" ] && ls "$root"/.chezmoi.*.tmpl >/dev/null 2>&1; then
+            log_warn "$name: its first apply asks questions -- run chezmoi update in a terminal"
+            continue
+        fi
+        set -- apply
+    fi
+    if ! "$cz" "$@" --source "$dir" --config "$cfg" \
         --persistent-state "$cfg_root/$id/chezmoistate.boltdb"; then
         log_warn "$name: chezmoi apply failed"
         failed=1

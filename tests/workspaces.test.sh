@@ -33,7 +33,7 @@ cat >"$tmp/cz-stub" <<STUB
 #!/bin/sh
 case "\$1" in
     execute-template) exec "$real_cz" "\$@" ;;
-    init) printf '%s\n' "\$*" >>"\$CZ_STUB_LOG" ;;
+    init|apply) printf '%s\n' "\$*" >>"\$CZ_STUB_LOG" ;;
     *) exit 64 ;;
 esac
 STUB
@@ -220,6 +220,29 @@ PATH=$old_path
 [ "$(jqs '.answers.w2.name')" = work ] || fail "crlf: w2 saved without its entry"
 grep -q 'no longer in the list' "$case_dir/out" && fail "crlf: saved ids not matched to the list"
 [ "$(wc -l <"$case_dir/init.log")" -eq 2 ] || fail "crlf: applied $(wc -l <"$case_dir/init.log") workspaces, want 2"
+
+# 15. Without a TTY, a workspace is applied, not init-ed: init would ask its
+#     questions. One that has questions and no saved answers waits for a TTY.
+make_list "$list_ok"
+ws_seed='{"enabled": true, "name": "private", "url": "'"$tmp/ws.git"'", "desc": "d", "retired": false}'
+seed notty-apply "{\"listRepo\": \"$tmp/missing.git\", \"answers\": {\"w1\": $ws_seed}}"
+mkdir -p "$tmp/case-notty-apply/ws/dotfiles-private"
+run notty-apply apply 0
+grep -q '^apply ' "$case_dir/init.log" || fail "notty: did not apply a workspace with no questions: $(cat "$case_dir/init.log")"
+grep -q '^init' "$case_dir/init.log" && fail "notty: ran init without a TTY"
+
+seed notty-ask "{\"listRepo\": \"$tmp/missing.git\", \"answers\": {\"w1\": $ws_seed}}"
+mkdir -p "$tmp/case-notty-ask/ws/dotfiles-private/home"
+echo home >"$tmp/case-notty-ask/ws/dotfiles-private/.chezmoiroot"
+: >"$tmp/case-notty-ask/ws/dotfiles-private/home/.chezmoi.toml.tmpl"
+run notty-ask apply 0
+[ -s "$case_dir/init.log" ] && fail "notty: applied a workspace whose questions are not answered"
+grep -q 'asks questions' "$case_dir/out" || fail "notty: no warning about the unanswered questions"
+
+mkdir -p "$case_dir/home/.config/chezmoi/workspaces/w1"
+: >"$case_dir/home/.config/chezmoi/workspaces/w1/chezmoi.toml"
+run notty-ask apply 0
+grep -q '^apply ' "$case_dir/init.log" || fail "notty: did not apply once answers are saved"
 
 if [ "$failures" -gt 0 ]; then
     printf '%d failure(s)\n' "$failures" >&2
