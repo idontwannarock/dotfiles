@@ -95,3 +95,11 @@ AppData
 .local/bin/python3.11.cmd
 .local/bin/python3.13.cmd
 {{- end }}
+
+# ── Other Windows .cmd launchers ──────────────────────────────────────────
+# 7z.cmd runs ~/.local/opt/7zip/7z.exe. jdtls.cmd is the PATHEXT twin of the
+# bash ~/.local/bin/jdtls. Neither works outside Windows.
+{{- if ne .chezmoi.os "windows" }}
+.local/bin/7z.cmd
+.local/bin/jdtls.cmd
+{{- end }}
