@@ -104,6 +104,10 @@ codex plugin add slack@openai-curated --json
 使每次 apply 都重裝一次。plugin 已安裝且啟用時，腳本不會重裝。plugin 被移除或停用時，下一次 apply 會修復
 狀態。Codex CLI 暫時不存在時，腳本會略過，並在下一次 apply 重試。
 
+Codex 沒有登入時，`codex plugin list` 看不到任何 marketplace plugin，`plugin add`
+會失敗。所以腳本會先跑 `codex login status`。沒有登入時，腳本印出警告並略過，
+不會讓 apply 中止。新機器請先執行 `codex login`，再跑一次 `chezmoi apply`。
+
 Slack 的帳號連線由 plugin 管理。若 Codex 顯示連線提示，請在該機器完成一次互動式
 登入，再開一個新 session。OAuth credential、Slack client ID 和 token 都不會寫入
 dotfiles。

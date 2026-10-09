@@ -23,6 +23,12 @@ if ! command -v codex &>/dev/null; then
     exit 0
 fi
 
+log_section "check Codex is logged in: a logged-out Codex sees no marketplace plugins"
+if ! codex login status &>/dev/null; then
+    log_warn "[codex-plugins] codex is not logged in; run 'codex login', then apply again"
+    exit 0
+fi
+
 log_section "inspect required Codex plugins"
 plugin_list="$(codex plugin list --json)"
 if jq -e --arg name "$plugin_name" \
