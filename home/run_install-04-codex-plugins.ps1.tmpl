@@ -21,6 +21,13 @@ try {
         return
     }
 
+    Log-Section "check Codex is logged in: a logged-out Codex sees no marketplace plugins"
+    $loginStatus = (codex login status 2>&1 | ForEach-Object { "$_" }) -join " "
+    if ($LASTEXITCODE -ne 0) {
+        Log-Warn "[codex-plugins] codex login status failed: $loginStatus; run 'codex login', then apply again"
+        return
+    }
+
     Log-Section "inspect required Codex plugins"
     $pluginListLines = codex plugin list --json
     if ($LASTEXITCODE -ne 0) {

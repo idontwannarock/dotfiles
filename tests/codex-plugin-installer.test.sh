@@ -53,6 +53,10 @@ make_stub() {
 #!/bin/sh
 printf '%s\n' "$*" >>"$CODEX_STUB_LOG"
 case "$1 $2" in
+    'login status')
+        [ "$CODEX_STUB_SCENARIO" != logged-out ] || { printf 'Not logged in\n' >&2; exit 1; }
+        printf 'Logged in using ChatGPT\n' >&2
+        ;;
     'plugin list')
         case "$CODEX_STUB_SCENARIO" in
             missing|failed-add) printf '{"installed":[]}\n' ;;
@@ -120,6 +124,15 @@ RC=$?
 grep -Fq 'codex not found' "$missing_cli_dir/output" || fail 'missing Codex CLI did not log a warning'
 grep -Fq '=== END Codex plugins (ok,' "$missing_cli_dir/output" || fail 'missing Codex CLI has no successful closing banner'
 
+# A logged-out Codex sees no marketplace plugins, so `plugin add` fails. That
+# must not abort the apply: login is an interactive step that comes later.
+run_case logged-out
+[ "$RC" -eq 0 ] || fail "logged-out Codex returned $RC"
+printf '%s\n' "$CALLS" | grep -q '^plugin ' && fail 'logged-out Codex listed or added plugins'
+printf '%s\n' "$OUTPUT" | grep -Fq 'codex login' || fail 'logged-out Codex did not tell the user to run codex login'
+printf '%s\n' "$OUTPUT" | grep -Fq 'Not logged in' || fail 'logged-out warning does not show the codex login status output'
+printf '%s\n' "$OUTPUT" | grep -Fq '=== END Codex plugins (ok,' || fail 'logged-out Codex has no successful closing banner'
+
 run_case malformed
 [ "$RC" -ne 0 ] || fail 'malformed plugin list returned success'
 printf '%s\n' "$OUTPUT" | grep -Fq '=== END Codex plugins (FAILED rc=' || fail 'malformed list has no failed closing banner'
@@ -133,6 +146,7 @@ for source in "$bash_template" "$ps_template"; do
 done
 grep -Fq '.name == $name' "$bash_template" || fail 'bash guard does not match on the bare plugin name'
 grep -Fq '$_.name -eq $pluginName' "$ps_template" || fail 'PowerShell guard does not match on the bare plugin name'
+grep -Fq 'codex login status' "$ps_template" || fail 'PowerShell installer does not check codex login status'
 grep -Fq '{{- if ne .chezmoi.os "windows" -}}' "$bash_template" || fail 'bash platform guard is missing'
 grep -Fq '{{- if eq .chezmoi.os "windows" -}}' "$ps_template" || fail 'PowerShell platform guard is missing'
 grep -Fq 'try {' "$ps_template" || fail 'PowerShell logging try block is missing'
