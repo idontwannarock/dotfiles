@@ -130,6 +130,7 @@ run_case logged-out
 [ "$RC" -eq 0 ] || fail "logged-out Codex returned $RC"
 printf '%s\n' "$CALLS" | grep -q '^plugin ' && fail 'logged-out Codex listed or added plugins'
 printf '%s\n' "$OUTPUT" | grep -Fq 'codex login' || fail 'logged-out Codex did not tell the user to run codex login'
+printf '%s\n' "$OUTPUT" | grep -Fq 'Not logged in' || fail 'logged-out warning does not show the codex login status output'
 printf '%s\n' "$OUTPUT" | grep -Fq '=== END Codex plugins (ok,' || fail 'logged-out Codex has no successful closing banner'
 
 run_case malformed

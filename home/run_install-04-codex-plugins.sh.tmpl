@@ -24,8 +24,8 @@ if ! command -v codex &>/dev/null; then
 fi
 
 log_section "check Codex is logged in: a logged-out Codex sees no marketplace plugins"
-if ! codex login status &>/dev/null; then
-    log_warn "[codex-plugins] codex is not logged in; run 'codex login', then apply again"
+if ! login_status="$(codex login status 2>&1)"; then
+    log_warn "[codex-plugins] codex login status failed: ${login_status//$'\n'/ }; run 'codex login', then apply again"
     exit 0
 fi
 
