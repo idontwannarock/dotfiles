@@ -1,0 +1,9 @@
+{{- /* Codex name-map for the shared media-fetch body */ -}}
+{{- $n := dict
+    "tool" "codex" -}}
+---
+name: media-fetch
+description: "Use when the user pastes an online video URL (YouTube, Facebook, or any site yt-dlp supports) with no other instruction, or asks to keep or download one — 「把這個影片存起來」、「下載這支影片」、「存一下」, or \"save this video\", \"download this\". Saves the video, thumbnail, hand-written subtitles and metadata to one folder with the media-fetch script, reports where, and stops. Skip when the user asks what the video says or wants a transcript or summary: that is the video-summary skill, which runs this one first."
+---
+
+{{ template "skills/media-fetch.md" (dict "n" $n) -}}

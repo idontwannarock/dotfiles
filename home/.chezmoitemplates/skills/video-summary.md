@@ -6,27 +6,23 @@ Three stages. Only the third one costs model context.
 
 | Stage | Who does it | Context cost |
 |---|---|---|
-| Download video, thumbnail, subtitles, metadata | `media-fetch` (shell) | none |
+| Download video, thumbnail, subtitles, metadata | the `media-fetch` skill | none |
 | Produce the transcript | `media-transcribe` (shell) | none |
 | Summarise the transcript | the summariser for the tier, writing to a file | see below |
 
 The URL can come from any site `yt-dlp` supports, not only YouTube. Facebook reels work.
 
-**If the user only wants to keep the video, run stage 1 and stop.** Report `out_dir`.
-They can ask for the transcript later; stage 2 reads the folder and downloads nothing.
+This skill is for a question about what a video says. A bare URL with no question means
+"keep it": that is the `media-fetch` skill alone, and this skill does not run.
 
 Do **not** read the transcript yourself unless the user asks you to discuss its content in
 depth. The point of the file is that the words stay on disk.
 
 ## Stage 1: fetch
 
-```
-media-fetch <url>
-```
-
-Useful options: `--base-dir DIR` (default `~/.agent/media`), and `--no-video` when the
-user only wants the words. The manifest gives `out_dir`. The dotfiles repo's
-`docs/user-scripts.md` carries the design decisions and the traps.
+Follow the `media-fetch` skill and take `out_dir` from its manifest. Run it even when the
+video may already be on disk: it skips files that exist, so a second run costs seconds and
+downloads nothing again. Pass `--no-video` when the user only wants the words.
 
 ## Stage 2: transcribe
 
