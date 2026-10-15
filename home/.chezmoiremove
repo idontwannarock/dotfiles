@@ -202,3 +202,8 @@ AppData/Local/rtk
 .config/systemd/user/gpg-cache-keepalive.service
 .config/systemd/user/gpg-cache-keepalive.timer
 .local/bin/gopass.exe
+
+# yt-transcribe split in two on 2026-10-12: media-fetch downloads, media-transcribe
+# reads the folder. The split lets a video be kept without a transcript, and lets a
+# transcript be made later without a second download.
+.local/bin/yt-transcribe

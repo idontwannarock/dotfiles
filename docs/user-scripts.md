@@ -11,7 +11,8 @@
 | `scoop-interactive-update.ps1` | Windows | 互動式更新 scoop 套件 | `scoopupdate` alias |
 | `switch-pwsh-to-msi.ps1` | Windows | 將 Microsoft Store（MSIX）版 PowerShell 7 換成官方 MSI 版 | 手動執行，需系統管理員權限 |
 | `sdkupdate` | Linux/WSL、macOS | 互動式更新 SDKMAN 套件（JDK、Maven、Gradle…） | `sdkupdate`（`~/.local/bin` 已在 PATH，不需 alias） |
-| `yt-transcribe` | Linux/WSL、macOS | 把一支 YouTube 影片存成影片檔、音檔、逐字稿、縮圖與完整 metadata | `yt-transcribe <url>` |
+| `media-fetch` | Linux/WSL、macOS | 把一支線上影片（YouTube、Facebook 或其他 yt-dlp 支援的站）存成影片檔、縮圖、手寫字幕與完整 metadata | `media-fetch <url>` |
+| `media-transcribe` | Linux/WSL、macOS | 讀 `media-fetch` 存好的資料夾，產出逐字稿。不連網 | `media-transcribe <資料夾>` |
 | `mermaid-ascii` | 全平台（Windows 走 Git Bash） | 把 Mermaid 轉成框線字元的純文字圖，給畫不出 Mermaid 的地方用（Slack、Mermaid 外掛壞掉的 Confluence） | `mermaid-ascii [options] <file>` 或從 stdin 讀；Confluence 要加 `--ascii` |
 
 ## 依賴
@@ -20,10 +21,10 @@
 |------|------|------|
 | [Scoop](https://scoop.sh/) | `scoop-interactive-update.ps1` | 僅 Windows |
 | [SDKMAN!](https://sdkman.io/) | `sdkupdate` | 僅 Unix；SDKMAN 不支援 Windows 原生 |
-| [uv](https://docs.astral.sh/uv/) | `yt-transcribe` | 透過 `uvx` 取用 yt-dlp 與 whisper，不裝進系統 |
-| ffmpeg | `yt-transcribe` | 合併影音軌、從影片抽音軌 |
+| [uv](https://docs.astral.sh/uv/) | `media-fetch`、`media-transcribe` | 透過 `uvx` 取用 yt-dlp 與 whisper，不裝進系統 |
+| ffmpeg | `media-fetch` | 合併影音軌、`--no-video` 時轉出 mp3 |
 | Node + npm | `mermaid-ascii` | 第一次執行時把 `beautiful-mermaid` 裝到 `~/.local/share/beautiful-mermaid/<版本>/` |
-| JS runtime（deno / node / bun）| `yt-transcribe` | YouTube 的 token 檢查需要；缺了字幕端點會回 429 |
+| JS runtime（deno / node / bun）| `media-fetch` | YouTube 的 token 檢查需要；缺了字幕端點會回 429 |
 
 ## `sdkupdate` 設計備忘
 
@@ -57,25 +58,38 @@ SDKMAN 沒有 scoop `update` 那種「原地升級」指令：`sdk upgrade` 只�
 以 macOS 內建的 bash 3.2 為下限：不使用 associative array（`declare -A` 需要 bash 4），
 也不使用 `find -printf`（GNU 擴充，BSD find 沒有）。
 
-## `yt-transcribe` 設計備忘
+## `media-fetch` / `media-transcribe` 設計備忘
 
-一支影片產生一個資料夾，路徑是 `<base>/<上傳日期>-<video id>/`。base 依序取
-`--base-dir`、`$YT_TRANSCRIBE_BASE`、`~/.agent/media`。
+兩支腳本共用一個資料夾。一支影片一個資料夾，路徑是 `<base>/<上傳日期>-<video id>/`。
+base 依序取 `--base-dir`、`$MEDIA_BASE`、`~/.agent/media`。
 
-腳本**不做摘要**。它只量逐字稿長度，在 manifest 印出建議的模型級別，然後結束。
-摘要交給呼叫者，因為模型選擇是呼叫者的成本決定，不是這支腳本的事。
+- `media-fetch <url>` 負責所有網路動作。它存影片、縮圖、手寫字幕與 metadata，然後結束。
+  只想保留影片時，跑這一支就好。
+- `media-transcribe <資料夾>` 只讀資料夾裡的檔案，不連網。所以可以晚點再跑，也可以換
+  模型重跑，都不會重新下載。
+
+2026-10-12 以前這是一支 `yt-transcribe`，下載與轉文字綁在一起。拆開有兩個理由：
+有些影片只要保留、不要逐字稿；之後要支援更多來源，下載那一半會一直長，轉文字那一半
+不該跟著動。
+
+`media-transcribe` **不做摘要**。它只量逐字稿長度，在 manifest 印出建議的模型級別，
+然後結束。摘要交給呼叫者，因為模型選擇是呼叫者的成本決定，不是這支腳本的事。
 
 ### 產物
 
-| 檔案 | 內容 |
-|------|------|
-| `video.mp4` | 影片檔，最高畫質。`--no-video` 可略過 |
-| `audio.mp3` | 音軌。有影片檔時用 ffmpeg 從本機抽出，不重抓一次 |
-| `transcript.txt` | 純文字逐字稿，摘要就讀這份 |
-| `transcript.srt` 等 | 帶時間戳的版本 |
-| `thumbnail.<原生格式>` | 縮圖 |
-| `metadata.json` | yt-dlp 回報的原始 metadata，一個欄位都不刪 |
-| `metadata.md` | 同上的可讀版：frontmatter 放常用欄位，body 放章節與影片說明 |
+| 檔案 | 誰寫的 | 內容 |
+|------|--------|------|
+| `video.mp4` | fetch | 影片檔，最高畫質。`--no-video` 可略過 |
+| `audio.mp3` | fetch | 只有 `--no-video` 時才有。有影片檔時，whisper 直接從 `video.mp4` 解出音軌 |
+| `subs.<語言>.srt` 或 `.vtt` | fetch | 上傳者手寫的字幕，只在有的時候存 |
+| `thumbnail.<原生格式>` | fetch | 縮圖 |
+| `metadata.json` | fetch | yt-dlp 回報的原始 metadata，一個欄位都不刪 |
+| `metadata.md` | fetch | 同上的可讀版：frontmatter 放常用欄位，body 放章節與影片說明 |
+| `transcript.txt` | transcribe | 純文字逐字稿，摘要就讀這份 |
+| `transcript.srt` 等 | transcribe | 帶時間戳的版本 |
+
+`transcript_source` 是 `subtitles:<語言>` 或 `whisper:<模型>`。2026-10-12 以前的
+資料夾寫的是 `youtube-subtitles:<語言>`，意思相同。
 
 ### 四個刻意的決定
 
@@ -86,17 +100,20 @@ SDKMAN 沒有 scoop `update` 那種「原地升級」指令：`sdk upgrade` 只�
 - **metadata 照抓照留。** 不篩欄位。現在挑掉的欄位，就是以後想問卻問不到的答案。
   代價是檔案可能到十幾 MB，因為 `--print-json` 會帶上所有格式與字幕軌清單。
 - **縮圖不轉檔。** 不加 `--convert-thumbnails`：轉檔是重新編碼，存下來的就不再是
-  YouTube 實際給的那個檔。原生格式通常是 `.webp`。
+  網站實際給的那個檔。原生格式通常是 `.webp`。
 - **字幕的貢獻者掛名要濾掉。** TED 這類社群翻譯會把 `Translator:` / `Reviewer:`
   放在第一個 cue 裡。那不是講出來的話，留著會污染摘要。
 
-### 兩個踩過的坑
+### 三個踩過的坑
 
 - **`yt-dlp` 要夠新，而且要有 JS runtime。** Ubuntu 套件庫的版本停在 2022，對現在的
   YouTube 直接失敗。改用 `uvx` 取最新版。即使版本新，少了 JS runtime 仍會在字幕
   端點吃到 `HTTP 429`；腳本會自動找 deno / node / bun 並接上。
 - **`--convert-subs srt` 不保證產出 `.srt`。** 只找 `.srt` 的話，字幕明明抓到了也會
   被判定失敗而白跑一次 whisper。收檔要同時接受 `.srt` 與 `.vtt`。
+- **沒有人聲的短片，whisper 會編出一句話。** 只有配樂的 Facebook reel 轉出來是
+  `Thanks for watching!`。這是 whisper 的已知幻覺，不是腳本壞了。逐字稿只有一兩句時，
+  先懷疑影片根本沒人說話。
 
 ## `mermaid-ascii` 設計備忘
 

@@ -1,4 +1,4 @@
-# YouTube video to transcript and summary
+# Online video to transcript and summary
 
 ## Overview
 
@@ -6,23 +6,37 @@ Three stages. Only the third one costs model context.
 
 | Stage | Who does it | Context cost |
 |---|---|---|
-| Download video, audio, thumbnail, metadata | `yt-transcribe` (shell) | none |
-| Produce the transcript | `yt-transcribe` (shell) | none |
+| Download video, thumbnail, subtitles, metadata | `media-fetch` (shell) | none |
+| Produce the transcript | `media-transcribe` (shell) | none |
 | Summarise the transcript | the summariser for the tier, writing to a file | see below |
+
+The URL can come from any site `yt-dlp` supports, not only YouTube. Facebook reels work.
+
+**If the user only wants to keep the video, run stage 1 and stop.** Report `out_dir`.
+They can ask for the transcript later; stage 2 reads the folder and downloads nothing.
 
 Do **not** read the transcript yourself unless the user asks you to discuss its content in
 depth. The point of the file is that the words stay on disk.
 
-## Stage 1 and 2: run the script
+## Stage 1: fetch
 
 ```
-yt-transcribe <url>
+media-fetch <url>
 ```
 
-Useful options: `--base-dir DIR` (default `~/.agent/media`), `--no-video` when the user
-only wants the words, `--lang CODE` and `--model NAME` to override language detection and
-the speech-to-text model. `yt-transcribe --help` lists the rest. The dotfiles repo's
+Useful options: `--base-dir DIR` (default `~/.agent/media`), and `--no-video` when the
+user only wants the words. The manifest gives `out_dir`. The dotfiles repo's
 `docs/user-scripts.md` carries the design decisions and the traps.
+
+## Stage 2: transcribe
+
+```
+media-transcribe <out_dir>
+```
+
+Useful options: `--lang CODE` and `--model NAME` override language detection and the
+speech-to-text model; `--no-subs` ignores saved subtitles. `media-transcribe --help`
+lists them.
 
 The script prints a manifest. Read `out_dir`, `transcript`, `est_tokens`,
 `recommended_tier` and `summary_target` from it. Everything else you need is on disk.
