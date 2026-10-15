@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+# Turn a folder written by media-fetch into a transcript. Reads only what is
+# already on disk, so it never downloads anything and can run again later with
+# a different model.
+#
+# Emits a manifest on stdout so a caller can find the artifacts without guessing.
+# Does NOT summarise: it reports a recommended size tier and stops there.
+set -Euo pipefail
+
+WHISPER_MODEL=""
+FORCE_LANG=""
+SUBS_FIRST=1
+DIR=""
+
+die() { printf 'media-transcribe: %s\n' "$*" >&2; exit 1; }
+log() { printf '[media-transcribe] %s\n' "$*" >&2; }
+
+usage() {
+  cat >&2 <<'USAGE'
+Usage: media-transcribe [options] <folder>
+
+  <folder>         A folder that media-fetch wrote (its out_dir).
+  --model NAME     Whisper model. Default: small.en for English, medium otherwise.
+  --lang CODE      Force the audio language (e.g. en, zh).
+  --no-subs        Ignore saved subtitles; always transcribe the audio.
+  -h, --help       Show this message.
+USAGE
+  exit "${1:-0}"
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --model)    WHISPER_MODEL="${2:?--model needs a name}"; shift 2 ;;
+    --lang)     FORCE_LANG="${2:?--lang needs a code}"; shift 2 ;;
+    --no-subs)  SUBS_FIRST=0; shift ;;
+    -h|--help)  usage 0 ;;
+    -*)         die "unknown option: $1" ;;
+    *)          [ -n "$DIR" ] && die "only one folder is accepted"; DIR="$1"; shift ;;
+  esac
+done
+
+[ -n "$DIR" ] || usage 1
+[ -f "$DIR/metadata.json" ] || die "no metadata.json in $DIR; run media-fetch first"
+OUT_DIR="$(cd "$DIR" && pwd)"
+
+for dep in uvx python3; do
+  command -v "$dep" >/dev/null 2>&1 || die "missing dependency: $dep"
+done
+
+read -r VIDEO_ID URL VIDEO_LANG < <(python3 -c '
+import json,sys
+m=json.load(open(sys.argv[1]))
+print(m.get("id") or "unknown",
+      m.get("webpage_url") or "unknown",
+      (m.get("language") or "").split("-")[0] or "unknown")
+' "$OUT_DIR/metadata.json")
+
+TRANSCRIPT="$OUT_DIR/transcript.txt"
+TRANSCRIPT_SOURCE=""
+
+# Path one: hand-written subtitles that media-fetch saved. Seconds, and human quality.
+SUB_FILE="$(find "$OUT_DIR" -maxdepth 1 \( -name 'subs*.srt' -o -name 'subs*.vtt' \) | sort | head -1)"
+if [ "$SUBS_FIRST" -eq 1 ] && [ -n "$SUB_FILE" ] && [ -s "$SUB_FILE" ]; then
+  log "using saved subtitles: $SUB_FILE"
+  # Strip cue numbers, timestamps, VTT headers and markup; keep the words.
+  python3 -c '
+import re,sys
+out=[]
+for ln in open(sys.argv[1],encoding="utf-8",errors="replace"):
+    s=ln.strip()
+    if not s or s.isdigit() or "-->" in s: continue
+    if s.startswith(("WEBVTT","Kind:","Language:","NOTE","STYLE")): continue
+    # Subtitle projects put contributor credits in the first cue. Not speech.
+    if re.match(r"^(Translator|Reviewer|Traducteur|Transcriber)\s*:", s): continue
+    s=re.sub(r"<[^>]+>","",s).strip()
+    if not s or (out and out[-1]==s): continue
+    out.append(s)
+open(sys.argv[2],"w",encoding="utf-8").write(" ".join(out)+"\n")
+' "$SUB_FILE" "$TRANSCRIPT"
+  if [ -s "$TRANSCRIPT" ]; then
+    # The subtitle file name carries the track, e.g. subs.en.srt.
+    TRACK="$(basename "$SUB_FILE")"; TRACK="${TRACK#subs.}"; TRACK="${TRACK%.*}"
+    TRANSCRIPT_SOURCE="subtitles:$TRACK"
+    # Both paths leave the timed file under the same name.
+    cp "$SUB_FILE" "$OUT_DIR/transcript.${SUB_FILE##*.}"
+    log "subtitles -> $TRANSCRIPT"
+  else
+    log "subtitles held no text; falling back to speech-to-text"
+  fi
+fi
+
+# Path two: run speech-to-text locally. Prefer a saved audio track; otherwise
+# whisper decodes the audio straight out of the video file.
+if [ -z "$TRANSCRIPT_SOURCE" ]; then
+  MEDIA="$(find "$OUT_DIR" -maxdepth 1 -name 'audio.*' | sort | head -1)"
+  [ -n "$MEDIA" ] || MEDIA="$(find "$OUT_DIR" -maxdepth 1 -name 'video.*' | sort | head -1)"
+  [ -n "$MEDIA" ] && [ -s "$MEDIA" ] || die "no audio or video file in $OUT_DIR"
+
+  STT_LANG="${FORCE_LANG:-$VIDEO_LANG}"
+  if [ -z "$WHISPER_MODEL" ]; then
+    case "$STT_LANG" in
+      en) WHISPER_MODEL="small.en" ;;
+      *)  WHISPER_MODEL="medium" ;;
+    esac
+  fi
+  log "transcribing $(basename "$MEDIA") with whisper model=$WHISPER_MODEL lang=$STT_LANG"
+  W_ARGS=(--model "$WHISPER_MODEL" --output_format all --output_dir "$OUT_DIR")
+  [ "$STT_LANG" != "unknown" ] && W_ARGS+=(--language "$STT_LANG")
+  uvx --from whisper-ctranslate2 whisper-ctranslate2 "${W_ARGS[@]}" "$MEDIA" >&2 \
+    || die "transcription failed"
+  # whisper names its output after the input file.
+  STEM="$OUT_DIR/$(basename "${MEDIA%.*}")"
+  [ -s "$STEM.txt" ] || die "whisper produced no text"
+  mv "$STEM.txt" "$TRANSCRIPT"
+  for ext in srt vtt json tsv; do
+    [ -f "$STEM.$ext" ] && mv "$STEM.$ext" "$OUT_DIR/transcript.$ext"
+  done
+  TRANSCRIPT_SOURCE="whisper:$WHISPER_MODEL"
+fi
+
+# Size the transcript and name the size class. Which agent handles which class is
+# the caller's lookup, not this script's business: a byte counter has no reason to
+# know any model name.
+read -r EST_TOKENS TIER < <(python3 -c '
+import sys,re
+t=open(sys.argv[1],encoding="utf-8",errors="replace").read()
+cjk=len(re.findall(r"[　-鿿]",t))
+# CJK runs about 1 token per 1.5 chars; western text about 1.33 per word.
+est=int(cjk/1.5)+int(len(re.findall(r"[A-Za-z0-9@#$%&*_/-]+",t))*1.33)
+print(est, "small" if est<8000 else "medium" if est<40000 else "large")
+' "$TRANSCRIPT")
+
+cat <<MANIFEST
+--- media-transcribe manifest ---
+video_id:          $VIDEO_ID
+url:               $URL
+out_dir:           $OUT_DIR
+metadata_md:       $OUT_DIR/metadata.md
+transcript:        $TRANSCRIPT
+transcript_source: $TRANSCRIPT_SOURCE
+est_tokens:        $EST_TOKENS
+recommended_tier:  $TIER
+summary_target:    $OUT_DIR/summary.md
+--- end manifest ---
+MANIFEST
