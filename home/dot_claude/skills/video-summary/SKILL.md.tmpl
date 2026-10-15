@@ -1,0 +1,9 @@
+{{- /* Claude name-map for the shared video-summary body */ -}}
+{{- $n := dict
+    "tool" "claude" -}}
+---
+name: video-summary
+description: "Use when the user wants to know what an online video says (YouTube, Facebook, or any site yt-dlp supports) — asking 「這支影片在講什麼」、「幫我抓逐字稿」、「總結一下這個影片」, or \"what does this video say\", \"get me the transcript\", \"summarise this video\". Fetches the video with the media-fetch skill when it is not on disk yet, makes the transcript with media-transcribe, then routes it to a summariser sized by the tier the script reports. Skip a bare video URL with no question about its content: that only means keep it, which is the media-fetch skill. Skip videos already summarised."
+---
+
+{{ template "skills/video-summary.md" (dict "n" $n) -}}

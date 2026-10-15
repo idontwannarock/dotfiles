@@ -207,3 +207,8 @@ AppData/Local/rtk
 # reads the folder. The split lets a video be kept without a transcript, and lets a
 # transcript be made later without a second download.
 .local/bin/yt-transcribe
+
+# youtube-transcribe split on 2026-10-15: media-fetch keeps a video,
+# video-summary answers what a video says and calls media-fetch first.
+.claude/skills/youtube-transcribe
+.codex/skills/youtube-transcribe
