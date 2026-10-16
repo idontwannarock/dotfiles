@@ -1,0 +1,218 @@
+#!/usr/bin/env python3
+"""Act on your own YouTube account through the YouTube Data API v3.
+
+  youtube-api auth                            sign in once; saves a refresh token
+  youtube-api playlists                       list your playlists (id, count, title)
+  youtube-api playlist-add <playlist> <video> add a video; playlist is a title or id
+  youtube-api call <METHOD> <resource> [k=v ...] [--data JSON]
+                                              any other API call, e.g.
+                                              call GET subscriptions part=snippet mine=true
+
+Files live in ${XDG_CONFIG_HOME:-~/.config}/youtube-api/:
+  client_secret.json  the Desktop-app OAuth client downloaded from Google Cloud
+  token.json          written by `auth`; holds the refresh token. Never commit it.
+"""
+import base64
+import hashlib
+import http.server
+import json
+import os
+import re
+import secrets
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+import webbrowser
+
+AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+API = "https://www.googleapis.com/youtube/v3/"
+# Full account scope: playlists, subscriptions, ratings and so on. Narrower
+# scopes would mean a new consent every time a new kind of call is needed.
+SCOPE = "https://www.googleapis.com/auth/youtube"
+
+CONF = os.path.join(
+    os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "youtube-api")
+CLIENT_FILE = os.path.join(CONF, "client_secret.json")
+TOKEN_FILE = os.path.join(CONF, "token.json")
+
+
+def die(msg):
+    sys.exit(f"youtube-api: {msg}")
+
+
+def client():
+    try:
+        with open(CLIENT_FILE) as f:
+            c = json.load(f)
+    except FileNotFoundError:
+        die(f"missing {CLIENT_FILE}; download the Desktop-app OAuth client JSON there")
+    c = c.get("installed") or die("client_secret.json is not a Desktop-app client")
+    return c["client_id"], c["client_secret"]
+
+
+def post_form(url, fields):
+    data = urllib.parse.urlencode(fields).encode()
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, data)) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        die(f"token endpoint said {e.code}: {e.read().decode()}")
+
+
+def save_token(tok):
+    os.makedirs(CONF, mode=0o700, exist_ok=True)
+    fd = os.open(TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(tok, f)
+
+
+def auth():
+    cid, csecret = client()
+    verifier = secrets.token_urlsafe(64)
+    challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    state = secrets.token_urlsafe(16)
+    got = {}
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            if "code" not in q and "error" not in q:
+                self.send_response(404)
+                self.end_headers()
+                return
+            got.update({k: v[0] for k, v in q.items()})
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"youtube-api: done, you can close this tab.")
+
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    redirect = f"http://127.0.0.1:{srv.server_port}"
+    url = AUTH_URL + "?" + urllib.parse.urlencode({
+        "client_id": cid, "redirect_uri": redirect, "response_type": "code",
+        "scope": SCOPE, "state": state, "access_type": "offline", "prompt": "consent",
+        "code_challenge": challenge, "code_challenge_method": "S256"})
+    print(f"Open this URL to sign in:\n\n{url}\n", file=sys.stderr)
+    webbrowser.open(url)
+    while not got:
+        srv.handle_request()
+    if "error" in got:
+        die(f"sign-in refused: {got['error']}")
+    if got.get("state") != state:
+        die("state mismatch; start again")
+    tok = post_form(TOKEN_URL, {
+        "client_id": cid, "client_secret": csecret, "code": got["code"],
+        "code_verifier": verifier, "grant_type": "authorization_code",
+        "redirect_uri": redirect})
+    if "refresh_token" not in tok:
+        die("Google returned no refresh token")
+    save_token({"refresh_token": tok["refresh_token"]})
+    print(f"youtube-api: saved {TOKEN_FILE}", file=sys.stderr)
+
+
+def access_token():
+    try:
+        with open(TOKEN_FILE) as f:
+            refresh = json.load(f)["refresh_token"]
+    except FileNotFoundError:
+        die("not signed in; run `youtube-api auth`")
+    cid, csecret = client()
+    return post_form(TOKEN_URL, {
+        "client_id": cid, "client_secret": csecret,
+        "refresh_token": refresh, "grant_type": "refresh_token"})["access_token"]
+
+
+def call(method, resource, params=None, body=None, token=None):
+    url = API + resource + ("?" + urllib.parse.urlencode(params) if params else "")
+    req = urllib.request.Request(
+        url, method=method,
+        data=json.dumps(body).encode() if body is not None else None,
+        headers={"Authorization": f"Bearer {token or access_token()}",
+                 "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req) as r:
+            raw = r.read()
+            return json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as e:
+        die(f"{method} {resource} said {e.code}: {e.read().decode()}")
+
+
+def my_playlists(token):
+    items, page = [], None
+    while True:
+        params = {"part": "snippet,contentDetails", "mine": "true", "maxResults": 50}
+        if page:
+            params["pageToken"] = page
+        r = call("GET", "playlists", params, token=token)
+        items += r.get("items", [])
+        page = r.get("nextPageToken")
+        if not page:
+            return items
+
+
+def video_id(arg):
+    m = re.search(r"(?:v=|youtu\.be/|shorts/|live/)([\w-]{11})", arg)
+    if m:
+        return m.group(1)
+    if re.fullmatch(r"[\w-]{11}", arg):
+        return arg
+    die(f"cannot find a video id in {arg!r}")
+
+
+def playlist_add(playlist, video):
+    token = access_token()
+    lists = my_playlists(token)
+    hits = [p for p in lists if playlist in (p["id"], p["snippet"]["title"])]
+    if len(hits) != 1:
+        titles = ", ".join(repr(p["snippet"]["title"]) for p in lists)
+        die(f"{len(hits)} playlists match {playlist!r}; yours are: {titles}")
+    vid = video_id(video)
+    # The API happily inserts the same video twice.
+    if call("GET", "playlistItems", {"part": "id", "playlistId": hits[0]["id"],
+                                     "videoId": vid}, token=token).get("items"):
+        print(f"already in {hits[0]['snippet']['title']!r}; nothing added")
+        return
+    r = call("POST", "playlistItems", {"part": "snippet"}, {"snippet": {
+        "playlistId": hits[0]["id"],
+        "resourceId": {"kind": "youtube#video", "videoId": vid}}}, token)
+    print(f"added {r['snippet']['title']!r} to {hits[0]['snippet']['title']!r}")
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip(), file=sys.stderr)
+        return 0 if argv else 1
+    cmd, args = argv[0], argv[1:]
+    if cmd == "auth" and not args:
+        auth()
+    elif cmd == "playlists" and not args:
+        for p in my_playlists(access_token()):
+            print(f"{p['id']}\t{p['contentDetails']['itemCount']}\t{p['snippet']['title']}")
+    elif cmd == "playlist-add" and len(args) == 2:
+        playlist_add(*args)
+    elif cmd == "call" and len(args) >= 2:
+        body, params, rest = None, {}, args[2:]
+        while rest:
+            a = rest.pop(0)
+            if a == "--data":
+                body = json.loads(rest.pop(0))
+            elif "=" in a:
+                k, v = a.split("=", 1)
+                params[k] = v
+            else:
+                die(f"expected k=v or --data, got {a!r}")
+        print(json.dumps(call(args[0].upper(), args[1], params, body),
+                         ensure_ascii=False, indent=2))
+    else:
+        die("bad usage; see `youtube-api --help`")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
