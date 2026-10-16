@@ -8,7 +8,7 @@ Three stages. Only the third one costs model context.
 |---|---|---|
 | Download video, thumbnail, subtitles, metadata | the `media-fetch` skill | none |
 | Produce the transcript | `media-transcribe` (shell) | none |
-| Summarise the transcript | the summariser for the tier, writing to a file | see below |
+| Summarise the transcript | the summariser for the tier; the result goes to a file | see below |
 
 The URL can come from any site `yt-dlp` supports, not only YouTube. Facebook reels work.
 
@@ -51,9 +51,9 @@ a stale `yt-dlp`, a missing JS runtime, and `HTTP 429` on the subtitle endpoint.
 size; it names no model, because a byte counter has no reason to know one.
 
 **Read `~/.agent/reference/summariser-tiers.md` to turn the tier into an agent.** That
-file holds the thresholds, the per-kind dispatch table, and the current model ids. It is a
-table rather than a branch here because which agent does the work is decided at runtime,
-long after this file renders.
+file holds the thresholds, the per-kind dispatch table, and how to record the model id. It
+is a table rather than a branch here because which agent does the work is decided at
+runtime, long after this file renders.
 
 Override the tier when the user asks for depth, or when the summary will feed a decision
 rather than a reading list. State that you overrode it and why.
@@ -63,9 +63,14 @@ rather than a reading list. State that you overrode it and why.
 Dispatch with the **Agent tool**, using the model the tier table names. The directive must
 be self-contained, because the agent inherits nothing: absolute paths to `metadata.md` and
 the transcript, the exact frontmatter block below, the body structure, and the instruction
-to reply with only the path it wrote, the line count, and the timestamp it used.
+to reply with the whole `summary.md` content inside one markdown fence and nothing else.
 
-Report that reply. The transcript never enters your context.
+The agent returns the file; you write it. Claude Code rejects some subagent writes with
+"Subagents should return findings as text, not write report files.", and which dispatch
+gets rejected is not predictable: on 2026-10-16, 6 of 9 summary agents were rejected.
+
+Write the fence content to `summary.md`, then report the path, the line count and
+`summarized_at`. The summary passes through your context; the transcript never does.
 {{- else -}}
 Dispatch with **`spawn_agent`**. Leave the `model` field unset: a spawned agent inherits
 your model, and the tier table's Claude column does not port across. The tier tells you how

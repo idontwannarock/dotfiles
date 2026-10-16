@@ -45,10 +45,11 @@ its own tool description says not to set `model` unless the user asked for one, 
 picks how much care the pass gets, not which model runs it. Do not port the Claude column
 across by setting `model` on a Codex spawn.
 
-Current Claude model ids, for the `summarized_by` field a caller records: Haiku 4.5 is
-`claude-haiku-4-5-20251001`, Sonnet 5 is `claude-sonnet-5`, Opus 5.5 is `claude-opus-5-5`.
-Record the id that actually ran, never the tier name — the tier is a routing decision and
-the id is the fact.
+For the `summarized_by` field, tell the agent to fill in the model id from its own system
+prompt. This file lists no ids: a list goes stale at every release. On 2026-10-16 it still
+named Haiku 4.5 and Sonnet 5 while the agents ran `claude-haiku-5-5` and
+`claude-sonnet-5-5`. Record the id that actually ran, never the tier name — the tier is a
+routing decision and the id is the fact.
 
 For the `large` tier under Claude Code, `cross-model-counterparts.md` holds each kind's
 readiness probe and launch arguments. That file is written for code review, where the
