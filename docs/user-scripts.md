@@ -13,6 +13,7 @@
 | `sdkupdate` | Linux/WSL、macOS | 互動式更新 SDKMAN 套件（JDK、Maven、Gradle…） | `sdkupdate`（`~/.local/bin` 已在 PATH，不需 alias） |
 | `media-fetch` | Linux/WSL、macOS | 把一支線上影片（YouTube、Facebook 或其他 yt-dlp 支援的站）存成影片檔、縮圖、手寫字幕與完整 metadata | `media-fetch <url>` |
 | `media-transcribe` | Linux/WSL、macOS | 讀 `media-fetch` 存好的資料夾，產出逐字稿。不連網 | `media-transcribe <資料夾>` |
+| `youtube-api` | Linux/WSL、macOS | 用 YouTube Data API v3 操作自己的帳號：列播放清單、把影片加進播放清單，或任意一個 API 呼叫 | `youtube-api playlist-add <清單名或 id> <影片網址或 id>`；第一次要先 `youtube-api auth` |
 | `mermaid-ascii` | 全平台（Windows 走 Git Bash） | 把 Mermaid 轉成框線字元的純文字圖，給畫不出 Mermaid 的地方用（Slack、Mermaid 外掛壞掉的 Confluence） | `mermaid-ascii [options] <file>` 或從 stdin 讀；Confluence 要加 `--ascii` |
 
 ## 依賴
@@ -24,6 +25,7 @@
 | [uv](https://docs.astral.sh/uv/) | `media-fetch`、`media-transcribe` | 透過 `uvx` 取用 yt-dlp 與 whisper，不裝進系統 |
 | ffmpeg | `media-fetch` | 合併影音軌、`--no-video` 時轉出 mp3 |
 | Node + npm | `mermaid-ascii` | 第一次執行時把 `beautiful-mermaid` 裝到 `~/.local/share/beautiful-mermaid/<版本>/` |
+| python3（只用標準庫）| `youtube-api` | 不用 `uv`，也不裝 Google 的 client library |
 | JS runtime（deno / node / bun）| `media-fetch` | YouTube 的 token 檢查需要；缺了字幕端點會回 429 |
 
 ## `sdkupdate` 設計備忘
@@ -131,3 +133,53 @@ base 依序取 `--base-dir`、`$MEDIA_BASE`、`~/.agent/media`。
   圖太寬時，先把 `flowchart LR` 改成 `flowchart TD`；還是太寬，再調小 `--padding-x`。
 - **第一行要單獨寫圖的類型。** `graph LR; A --> B` 這種寫在同一行的格式會報錯；要寫成
   `graph LR` 再換行。
+
+## `youtube-api` 設計備忘
+
+2026-10-16 加入。需求是讓 agent 把影片存進使用者自己的播放清單，而且以後還會做
+其他帳號操作。
+
+### 為什麼用 API，不用瀏覽器
+
+有兩個候選：
+
+- **A. YouTube Data API v3**（採用）。要先在 Google Cloud 建一次專案和 OAuth client。
+  之後每次呼叫都不用登入，任何平台都能跑。
+- **B. 用 `wsl-chrome-cdp` 操作已登入的 Chrome**（不採用）。每次都要按 UAC、登入
+  Google，而且只能在 WSL 用。只做一次的事才划算。
+
+使用者說「以後常常做，也不只這一種事」，所以選 A。B 只剩一個用途：「稍後觀看」
+（Watch later）。API 不能寫入這個清單。
+
+### 三個刻意的決定
+
+- **只用 Python 標準庫。** OAuth 只需要一個 loopback 伺服器加兩次 POST，大約五十行。
+  Google 的 client library 會多拉一串依賴，換來的只是少寫這五十行。
+- **scope 用整個帳號的 `auth/youtube`。** 窄的 scope 每多一種呼叫就要重新同意一次。
+  使用者已經說會做別的事，所以一次拿足。
+- **留一個 `call` 子指令。** 新的操作先用 `youtube-api call <METHOD> <resource> k=v ...`
+  直接打 API。同一種操作常用了，才包成子指令。
+
+### 檔案與設定
+
+憑證放 `${XDG_CONFIG_HOME:-~/.config}/youtube-api/`，權限 600，不進任何 repo：
+
+| 檔案 | 內容 |
+|------|------|
+| `client_secret.json` | 從 Google Cloud 下載的 Desktop app OAuth client |
+| `token.json` | `youtube-api auth` 寫的 refresh token |
+
+換新機器時，把 `client_secret.json` 複製過去，再跑一次 `youtube-api auth`。
+Google 對 Desktop app 的 client secret 不當作機密，但它仍然不該進公開 repo。
+
+### 兩個坑
+
+- **OAuth app 停在「Testing」，refresh token 七天就失效。** Google Auth Platform 的
+  Audience 頁要按 Publish app，改成「In production」。按鈕要先在 Branding 頁填好首頁與
+  隱私權政策網址才會亮；填 GitHub 網址時，還要把 `github.com` 加進 Authorized domains。
+  沒驗證的 app 登入時會出現
+  「Google hasn't verified this app」，按 Advanced 再繼續即可。這個 app 只有自己用，
+  不會碰到一百人的上限。
+- **WSL 裡的 Python 開不了瀏覽器。** `webbrowser` 找不到可執行的瀏覽器，所以
+  `youtube-api auth` 會把登入網址印到 stderr，要自己點。Windows 瀏覽器連得到 WSL 的
+  `127.0.0.1`，所以登入完成後會自動導回腳本，不用貼網址。
