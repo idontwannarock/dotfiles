@@ -1,8 +1,3 @@
----
-name: wsl-chrome-cdp
-description: "Use when working from WSL and you need a browser session that is already logged in — internal sites behind IPA/SSO/OTP (Glowroot, Grafana, PMM, corp dashboards) whose data has no API token available. Triggers include 「幫我查 Glowroot/Grafana/PMM」、「要登入才看得到的內部站台」、「用瀏覽器抓這個內部頁面」, or any request to read a page the agent cannot reach with plain curl because it needs the user's authenticated session. Drives the user's Windows-side Chrome over CDP through a netsh portproxy. Skip for public URLs (use WebFetch), for headless scraping that needs no login, and on non-WSL machines."
----
-
 # Drive Windows Chrome from WSL (CDP)
 
 WSL cannot render a headful browser (WSLg's X server is present but not serving), and
@@ -12,7 +7,7 @@ Chrome on the Windows side with a debug port, forward that port into WSL, let th
 log in, then drive it with `~/.local/bin/cdp.py`.
 
 Only steps 2 and 5b need the user: they raise a UAC prompt, and step 3 is the login itself.
-The non-elevated commands the agent can run itself through the Bash tool — `powershell.exe`
+The non-elevated commands the agent can run itself through its shell tool — `powershell.exe`
 is on `PATH` from WSL. No credentials pass through the agent either way.
 
 **`!` in the prompt runs bash, not PowerShell.** Pasting the blocks below verbatim gets
