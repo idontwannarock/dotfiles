@@ -151,9 +151,11 @@ def my_playlists(token):
             params["pageToken"] = page
         r = call("GET", "playlists", params, token=token)
         items += r.get("items", [])
-        page = r.get("nextPageToken")
-        if not page:
+        # The API can keep returning the same nextPageToken with empty pages.
+        nxt = r.get("nextPageToken")
+        if not r.get("items") or not nxt or nxt == page:
             return items
+        page = nxt
 
 
 def video_id(arg):
