@@ -16,8 +16,10 @@ Record the task's endpoint, profile path, selected tab, and any resources create
 by this task. Do not restart a browser or replace forwarding used by another session.
 
 If native browser tools are already loaded and authorized, first list pages and
-read a snapshot of the intended tab. If both succeed, reuse that connection and
-skip browser/network setup. Do not inspect unrelated tabs or browser storage.
+identify the intended tab's ID. Select that ID with `select_page` before reading
+its snapshot, or pass the ID directly only if the loaded snapshot schema supports
+it. If these checks succeed, reuse that connection and skip browser/network setup.
+Do not inspect unrelated tabs or browser storage.
 
 When a connection fails, distinguish these layers:
 
@@ -26,7 +28,7 @@ When a connection fails, distinguish these layers:
 | Windows browser | Process, actual listening address/port, local `/json/version` | Whether the intended Chrome endpoint exists |
 | Ordinary WSL terminal | Route and endpoint reachability | Whether WSL can reach Windows |
 | Agent shell | The same minimal checks within its allowed permissions | Whether this execution environment can perform the checks |
-| Native MCP | `list_pages`, then a snapshot of the intended page | Whether the authorized browser driver works |
+| Native MCP | `list_pages`, confirm/select target ID, then its snapshot | Whether the authorized browser driver works |
 
 Minimal shell checks, only when needed:
 
@@ -117,10 +119,14 @@ For a new evaluation:
   machine-specific host addresses, package-cache paths, or versions into shared docs.
 - Disable usage statistics and CrUX integration. Inspect the installed version's
   supported update-check opt-out; its environment-variable name can vary by version.
-- Start with `list_pages`, `take_snapshot`, and, if needed, `take_screenshot` only.
+- Start with `list_pages`, `select_page`, `take_snapshot`, and, if needed,
+  `take_screenshot` only.
   Do not initially expose click, typing, arbitrary JavaScript, or network tools.
 - Confirm the client actually loaded the native tools. Reload if required after a
   configuration change. A valid TOML file or MCP handshake alone proves no browser access.
+- Confirm the target ID from `list_pages`. Inspect the loaded tool schemas:
+  `take_snapshot` does not always accept `pageId`. Use `select_page` first when
+  direct routing is unavailable; do not set `bringToFront` unless needed.
 - Require a successful page listing and a fresh snapshot of the intended tab.
   Only then report read-only readiness. Add the minimum write tools only when the
   user authorizes the task actions; this does not remove task-specific confirmation gates.
@@ -135,9 +141,16 @@ when setting up a new connection.
 ### Fallback: `cdp.py`
 
 Use only when permitted by the task and the shell's execution policy. Read the
-installed helper before relying on its target-selection behavior; it currently
-uses the first page target. Do not act until that target is confirmed as the
-intended page. Avoid concurrent drivers that can change selection or navigation.
+installed helper before relying on its endpoint or target-selection behavior.
+It currently connects only to port **9222**; `CDP_HOST` changes the host, not the
+port. Before running any helper command, confirm that this endpoint is the
+intended session. If the intended endpoint uses another port, keep an authorized
+MCP connection or report the helper as unsuitable. Do not probe an unrelated 9222
+endpoint or invent a `CDP_PORT` option.
+
+The helper currently uses the first page target. Do not act until that target is
+confirmed as the intended page. Avoid concurrent drivers that can change selection
+or navigation.
 
 ```text
 cdp.py tabs              list page targets

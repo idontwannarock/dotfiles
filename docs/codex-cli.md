@@ -70,9 +70,14 @@ Claude 端是 command 的能力（`/handoff`、`/pickup`、`/code:review-archite
 再優先使用已授權的原生 Chrome DevTools MCP；任務及執行權限允許時，才以 `cdp.py` 備援。
 MCP 可以連接已登入的 Windows Chrome，不必另外啟動 headless profile。
 
-新增 MCP 只寫入任務專案的 `.codex/config.toml`。先測試列出分頁及目標頁面快照，
+新增 MCP 只寫入任務專案的 `.codex/config.toml`。先列出分頁並確認目標 ID。
+若已載入的快照 schema 不支援 `pageId`，先以 `select_page` 選取目標。
+取得目標頁面快照後，
 再依任務授權開放最少的操作工具。設定修改後須確認工作階段已載入新工具。
 若評估不適合或取消，只移除這次新增的設定，不刪共用套件快取。
+
+現有 `cdp.py` 固定使用 9222；`CDP_HOST` 只改主機，不改連接埠。
+目標端點不是 9222 時，繼續使用已授權的 MCP，或回報 helper 不適用。不得改連不相關的 9222 工作階段。
 
 分別檢查 Windows、一般 WSL、agent shell 與原生 MCP。shell 權限錯誤不代表
 WSL 或 Chrome 故障，也不授權繞過限制。先檢查監聽位址與既有轉送，才提出限縮範圍的防火牆變更。
