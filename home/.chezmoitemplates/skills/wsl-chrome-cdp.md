@@ -94,6 +94,26 @@ If forwarding is necessary:
    the elevated operation. Record the rule identity and whether it was newly created.
 5. Verify the resulting endpoint. A closed UAC window or no output is not success.
 
+Commands for the NAT case with Chrome on `::1`. Inspect first; this needs no UAC:
+
+```bash
+powershell.exe -NoProfile -Command 'netsh interface portproxy show all; Get-NetFirewallRule -DisplayName "WSL-CDP*" -ErrorAction SilentlyContinue | Select-Object Name,DisplayName,Profile'
+```
+
+The add command binds the forward to the Windows WSL-facing address only. The firewall
+rule admits only this WSL address. `-Name` is the rule identity: a second add with the
+same name fails instead of creating a duplicate. Show it to the user; it needs UAC:
+
+```bash
+WINHOST=$(ip route show default | awk '{print $3}')
+WSLIP=$(ip -4 -o addr show eth0 | awk '{split($4,a,"/"); print a[1]}')
+powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','netsh interface portproxy add v4tov6 listenport=9222 listenaddress=$WINHOST connectport=9222 connectaddress=::1; New-NetFirewallRule -Name WSL-CDP-9222 -DisplayName WSL-CDP-9222 -Direction Inbound -Protocol TCP -LocalPort 9222 -LocalAddress $WINHOST -RemoteAddress $WSLIP -Action Allow'"
+curl -s -m 5 "http://$WINHOST:9222/json/version"
+```
+
+`$WSLIP` changes after a WSL restart. The rule then no longer admits WSL: remove it
+and add it again.
+
 Existing broad rules deserve a warning and a planned review, not an unannounced
 mid-task change that interrupts another session. See [WSL networking](https://learn.microsoft.com/en-us/windows/wsl/networking)
 and [TCP listener inspection](https://learn.microsoft.com/en-us/powershell/module/nettcpip/get-nettcpconnection).
@@ -192,6 +212,21 @@ Treat these as separate operations, not one unconditional cleanup command:
   profile remains; deleting it or Windows temporary-file cleanup can remove that login.
 - **MCP:** remove temporary evaluation settings when rejected or abandoned. Otherwise
   retain only the agreed project-scoped configuration. Do not delete shared packages.
+
+Commands. `<PID>` is the `OwningProcess` recorded from the listener check in step 2.
+Stop the browser (no UAC), then confirm that the listener is gone:
+
+```bash
+powershell.exe -NoProfile -Command 'Stop-Process -Id <PID>; Start-Sleep -Seconds 1; (Get-NetTCPConnection -LocalPort 9222 -State Listen -ErrorAction SilentlyContinue | Measure-Object).Count'
+```
+
+Remove the task-created forward and rule (needs UAC), then run the inspect command
+from step 3 to confirm removal:
+
+```bash
+WINHOST=$(ip route show default | awk '{print $3}')
+powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-Command','netsh interface portproxy delete v4tov6 listenport=9222 listenaddress=$WINHOST; Remove-NetFirewallRule -Name WSL-CDP-9222'"
+```
 
 Report what remains open and who must finish cleanup. A debug endpoint gives its
 clients browser control: warn about remaining exposure if teardown is deferred.
