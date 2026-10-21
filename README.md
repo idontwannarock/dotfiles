@@ -267,8 +267,9 @@ Go 的 base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本
 
 | 工具 | 說明 |
 |------|------|
-| Claude Code | AI CLI（`@anthropic-ai/claude-code`） |
 | OpenSpec | 結構化開發流程（`@fission-ai/openspec`） |
+
+**Claude Code CLI（install-02-claude-cli）：** 用 Anthropic 官方 native installer 安裝，不用 npm。只在沒裝時安裝；之後由 Claude Code 自己在背景更新。舊的 npm 版由 install-02-npm-tools 移除，`/status` 才不會出現「Leftover npm global installation」警告。
 
 **Codex CLI（install-04-codex-cli）：** 用 OpenAI 官方 installer 安裝，不用 npm。每次 apply 升到最新版，並把背景 daemon 釘在同一個版本。細節見 [docs/codex-cli.md](docs/codex-cli.md#安裝)。
 
@@ -359,7 +360,7 @@ dotfiles/
 │   ├── dot_zshrc.tmpl        # ~/.zshrc 入口（macOS）
 │   ├── dot_vimrc / dot_ideavimrc / dot_vim/  # Vim / IdeaVim
 │   ├── run_onchange_before_*.tmpl # 前置腳本（jq 安裝、chezmoi config 修復）
-│   ├── run_once_install-*.tmpl    # 工具安裝腳本（01-runtimes → 02-npm-tools → 03-claude-config, containers, cli-tools, fonts）
+│   ├── run_once_install-*.tmpl    # 工具安裝腳本（01-runtimes → 02-claude-cli → 02-npm-tools → 03-claude-config, containers, cli-tools, fonts）
 │   ├── run_onchange_*.tmpl        # 設定更新腳本（變更時重跑）
 │   └── run_after_*.tmpl           # 後置腳本（Windows codex config 合併）
 │

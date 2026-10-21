@@ -1,0 +1,32 @@
+{{- if ne .chezmoi.os "windows" -}}
+#!/usr/bin/env bash
+# chezmoi run_ script — Claude Code CLI (Unix/macOS/WSL)
+# Installs Claude Code with the official native installer. The native install
+# updates itself in the background, so this script only installs it when it
+# is missing. Keep this logic identical to the PowerShell twin.
+#
+# Sorts before install-02-npm-tools, which removes the old npm copy, and
+# before install-03-claude-config, which needs the claude command.
+
+set -euo pipefail
+
+{{ template "scripts/log.sh" }}
+
+log_begin "Claude Code CLI"
+
+# Check the native path, NOT command -v: an npm copy (or, under WSL, the
+# Windows-side claude) on PATH would hide a missing native install.
+log_section "install Claude Code with the official native installer -- it updates itself after that"
+claude_bin="$HOME/.local/bin/claude"
+if [[ -x "$claude_bin" ]]; then
+    log_skip "[claude] native install present: $("$claude_bin" --version 2>/dev/null)"
+else
+    log_step "[claude] installing with https://claude.ai/install.sh"
+    # Put the install dir on PATH first, so the installer does not add a PATH
+    # line to a chezmoi-managed shell profile. shell-common already adds it.
+    export PATH="$HOME/.local/bin:$PATH"
+    if ! curl -fsSL https://claude.ai/install.sh | bash; then
+        log_warn "[claude] native install failed; retrying on the next apply"
+    fi
+fi
+{{ end -}}

@@ -47,8 +47,13 @@ try {
         Log-Skip "[npm-tools] @openai/codex not installed"
     }
 
-    Log-Section "install Claude Code CLI"
-    Install-NpmPackage -Command "claude" -Package "@anthropic-ai/claude-code"
+    npm ls -g --depth=0 "@anthropic-ai/claude-code" 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Log-Step "[npm-tools] removing @anthropic-ai/claude-code -- install-02-claude-cli installs Claude Code with the official native installer"
+        npm uninstall -g "@anthropic-ai/claude-code" 2>$null | Out-Null
+    } else {
+        Log-Skip "[npm-tools] @anthropic-ai/claude-code not installed"
+    }
 
     # The two browser MCP servers are INSTALLED here but deliberately NOT
     # registered by install-03: user scope would spawn them in every session,
