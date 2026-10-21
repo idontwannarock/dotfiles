@@ -64,6 +64,25 @@ Claude 端是 command 的能力（`/handoff`、`/pickup`、`/code:review-archite
 引號，因為 Codex 的 YAML frontmatter parser 比 Claude 嚴格；驗不過就保留舊檔並警告。
 細節見 [claude-code.md](claude-code.md) 的「外部 skill：herdr」。
 
+#### WSL 的已登入 Chrome
+
+`wsl-chrome-cdp` 將 Chrome 連線設定與操作工具分開。先重用獨立 Chrome，
+再優先使用已授權的原生 Chrome DevTools MCP；任務及執行權限允許時，才以 `cdp.py` 備援。
+MCP 可以連接已登入的 Windows Chrome，不必另外啟動 headless profile。
+
+新增 MCP 只寫入任務專案的 `.codex/config.toml`。先列出分頁並確認目標 ID。
+若已載入的快照 schema 不支援 `pageId`，先以 `select_page` 選取目標。
+取得目標頁面快照後，
+再依任務授權開放最少的操作工具。設定修改後須確認工作階段已載入新工具。
+若評估不適合或取消，只移除這次新增的設定，不刪共用套件快取。
+
+現有 `cdp.py` 固定使用 9222；`CDP_HOST` 只改主機，不改連接埠。
+目標端點不是 9222 時，繼續使用已授權的 MCP，或回報 helper 不適用。不得改連不相關的 9222 工作階段。
+
+分別檢查 Windows、一般 WSL、agent shell 與原生 MCP。shell 權限錯誤不代表
+WSL 或 Chrome 故障，也不授權繞過限制。先檢查監聽位址與既有轉送，才提出限縮範圍的防火牆變更。
+結束時分開處理 Chrome、轉送規則及 profile；不得中斷其他工作階段，並尊重保留瀏覽器的要求。
+
 ### 3. 讓 Codex 能讀既有專案慣例
 
 `config.toml` 設定了：

@@ -3,7 +3,7 @@
     "tool" "claude" -}}
 ---
 name: wsl-chrome-cdp
-description: "Use when working from WSL and you need a browser session that is already logged in — internal sites behind IPA/SSO/OTP (Glowroot, Grafana, PMM, corp dashboards) whose data has no API token available. Triggers include 「幫我查 Glowroot/Grafana/PMM」、「要登入才看得到的內部站台」、「用瀏覽器抓這個內部頁面」, or any request to read a page the agent cannot reach with plain curl because it needs the user's authenticated session. Drives the user's Windows-side Chrome over CDP through a netsh portproxy. Skip for public URLs (use WebFetch), for headless scraping that needs no login, and on non-WSL machines."
+description: "Use when working from WSL and you need a browser session that is already logged in — internal sites behind IPA/SSO/OTP (Glowroot, Grafana, PMM, corp dashboards) whose data has no API token, or a page that needs clicks in the user's signed-in browser. Triggers include 「幫我查 Glowroot/Grafana/PMM」、「要登入才看得到的內部站台」、「用瀏覽器抓這個內部頁面」. Connects to an independent Windows Chrome, prefers native Chrome DevTools MCP over cdp.py, diagnoses connection boundaries, and tears down only what the task created. Skip for public URLs (use WebFetch), for scraping that needs no login, and on non-WSL machines."
 ---
 
 {{ template "skills/wsl-chrome-cdp.md" (dict "n" $n) -}}
