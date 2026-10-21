@@ -1,0 +1,37 @@
+{{- if eq .chezmoi.os "windows" -}}
+# chezmoi run_ script — Claude Code CLI (Windows)
+# Installs Claude Code with the official native installer. The native install
+# updates itself in the background, so this script only installs it when it
+# is missing. Keep this logic identical to the bash twin.
+#
+# Sorts before install-02-npm-tools, which removes the old npm copy, and
+# before install-03-claude-config, which needs the claude command.
+
+$ErrorActionPreference = "Stop"
+
+{{ template "scripts/log.ps1" }}
+
+Log-Begin "Claude Code CLI"
+try {
+    # Check the native path, NOT Get-Command: an npm copy on PATH would hide
+    # a missing native install.
+    Log-Section "install Claude Code with the official native installer -- it updates itself after that"
+    $claudeExe = Join-Path $env:USERPROFILE ".local\bin\claude.exe"
+    if (Test-Path $claudeExe) {
+        Log-Skip "[claude] native install present: $(& $claudeExe --version 2>$null)"
+    } else {
+        Log-Step "[claude] installing with https://claude.ai/install.ps1"
+        # Run the installer in a child process: it calls `exit` on failure,
+        # and `exit` in this process would skip the finally block below.
+        & (Get-Process -Id $PID).Path -NoProfile -Command "irm https://claude.ai/install.ps1 | iex"
+        if ($LASTEXITCODE -ne 0) {
+            Log-Warn "[claude] native install failed (exit $LASTEXITCODE); retrying on the next apply"
+        }
+    }
+} catch {
+    Log-End -ErrorRecord $_
+    throw
+} finally {
+    Log-End
+}
+{{ end -}}
