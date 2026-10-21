@@ -270,9 +270,8 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 #### 現成可用的 MCP 清單
 
 從 WSL 操作已登入的 Windows Chrome 時，使用 `wsl-chrome-cdp` skill。
-它先檢查並重用 Chrome 連線，再選擇原生 MCP 或任務允許的 `cdp.py` 備援。
-兩端共用相同的連線診斷與清理規則；參見 [WSL 的已登入 Chrome](codex-cli.md#wsl-的已登入-chrome)。
-下方註冊範例未指定既有瀏覽器；需要重用登入時，按 skill 指引加入已驗證的 `--browser-url`。
+它用 `playwright-cli` 經 CDP 接上 Chrome，不用 MCP，所以不佔 context；參見 [WSL 的已登入 Chrome](codex-cli.md#wsl-的已登入-chrome)。
+只有 agent shell 連不到 Chrome 時，才用下方的 `chrome-devtools` 加上已驗證的 `--browser-url`。
 
 以下都已經由 chezmoi 準備好，任何 repo 隨時可以接上——**不需要再裝任何東西**，
 只差一行註冊指令。新 repo 想用什麼，先查這張表，不要自己 `npx` 或另外 `npm i -g`。

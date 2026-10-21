@@ -212,3 +212,7 @@ AppData/Local/rtk
 # video-summary answers what a video says and calls media-fetch first.
 .claude/skills/youtube-transcribe
 .codex/skills/youtube-transcribe
+
+# cdp.py was retired 2026-10-21: playwright-cli attaches to the same CDP Chrome
+# and covers tabs, navigation, eval, and in-page fetch with the login cookies.
+.local/bin/cdp.py

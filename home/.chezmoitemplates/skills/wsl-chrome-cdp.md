@@ -1,9 +1,8 @@
 # Use an authenticated Windows Chrome from WSL
 
 Separate **connection setup** from **browser control**. Reuse an independent,
-authenticated Windows Chrome when possible. Prefer authorized native browser MCP
-tools; use `~/.local/bin/cdp.py` only when MCP is unavailable or unsuitable and the
-task permits that fallback. Neither driver requires launching a new empty profile.
+authenticated Windows Chrome when possible. Control it with `playwright-cli`
+attached over CDP. It does not need a new empty profile.
 
 This skill does not authorize extra websites, API calls, playlist changes, or
 permission changes. Preserve the task's confirmation gates. The user handles login,
@@ -15,11 +14,8 @@ Before launching anything, check for an existing endpoint and who is using it.
 Record the task's endpoint, profile path, selected tab, and any resources created
 by this task. Do not restart a browser or replace forwarding used by another session.
 
-If native browser tools are already loaded and authorized, first list pages and
-identify the intended tab's ID. Select that ID with `select_page` before reading
-its snapshot, or pass the ID directly only if the loaded snapshot schema supports
-it. If these checks succeed, reuse that connection and skip browser/network setup.
-Do not inspect unrelated tabs or browser storage.
+If `playwright-cli -s=cdp tab-list` already works, reuse that session and skip
+browser and network setup. Do not inspect unrelated tabs or browser storage.
 
 When a connection fails, distinguish these layers:
 
@@ -28,7 +24,7 @@ When a connection fails, distinguish these layers:
 | Windows browser | Process, actual listening address/port, local `/json/version` | Whether the intended Chrome endpoint exists |
 | Ordinary WSL terminal | Route and endpoint reachability | Whether WSL can reach Windows |
 | Agent shell | The same minimal checks within its allowed permissions | Whether this execution environment can perform the checks |
-| Native MCP | `list_pages`, confirm/select target ID, then its snapshot | Whether the authorized browser driver works |
+| `playwright-cli` | `attach`, `tab-list`, `tab-select`, then `snapshot` | Whether the browser driver works |
 
 Minimal shell checks, only when needed:
 
@@ -41,8 +37,8 @@ ip route show default
 `Operation not permitted`, `UtilBindVsockAnyPort: socket failed`, or inaccessible
 route data do not prove that the user's WSL or Chrome is broken. If the agent shell
 is denied, stop that route. Ask for a minimal comparison from the user's ordinary
-WSL terminal when needed. An already-authorized native MCP can be tested independently;
-do not introduce a bridge or change permissions to evade the denial. Do not reset
+WSL terminal when needed. Do not introduce a bridge or change permissions to evade
+the denial. Do not reset
 Chrome, firewall rules, or login based only on a shell permission error.
 
 ## 2. Launch an independent Chrome only if needed
@@ -120,71 +116,57 @@ and [TCP listener inspection](https://learn.microsoft.com/en-us/powershell/modul
 
 ## 4. Select and verify the browser driver
 
-### Preferred: native Chrome DevTools MCP
+### Default: `playwright-cli`
 
-Connect to the existing independent Chrome with `--browser-url=<confirmed-endpoint>`.
-Do not launch an unrelated headless profile just because the agent has no `DISPLAY`.
-Inspect the installed executable's version and help before constructing arguments.
-Prefer the already provisioned executable. Do not install or upgrade a global
-package as a side effect of evaluating a task-local connection.
+`playwright-cli` is a shell command. It adds no tool schema to the agent context,
+and scripts can call it the same way the agent does. Attach it to the confirmed
+endpoint; it does not start a new browser or a new profile:
 
-For a new evaluation:
-
-- **Codex:** put the server in the task project's `.codex/config.toml`, not the
-  user-level `~/.codex/config.toml`. Start the client in that project and let the
-  user handle trust. A home-directory session is not the task project's scope.
-- **Other clients:** use their project-scoped MCP configuration and approval flow.
-  Do not translate a client-specific command or configuration format blindly.
-- Record the exact settings added. Keep unrelated settings unchanged. Do not copy
-  machine-specific host addresses, package-cache paths, or versions into shared docs.
-- Disable usage statistics and CrUX integration. Inspect the installed version's
-  supported update-check opt-out; its environment-variable name can vary by version.
-- Start with `list_pages`, `select_page`, `take_snapshot`, and, if needed,
-  `take_screenshot` only.
-  Do not initially expose click, typing, arbitrary JavaScript, or network tools.
-- Confirm the client actually loaded the native tools. Reload if required after a
-  configuration change. A valid TOML file or MCP handshake alone proves no browser access.
-- Confirm the target ID from `list_pages`. Inspect the loaded tool schemas:
-  `take_snapshot` does not always accept `pageId`. Use `select_page` first when
-  direct routing is unavailable; do not set `bringToFront` unless needed.
-- Require a successful page listing and a fresh snapshot of the intended tab.
-  Only then report read-only readiness. Add the minimum write tools only when the
-  user authorizes the task actions; this does not remove task-specific confirmation gates.
-- If unsuitable or abandoned, remove only this evaluation's added settings. Delete
-  the project config file/directory only if otherwise empty. Preserve shared caches.
-
-Native MCP and the shell have separate execution boundaries. Success through one
-does not imply success through the other. Read the current [MCP connection guide](https://github.com/ChromeDevTools/chrome-devtools-mcp/blob/main/docs/advanced-usage.md#connecting-to-a-running-chrome-instance)
-and [Codex project configuration](https://learn.chatgpt.com/docs/config-file/config-basic)
-when setting up a new connection.
-
-### Fallback: `cdp.py`
-
-Use only when permitted by the task and the shell's execution policy. Read the
-installed helper before relying on its endpoint or target-selection behavior.
-It currently connects only to port **9222**; `CDP_HOST` changes the host, not the
-port. Before running any helper command, confirm that this endpoint is the
-intended session. If the intended endpoint uses another port, keep an authorized
-MCP connection or report the helper as unsuitable. Do not probe an unrelated 9222
-endpoint or invent a `CDP_PORT` option.
-
-The helper currently uses the first page target. Do not act until that target is
-confirmed as the intended page. Avoid concurrent drivers that can change selection
-or navigation.
-
-```text
-cdp.py tabs              list page targets
-cdp.py nav <url>         navigate, print final URL and title
-cdp.py get <url>         navigate and read rendered text
-cdp.py eval '<js>'       evaluate JavaScript in the selected page
-cdp.py fetch <url>       fetch inside the page with its cookies
+```bash
+WINHOST=$(ip route show default | awk '{print $3}')
+cd "$(mktemp -d)"    # snapshots go to ./.playwright-cli/; keep them out of repos
+playwright-cli -s=cdp attach --cdp="http://$WINHOST:9222"
+playwright-cli -s=cdp tab-list
+playwright-cli -s=cdp tab-select <index>
 ```
 
-The helper discovers the Windows host from the default route and rewrites loopback
-WebSocket addresses. `CDP_HOST` can supply a confirmed host when discovery is
-inapplicable; it is not a way around denied network access. It requires Python's
-`websockets` package. `eval` and `fetch` are not substitutes for UI-only work: use
-only task-authorized endpoints and methods, and never extract cookies or credentials.
+Use `-s=cdp` (or `PLAYWRIGHT_CLI_SESSION=cdp`) on every command. Select the intended
+tab with `tab-select` and confirm it before you read or act. Read the installed
+`playwright-cli --help` before you use a command that is not below.
+
+| Task | Command |
+|---|---|
+| Open a page | `playwright-cli -s=cdp goto <url>` |
+| Read the page | `playwright-cli -s=cdp --raw snapshot`, or `find <text>` for one part |
+| Click or fill | `click <ref>`, `fill <ref> <text>`; refs such as `e13` come from the snapshot |
+| Call an API with the login cookies | `playwright-cli -s=cdp --raw eval "async () => { const r = await fetch('<url>', {credentials: 'include'}); return {status: r.status, body: await r.json()}; }"` |
+| Many API calls | One `eval` with `Promise.all` inside the page, not one `eval` per URL |
+| Screenshot | `playwright-cli -s=cdp screenshot` |
+| Stop controlling | `playwright-cli -s=cdp detach` |
+
+`--raw` prints only the result. An `eval` that returns an object prints JSON, so
+`jq` can read it. A returned string prints as a quoted JSON string.
+
+Use `fetch` only for task-authorized endpoints and methods. Never read or export
+cookies, storage, or credentials: no `cookie-*`, `localstorage-*`, `sessionstorage-*`,
+or `state-save` on this browser.
+
+End with `detach`. It leaves Chrome running. Do not run `close`, `close-all`,
+`kill-all`, or `delete-data` on an attached session: the browser and its login
+belong to the user.
+
+Write a script only for a fixed flow with several steps, for example fetch, then
+click, then fetch again. The script calls the same `playwright-cli` commands.
+Until a flow is that fixed, the table above and the endpoints at the end of this
+skill are the reference.
+
+### When the agent shell cannot reach Chrome
+
+`playwright-cli` runs in the agent shell. When the shell is denied network access
+(see step 1), `playwright-cli` cannot work either. Do not bypass the denial. Report
+it. If the user wants to continue in that client, a project-scoped Chrome DevTools
+MCP with `--browser-url=<confirmed-endpoint>` runs outside the shell; the setup is
+in `docs/claude-code.md`. Add it only with the user's agreement and remove it after.
 
 ## 5. Login and operate
 
@@ -201,6 +183,8 @@ Do not repeat a mutation merely because its response is delayed.
 
 Treat these as separate operations, not one unconditional cleanup command:
 
+- **Driver:** run `playwright-cli -s=cdp detach`. It stops control and leaves
+  Chrome running.
 - **Browser:** close only the task's independent instance when no other task uses
   it. Honor an explicit leave-open request. Never kill all Chrome processes or a
   different session's instance based only on a broad profile-name substring.
@@ -283,6 +267,10 @@ inspect command shows entries that this task did not create.
   agent shell was denied socket/route operations. Native Chrome DevTools MCP later
   listed the intended tab, read snapshots, and performed authorized UI actions.
   This verifies that attach mode does not require a fresh headless login.
+- 2026-10-21: `playwright-cli` 0.1.22 attached over CDP to a local headless Chromium.
+  `goto`, `tab-list`, `--raw snapshot`, `click` by locator, and `--raw eval` with an
+  in-page `fetch` all worked. `detach` left the browser running. Attach through the
+  Windows portproxy is not yet verified.
 
 ## Verified endpoints
 
