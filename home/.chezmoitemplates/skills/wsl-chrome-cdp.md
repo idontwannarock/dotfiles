@@ -231,6 +231,47 @@ powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -Argume
 Report what remains open and who must finish cleanup. A debug endpoint gives its
 clients browser control: warn about remaining exposure if teardown is deferred.
 
+### Full reset: leftovers from earlier sessions
+
+Earlier sessions can leave duplicate `WSL-CDP-9222` rules, a forward on `0.0.0.0`,
+or a CDP Chrome that nobody closed. The task-scoped teardown above does not touch
+them. Do a full reset when the user asks to restore the machine, or when the step 3
+inspect command shows entries that this task did not create.
+
+1. Run the step 3 inspect command and the step 2 listener check. Tell the user each
+   entry you found: forwards on port 9222, `WSL-CDP-*` rules, and the listener PID.
+2. Ask whether another session still uses that Chrome or forward. Continue only
+   after the user confirms that nothing uses them.
+3. Stop the browser with the stop command above, using the listener PID.
+4. Remove every port 9222 forward and every `WSL-CDP-*` rule (needs UAC). The script
+   reads the forwards from the registry, because `netsh` output changes with the
+   Windows display language. `-EncodedCommand` avoids nested quoting:
+
+   ```bash
+   cat > /tmp/wsl-cdp-reset.ps1 <<'PS1'
+   foreach ($kind in 'v4tov4', 'v4tov6') {
+       $key = "HKLM:\SYSTEM\CurrentControlSet\Services\PortProxy\$kind\tcp"
+       (Get-Item $key -ErrorAction SilentlyContinue).Property | Where-Object { $_ -like '*/9222' } | ForEach-Object {
+           netsh interface portproxy delete $kind listenport=9222 listenaddress=$($_.Split('/')[0])
+       }
+   }
+   Get-NetFirewallRule -DisplayName 'WSL-CDP-*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
+   PS1
+   ENC=$(iconv -t UTF-16LE /tmp/wsl-cdp-reset.ps1 | base64 -w0)
+   powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-EncodedCommand','$ENC'"
+   ```
+
+   To preview without changes and without UAC, add `-WhatIf` to `Remove-NetFirewallRule`,
+   replace `netsh` with `Write-Output netsh`, and run
+   `powershell.exe -NoProfile -EncodedCommand "$ENC"`.
+5. Verify: the inspect command shows no 9222 forward and no `WSL-CDP-*` rule, and
+   `curl -s -m 5 "http://$WINHOST:9222/json/version"` returns nothing.
+6. Ask before you delete the profile. Deleting it removes the saved logins:
+
+   ```bash
+   powershell.exe -NoProfile -Command 'Remove-Item -Recurse -Force (Join-Path $env:TEMP "chrome-cdp")'
+   ```
+
 ## Dated observations, not platform restrictions
 
 - 2026-09-29: one Windows Chrome 154 setup listened on `::1`; IPv4-to-IPv6
