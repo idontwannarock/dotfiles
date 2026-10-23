@@ -191,7 +191,9 @@ CLI 和 daemon。但官方文件沒有寫這件事，所以不依賴它。
 
 1. 用官方 installer 把 CLI 升到最新版。
 2. 在 `~/.codex/app-server-daemon/settings.json` 寫入 `updater.autoUpdateEnabled = false`，
-   關掉 daemon 的自動更新。
+   關掉 daemon 的自動更新。然後把 `app-server-daemon` 目錄設成只有自己能存取
+   （只有 Windows 需要，用 `icacls`）。Windows 的 daemon 不接受別的帳號也能讀的目錄，
+   會顯示「socket directory is not private to the current user」。
 3. daemon 的版本和 CLI 不同時，執行 `codex app-server daemon update --from-cli --yes`。
    這個指令把 CLI 的套件複製給 daemon，並且釘住這個版本。
 

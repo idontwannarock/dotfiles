@@ -63,6 +63,10 @@ try {
         [IO.File]::WriteAllText($daemonSettings, ($settings | ConvertTo-Json -Depth 10))
         $daemonSettingsChanged = $true
     }
+    # The daemon refuses a state directory that other accounts can read
+    # ("socket directory is not private to the current user"). New-Item
+    # inherits SYSTEM and Administrators from the profile, so keep only the user.
+    icacls (Split-Path $daemonSettings) /inheritance:r /grant:r "${env:USERDOMAIN}\${env:USERNAME}:(OI)(CI)F" | Out-Null
 
     # Also pin when the settings just changed: a running updater only reads
     # the new setting after a daemon restart, and the pin restarts the daemon.
