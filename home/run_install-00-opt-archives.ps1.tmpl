@@ -70,7 +70,7 @@ $ErrorActionPreference = "Continue"
 {{ template "scripts/log.ps1" }}
 
 # renovate: datasource=golang-version depName=go
-{{- $goVersion := "1.27.2" }}
+{{- $goVersion := "1.27.3" }}
 # renovate: datasource=github-releases depName=adoptium/temurin8-binaries extractVersion=^jdk(?<version>.+)$
 {{- $jdk8Version := "8u504-b01" }}
 {{- $jdk8Asset := $jdk8Version | replace "-" "" }}
