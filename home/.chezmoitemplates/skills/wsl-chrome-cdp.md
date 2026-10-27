@@ -269,8 +269,10 @@ inspect command shows entries that this task did not create.
   This verifies that attach mode does not require a fresh headless login.
 - 2026-10-21: `playwright-cli` 0.1.22 attached over CDP to a local headless Chromium.
   `goto`, `tab-list`, `--raw snapshot`, `click` by locator, and `--raw eval` with an
-  in-page `fetch` all worked. `detach` left the browser running. Attach through the
-  Windows portproxy is not yet verified.
+  in-page `fetch` all worked. `detach` left the browser running.
+- 2026-10-27: `playwright-cli` attached through the Windows portproxy (`v4tov6` to
+  `::1`) to an authenticated Chrome 155. An in-page `fetch` returned Grafana
+  `/api/datasources` and a Prometheus query through `/api/datasources/proxy/1/`.
 
 ## Verified endpoints
 
