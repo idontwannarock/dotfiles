@@ -66,17 +66,18 @@ Claude 端是 command 的能力（`/handoff`、`/pickup`、`/code:review-archite
 
 #### WSL 的已登入 Chrome
 
-`wsl-chrome-cdp` 將 Chrome 連線設定與操作工具分開。先重用獨立 Chrome，
-再用 `playwright-cli attach --cdp=<端點>` 接上它，不必另外啟動 headless profile。
+`wsl-chrome-cdp` 用 `playwright-cli` 經 CDP 操作獨立的 Windows Chrome。
 `playwright-cli` 是 shell 指令，不會把 tool schema 放進 context，腳本也能直接呼叫。
 2026-10-21 起 `cdp.py` 退役；它的分頁、導航、`eval` 與帶 cookie 的 `fetch` 都改用 `playwright-cli`。
 
-`playwright-cli` 在 agent shell 裡執行。Codex sandbox 擋住 shell 的網路時，它也無法連線。
-這時不要繞過限制。使用者同意後，才在任務專案的 `.codex/config.toml` 加入 Chrome DevTools MCP 並指定 `--browser-url`，用完移除。
+CDP port 沒有密碼，連得到的程式都能使用 Chrome 裡的登入。所以 port 只開在 Windows 的 loopback。
+2026-10-27 起，WSL 不再轉送 port，改從 WSL 執行 **Windows 端**的 `playwright-cli`（經 `node.exe`）。
+不需要 portproxy、防火牆規則或 UAC。舊的轉送與 `WSL-CDP-9222` 規則，清除步驟在 skill 的 `references/wsl.md`。
 
-分別檢查 Windows、一般 WSL、agent shell 與 `playwright-cli`。shell 權限錯誤不代表
-WSL 或 Chrome 故障，也不授權繞過限制。先檢查監聽位址與既有轉送，才提出限縮範圍的防火牆變更。
-結束時分開處理 Chrome、轉送規則及 profile；不得中斷其他工作階段，並尊重保留瀏覽器的要求。
+skill 主檔只放與環境無關的流程。跟 OS 或環境有關的指令放在 `references/<環境>.md`；目前只有 `wsl.md` 經過驗證。
+
+Codex sandbox 擋住 shell 執行 Windows 程式時，`playwright-cli` 也無法使用。
+這時不要繞過限制。使用者同意後，才在任務專案的 `.codex/config.toml` 加入 Chrome DevTools MCP 並指定 `--browser-url`，用完移除。
 
 ### 3. 讓 Codex 能讀既有專案慣例
 

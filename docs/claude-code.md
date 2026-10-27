@@ -270,7 +270,7 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 #### 現成可用的 MCP 清單
 
 從 WSL 操作已登入的 Windows Chrome 時，使用 `wsl-chrome-cdp` skill。
-它用 `playwright-cli` 經 CDP 接上 Chrome，不用 MCP，所以不佔 context；參見 [WSL 的已登入 Chrome](codex-cli.md#wsl-的已登入-chrome)。
+它從 WSL 執行 Windows 端的 `playwright-cli`，經 CDP 接上 Chrome。不用 MCP，所以不佔 context；也不轉送 port；參見 [WSL 的已登入 Chrome](codex-cli.md#wsl-的已登入-chrome)。
 只有 agent shell 連不到 Chrome 時，才用下方的 `chrome-devtools` 加上已驗證的 `--browser-url`。
 
 以下都已經由 chezmoi 準備好，任何 repo 隨時可以接上——**不需要再裝任何東西**，
