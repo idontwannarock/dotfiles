@@ -242,12 +242,14 @@ inspect command shows entries that this task did not create.
    Get-NetFirewallRule -DisplayName 'WSL-CDP-*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
    PS1
    ENC=$(iconv -t UTF-16LE /tmp/wsl-cdp-reset.ps1 | base64 -w0)
-   powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-EncodedCommand','$ENC'"
+   powershell.exe -NoProfile -Command "Start-Process powershell -Verb RunAs -Wait -ArgumentList '-NoProfile','-EncodedCommand','$ENC'"
    ```
 
    To preview without changes and without UAC, add `-WhatIf` to `Remove-NetFirewallRule`,
    replace `netsh` with `Write-Output netsh`, and run
    `powershell.exe -NoProfile -EncodedCommand "$ENC"`.
+   `-Wait` holds the shell until the elevated window closes, so step 5 checks the result
+   and not the state before the reset.
 5. Verify: the inspect command shows no 9222 forward and no `WSL-CDP-*` rule, and
    `curl -s -m 5 "http://$WINHOST:9222/json/version"` returns nothing.
 6. Ask before you delete the profile. Deleting it removes the saved logins:
