@@ -67,19 +67,14 @@ Claude 端是 command 的能力（`/handoff`、`/pickup`、`/code:review-archite
 #### WSL 的已登入 Chrome
 
 `wsl-chrome-cdp` 將 Chrome 連線設定與操作工具分開。先重用獨立 Chrome，
-再優先使用已授權的原生 Chrome DevTools MCP；任務及執行權限允許時，才以 `cdp.py` 備援。
-MCP 可以連接已登入的 Windows Chrome，不必另外啟動 headless profile。
+再用 `playwright-cli attach --cdp=<端點>` 接上它，不必另外啟動 headless profile。
+`playwright-cli` 是 shell 指令，不會把 tool schema 放進 context，腳本也能直接呼叫。
+2026-10-21 起 `cdp.py` 退役；它的分頁、導航、`eval` 與帶 cookie 的 `fetch` 都改用 `playwright-cli`。
 
-新增 MCP 只寫入任務專案的 `.codex/config.toml`。先列出分頁並確認目標 ID。
-若已載入的快照 schema 不支援 `pageId`，先以 `select_page` 選取目標。
-取得目標頁面快照後，
-再依任務授權開放最少的操作工具。設定修改後須確認工作階段已載入新工具。
-若評估不適合或取消，只移除這次新增的設定，不刪共用套件快取。
+`playwright-cli` 在 agent shell 裡執行。Codex sandbox 擋住 shell 的網路時，它也無法連線。
+這時不要繞過限制。使用者同意後，才在任務專案的 `.codex/config.toml` 加入 Chrome DevTools MCP 並指定 `--browser-url`，用完移除。
 
-現有 `cdp.py` 固定使用 9222；`CDP_HOST` 只改主機，不改連接埠。
-目標端點不是 9222 時，繼續使用已授權的 MCP，或回報 helper 不適用。不得改連不相關的 9222 工作階段。
-
-分別檢查 Windows、一般 WSL、agent shell 與原生 MCP。shell 權限錯誤不代表
+分別檢查 Windows、一般 WSL、agent shell 與 `playwright-cli`。shell 權限錯誤不代表
 WSL 或 Chrome 故障，也不授權繞過限制。先檢查監聽位址與既有轉送，才提出限縮範圍的防火牆變更。
 結束時分開處理 Chrome、轉送規則及 profile；不得中斷其他工作階段，並尊重保留瀏覽器的要求。
 

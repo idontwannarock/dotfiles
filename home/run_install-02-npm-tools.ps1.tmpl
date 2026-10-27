@@ -68,6 +68,9 @@ try {
     Log-Section "install agent-browser-mcp -- same deal as chrome-devtools-mcp"
     Install-NpmPackage -Command "agent-browser-mcp" -Package "agent-browser-mcp"
 
+    Log-Section "install playwright-cli -- browser control from the shell, no MCP schema in context"
+    Install-NpmPackage -Command "playwright-cli" -Package "@playwright/cli"
+
     Log-Section "install OpenSpec CLI -- spec/change tracking used by dev-workflow"
     if (Test-NpmGlobalPackage "@fission-ai/openspec") {
         Log-Skip "[openspec] already installed"

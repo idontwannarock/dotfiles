@@ -61,6 +61,9 @@ npm_install chrome-devtools-mcp chrome-devtools-mcp
 log_section "install agent-browser-mcp -- same deal as chrome-devtools-mcp"
 npm_install agent-browser-mcp agent-browser-mcp
 
+log_section "install playwright-cli -- browser control from the shell, no MCP schema in context"
+npm_install playwright-cli @playwright/cli
+
 log_section "install OpenSpec CLI -- spec/change tracking used by dev-workflow"
 if npm_has_global @fission-ai/openspec; then
     log_skip "[openspec] already installed"

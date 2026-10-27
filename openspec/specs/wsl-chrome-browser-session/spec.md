@@ -3,43 +3,35 @@
 ## Purpose
 
 Define safe connection setup, driver selection, verification, and teardown for an authenticated Windows Chrome used from WSL.
-
 ## Requirements
-
 ### Requirement: Separate connection setup from driver selection
 
-The skill SHALL prefer authorized native browser MCP tools when available and retain `cdp.py` as a fallback that respects task restrictions. Before fallback, the agent SHALL confirm that the helper's fixed port 9222 matches the intended endpoint.
+The skill SHALL use `playwright-cli` attached over CDP as the default browser driver. It SHALL NOT start a new profile to control the browser. It SHALL select and confirm the intended tab before it reads or acts. It SHALL end control with `detach` and SHALL NOT close, kill, or clear data of the attached browser.
 
 #### Scenario: Authenticated Windows Chrome is already running
-- **WHEN** native MCP tools can attach to the intended Chrome session
-- **THEN** the agent reuses that session rather than launching an empty headless profile or requiring `cdp.py`
+- **WHEN** `playwright-cli` can attach to the intended Chrome endpoint
+- **THEN** the agent reuses that session rather than launching an empty headless profile
 
-#### Scenario: Intended endpoint uses a different port
-- **WHEN** the intended Chrome endpoint is not on port 9222
-- **THEN** the agent keeps an authorized MCP connection or reports the helper as unsuitable
-- **AND** it does not run `cdp.py` against an unrelated 9222 endpoint
+#### Scenario: Task ends
+- **WHEN** the agent no longer needs browser control
+- **THEN** it runs `detach` and leaves Chrome and its login intact
 
 ### Requirement: Diagnose execution boundaries separately
 
-The skill SHALL distinguish Windows browser availability, ordinary WSL connectivity, agent-shell restrictions, and native MCP connectivity.
+The skill SHALL distinguish Windows browser availability, ordinary WSL connectivity, agent-shell restrictions, and `playwright-cli` connectivity.
 
 #### Scenario: Agent shell is restricted
 - **WHEN** the agent shell reports a permission error but the user's WSL terminal reaches Chrome
 - **THEN** the agent does not diagnose a broken WSL installation, reset the browser, or bypass restrictions
-- **AND** it verifies an authorized native MCP independently if one is available
+- **AND** it reports that `playwright-cli` cannot work from that shell
 
 ### Requirement: Scope MCP evaluation to the task project
 
-The skill SHALL keep new MCP configuration project-scoped, start with page-reading and page-selection tools, and require successful page listing and a target-page snapshot before reporting readiness. It SHALL select the confirmed target ID before a snapshot, or pass that ID only when the loaded snapshot schema explicitly supports it.
+The skill SHALL use a browser MCP only when the agent shell cannot reach Chrome and the user agrees. That MCP SHALL be project-scoped and SHALL be removed when the task ends.
 
 #### Scenario: Evaluation fails
 - **WHEN** a newly configured MCP is unsuitable or the user abandons evaluation
 - **THEN** the agent removes only the settings introduced for that evaluation and preserves unrelated settings and shared package caches
-
-#### Scenario: Target tab is not currently selected
-- **WHEN** the browser has multiple tabs and the snapshot schema has no `pageId`
-- **THEN** the agent selects the confirmed target with `select_page` before reading its snapshot
-- **AND** it does not read the unrelated default-selected tab
 
 ### Requirement: Inspect before changing network exposure
 
