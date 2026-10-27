@@ -14,6 +14,7 @@
 | `media-fetch` | Linux/WSL、macOS | 把一支線上影片（YouTube、Facebook 或其他 yt-dlp 支援的站）存成影片檔、縮圖、手寫字幕與完整 metadata | `media-fetch <url>` |
 | `media-transcribe` | Linux/WSL、macOS | 讀 `media-fetch` 存好的資料夾，產出逐字稿。不連網 | `media-transcribe <資料夾>` |
 | `youtube-api` | Linux/WSL、macOS | 用 YouTube Data API v3 操作自己的帳號：列播放清單、把影片加進播放清單，或任意一個 API 呼叫 | `youtube-api playlist-add <清單名或 id> <影片網址或 id>`；第一次要先 `youtube-api auth` |
+| `spotify-api` | Linux/WSL、macOS | 用 Spotify Web API 操作自己的帳號：列歌單、列歌單裡的歌，或任意一個 API 呼叫 | `spotify-api items <歌單名或 id>`；第一次要先 `spotify-api auth` |
 | `mermaid-ascii` | 全平台（Windows 走 Git Bash） | 把 Mermaid 轉成框線字元的純文字圖，給畫不出 Mermaid 的地方用（Slack、Mermaid 外掛壞掉的 Confluence） | `mermaid-ascii [options] <file>` 或從 stdin 讀；Confluence 要加 `--ascii` |
 
 ## 依賴
@@ -25,7 +26,7 @@
 | [uv](https://docs.astral.sh/uv/) | `media-fetch`、`media-transcribe` | 透過 `uvx` 取用 yt-dlp 與 whisper，不裝進系統 |
 | ffmpeg | `media-fetch` | 合併影音軌、`--no-video` 時轉出 mp3 |
 | Node + npm | `mermaid-ascii` | 第一次執行時把 `beautiful-mermaid` 裝到 `~/.local/share/beautiful-mermaid/<版本>/` |
-| python3（只用標準庫）| `youtube-api` | 不用 `uv`，也不裝 Google 的 client library |
+| python3（只用標準庫）| `youtube-api`、`spotify-api` | 不用 `uv`，也不裝 Google 的 client library |
 | JS runtime（deno / node / bun）| `media-fetch` | YouTube 的 token 檢查需要；缺了字幕端點會回 429 |
 
 ## `sdkupdate` 設計備忘
@@ -183,3 +184,40 @@ Google 對 Desktop app 的 client secret 不當作機密，但它仍然不該進
 - **WSL 裡的 Python 開不了瀏覽器。** `webbrowser` 找不到可執行的瀏覽器，所以
   `youtube-api auth` 會把登入網址印到 stderr，要自己點。Windows 瀏覽器連得到 WSL 的
   `127.0.0.1`，所以登入完成後會自動導回腳本，不用貼網址。
+
+## `spotify-api` 設計備忘
+
+2026-10-27 加入。需求是整理使用者自己的 Spotify 歌單。結構照抄 `youtube-api`：
+只用 Python 標準庫，留一個 `call` 子指令，憑證不進任何 repo。下面只寫不一樣的地方。
+
+### 前提：帳號要有 Premium
+
+2026-02 起，Development Mode 的 app 要求 app 擁有者有 Premium。Premium 停掉，app
+就停；重新訂閱後恢復。見 Spotify 的
+[February 2026 migration guide](https://developer.spotify.com/documentation/web-api/tutorials/february-2026-migration-guide)。
+
+同一份指南的其他限制：
+
+- 歌單內容只讀得到自己建的、或一起編輯的歌單。別人的歌單只回 metadata。
+- 端點改名：`/playlists/{id}/tracks` 改成 `/playlists/{id}/items`；回應裡的 `tracks`
+  改成 `items`，`track` 改成 `item`。網路上的舊範例大多還是舊名。
+
+### 檔案與設定
+
+憑證放 `${XDG_CONFIG_HOME:-~/.config}/spotify-api/`，不進任何 repo：
+
+| 檔案 | 內容 |
+|------|------|
+| `client_id` | developer.spotify.com 上 app 的 Client ID，一行 |
+| `token.json` | `spotify-api auth` 寫的 refresh token，權限 600 |
+
+用 PKCE 登入，所以不需要 client secret。換新機器時，把 `client_id` 複製過去，再跑一次
+`spotify-api auth`。
+
+app 的設定：Redirect URI 填 `http://127.0.0.1:8765/callback`，API 勾 Web API。
+
+### 兩個坑
+
+- **Redirect URI 不能用 `localhost`。** Spotify 只接受 `127.0.0.1` 或 `[::1]`。
+  port 寫死成 8765，因為登記的網址要完全一樣。8765 被占用時 `auth` 會失敗。
+- **refresh token 可能會換新。** 換新時，腳本會把新的寫回 `token.json`。

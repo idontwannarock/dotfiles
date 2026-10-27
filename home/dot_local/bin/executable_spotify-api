@@ -1,0 +1,213 @@
+#!/usr/bin/env python3
+"""Act on your own Spotify account through the Spotify Web API.
+
+  spotify-api auth                     sign in once; saves a refresh token
+  spotify-api playlists                list your playlists (id, count, name)
+  spotify-api items <playlist>         list a playlist's items (uri, artists - name);
+                                       playlist is a name or id
+  spotify-api call <METHOD> <path> [k=v ...] [--data JSON]
+                                       any other API call, e.g.
+                                       call GET me/tracks limit=10
+
+Files live in ${XDG_CONFIG_HOME:-~/.config}/spotify-api/:
+  client_id    the Client ID of your app on developer.spotify.com (one line)
+  token.json   written by `auth`; holds the refresh token. Never commit it.
+
+The app must list http://127.0.0.1:8765/callback as a Redirect URI.
+"""
+import base64
+import hashlib
+import http.server
+import json
+import os
+import secrets
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+import webbrowser
+
+AUTH_URL = "https://accounts.spotify.com/authorize"
+TOKEN_URL = "https://accounts.spotify.com/api/token"
+API = "https://api.spotify.com/v1/"
+PORT = 8765
+REDIRECT = f"http://127.0.0.1:{PORT}/callback"
+# Everything a playlist or library tidy-up needs, so a new kind of call does
+# not mean a new consent.
+SCOPE = " ".join([
+    "playlist-read-private", "playlist-read-collaborative",
+    "playlist-modify-private", "playlist-modify-public",
+    "user-library-read", "user-library-modify"])
+
+CONF = os.path.join(
+    os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "spotify-api")
+CLIENT_FILE = os.path.join(CONF, "client_id")
+TOKEN_FILE = os.path.join(CONF, "token.json")
+
+
+def die(msg):
+    sys.exit(f"spotify-api: {msg}")
+
+
+def client_id():
+    try:
+        with open(CLIENT_FILE) as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        die(f"missing {CLIENT_FILE}; put your app's Client ID there")
+
+
+def post_form(url, fields):
+    data = urllib.parse.urlencode(fields).encode()
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, data)) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        die(f"token endpoint said {e.code}: {e.read().decode()}")
+
+
+def save_token(tok):
+    os.makedirs(CONF, mode=0o700, exist_ok=True)
+    fd = os.open(TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        json.dump(tok, f)
+
+
+def auth():
+    cid = client_id()
+    verifier = secrets.token_urlsafe(64)
+    challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(verifier.encode()).digest()).rstrip(b"=").decode()
+    state = secrets.token_urlsafe(16)
+    got = {}
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            if "code" not in q and "error" not in q:
+                self.send_response(404)
+                self.end_headers()
+                return
+            got.update({k: v[0] for k, v in q.items()})
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(b"spotify-api: done, you can close this tab.")
+
+        def log_message(self, *a):
+            pass
+
+    # Spotify matches the registered redirect URI exactly, so the port is fixed.
+    srv = http.server.HTTPServer(("127.0.0.1", PORT), Handler)
+    url = AUTH_URL + "?" + urllib.parse.urlencode({
+        "client_id": cid, "redirect_uri": REDIRECT, "response_type": "code",
+        "scope": SCOPE, "state": state,
+        "code_challenge": challenge, "code_challenge_method": "S256"})
+    print(f"Open this URL to sign in:\n\n{url}\n", file=sys.stderr)
+    webbrowser.open(url)
+    while not got:
+        srv.handle_request()
+    if "error" in got:
+        die(f"sign-in refused: {got['error']}")
+    if got.get("state") != state:
+        die("state mismatch; start again")
+    tok = post_form(TOKEN_URL, {
+        "client_id": cid, "code": got["code"], "code_verifier": verifier,
+        "grant_type": "authorization_code", "redirect_uri": REDIRECT})
+    save_token({"refresh_token": tok["refresh_token"]})
+    print(f"spotify-api: saved {TOKEN_FILE}", file=sys.stderr)
+
+
+def access_token():
+    try:
+        with open(TOKEN_FILE) as f:
+            refresh = json.load(f)["refresh_token"]
+    except FileNotFoundError:
+        die("not signed in; run `spotify-api auth`")
+    tok = post_form(TOKEN_URL, {
+        "client_id": client_id(), "refresh_token": refresh,
+        "grant_type": "refresh_token"})
+    # Spotify may hand back a new refresh token; keep the old one only if it does not.
+    if tok.get("refresh_token"):
+        save_token({"refresh_token": tok["refresh_token"]})
+    return tok["access_token"]
+
+
+def call(method, path, params=None, body=None, token=None):
+    url = path if path.startswith("https://") else API + path.lstrip("/")
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(
+        url, method=method,
+        data=json.dumps(body).encode() if body is not None else None,
+        headers={"Authorization": f"Bearer {token or access_token()}",
+                 "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req) as r:
+            raw = r.read()
+            return json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as e:
+        die(f"{method} {path} said {e.code}: {e.read().decode()}")
+
+
+def pages(path, params, token):
+    r = call("GET", path, params, token=token)
+    while True:
+        yield from r["items"]
+        if not r.get("next"):
+            return
+        r = call("GET", r["next"], token=token)
+
+
+def my_playlists(token):
+    return list(pages("me/playlists", {"limit": 50}, token))
+
+
+def find_playlist(name, token):
+    lists = my_playlists(token)
+    hits = [p for p in lists if name in (p["id"], p["name"])]
+    if len(hits) != 1:
+        names = ", ".join(repr(p["name"]) for p in lists)
+        die(f"{len(hits)} playlists match {name!r}; yours are: {names}")
+    return hits[0]
+
+
+def main(argv):
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__.strip(), file=sys.stderr)
+        return 0 if argv else 1
+    cmd, args = argv[0], argv[1:]
+    if cmd == "auth" and not args:
+        auth()
+    elif cmd == "playlists" and not args:
+        for p in my_playlists(access_token()):
+            print(f"{p['id']}\t{p['items']['total']}\t{p['name']}")
+    elif cmd == "items" and len(args) == 1:
+        token = access_token()
+        p = find_playlist(args[0], token)
+        for e in pages(f"playlists/{p['id']}/items", {"limit": 50}, token):
+            it = e["item"]
+            if not it:  # removed from Spotify, or a local file
+                continue
+            who = ", ".join(a["name"] for a in it.get("artists", []))
+            print(f"{it['uri']}\t{who} - {it['name']}")
+    elif cmd == "call" and len(args) >= 2:
+        body, params, rest = None, {}, args[2:]
+        while rest:
+            a = rest.pop(0)
+            if a == "--data":
+                body = json.loads(rest.pop(0))
+            elif "=" in a:
+                k, v = a.split("=", 1)
+                params[k] = v
+            else:
+                die(f"expected k=v or --data, got {a!r}")
+        print(json.dumps(call(args[0].upper(), args[1], params, body),
+                         ensure_ascii=False, indent=2))
+    else:
+        die("bad usage; see `spotify-api --help`")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
