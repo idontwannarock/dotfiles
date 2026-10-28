@@ -570,6 +570,20 @@ Windows 上安裝的 plugin hooks（`.sh` 腳本）會因為兩個問題而失�
 
 沒有資料的段落整段省略，不留空的 `│`。
 
+### 與 Ghostex 共存
+
+Ghostex 安裝 Claude Code hooks 時，會改 `settings.json` 的兩個地方：
+
+- `statusLine.command` 外面包一層 `agent-statusline.sh`。它仍會執行我們的 `statusline`，畫面不變，Ghostex 從中讀取狀態。
+- `hooks.UserPromptSubmit` 加一筆 `agent-shell-notify.sh`。
+
+`modify_settings.json.sh.tmpl` 保留這兩個改動：
+
+- `statusLine.command` 已包含我們的 statusline 路徑 → 保留不動。不包含 → 改回我們的 statusline。
+- `UserPromptSubmit` 只管理含 `handoff-reminder` 與 `memory-index-reminder` 的那一筆，其他 entries 保留。
+
+Ghostex 移除 hooks 時會自己還原 statusLine，下次 apply 也不會留下殘骸。
+
 **2026-09-03 移除**：session id、使用時間、session 花費。三者都拿掉之後第二行只剩 rate limits，於是併回單行。同時移除 stdin 的 `cost` 欄位解析、`formatDuration()` 與 `cWhite`。舊版另有 Burn Rate／今日花費（ccusage）與 MCP 狀態行，早在 simplify-native-data change 就已退役。
 
 ### 依賴
