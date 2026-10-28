@@ -329,7 +329,7 @@ skill body SHALL NOT 含任何多工器專屬的指令。所有終端操作 SHAL
 - **WHEN** 呼叫 `agent-mux close <name>`
 - **THEN** SHALL 只關閉同名 `start` 記錄下來的終端,並以多工器自己的清單確認它已消失
 - **AND** 清單本身讀取失敗時 SHALL 以非零結束,SHALL NOT 當作「已消失」
-- **AND** herdr 後端 SHALL 在 `start` 時記錄 pane 的 terminal id,`close` 時以它在 `herdr api snapshot` 中找出目前的 pane —— pane id 在 pane move 後會變,terminal id 不會
+- **AND** herdr 後端的狀態檔 SHALL 只記錄 `backend=herdr` 與 terminal id,SHALL NOT 記錄 pane id;`close` 時以 terminal id 在 `herdr api snapshot` 中找出目前的 pane —— pane id 在 pane move 後可能改變,存下來會過期,而 `start` 之後沒有任何動詞需要它
 - **AND** `herdr pane close` 失敗,或關閉後該 terminal 仍在 snapshot 中時,SHALL 以非零結束並保留狀態檔,使 skill 回報 `teardown not confirmed`
 
 #### Scenario: 狀態檔的後端必須有效
@@ -380,6 +380,12 @@ Ghostex 沒有 split pane。`agent-mux` SHALL 以 repo 所屬 Ghostex project �
 #### Scenario: 等待收斂
 - **WHEN** 訊息已送達
 - **THEN** SHALL 輪詢狀態,直到觀察到 `working` 之後的第一個非 `working` 狀態;送出 10 秒後仍未觀察到 `working` 時,第一個非 `working` 狀態亦視為收斂 —— 短於輪詢間隔的回合可能整段被錯過,而是否完成由 findings 檔決定
+- **AND** `unknown`(已收斂、未能分類)SHALL 與 `idle` 同樣使等待結束;只有查詢失敗 SHALL 被跳過而繼續等待
+- **AND** 兩者 SHALL 在腳本內以不同的字表示 —— 共用同一個字時,已收斂而未分類的 agent 會被當成查詢失敗,一路等到 timeout
+
+#### Scenario: ghostex state 查詢失敗
+- **WHEN** `start` 呼叫 `ghostex state` 失敗
+- **THEN** 錯誤訊息 SHALL 只說 `ghostex state failed` 與其原因,SHALL NOT 另外宣稱 repo 不在任何 Ghostex project 中
 
 ### Requirement: 查詢失敗不等於 agent 已消失
 

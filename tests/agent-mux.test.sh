@@ -117,7 +117,7 @@ esac
 # herdr drops an agent that quit; agent get then fails on stderr.
 reset
 started rev 'backend=herdr
-pane=w1:p2'
+terminal=T1'
 reply herdr-agent_get.err '{"error":{"code":"agent_not_found"}}'
 printf 'review\n' > "$work/prompt.txt"
 out=$(mux bash "$SCRIPT" prompt rev "$work/prompt.txt" 2>&1); rc=$?
@@ -144,7 +144,7 @@ fi
 herdr_prompt_case() {
     reset
     started rev 'backend=herdr
-pane=w1:p2'
+terminal=T1'
     reply herdr-agent_get '{"result":{"agent":{"agent":"codex","agent_status":"idle"}}}'
     if [ -n "$2" ]; then reply herdr-agent_prompt.err "$2"; else reply herdr-agent_prompt "$3"; fi
     out=$(mux bash "$SCRIPT" prompt rev "$work/prompt.txt" 2>/dev/null); rc=$?
@@ -203,7 +203,6 @@ EOF
 
 reset
 started rev 'backend=herdr
-pane=w1:p2
 terminal=T1'
 snapshot_until_closed w1:p2
 reply herdr-pane_close '{"result":{"type":"ok"}}'
@@ -218,7 +217,6 @@ fi
 # A pane move changes the pane id. close finds the pane through the terminal id.
 reset
 started rev 'backend=herdr
-pane=w1:p2
 terminal=T1'
 snapshot_until_closed w2:p5
 reply herdr-pane_close '{"result":{"type":"ok"}}'
@@ -233,7 +231,6 @@ fi
 # A failed pane close leaves a shell open. close must fail, keep the state file.
 reset
 started rev 'backend=herdr
-pane=w1:p2
 terminal=T1'
 snapshot_until_closed w9:p9
 reply herdr-pane_close.err '{"error":{"code":"io","message":"broken pipe"}}'
@@ -249,7 +246,6 @@ esac
 # A pane close that answers ok but leaves the terminal open is reported too.
 reset
 started rev 'backend=herdr
-pane=w1:p2
 terminal=T1'
 reply herdr-api_snapshot '{"result":{"snapshot":{"panes":[{"pane_id":"w1:p2","terminal_id":"T1"}]}}}'
 reply herdr-pane_close '{"result":{"type":"ok"}}'
@@ -263,7 +259,6 @@ esac
 # A failed list must not read as "the agent is gone".
 reset
 started rev 'backend=herdr
-pane=w1:p2
 terminal=T1'
 reply herdr-api_snapshot '{"result":{"snapshot":{"panes":[]}}}'
 reply herdr-agent_list.err '{"error":{"code":"io","message":"PermissionDenied"}}'
@@ -289,7 +284,6 @@ esac
 # wait for "blocked" before it sends Escape.
 reset
 started rev 'backend=herdr
-pane=w1:p2
 terminal=T1'
 cat > "$work/replies/herdr-agent_get.sh" <<'EOF'
 if grep -q 'agent prompt rev /exit' "$1"; then
@@ -373,7 +367,6 @@ out=$(mux bash "$SCRIPT" alive rev 2>/dev/null); rc=$?
 herdr_prompt_case unknown '' '{"result":{"agent":{"agent":"codex","agent_status":"unknown"}}}' "settled unknown"
 reset
 started rev 'backend=herdr
-pane=w1:p2
 terminal=T1'
 reply herdr-agent_get '{"result":{"agent":{"agent":"codex","agent_status":"idle"}}}'
 reply herdr-agent_prompt '{"result":{"agent":{"agent":"codex","agent_status":"unknown"}}}'
@@ -415,6 +408,45 @@ if command -v git >/dev/null 2>&1; then
         fail "start (Ghostex): linked worktree gave rc=$rc: $out; calls: $(tr '\n' ';' < "$log")"
     fi
 fi
+
+# --- re-review fixes ------------------------------------------------------------
+
+# attention without a program status is settled but unclassified. The wait
+# must end on it after the grace period, not spin until the timeout.
+reset
+started rev 'backend=ghostex
+ref=S1:P1:G1'
+reply ghostex-sessions_--json '{"ok":true,"sessions":[{"globalRef":"S1:P1:G1","providerSessionState":"exists","activity":"attention"}]}'
+reply ghostex-read-text_S1:P1:G1 '{"ok":true}'
+reply ghostex-agents_send '{"ok":true,"status":"delivered"}'
+out=$(mux bash "$SCRIPT" prompt rev "$work/prompt.txt" --timeout 30 2>&1); rc=$?
+[ "$rc:$out" = "0:unknown" ] && pass "prompt (Ghostex): attention without program status settles as unknown" \
+    || fail "prompt (Ghostex): attention without program status gave rc=$rc: $out"
+
+# herdr start stores only the terminal id. A stored pane id goes stale on a
+# pane move, and nothing reads it after start.
+reset
+reply herdr-agent_list '{"result":{"agents":[],"type":"agent_list"}}'
+reply herdr-pane_split '{"result":{"pane":{"pane_id":"w1:p2","terminal_id":"T1"}}}'
+reply herdr-agent_start '{"result":{"agent":{"agent":"codex"}}}'
+out=$(mux HERDR_ENV=1 bash "$SCRIPT" start rev codex "$work" 2>&1); rc=$?
+if [ "$rc:$out" = "0:herdr" ] && grep -qx 'terminal=T1' "$work/state/rev.env" \
+   && ! grep -q '^pane=' "$work/state/rev.env" && grep -q 'agent start rev --kind codex --pane w1:p2' "$log"; then
+    pass "start (herdr): the state file holds the terminal id and no pane id"
+else
+    fail "start (herdr): rc=$rc: $out; state: $(tr '\n' ';' < "$work/state/rev.env" 2>/dev/null)"
+fi
+
+# A failed ghostex state is reported as that, not as "not in a Ghostex project".
+reset
+reply ghostex-agents_list '{"ok":true,"sessions":[]}'
+reply ghostex-state_ '{"ok":false,"error":"gxserver did not answer"}'
+out=$(mux GHOSTEX_SESSION_ID=S1-P1-G0 bash "$SCRIPT" start rev codex "$work" 2>&1); rc=$?
+case "$rc:$out" in
+    *"not in a Ghostex project"*) fail "start (Ghostex): a failed state query also said: $out" ;;
+    1:*"ghostex state failed: gxserver did not answer"*) pass "start (Ghostex): a failed state query names its own error only" ;;
+    *) fail "start (Ghostex): a failed state query gave rc=$rc: $out" ;;
+esac
 
 if [ "$failures" -eq 0 ]; then
     printf 'all agent-mux tests passed\n'

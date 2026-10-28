@@ -11,8 +11,8 @@
 #     every herdr command fails: the unix socket counts as network.
 #   - prompt and exit refuse to type when the agent is gone. With no agent,
 #     the text reaches a shell, and the shell runs it as commands.
-#   - close acts only on what start created. start writes the herdr pane id or
-#     the Ghostex session ref to a state file; close reads it back.
+#   - close acts only on what start created. start writes the herdr terminal id
+#     or the Ghostex session ref to a state file; close reads it back.
 #
 # Every verb prints one result word or line on stdout and puts the reason for
 # a failure on stderr. See docs/user-scripts.md for the design notes.
@@ -86,7 +86,7 @@ check_name() {
   esac
 }
 
-# Sets BACKEND, and PANE and TERM_ID (herdr) or REF (Ghostex), for a started
+# Sets BACKEND, and TERM_ID (herdr) or REF (Ghostex), for a started
 # agent. Every verb then calls "${BACKEND}_<verb>", so BACKEND must be valid.
 load() {
   check_name "$1"
@@ -94,7 +94,6 @@ load() {
   f=$(state_file "$1")
   [ -f "$f" ] || die "no agent named '$1' was started by agent-mux"
   BACKEND=$(sed -n 's/^backend=//p' "$f")
-  PANE=$(sed -n 's/^pane=//p' "$f")
   TERM_ID=$(sed -n 's/^terminal=//p' "$f")
   REF=$(sed -n 's/^ref=//p' "$f")
   case "$BACKEND" in
@@ -149,21 +148,22 @@ detect() {
 
 herdr_start() {
   local name=$1 kind=$2 repo=$3; shift 3
-  local out code i
+  local out code i pane
   out=$(herdr pane split --current --direction right --cwd "$repo" --no-focus 2>&1) || true
-  PANE=$(printf '%s' "$out" | jqr '.result.pane.pane_id // empty' 2>/dev/null || true)
+  pane=$(printf '%s' "$out" | jqr '.result.pane.pane_id // empty' 2>/dev/null || true)
   TERM_ID=$(printf '%s' "$out" | jqr '.result.pane.terminal_id // empty' 2>/dev/null || true)
-  [ -n "$PANE" ] && [ -n "$TERM_ID" ] || die "counterpart failed to start: pane split failed: $(errmsg "$out")"
-  # The pane id changes on a pane move. The terminal id does not, so close
-  # finds the pane through it.
-  printf 'backend=herdr\npane=%s\nterminal=%s\n' "$PANE" "$TERM_ID" > "$(state_file "$name")"
+  [ -n "$pane" ] && [ -n "$TERM_ID" ] || die "counterpart failed to start: pane split failed: $(errmsg "$out")"
+  # Only the terminal id is stored. A pane id can change on a pane move, so a
+  # stored one would go stale; close finds the current pane through the
+  # terminal id instead.
+  printf 'backend=herdr\nterminal=%s\n' "$TERM_ID" > "$(state_file "$name")"
   # A new pane is not at its prompt at once, and agent start refuses a busy
   # pane. Retry that one refusal; any other error is final.
   for i in 1 2 3 4 5 6 7 8 9 10; do
     if [ $# -gt 0 ]; then
-      out=$(herdr agent start "$name" --kind "$kind" --pane "$PANE" -- "$@" 2>&1) || true
+      out=$(herdr agent start "$name" --kind "$kind" --pane "$pane" -- "$@" 2>&1) || true
     else
-      out=$(herdr agent start "$name" --kind "$kind" --pane "$PANE" 2>&1) || true
+      out=$(herdr agent start "$name" --kind "$kind" --pane "$pane" 2>&1) || true
     fi
     printf '%s' "$out" | jtest '.result' && return 0
     code=$(printf '%s' "$out" | jqr '.error.code // empty' 2>/dev/null || true)
@@ -194,7 +194,7 @@ herdr_alive() {
 herdr_state() {
   local rc=0
   herdr_alive "$1" || rc=$?
-  case $rc in 1) echo gone; return ;; 2) echo unknown; return ;; esac
+  case $rc in 1) echo gone; return ;; 2) echo queryfail; return ;; esac
   herdr_get "$1" | jqr '.result.agent.agent_status // "unknown"'
 }
 
@@ -263,12 +263,13 @@ git_common() {
 }
 
 # The Ghostex project for a repo: same path, or the same git repository (a
-# linked worktree has its own path but shares the common directory).
+# linked worktree has its own path but shares the common directory). Prints
+# nothing when no project matches. Fails, with the reason on stdout, when
+# ghostex state fails.
 ghostex_project() {
   local repo=$1 out common rows id path
   out=$(ghostex state 2>&1) || true
-  printf '%s' "$out" | jtest '.projects' \
-    || die "counterpart failed to start: ghostex state failed: $(errmsg "$out")"
+  printf '%s' "$out" | jtest '.projects' || { printf '%s' "$(errmsg "$out")"; return 1; }
   rows=$(printf '%s' "$out" | jqr '.projects[] | "\(.projectId)\t\(.path)"')
   while IFS=$'\t' read -r id path; do
     [ "$path" = "$repo" ] && { echo "$id"; return; }
@@ -284,7 +285,7 @@ ghostex_project() {
 ghostex_start() {
   local name=$1 kind=$2 repo=$3; shift 3
   local pid cmd line a out i rc
-  pid=$(ghostex_project "$repo")
+  pid=$(ghostex_project "$repo") || die "counterpart failed to start: ghostex state failed: $pid"
   # Adding a project would change the user's sidebar. Refuse instead.
   [ -n "$pid" ] || die "counterpart failed to start: $repo is not in a Ghostex project"
   cmd=$(ghostex agents types --json 2>/dev/null | jqr --arg k "$kind" \
@@ -337,13 +338,18 @@ ghostex_alive() {
 # Ghostex's activity "attention" means two things: the agent waits for a
 # permission or an answer, or it finished and nobody has looked yet. The
 # program status that the agent reports itself (Codex and Claude Code do)
-# tells them apart: "blocked" or "done".
+# tells them apart: "blocked" or "done". Without one the state is "unknown":
+# settled, but not classified.
+#
+# The backend _state functions print "queryfail" when the multiplexer did not
+# answer. That is a different thing from "unknown", and the prompt wait must
+# skip only it. The state verb shows it as "unknown".
 ghostex_state() {
   local row act ps
   local rc=0
   ghostex_alive "$1" || rc=$?
-  case $rc in 1) echo gone; return ;; 2) echo unknown; return ;; esac
-  row=$(ghostex_row) || { printf 'agent-mux: ghostex sessions failed: %s\n' "$row" >&2; echo unknown; return; }
+  case $rc in 1) echo gone; return ;; 2) echo queryfail; return ;; esac
+  row=$(ghostex_row) || { printf 'agent-mux: ghostex sessions failed: %s\n' "$row" >&2; echo queryfail; return; }
   act=$(printf '%s' "$row" | jqr '.activity // empty')
   ps=$(printf '%s' "$row" | jqr '.programStatus.state // empty')
   if [ "$act" = working ] || [ "$ps" = working ]; then echo working
@@ -373,7 +379,8 @@ ghostex_prompt() {
   # Ghostex has no --wait. Poll until the agent settles. A turn shorter than
   # the poll interval can finish unseen, so after a grace period a plain idle
   # also counts as settled; the caller's findings file decides what happened.
-  # An unknown state (Ghostex did not answer) does not settle the wait.
+  # A failed query (Ghostex did not answer) does not settle the wait. An
+  # unknown state does, like idle: the agent is not working.
   start=$(date +%s)
   while :; do
     sleep 2
@@ -382,7 +389,7 @@ ghostex_prompt() {
     case "$s" in
       gone|blocked) echo "$s"; return ;;
       working) seen=1 ;;
-      unknown) ;;
+      queryfail) ;;
       *) if [ "$seen" = 1 ] || [ $((now - start)) -ge 10 ]; then echo "$s"; return; fi ;;
     esac
     [ $((now - start)) -lt "$secs" ] || { echo timeout; return; }
@@ -438,7 +445,9 @@ case "$verb" in
   state)
     [ $# -eq 1 ] || usage 2
     load "$1"
-    "${BACKEND}_state" "$1" ;;
+    st=$("${BACKEND}_state" "$1")
+    [ "$st" != queryfail ] || st=unknown
+    echo "$st" ;;
 
   prompt)
     [ $# -ge 2 ] || usage 2
