@@ -421,11 +421,18 @@ deny 不只是執行期攔截，**它會把該工具的完整說明從 system pr
 |------|---------------|
 | baseline | 29,135 |
 | deny `Workflow` 一個 | 21,029 |
-| deny 現行四個 | **18,513** |
+| deny 當時四個 | **18,513** |
 
 `Workflow` 一個工具就佔 ~8,100 token。四個合計省 10,622。
 
-`ListAgents` 沒有 deny。當初的理由是 `coordinate` skill 靠它做艦隊定址；`coordinate` 已在 2026-10-28 退役，所以這個理由不再成立。要不要改成 deny 還沒決定。
+`ListAgents` 在 2026-10-28 加入 deny。原本不 deny 的唯一理由是 `coordinate` skill 的艦隊定址，而 `coordinate` 同一天退役了。
+
+| 設定 | prompt tokens |
+|------|---------------|
+| deny 四個 | 24,352 |
+| deny 四個 ＋ `ListAgents` | 23,948 |
+
+省 404 token（兩次量測結果相同）。deny 之後 `Agent` 與 `SendMessage` 仍在，仍可傳訊息給自己開的子 agent。少掉的只有「列出這台機器上其他 Claude session」。herdr 與 Ghostex 透過 Bash 執行 CLI，不經過 `ListAgents`，所以 `agent-mux` 不受影響。
 
 > settings.json 放頂層 `"tools": [...]` **會被忽略**（實測 29,134，與 baseline 相同）。
 > CLI 的 `--tools` 旗標有效，但那要改啟動方式，不如用 `deny`。
