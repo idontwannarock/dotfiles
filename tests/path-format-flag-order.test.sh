@@ -129,12 +129,14 @@ repo_root=$(dirname "$self_dir")
 # Set just under the counts measured on 2026-09-04 (14 and 4), themselves down
 # from 2026-08-24's 17 and 6: retiring the bare+worktree layout deleted
 # reference/bare-worktree/ and the ARCH-detection block in three skill bodies.
+# 2026-10-28 lowered the skills floor from 14 to 7: retiring `coordinate` deleted
+# coordinate.md (4 call sites) and the coordinated-mode section of dev-workflow (3).
 # A global "> 0" would only tell total collapse apart from everything else: 14 of
 # 16 call sites can vanish and still satisfy it, which is the shape a rename, a
 # `.chezmoiignore` change, or a half-finished checkout produces.
 # Written as `<root>:<floor>` so a root and its floor cannot drift apart, and so
 # adding a root is one edit here plus one in the CI filter — nowhere else.
-scan_roots='home/.chezmoitemplates/skills:14 home/dot_agent/reference:4'
+scan_roots='home/.chezmoitemplates/skills:7 home/dot_agent/reference:4'
 # Set only by the message self-check below, which re-invokes this script against
 # a throwaway fixture directory. Floors are zero there because the fixture is two
 # files by construction.

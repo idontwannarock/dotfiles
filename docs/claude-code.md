@@ -425,7 +425,7 @@ deny 不只是執行期攔截，**它會把該工具的完整說明從 system pr
 
 `Workflow` 一個工具就佔 ~8,100 token。四個合計省 10,622。
 
-`ListAgents` **刻意不 deny**：`coordinate` skill 靠它做艦隊定址。
+`ListAgents` 沒有 deny。當初的理由是 `coordinate` skill 靠它做艦隊定址；`coordinate` 已在 2026-10-28 退役，所以這個理由不再成立。要不要改成 deny 還沒決定。
 
 > settings.json 放頂層 `"tools": [...]` **會被忽略**（實測 29,134，與 baseline 相同）。
 > CLI 的 `--tools` 旗標有效，但那要改啟動方式，不如用 `deny`。

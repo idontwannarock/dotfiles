@@ -15,6 +15,7 @@
 | `media-transcribe` | Linux/WSL、macOS | 讀 `media-fetch` 存好的資料夾，產出逐字稿。不連網 | `media-transcribe <資料夾>` |
 | `youtube-api` | Linux/WSL、macOS | 用 YouTube Data API v3 操作自己的帳號：列播放清單、把影片加進播放清單，或任意一個 API 呼叫 | `youtube-api playlist-add <清單名或 id> <影片網址或 id>`；第一次要先 `youtube-api auth` |
 | `spotify-api` | Linux/WSL、macOS | 用 Spotify Web API 操作自己的帳號：列歌單、列歌單裡的歌，或任意一個 API 呼叫 | `spotify-api items <歌單名或 id>`；第一次要先 `spotify-api auth` |
+| `agent-mux` | Linux/WSL（Windows、macOS 未驗證） | 在 herdr 或 Ghostex 裡開一個 agent、送 prompt、等它結束、關掉。`review-cross-model` 用它，所以 skill 本文不寫任何多工器指令 | `agent-mux --help`；一般不手動呼叫 |
 | `mermaid-ascii` | 全平台（Windows 走 Git Bash） | 把 Mermaid 轉成框線字元的純文字圖，給畫不出 Mermaid 的地方用（Slack、Mermaid 外掛壞掉的 Confluence） | `mermaid-ascii [options] <file>` 或從 stdin 讀；Confluence 要加 `--ascii` |
 
 ## 依賴
@@ -27,6 +28,7 @@
 | ffmpeg | `media-fetch` | 合併影音軌、`--no-video` 時轉出 mp3 |
 | Node + npm | `mermaid-ascii` | 第一次執行時把 `beautiful-mermaid` 裝到 `~/.local/share/beautiful-mermaid/<版本>/` |
 | python3（只用標準庫）| `youtube-api`、`spotify-api` | 不用 `uv`，也不裝 Google 的 client library |
+| jq | `agent-mux` | 解析 herdr 與 Ghostex 回的 JSON |
 | JS runtime（deno / node / bun）| `media-fetch` | YouTube 的 token 檢查需要；缺了字幕端點會回 429 |
 
 ## `sdkupdate` 設計備忘
@@ -221,3 +223,76 @@ app 的設定：Redirect URI 填 `http://127.0.0.1:8765/callback`，API 勾 Web 
 - **Redirect URI 不能用 `localhost`。** Spotify 只接受 `127.0.0.1` 或 `[::1]`。
   port 寫死成 8765，因為登記的網址要完全一樣。8765 被占用時 `auth` 會失敗。
 - **refresh token 可能會換新。** 換新時，腳本會把新的寫回 `token.json`。
+
+## `agent-mux` 設計備忘
+
+2026-10-28 加入。`review-cross-model` 要在另一個終端開一個不同 kind 的 agent。以前它直接下
+herdr 指令，所以在 Ghostex 裡每次都退化。現在 skill 只呼叫 `agent-mux`，兩個多工器的差異
+都在腳本裡。
+
+### 動詞
+
+| 動詞 | 做什麼 | stdout |
+|------|--------|--------|
+| `detect` | 依序試 herdr、Ghostex | `herdr` 或 `ghostex`；都不行就在 stderr 列出兩邊的原因 |
+| `start <name> <kind> <repo> [-- 參數]` | 開終端、啟動 agent、把終端識別碼寫進 `~/.local/state/agent-mux/<name>.env` | 後端名稱 |
+| `alive <name>` | agent 還在不在 | `alive` / `gone` |
+| `state <name>` | 目前狀態 | `idle` `working` `blocked` `done` `unknown` `gone` |
+| `prompt <name> <檔案> [--timeout 秒]` | 先確認還活著，再送出並等到收斂 | `idle` `done` `unknown` `blocked` `timeout` `gone` `failed` |
+| `classify-read <name>` | 讀一次畫面，只用來分類失敗 | 畫面文字 |
+| `exit <name> <結束指令>` | 禮貌退出，最多等 10 秒 | `exited` / `running` |
+| `close <name>` | 關掉 `start` 開的終端，再從多工器的清單確認它不在了 | `closed` |
+
+### 偵測不能只看環境變數
+
+每個後端都要兩個條件：表示「正在裡面」的環境變數（`HERDR_ENV=1`、`GHOSTEX_SESSION_ID`），
+**加上**一個唯讀指令成功（`herdr agent list`、`ghostex agents list --json`）。
+
+原因是 Codex 的 sandbox。sandbox 裡 `HERDR_ENV=1` 還在，但 unix socket 被當成網路，
+每個 herdr 指令都失敗。2026-10-28 在 `codex sandbox` 裡實測：
+
+```
+agent-mux: no agent multiplexer available -- herdr: herdr is set but unreachable:
+Error: Os { code: 1, kind: PermissionDenied, ... }; Ghostex: Ghostex is set but
+unreachable: gxserver did not answer ... Could not connect to local gxserver ...
+```
+
+### Ghostex 的對應做法
+
+Ghostex 沒有 split pane，也沒有 `--wait`。對應方式：
+
+- **終端**：在 repo 所屬的 Ghostex project 開一個新 session。repo 不是 Ghostex project 時
+  `start` 直接失敗，不呼叫 `add-project`，因為那會改到 sidebar。
+- **啟動參數**：`create-agent` 不收任意參數，所以改用
+  `create-session --input "exec <command> <參數>" --start`。`<command>` 取自
+  `ghostex agents types`。Ghostex 照樣認得出裡面的 agent（`agentId` 會變成 `codex`）。
+- **存活**：`exec` 讓 agent 結束時終端也結束，所以看 `sessions --json --full` 的
+  `providerSessionState` 是不是 `exists`。不能看 `activity`：codex 退出後它還是 `idle`。
+- **等待**：每 2 秒輪詢。看到 `working` 之後的第一個非 `working` 狀態就算收斂；送出 10 秒
+  後還沒看到 `working`，第一個非 `working` 狀態也算。
+- **`attention` 有兩個意思**：等權限，或做完了但沒人看過。用 agent 自己回報的
+  `programStatus.state`（`blocked` / `done`）分開。
+
+### 踩過的坑
+
+- **Codex 的更新提示會吃掉 Enter。** 有新版時，codex 啟動會先跳更新提示。這時 Ghostex
+  回報 `idle`，`agents send` 會被拒（訊息寫 `Answer it in chat before sending`），
+  所以 `prompt` 回 `blocked`。更糟的是 `/exit` 加 Enter 會選中「Update now」。
+  驗證時真的發生一次，codex 從 0.164.0 升到 0.165.0。所以 Ghostex 的 `exit` 一律先送 Escape。
+- **`jq -e` 讀到空輸入會回 0。** herdr 出錯時把 JSON 印到 stderr，stdout 是空的。
+  腳本用 `jtest` 包一層，空輸入一律當 false。
+
+### 驗證紀錄（2026-10-28，WSL2）
+
+兩個後端都用 `codex`（`--sandbox workspace-write --ask-for-approval never`）跑完整一輪：
+`detect` → `start` → `prompt`（要它寫一個檔，檔案內容確認）→ `exit` → `alive` 回 `gone`
+→ 對已退出的 agent `prompt` 回 `gone` 且沒有送字 → `close` → 確認清單裡沒有它。
+另外各跑一次 `--sandbox read-only --ask-for-approval on-request`，`prompt` 回 `blocked`。
+
+| 後端 | 版本 | 環境 |
+|------|------|------|
+| herdr | 0.9.5 | 獨立的 named session（`herdr --session <名字> server`），用完刪掉，不碰預設 session |
+| Ghostex | 10.31.0 | WSL backend，dotfiles project |
+
+Windows 原生與 macOS 沒有驗證。
+

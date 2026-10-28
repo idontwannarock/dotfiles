@@ -26,9 +26,7 @@ on:
       - 'home/.chezmoitemplates/skills/**'
       - 'home/dot_agent/reference/**'
       # Same rule, second subject: carrier-positional-reference.test.sh declares
-      # openspec/specs and context/ among its scan roots. (The other two new
-      # guards scan only the skill bodies covered above — do not read this pair
-      # of entries as applying to them.) A guard whose population includes a
+      # openspec/specs and context/ among its scan roots. A guard whose population includes a
       # tree this filter does not list is silent on exactly the PR that only
       # touches that tree — and on CI, silence and passing are indistinguishable.
       - 'openspec/specs/**'
