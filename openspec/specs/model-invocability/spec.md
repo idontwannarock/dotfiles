@@ -2,7 +2,6 @@
 
 ## Purpose
 定義「哪些能力可以由模型自行啟動」的判準與其落點:以**可逆性與外部可見性**取代「有無副作用」,並記錄全部 Claude command 的分類結果、Codex 端無 gate 機制所造成的殘餘落差,以及禁止反向改動的依據。補足舊判準失去鑑別力後造成的分類漂移——同類能力散落在閘門兩側,而無人能說出判準是什麼。
-
 ## Requirements
 ### Requirement: 判準為可逆性與外部可見性
 
@@ -44,7 +43,7 @@ SHALL NOT 以「是否有副作用」作為判準。該措辭無法區分風險�
 #### Scenario: 解鎖清單
 
 - **WHEN** 檢視 `handoff`、`pickup`、`handoff-list`、`git/commit`、`code/review-surgical`、`code/review-comprehensive`、`code/review-cross-model`、`code/review-architecture` 的 frontmatter
-- **THEN** 皆 SHALL NOT 含 `disable-model-invocation`(共 8 支;`code/review-cross-model` 唯讀,其對外行為僅限於在本機 herdr pane 內起一個唯讀的 agent,無不可逆效果亦非外部可見;`code/review-architecture` 只診斷不改 source)
+- **THEN** 皆 SHALL NOT 含 `disable-model-invocation`(共 8 支;`code/review-cross-model` 唯讀,其對外行為僅限於在本機 agent 多工器(herdr pane 或 Ghostex session)內起一個唯讀的 agent,無不可逆效果亦非外部可見;`code/review-architecture` 只診斷不改 source)
 
 #### Scenario: 清單涵蓋整棵樹
 
@@ -68,7 +67,7 @@ SHALL NOT 以「是否有副作用」作為判準。該措辭無法區分風險�
 
 #### Scenario: 起用外部 agent 不改變分類
 
-- **WHEN** 某能力會在本機起一個外部 agent(如 `code/review-cross-model` 經 herdr 派工)
+- **WHEN** 某能力會在本機起一個外部 agent(如 `code/review-cross-model` 經 agent 多工器派工)
 - **THEN** 判準 SHALL 仍為該能力自身效果的可逆性與外部可見性 —— 被起用的 agent 若受唯讀邊界約束,SHALL NOT 因「啟動了另一個程序」而改判為需鎖
 
 ### Requirement: Codex 端不施加等效限制
@@ -107,3 +106,4 @@ Codex skill SHALL NOT 為了對齊而在 `description` 中加入「僅在使用�
 
 - **WHEN** 執行環境的模型版本更新
 - **THEN** 該範本 SHALL 無需修改即可產生正確的 trailer
+

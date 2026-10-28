@@ -119,8 +119,8 @@ herdr agent start <name> --kind <kind> --pane <上一步回傳的 pane id>
 
 兩個實際成本，用之前先知道：
 
-- **新 session 沒有你的上下文。** 任務要整包寫成訊息交過去，那是 `handoff` /
-  `coordinate` 的工作，不是一行 prompt 打發得掉的。
+- **新 session 沒有你的上下文。** 任務要整包寫成訊息交過去，那是 `handoff`
+  的工作，不是一行 prompt 打發得掉的。
 - **協調者要自己顧授權對話框。** agy 停在 `Run this command?` 時，
   `herdr agent get` 回報的是 **`done`** —— herdr 認不出那個對話框。`agent wait`
   在 agy 身上會騙人，要改成輪詢 pane 內容才推得動。

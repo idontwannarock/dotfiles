@@ -395,5 +395,5 @@ dotfiles/
 | [SSH](docs/ssh.md) | SSH key 設定教學、`~/.ssh/config.d/` Include 慣例 |
 | [Windows SSH 與 junction](docs/windows-ssh-junction.md) | SSH session 走不進 junction 的根因，工具選型的第一道篩子 |
 | [Starship](docs/starship.md) | Starship prompt 設定 |
-| [User Scripts](docs/user-scripts.md) | 手動執行的輔助腳本（scoop 更新、pwsh 換裝、SDKMAN 更新、YouTube 影片存檔轉逐字稿） |
+| [User Scripts](docs/user-scripts.md) | 手動執行的輔助腳本（scoop 更新、pwsh 換裝、SDKMAN 更新、YouTube 影片存檔轉逐字稿、跨模型 review 用的 agent 多工器 adapter） |
 | [Vim](docs/vim.md) | Vim / IdeaVim 設定與快捷鍵 |

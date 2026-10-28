@@ -5,8 +5,8 @@
 # A shared body renders once per tool through a name-map, so `{{ if eq .n.tool
 # "claude" }}` asks "which agent is READING this file". That is the right
 # question only when the content is about the reader itself. When the content is
-# about some OTHER agent — the pane a coordinator drives, the line it dispatches
-# — the branch silently hands each reader an answer about the wrong agent, and
+# about some OTHER agent — the counterpart pane review-cross-model drives — the
+# branch silently hands each reader an answer about the wrong agent, and
 # nothing turns red: both renders are self-consistent and read as plausible.
 #
 # It has happened three times (dotfiles #107, and twice more found by counting
@@ -33,7 +33,7 @@
 # TABLE covering the kinds, never a branch. The reason is structural, not
 # stylistic, and it has to be stated or the next person will read the table as a
 # formatting preference and turn it back into a branch: the other agent's kind is
-# a RUNTIME value — which agent a coordinator drives or dispatches is decided
+# a RUNTIME value — which agent review-cross-model drives is decided
 # long after this file renders — so render time cannot know it, and a branch can
 # only ever ask about the reader. A branch is therefore legitimate only
 # for facts about the reader, and every such branch must say so on the line

@@ -1,0 +1,502 @@
+#!/usr/bin/env bash
+# Drive one agent in its own terminal through the agent multiplexer this
+# session runs in. Two backends: herdr and Ghostex.
+#
+# review-cross-model calls this script, so the skill body names no
+# multiplexer. The script also holds three of the skill's guarantees, so that
+# no caller can skip them:
+#
+#   - detect runs a real read-only command for each backend. An environment
+#     variable is not proof. Under the Codex sandbox HERDR_ENV=1 is set, but
+#     every herdr command fails: the unix socket counts as network.
+#   - prompt and exit refuse to type when the agent is gone. With no agent,
+#     the text reaches a shell, and the shell runs it as commands.
+#   - close acts only on what start created. start writes the herdr terminal id
+#     or the Ghostex session ref to a state file; close reads it back.
+#
+# Every verb prints one result word or line on stdout and puts the reason for
+# a failure on stderr. See docs/user-scripts.md for the design notes.
+set -Euo pipefail
+
+STATE_DIR="${AGENT_MUX_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/agent-mux}"
+
+die() { printf 'agent-mux: %s\n' "$*" >&2; exit 1; }
+
+usage() {
+  cat >&2 <<'USAGE'
+Usage: agent-mux <verb> [args]
+
+  detect                          Print the backend (herdr or ghostex), or fail
+                                  with the reason for each backend.
+  start <name> <kind> <repo> [-- <launch args>...]
+                                  Start agent <kind> in a new terminal in <repo>.
+  alive <name>                    Print alive (exit 0), gone (exit 1), or unknown
+                                  (exit 2: the multiplexer did not answer).
+  state <name>                    Print idle, working, blocked, done, unknown or gone.
+  prompt <name> <file> [--timeout <seconds>]
+                                  Submit the text in <file>, wait until the agent
+                                  settles, and print idle, done, unknown, blocked,
+                                  timeout, gone or failed. Exit 0 for idle, done and
+                                  unknown: the agent settled, so read the findings
+                                  file. Default timeout: 900 seconds.
+  classify-read <name>            Print the agent's screen once. For classifying a
+                                  failure only; never read results this way.
+  exit <name> <exit command>      Send Escape, then the agent's own quit command.
+                                  Print exited (exit 0), or running or unknown (exit 1).
+  close <name>                    Close the terminal that start opened and confirm
+                                  that it is gone.
+
+<name> is your label for the agent: letters, digits, '.', '_' and '-'.
+USAGE
+  exit "${1:-0}"
+}
+
+command -v jq >/dev/null 2>&1 || die "missing dependency: jq"
+
+# jq on Windows prints CRLF. Strip it, or an id read here carries a '\r'.
+jqr() { jq -r "$@" | tr -d '\r'; }
+
+# Test JSON on stdin against a filter. `jq -e` alone exits 0 on empty input,
+# and a failed command often prints nothing on stdout (herdr writes its error
+# JSON to stderr), so empty input must count as false.
+jtest() {
+  local in
+  in=$(cat)
+  [ -n "$in" ] || return 1
+  printf '%s' "$in" | jq -e "$@" >/dev/null 2>&1
+}
+
+# The error text from a failed herdr or Ghostex call: the message inside its
+# error JSON, or else the first line of the output.
+errmsg() {
+  local m
+  m=$(printf '%s' "$1" | jqr 'if (.error | type) == "object" then .error.message // .error.code
+       else .error // .message end // empty' 2>/dev/null || true)
+  [ -n "$m" ] || m=$(printf '%s\n' "$1" | head -n 1)
+  printf '%s' "$m"
+}
+
+# --- state file -----------------------------------------------------------
+
+state_file() { printf '%s/%s.env\n' "$STATE_DIR" "$1"; }
+
+check_name() {
+  case "$1" in
+    ''|*[!A-Za-z0-9._-]*) die "bad name '$1': use letters, digits, '.', '_' and '-'" ;;
+  esac
+}
+
+# Sets BACKEND, and TERM_ID (herdr) or REF (Ghostex), for a started
+# agent. Every verb then calls "${BACKEND}_<verb>", so BACKEND must be valid.
+load() {
+  check_name "$1"
+  local f
+  f=$(state_file "$1")
+  [ -f "$f" ] || die "no agent named '$1' was started by agent-mux"
+  BACKEND=$(sed -n 's/^backend=//p' "$f")
+  TERM_ID=$(sed -n 's/^terminal=//p' "$f")
+  REF=$(sed -n 's/^ref=//p' "$f")
+  case "$BACKEND" in
+    herdr|ghostex) ;;
+    *) die "bad state file $f: backend is '$BACKEND', not herdr or ghostex" ;;
+  esac
+}
+
+# --- detect ----------------------------------------------------------------
+
+REASON=""
+
+detect_herdr() {
+  [ "${HERDR_ENV:-}" = 1 ] || { REASON="not running inside herdr"; return 1; }
+  command -v herdr >/dev/null 2>&1 || { REASON="herdr binary not found"; return 1; }
+  local out
+  out=$(herdr agent list 2>&1) || true
+  if ! printf '%s' "$out" | jtest '.result'; then
+    REASON="herdr is set but unreachable: $(errmsg "$out")"
+    return 1
+  fi
+}
+
+detect_ghostex() {
+  [ -n "${GHOSTEX_SESSION_ID:-}" ] || { REASON="not running inside Ghostex"; return 1; }
+  command -v ghostex >/dev/null 2>&1 || { REASON="ghostex binary not found"; return 1; }
+  local out
+  out=$(ghostex agents list --json 2>&1) || true
+  if ! printf '%s' "$out" | jtest '.ok == true'; then
+    REASON="Ghostex is set but unreachable: $(errmsg "$out")"
+    return 1
+  fi
+}
+
+detect() {
+  local why_herdr why_ghostex
+  if detect_herdr; then echo herdr; return 0; fi
+  why_herdr=$REASON
+  if detect_ghostex; then echo ghostex; return 0; fi
+  why_ghostex=$REASON
+  printf 'agent-mux: no agent multiplexer available -- herdr: %s; Ghostex: %s\n' \
+    "$why_herdr" "$why_ghostex" >&2
+  return 1
+}
+
+# --- herdr -----------------------------------------------------------------
+
+# Each <backend>_alive returns 0 when the agent runs, 1 when it is gone, and 2
+# when the multiplexer did not answer (the reason goes to stderr). A failed
+# query is not "gone": treating it so would skip the exit command and report
+# a live agent as absent.
+
+herdr_start() {
+  local name=$1 kind=$2 repo=$3; shift 3
+  local out code i pane
+  out=$(herdr pane split --current --direction right --cwd "$repo" --no-focus 2>&1) || true
+  pane=$(printf '%s' "$out" | jqr '.result.pane.pane_id // empty' 2>/dev/null || true)
+  TERM_ID=$(printf '%s' "$out" | jqr '.result.pane.terminal_id // empty' 2>/dev/null || true)
+  [ -n "$pane" ] && [ -n "$TERM_ID" ] || die "counterpart failed to start: pane split failed: $(errmsg "$out")"
+  # Only the terminal id is stored. A pane id can change on a pane move, so a
+  # stored one would go stale; close finds the current pane through the
+  # terminal id instead.
+  printf 'backend=herdr\nterminal=%s\n' "$TERM_ID" > "$(state_file "$name")"
+  # A new pane is not at its prompt at once, and agent start refuses a busy
+  # pane. Retry that one refusal; any other error is final.
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    if [ $# -gt 0 ]; then
+      out=$(herdr agent start "$name" --kind "$kind" --pane "$pane" -- "$@" 2>&1) || true
+    else
+      out=$(herdr agent start "$name" --kind "$kind" --pane "$pane" 2>&1) || true
+    fi
+    printf '%s' "$out" | jtest '.result' && return 0
+    code=$(printf '%s' "$out" | jqr '.error.code // empty' 2>/dev/null || true)
+    [ "$code" = agent_pane_busy ] || break
+    sleep 1
+  done
+  die "counterpart failed to start: ${code:-$out}"
+}
+
+herdr_get() { herdr agent get "$1" 2>&1 || true; }
+
+herdr_alive() {
+  local out code
+  out=$(herdr_get "$1")
+  # The agent field names the detected agent; it is null when the pane holds
+  # only a shell.
+  if printf '%s' "$out" | jtest '.result'; then
+    printf '%s' "$out" | jtest '(.result.agent.agent // "") | length > 0' && return 0
+    return 1
+  fi
+  # An exited agent drops out of herdr.
+  code=$(printf '%s' "$out" | jqr '.error.code // empty' 2>/dev/null || true)
+  [ "$code" = agent_not_found ] && return 1
+  printf 'agent-mux: herdr agent get failed: %s\n' "$(errmsg "$out")" >&2
+  return 2
+}
+
+herdr_state() {
+  local rc=0
+  herdr_alive "$1" || rc=$?
+  case $rc in 1) echo gone; return ;; 2) echo queryfail; return ;; esac
+  herdr_get "$1" | jqr '.result.agent.agent_status // "unknown"'
+}
+
+herdr_prompt() {
+  local name=$1 file=$2 secs=$3 out code
+  out=$(herdr agent prompt "$name" "$(cat "$file")" --wait --timeout "$((secs * 1000))" 2>&1) || true
+  if printf '%s' "$out" | jtest '.result'; then
+    printf '%s' "$out" | jqr '.result.agent.agent_status // "unknown"'
+    return
+  fi
+  code=$(printf '%s' "$out" | jqr '.error.code // empty' 2>/dev/null || true)
+  case "$code" in
+    agent_blocked)                 echo blocked ;;
+    timeout|agent_prompt_stalled)  echo timeout ;;
+    *) printf 'agent-mux: herdr agent prompt failed: %s\n' "${code:-$out}" >&2; echo failed ;;
+  esac
+}
+
+herdr_read() { herdr agent read "$1" --source recent-unwrapped --lines 80; }
+
+herdr_escape() { herdr agent send-keys "$1" esc >/dev/null 2>&1 || true; }
+
+herdr_exit() { herdr agent prompt "$1" "$2" >/dev/null 2>&1 || true; }
+
+# Print the pane that holds the recorded terminal now, or nothing when no pane
+# holds it. Fails when herdr does not answer.
+herdr_pane_of_terminal() {
+  local out
+  out=$(herdr api snapshot 2>&1) || true
+  printf '%s' "$out" | jtest '.result.snapshot.panes' \
+    || { printf '%s' "$(errmsg "$out")"; return 1; }
+  printf '%s' "$out" | jqr --arg t "$TERM_ID" \
+    'first(.result.snapshot.panes[] | select(.terminal_id == $t) | .pane_id) // empty'
+}
+
+herdr_close() {
+  local pane out
+  [ -n "$TERM_ID" ] || die "cannot confirm the close: the state file has no terminal id"
+  pane=$(herdr_pane_of_terminal) || die "cannot confirm the close: herdr api snapshot failed: $pane"
+  if [ -n "$pane" ]; then
+    out=$(herdr pane close "$pane" 2>&1) || true
+    printf '%s' "$out" | jtest '.result' \
+      || die "cannot confirm the close: herdr pane close $pane failed: $(errmsg "$out")"
+    pane=$(herdr_pane_of_terminal) || die "cannot confirm the close: herdr api snapshot failed: $pane"
+    [ -z "$pane" ] || die "terminal $TERM_ID is still open in pane $pane after pane close"
+  fi
+  out=$(herdr agent list 2>&1) || true
+  printf '%s' "$out" | jtest '.result.agents' \
+    || die "cannot confirm the close: herdr agent list failed: $(errmsg "$out")"
+  if printf '%s' "$out" | jtest --arg n "$1" 'any(.result.agents[]; .name == $n)'; then
+    die "agent '$1' is still in herdr agent list after pane close"
+  fi
+}
+
+# --- Ghostex ---------------------------------------------------------------
+
+# Ghostex has no split pane. A new session in the repo's Ghostex project is
+# the equivalent. The agent runs under `exec`, so the session's terminal ends
+# when the agent quits: no shell is left to receive typed text, and the
+# terminal state (providerSessionState) tells whether the agent still runs.
+# Ghostex's own activity field cannot: it stays "idle" after the agent quits.
+
+# The git common directory of a path, absolute, or nothing outside git.
+git_common() {
+  git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true
+}
+
+# The Ghostex project for a repo: same path, or the same git repository (a
+# linked worktree has its own path but shares the common directory). Prints
+# nothing when no project matches. Fails, with the reason on stdout, when
+# ghostex state fails.
+ghostex_project() {
+  local repo=$1 out common rows id path
+  out=$(ghostex state 2>&1) || true
+  printf '%s' "$out" | jtest '.projects' || { printf '%s' "$(errmsg "$out")"; return 1; }
+  rows=$(printf '%s' "$out" | jqr '.projects[] | "\(.projectId)\t\(.path)"')
+  while IFS=$'\t' read -r id path; do
+    [ "$path" = "$repo" ] && { echo "$id"; return; }
+  done <<<"$rows"
+  common=$(git_common "$repo")
+  [ -n "$common" ] || return 0
+  while IFS=$'\t' read -r id path; do
+    [ -d "$path" ] || continue
+    [ "$(git_common "$path")" = "$common" ] && { echo "$id"; return; }
+  done <<<"$rows"
+}
+
+ghostex_start() {
+  local name=$1 kind=$2 repo=$3; shift 3
+  local pid cmd line a out i rc
+  pid=$(ghostex_project "$repo") || die "counterpart failed to start: ghostex state failed: $pid"
+  # Adding a project would change the user's sidebar. Refuse instead.
+  [ -n "$pid" ] || die "counterpart failed to start: $repo is not in a Ghostex project"
+  cmd=$(ghostex agents types --json 2>/dev/null | jqr --arg k "$kind" \
+    'first(.agents[] | select(.agentId == $k) | .command) // empty' 2>/dev/null || true)
+  [ -n "$cmd" ] || die "counterpart failed to start: Ghostex has no agent type '$kind'"
+  line="exec $cmd"
+  for a in "$@"; do line+=" $(printf '%q' "$a")"; done
+  out=$(ghostex create-session "$name" --input "$line" --start --project-id "$pid" --cwd "$repo" --json 2>&1) || true
+  REF=$(printf '%s' "$out" | jqr '.session.globalRef // empty' 2>/dev/null || true)
+  [ -n "$REF" ] || die "counterpart failed to start: create-session failed: $(errmsg "$out")"
+  printf 'backend=ghostex\nref=%s\n' "$REF" > "$(state_file "$name")"
+  # Ready means Ghostex has detected the agent in the session.
+  for i in $(seq 1 30); do
+    rc=0; ghostex_alive "$name" || rc=$?
+    [ "$rc" != 1 ] || die "counterpart failed to start: the agent quit during startup"
+    if [ "$rc" = 0 ]; then
+      ghostex agents list --json 2>/dev/null \
+        | jtest --arg r "$REF" --arg k "$kind" 'any(.sessions[]; .globalRef == $r and .agentId == $k)' \
+        && return 0
+    fi
+    sleep 1
+  done
+  die "counterpart failed to start: Ghostex did not detect $kind within 30 seconds"
+}
+
+# The session's row as JSON, "" when the session is not listed. Fails, with the
+# reason on stdout, when Ghostex did not answer.
+ghostex_row() {
+  local out
+  out=$(ghostex sessions --json --full 2>&1) || true
+  printf '%s' "$out" | jtest '.ok == true' || { printf '%s' "$(errmsg "$out")"; return 1; }
+  printf '%s' "$out" | jq -c --arg r "$REF" 'first(.sessions[] | select(.globalRef == $r)) // empty'
+}
+
+# providerSessionState lags: it read "exists" for about 30 seconds after the
+# terminal ended (observed 2026-10-28). So when it says "exists", ask the
+# terminal itself. read-text fails with "does not exist" once the terminal is
+# gone. Only its exit status and error are used, never the text.
+ghostex_alive() {
+  local row out
+  row=$(ghostex_row) || { printf 'agent-mux: ghostex sessions failed: %s\n' "$row" >&2; return 2; }
+  [ "$(printf '%s' "$row" | jqr '.providerSessionState // empty' 2>/dev/null)" = exists ] || return 1
+  out=$(ghostex read-text "$REF" --lines 1 --json 2>&1) || true
+  printf '%s' "$out" | jtest '.ok == true' && return 0
+  case "$out" in *"does not exist"*) return 1 ;; esac
+  printf 'agent-mux: ghostex read-text failed: %s\n' "$(errmsg "$out")" >&2
+  return 2
+}
+
+# Ghostex's activity "attention" means two things: the agent waits for a
+# permission or an answer, or it finished and nobody has looked yet. The
+# program status that the agent reports itself (Codex and Claude Code do)
+# tells them apart: "blocked" or "done". Without one the state is "unknown":
+# settled, but not classified.
+#
+# The backend _state functions print "queryfail" when the multiplexer did not
+# answer. That is a different thing from "unknown", and the prompt wait must
+# skip only it. The state verb shows it as "unknown".
+ghostex_state() {
+  local row act ps
+  local rc=0
+  ghostex_alive "$1" || rc=$?
+  case $rc in 1) echo gone; return ;; 2) echo queryfail; return ;; esac
+  row=$(ghostex_row) || { printf 'agent-mux: ghostex sessions failed: %s\n' "$row" >&2; echo queryfail; return; }
+  act=$(printf '%s' "$row" | jqr '.activity // empty')
+  ps=$(printf '%s' "$row" | jqr '.programStatus.state // empty')
+  if [ "$act" = working ] || [ "$ps" = working ]; then echo working
+  elif [ "$ps" = blocked ]; then echo blocked
+  elif [ "$ps" = done ]; then echo done
+  elif [ "$act" = idle ]; then echo idle
+  else echo unknown
+  fi
+}
+
+ghostex_prompt() {
+  local name=$1 file=$2 secs=$3 out s seen=0 start now rc
+  # agents send fails, and types nothing, when a dialog holds the input box.
+  # A startup dialog (a Codex update offer) does this while activity still
+  # reads "idle". So a refused send while the agent runs means blocked.
+  if ! out=$(ghostex agents send "$REF" --body-file "$file" 2>&1) \
+     || ! printf '%s' "$out" | jtest '.ok == true'; then
+    rc=0; ghostex_alive "$name" || rc=$?
+    case $rc in 1) echo gone; return ;; 2) echo failed; return ;; esac
+    printf 'agent-mux: Ghostex refused the message: %s\n' "$(errmsg "$out")" >&2
+    case "$out" in
+      *[Aa]nswer*|*dialog*|*prompt*) echo blocked ;;
+      *) echo failed ;;
+    esac
+    return
+  fi
+  # Ghostex has no --wait. Poll until the agent settles. A turn shorter than
+  # the poll interval can finish unseen, so after a grace period a plain idle
+  # also counts as settled; the caller's findings file decides what happened.
+  # A failed query (Ghostex did not answer) does not settle the wait. An
+  # unknown state does, like idle: the agent is not working.
+  start=$(date +%s)
+  while :; do
+    sleep 2
+    s=$(ghostex_state "$name")
+    now=$(date +%s)
+    case "$s" in
+      gone|blocked) echo "$s"; return ;;
+      working) seen=1 ;;
+      queryfail) ;;
+      *) if [ "$seen" = 1 ] || [ $((now - start)) -ge 10 ]; then echo "$s"; return; fi ;;
+    esac
+    [ $((now - start)) -lt "$secs" ] || { echo timeout; return; }
+  done
+}
+
+ghostex_read() { ghostex read-text "$REF" --lines 80; }
+
+ghostex_escape() { ghostex send-key "$REF" escape >/dev/null 2>&1 || true; }
+
+ghostex_exit() {
+  ghostex send-text "$REF" "$2" >/dev/null 2>&1 || true
+  ghostex send-enter "$REF" >/dev/null 2>&1 || true
+}
+
+ghostex_close() {
+  ghostex kill "$REF" --json >/dev/null 2>&1 || true
+  local out
+  out=$(ghostex sessions --json 2>&1) || true
+  printf '%s' "$out" | jtest '.ok == true' \
+    || die "cannot confirm the close: ghostex sessions failed: $(errmsg "$out")"
+  if printf '%s' "$out" | jtest --arg r "$REF" 'any(.sessions[]; .globalRef == $r)'; then
+    die "session $REF is still in ghostex sessions after kill"
+  fi
+}
+
+# --- verbs -----------------------------------------------------------------
+
+verb=${1:-}; [ $# -gt 0 ] && shift
+case "$verb" in
+  detect)
+    detect ;;
+
+  start)
+    [ $# -ge 3 ] || usage 2
+    name=$1 kind=$2 repo=$3; shift 3
+    [ "${1:-}" = -- ] && shift
+    check_name "$name"
+    [ -d "$repo" ] || die "repo is not a directory: $repo"
+    repo=$(cd "$repo" && pwd -P)
+    mkdir -p "$STATE_DIR"
+    [ ! -e "$(state_file "$name")" ] || die "name '$name' is in use; close it first"
+    BACKEND=$(detect) || exit 1
+    "${BACKEND}_start" "$name" "$kind" "$repo" "$@"
+    echo "$BACKEND" ;;
+
+  alive)
+    [ $# -eq 1 ] || usage 2
+    load "$1"
+    rc=0; "${BACKEND}_alive" "$1" || rc=$?
+    case $rc in 0) echo alive ;; 1) echo gone; exit 1 ;; *) echo unknown; exit 2 ;; esac ;;
+
+  state)
+    [ $# -eq 1 ] || usage 2
+    load "$1"
+    st=$("${BACKEND}_state" "$1")
+    [ "$st" != queryfail ] || st=unknown
+    echo "$st" ;;
+
+  prompt)
+    [ $# -ge 2 ] || usage 2
+    name=$1 file=$2 secs=900; shift 2
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --timeout) secs="${2:?--timeout needs seconds}"; shift 2 ;;
+        *) usage 2 ;;
+      esac
+    done
+    [ -s "$file" ] || die "prompt file is missing or empty: $file"
+    load "$name"
+    # The liveness check before every submission lives here, not in the caller.
+    rc=0; "${BACKEND}_alive" "$name" || rc=$?
+    case $rc in 1) echo gone; exit 1 ;; 2) echo failed; exit 1 ;; esac
+    result=$("${BACKEND}_prompt" "$name" "$file" "$secs")
+    echo "$result"
+    case "$result" in idle|done|unknown) ;; *) exit 1 ;; esac ;;
+
+  classify-read)
+    [ $# -eq 1 ] || usage 2
+    load "$1"
+    "${BACKEND}_read" "$1" ;;
+
+  exit)
+    [ $# -eq 2 ] || usage 2
+    load "$1"
+    rc=0; "${BACKEND}_alive" "$1" || rc=$?
+    case $rc in 1) echo exited; exit 0 ;; 2) echo unknown; exit 1 ;; esac
+    # Escape first, always, on every backend. A startup dialog (a Codex update
+    # offer, a trust prompt) reads as idle or done, not as blocked, and Enter
+    # on the Codex update dialog picks "Update now" (observed 2026-10-28).
+    "${BACKEND}_escape" "$1"
+    sleep 1
+    "${BACKEND}_exit" "$1" "$2"
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+      sleep 1
+      rc=0; "${BACKEND}_alive" "$1" || rc=$?
+      [ "$rc" != 1 ] || { echo exited; exit 0; }
+    done
+    echo running; exit 1 ;;
+
+  close)
+    [ $# -eq 1 ] || usage 2
+    load "$1"
+    "${BACKEND}_close" "$1"
+    rm -f "$(state_file "$1")"
+    echo closed ;;
+
+  -h|--help|help) usage 0 ;;
+  *) usage 2 ;;
+esac

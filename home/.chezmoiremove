@@ -216,3 +216,7 @@ AppData/Local/rtk
 # cdp.py was retired 2026-10-21: playwright-cli attaches to the same CDP Chrome
 # and covers tabs, navigation, eval, and in-page fetch with the login cookies.
 .local/bin/cdp.py
+
+# coordinate was retired 2026-10-28. The user found little use for it.
+.claude/skills/coordinate
+.codex/skills/coordinate

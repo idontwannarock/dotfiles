@@ -53,9 +53,9 @@ routing decision and the id is the fact.
 
 For the `large` tier under Claude Code, `cross-model-counterparts.md` holds each kind's
 readiness probe and launch arguments. That file is written for code review, where the
-counterpart runs in a herdr pane against a repo. Summarising one file needs none of that
+counterpart runs in its own terminal (a herdr pane or a Ghostex session) against a repo. Summarising one file needs none of that
 choreography: a non-interactive run pointed at the file's directory is enough. Take the
-probe and the authentication facts from it; leave the pane handling behind.
+probe and the authentication facts from it; leave the terminal handling behind.
 
 ## Verified, and when
 

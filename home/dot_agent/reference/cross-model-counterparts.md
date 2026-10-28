@@ -8,7 +8,7 @@ description: "Per-agent-kind launch arguments and exit command for the cross-mod
 
 Read this when dispatching a counterpart agent in `review-cross-model`.
 
-The skill body is model-neutral by design: it knows the *algorithm* (split, start, prompt, read the findings file, tear down) but not the dialect of any particular agent. Everything kind-specific lives here, as data.
+The skill body is model-neutral by design: it knows the *algorithm* (start, prompt, read the findings file, tear down) but not the dialect of any particular agent. Everything kind-specific lives here, as data.
 
 ## Why the launch arguments matter
 
@@ -28,7 +28,7 @@ The deciding factor is not the sandbox but the session record: an agent's transc
 
 The repo's contents are then protected by a before/after comparison of the working tree, not by the sandbox. That trade is proportionate only because the target is version-controlled.
 
-Split the pane with `--cwd <REPO>`.
+Pass `<REPO>` to `agent-mux start` as the working directory.
 
 ## Profiles
 
@@ -39,7 +39,7 @@ Split the pane with `--cwd <REPO>`.
 | `codex` | `codex login status` | `--cd <REPO> --sandbox workspace-write --ask-for-approval never` | `/exit` | **Yes** -- verified 2026-08-06, codex-cli 0.146.1 |
 | `claude` | `claude --version` | `--permission-mode acceptEdits --allowedTools "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" "Bash(git status:*)" "Bash(git ls-files:*)"` | `/exit` | **Yes** -- verified 2026-08-07, but see the note |
 
-Both rows launch with the pane's cwd set to `<REPO>`, and **neither passes `--add-dir`**. That absence is the confinement for claude: its file tools stay within the working directory tree, so a write outside the repo raises a permission prompt instead of landing. An earlier draft passed `--add-dir <REPO>` with the workspace elsewhere and concluded claude could not be confined -- that conclusion was an artifact of the test configuration, not a property of the tool.
+Both rows launch with the terminal's cwd set to `<REPO>`, and **neither passes `--add-dir`**. That absence is the confinement for claude: its file tools stay within the working directory tree, so a write outside the repo raises a permission prompt instead of landing. An earlier draft passed `--add-dir <REPO>` with the workspace elsewhere and concluded claude could not be confined -- that conclusion was an artifact of the test configuration, not a property of the tool.
 
 The claude confinement differs from codex's in how it fails: codex refuses the write outright and carries on, while claude stops at a prompt and registers as `blocked`. Both prevent the write; only codex lets the run continue afterwards.
 
@@ -56,11 +56,13 @@ The two columns record different kinds of thing, and conflating them produces a 
 
 Run the probe every time. Never write its outcome into this table, into a memory, or into any document. "codex was not authenticated" is true for exactly as long as it takes the user to log in again, and a cached copy of it would suppress the counterpart forever after.
 
-Pass launch arguments after `--` on `herdr agent start`:
+Pass launch arguments after `--` on `agent-mux start`:
 
 ```
-herdr agent start <name> --kind <kind> --pane <id> -- <launch arguments>
+agent-mux start <name> <kind> <REPO> -- <launch arguments>
 ```
+
+Both backends pass them to the agent unchanged. herdr hands them to `agent start`. Ghostex has no option for them, so `agent-mux` types `exec <agent command> <launch arguments>` into a new session; the agent command comes from Ghostex's own agent type, never from a guess. Verified on Ghostex 10.31.0 with the `codex` row, 2026-10-28: the counterpart wrote its file in the repo, and a write that needed approval stopped at a dialog as expected.
 
 ### What was probed, 2026-08-06
 

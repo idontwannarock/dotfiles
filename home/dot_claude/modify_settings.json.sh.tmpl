@@ -30,8 +30,8 @@
 # - permissions.allow 併入 "Skill(*)"（union + unique，不覆蓋現有 entries）
 # - permissions.deny 併入四個內建工具（union + unique）。deny 不只是執行期攔截，
 #   它會把工具 schema 整個從 system prompt 移除：實測 prompt 29,135 → 18,513
-#   token，其中 Workflow 一個就佔 ~8,100。ListAgents 刻意不列 —— coordinate
-#   skill 靠它做艦隊定址。
+#   token，其中 Workflow 一個就佔 ~8,100。ListAgents 沒有列。當初的理由是
+#   coordinate skill 的艦隊定址；coordinate 已退役，是否改列還沒決定。
 # - skillOverrides 併入 13 個 "off"（object merge，不覆蓋其他 entries）：內建
 #   skill 中零使用、且與自訂 code:* / git:* 指令重疊的那些。
 # - statusLine（跨平台處理執行檔路徑）
