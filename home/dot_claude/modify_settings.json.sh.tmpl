@@ -34,12 +34,16 @@
 #   （再省 ~400）；Agent 與 SendMessage 不受影響，herdr / Ghostex 走 Bash 也不受影響。
 # - skillOverrides 併入 13 個 "off"（object merge，不覆蓋其他 entries）：內建
 #   skill 中零使用、且與自訂 code:* / git:* 指令重疊的那些。
-# - statusLine（跨平台處理執行檔路徑）
+# - statusLine（跨平台處理執行檔路徑）。現有 command 若已包含我們的 statusline 路徑
+#   就保留不動：Ghostex 裝 Claude Code hooks 時會把 statusLine 包一層
+#   agent-statusline.sh，它仍會執行我們的 statusline。覆寫掉 Ghostex 就讀不到狀態。
 # - env.TWG_COMMAND_SURFACE_RESTRICTION = "basic-v1"：讓 twg CLI 移除所有會扣
 #   Rovo credits 的指令與旗標。shell 端已由 shell-common/base 與 27-twg.ps1
 #   export；這裡補給不是從 shell 啟動的 Claude Code（IDE、桌面版）。
 # - hooks.UserPromptSubmit（註冊兩支階梯提醒：handoff-reminder.sh 看 context 用量、
-#   memory-index-reminder.sh 看該 repo MEMORY.md 索引的位元組數）
+#   memory-index-reminder.sh 看該 repo MEMORY.md 索引的位元組數）。我們的那一筆
+#   放第一個，其餘 entries 保留（例如 Ghostex 的 agent-shell-notify.sh）；先移除
+#   含這兩支提醒的舊 entry，所以重複 apply 不會疊加。
 # - hooks.SessionStart（union-append claude-memory-seed；**不** hard-assign，
 #   以保留 herdr / agent-sessions 等工具於 runtime 註冊的 SessionStart entries）
 #
@@ -133,11 +137,12 @@ echo "$input" | jq \
         "update-config": "off",
         "workflow-authoring": "off"
       })
-    | .statusLine = {
-        type: "command",
-        command: $statusline_cmd,
-        padding: 0
-      }
+    | .statusLine = (
+        if ((.statusLine.command // "") | contains($statusline_cmd))
+        then .statusLine
+        else { type: "command", command: $statusline_cmd, padding: 0 }
+        end
+      )
     | .env = (.env // {})
     | .env.CLAUDE_CODE_NO_FLICKER = "1"
     | .env.TWG_COMMAND_SURFACE_RESTRICTION = "basic-v1"
@@ -164,20 +169,26 @@ echo "$input" | jq \
           ))
       )
     | if (.hooks.PreToolUse | length) == 0 then .hooks |= del(.PreToolUse) else . end
-    | .hooks.UserPromptSubmit = [
-        {
-          hooks: [
-            {
-              type: "command",
-              command: "bash ~/.claude/hooks/handoff-reminder.sh"
-            },
-            {
-              type: "command",
-              command: "bash ~/.claude/hooks/memory-index-reminder.sh"
-            }
-          ]
-        }
-      ]
+    | .hooks.UserPromptSubmit = (
+        [
+          {
+            hooks: [
+              {
+                type: "command",
+                command: "bash ~/.claude/hooks/handoff-reminder.sh"
+              },
+              {
+                type: "command",
+                command: "bash ~/.claude/hooks/memory-index-reminder.sh"
+              }
+            ]
+          }
+        ]
+        + ((.hooks.UserPromptSubmit // [])
+          | map(select(
+              ((.hooks // []) | map(.command // "") | any(test("handoff-reminder|memory-index-reminder"))) | not
+            )))
+      )
     | .hooks.SessionStart = (
         (.hooks.SessionStart // []) as $ss
         | if ($ss | map((.hooks // []) | map(.command // "")) | flatten | any(test("claude-memory-seed")))
