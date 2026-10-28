@@ -149,7 +149,7 @@ Stop there. Do not open a second round, and do not extend on the grounds that "t
 
 Always, on every path -- success, timeout, blocked, error:
 
-1. **Courtesy exit, time-boxed.** `agent-mux exit <name> <exit command>`, with the exit command from the counterpart's profile in `~/.agent/reference/cross-model-counterparts.md`, so a kind that runs session-end hooks gets to run them. It sends a cancel key first where a dialog could swallow the command, and gives up after ten seconds. If the kind has no row there, skip this step -- do not guess a command string.
+1. **Courtesy exit, time-boxed.** `agent-mux exit <name> <exit command>`, with the exit command from the counterpart's profile in `~/.agent/reference/cross-model-counterparts.md`, so a kind that runs session-end hooks gets to run them. It always sends Escape first, on every backend: a startup dialog can read as idle or done, and Enter on the Codex update dialog selects "Update now". It gives up after ten seconds. If the kind has no row there, skip this step -- do not guess a command string.
 
    Do not expect more of it than that. Measured on codex: a hard close truncates nothing (the transcript is written as it goes) and orphans nothing. The step is kept because it is cheap and because hook-bearing kinds exist, not because the transcript needs it.
 2. **Guaranteed close, verified.** `agent-mux close <name>` -- unconditionally, whether or not step 1 worked. Never retry step 1, never let it block this one. It closes the terminal that `start` recorded and then confirms, from the multiplexer's own list, that the agent is gone. A non-zero exit means it could not confirm: put `teardown not confirmed — <the detail on stderr>` in the report, so the user knows a terminal may still be open.

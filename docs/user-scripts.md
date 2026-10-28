@@ -236,12 +236,12 @@ herdr 指令，所以在 Ghostex 裡每次都退化。現在 skill 只呼叫 `ag
 |------|--------|--------|
 | `detect` | 依序試 herdr、Ghostex | `herdr` 或 `ghostex`；都不行就在 stderr 列出兩邊的原因 |
 | `start <name> <kind> <repo> [-- 參數]` | 開終端、啟動 agent、把終端識別碼寫進 `~/.local/state/agent-mux/<name>.env` | 後端名稱 |
-| `alive <name>` | agent 還在不在 | `alive` / `gone` |
+| `alive <name>` | agent 還在不在 | `alive` / `gone` / `unknown`（多工器沒回應，exit 2） |
 | `state <name>` | 目前狀態 | `idle` `working` `blocked` `done` `unknown` `gone` |
-| `prompt <name> <檔案> [--timeout 秒]` | 先確認還活著，再送出並等到收斂 | `idle` `done` `unknown` `blocked` `timeout` `gone` `failed` |
+| `prompt <name> <檔案> [--timeout 秒]` | 先確認還活著，再送出並等到收斂 | `idle` `done` `unknown`（exit 0）；`blocked` `timeout` `gone` `failed`（exit 1） |
 | `classify-read <name>` | 讀一次畫面，只用來分類失敗 | 畫面文字 |
-| `exit <name> <結束指令>` | 禮貌退出，最多等 10 秒 | `exited` / `running` |
-| `close <name>` | 關掉 `start` 開的終端，再從多工器的清單確認它不在了 | `closed` |
+| `exit <name> <結束指令>` | 一律先送 Escape，再送結束指令，最多等 10 秒 | `exited` / `running` / `unknown` |
+| `close <name>` | 關掉 `start` 開的終端，再從多工器的清單確認它不在了。herdr 用 terminal id 找 pane，因為 pane id 在 pane move 後會變 | `closed` |
 
 ### 偵測不能只看環境變數
 
@@ -261,13 +261,16 @@ unreachable: gxserver did not answer ... Could not connect to local gxserver ...
 
 Ghostex 沒有 split pane，也沒有 `--wait`。對應方式：
 
-- **終端**：在 repo 所屬的 Ghostex project 開一個新 session。repo 不是 Ghostex project 時
+- **終端**：在 repo 所屬的 Ghostex project 開一個新 session。repo 是 linked worktree 時，
+  用 git common directory 找到它的 project，session 的 cwd 設成 worktree。找不到 project 時
   `start` 直接失敗，不呼叫 `add-project`，因為那會改到 sidebar。
 - **啟動參數**：`create-agent` 不收任意參數，所以改用
   `create-session --input "exec <command> <參數>" --start`。`<command>` 取自
   `ghostex agents types`。Ghostex 照樣認得出裡面的 agent（`agentId` 會變成 `codex`）。
 - **存活**：`exec` 讓 agent 結束時終端也結束，所以看 `sessions --json --full` 的
   `providerSessionState` 是不是 `exists`。不能看 `activity`：codex 退出後它還是 `idle`。
+  `providerSessionState` 也會落後：終端結束後它還讀作 `exists` 大約 30 秒。所以它說
+  `exists` 時，再用 `read-text --lines 1 --json` 問終端本身；回 `does not exist` 就是不在了。
 - **等待**：每 2 秒輪詢。看到 `working` 之後的第一個非 `working` 狀態就算收斂；送出 10 秒
   後還沒看到 `working`，第一個非 `working` 狀態也算。
 - **`attention` 有兩個意思**：等權限，或做完了但沒人看過。用 agent 自己回報的
@@ -278,7 +281,10 @@ Ghostex 沒有 split pane，也沒有 `--wait`。對應方式：
 - **Codex 的更新提示會吃掉 Enter。** 有新版時，codex 啟動會先跳更新提示。這時 Ghostex
   回報 `idle`，`agents send` 會被拒（訊息寫 `Answer it in chat before sending`），
   所以 `prompt` 回 `blocked`。更糟的是 `/exit` 加 Enter 會選中「Update now」。
-  驗證時真的發生一次，codex 從 0.164.0 升到 0.165.0。所以 Ghostex 的 `exit` 一律先送 Escape。
+  驗證時真的發生一次，codex 從 0.164.0 升到 0.165.0。herdr 把這種對話框回報成 `done` 或
+  `idle`，所以兩個後端的 `exit` 都一律先送 Escape。
+- **查詢失敗不等於 agent 不在了。** gxserver 短暫沒回應時，`alive` 回 `unknown`，
+  `prompt` 回 `failed`，`exit` 不送任何按鍵。只有查詢成功、且清單裡沒有它，才算 `gone`。
 - **`jq -e` 讀到空輸入會回 0。** herdr 出錯時把 JSON 印到 stderr，stdout 是空的。
   腳本用 `jtest` 包一層，空輸入一律當 false。
 
