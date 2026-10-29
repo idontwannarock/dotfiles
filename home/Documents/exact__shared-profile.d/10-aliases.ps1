@@ -69,13 +69,14 @@ function createnewlog {
 }
 
 # gitk: point back at the .exe.
-# Machine PATH puts C:\Program Files\Git\mingw64\bin ahead of ...\Git\cmd, so that
+# Machine PATH puts C:\Program Files\Git\ucrt64\bin ahead of ...\Git\cmd, so that
 # git resolves to the real binary instead of the 46 KB launcher (see
-# docs/git-windows-path.md). mingw64\bin also holds `gitk` -- an extensionless
+# docs/git-windows-path.md). ucrt64\bin also holds `gitk` -- an extensionless
 # /bin/sh script -- which PowerShell picks before cmd\gitk.exe and then refuses to
 # run: "cannot run a document in the middle of a pipeline". cmd.exe is unaffected,
 # because PATHEXT makes it skip a file with no extension.
-# gitk is the only one of the 20 extensionless files in mingw64\bin that collides.
+# gitk is the only one of the 21 extensionless files in ucrt64\bin that collides.
+# (Git for Windows before 2.56.0 used mingw64\bin; same collision.)
 if (Test-Path 'C:\Program Files\Git\cmd\gitk.exe') {
     Set-Alias gitk 'C:\Program Files\Git\cmd\gitk.exe'
 }

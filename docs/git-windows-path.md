@@ -14,23 +14,25 @@ Windows 端 `git` 指令的固定成本，以及為什麼 Machine PATH 上要多
 
 ## 原因：PATH 上的 git 是一支啟動器
 
-`C:\Program Files\Git\cmd\git.exe` 只有 46 KB。它不是 git，是 Git for Windows 的**啟動器** —— 先把 `usr\bin`、`mingw64\bin` 設進環境，再去執行真正的 `C:\Program Files\Git\mingw64\bin\git.exe`（4.2 MB）。
+`C:\Program Files\Git\cmd\git.exe` 只有 46 KB。它不是 git，是 Git for Windows 的**啟動器** —— 先把 `usr\bin`、`ucrt64\bin` 設進環境，再去執行真正的 `C:\Program Files\Git\ucrt64\bin\git.exe`（4.4 MB）。
+
+> **資料夾名稱會變。** 舊版 Git for Windows 用 `mingw64\`，2.56.0 改成 `ucrt64\`。下文一律寫 `ucrt64\bin`。設定腳本不寫死名稱，它問 `git --exec-path` 來找出這一版的資料夾。
 
 所以每下一個 git 指令，**都開了兩個行程**。
 
 在這台機器上開一個行程要約 110 ms，與執行檔大小無關（`hostname.exe` 40 KB 要 108 ms，`starship.exe` 12.8 MB 要 173 ms）。成本掛在 `CreateProcess` 上，不是讀檔案。用 WPR 追蹤，CrowdStrike 的 `csagent.sys` 佔了其中 21%，其餘主要是 `ntoskrnl` 本身。詳見 [starship.md](starship.md)。
 
-## 修正：把 mingw64\bin 插在 Git\cmd 前面
+## 修正：把 ucrt64\bin 插在 Git\cmd 前面
 
 **位置很重要，必須是「在 System32 之後、在 `Git\cmd` 之前」。**
 
 | 放哪 | 結果 |
 |---|---|
-| PATH 最前面 | ❌ `mingw64\bin` 裡的 `curl.exe` 會蓋掉 `C:\WINDOWS\system32\curl.exe` |
+| PATH 最前面 | ❌ `ucrt64\bin` 裡的 `curl.exe` 會蓋掉 `C:\WINDOWS\system32\curl.exe` |
 | **`Git\cmd` 正前方** | ✅ System32 仍在前面，`curl` 不受影響 |
 | User PATH | ❌ Windows 的 PATH 是 Machine 先、User 後，搶不贏 `Git\cmd` |
 
-**不要刪掉 `Git\cmd`。** 這些只存在於 `cmd\`，`mingw64\bin` 沒有：
+**不要刪掉 `Git\cmd`。** 這些只存在於 `cmd\`，`ucrt64\bin` 沒有：
 
 ```
 git-gui.exe   tig.exe   start-ssh-agent.cmd
@@ -40,17 +42,17 @@ git-gui.exe   tig.exe   start-ssh-agent.cmd
 
 ## 唯一的回歸：PowerShell 裡的 `gitk`
 
-`mingw64\bin` 裡有一個**沒有副檔名**的 `gitk`，內容是 `#!/bin/sh` 腳本：
+`ucrt64\bin` 裡有一個**沒有副檔名**的 `gitk`，內容是 `#!/bin/sh` 腳本：
 
 ```
-mingw64\bin\gitk       409 KB   #!/bin/sh ... exec wish "$0" -- "$@"
+ucrt64\bin\gitk        408 KB   #!/bin/sh ... exec wish "$0" -- "$@"
 cmd\gitk.exe           138 KB   真正的 Windows 執行檔
 ```
 
-`mingw64\bin` 排在前面，所以 PowerShell 會先挑到那個腳本，然後拒絕執行：
+`ucrt64\bin` 排在前面，所以 PowerShell 會先挑到那個腳本，然後拒絕執行：
 
 ```
-無法在管線中間執行文件: C:\Program Files\Git\mingw64\bin\gitk
+無法在管線中間執行文件: C:\Program Files\Git\ucrt64\bin\gitk
 ```
 
 **cmd.exe 不受影響** —— `PATHEXT` 不含「無副檔名」，所以 cmd 會跳過它，直接找到 `cmd\gitk.exe`。
@@ -63,7 +65,7 @@ Set-Alias gitk 'C:\Program Files\Git\cmd\gitk.exe'
 
 別名是純名稱代換，不做參數繫結，所以沒有包裝函式的參數問題。實測成本 0 ms。
 
-`mingw64\bin` 裡共有 20 個無副檔名的檔案（`bzgrep`、`xzless`、`wcurl`…），逐一比對過 `Git\cmd` 與 `System32`，**只有 `gitk` 一個有衝突**。
+`ucrt64\bin` 裡共有 21 個無副檔名的檔案（`bzgrep`、`xzless`、`wcurl`…），逐一比對過 `Git\cmd` 與 `System32`，**只有 `gitk` 一個有衝突**（2.56.0 實測；`mingw64\bin` 時代的 20 個也一樣）。
 
 ## 為什麼 chezmoi 管不到
 
@@ -75,13 +77,17 @@ Machine PATH 要系統管理員權限，chezmoi 是用一般帳號跑的。`run_
 
 用「以系統管理員身分執行」的 PowerShell 跑一次。
 
+若存成 `.ps1` 再用 `-File` 執行，檔案要存成 **UTF-8 with BOM**。Windows PowerShell 5 把沒有 BOM 的檔案當成 ANSI 讀，中文字串會讀壞，整支腳本解析失敗，什麼都不做。
+
 `SetEnvironmentVariable` **不能用** —— Machine PATH 的型別是 `REG_EXPAND_SZ`，裡面有 `%SystemRoot%\system32` 這種未展開的值，用它寫回去會把那些寫死成絕對路徑。必須直接讀寫登錄檔並保留型別。
 
 ```powershell
 #requires -RunAsAdministrator
 $ErrorActionPreference = 'Stop'
-$target  = 'C:\Program Files\Git\mingw64\bin'
 $anchor  = 'C:\Program Files\Git\cmd'
+# 不寫死 mingw64 / ucrt64:問啟動器真正的 git 在哪,<prefix>\libexec\git-core -> <prefix>\bin
+$target  = Join-Path (Split-Path (Split-Path (& "$anchor\git.exe" --exec-path))) 'bin'
+$target  = [IO.Path]::GetFullPath($target)
 $regPath = 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment'
 $backup  = "$env:USERPROFILE\machine-path-backup-$(Get-Date -Format yyyyMMdd-HHmmss).txt"
 function Norm($s) { [Environment]::ExpandEnvironmentVariables($s).TrimEnd('\') }
@@ -131,7 +137,7 @@ $res = [UIntPtr]::Zero
 開一個**全新的**終端機：
 
 ```powershell
-(Get-Command git).Source    # 應為 C:\Program Files\Git\mingw64\bin\git.exe
+(Get-Command git).Source    # 應為 C:\Program Files\Git\ucrt64\bin\git.exe
 (Get-Command curl).Source   # 應為 C:\WINDOWS\system32\curl.exe
 (Get-Command gitk).Source   # 應為 C:\Program Files\Git\cmd\gitk.exe
 ```
@@ -140,7 +146,9 @@ $res = [UIntPtr]::Zero
 
 ## Git for Windows 更新之後
 
-安裝程式只確保自己的 `Git\cmd` 在 PATH 上，**不會刪掉別人加的項目**，所以這條設定預期會留著。但這是依照它一貫的行為推斷，沒有保證 —— 升級後跑一次上面的驗證即可。
+**這條設定會被洗掉。** 2026-10 升級到 2.56.0 後，Machine PATH 上的 `mingw64\bin` 不見了，只剩 `Git\cmd`。同一次升級也把資料夾改名成 `ucrt64\`。
+
+升級後一定要跑一次上面的驗證。`git` 那一行指向 `Git\cmd\git.exe`，就表示設定不見了。重跑設定腳本即可，它會自己找到新的資料夾。
 
 若要還原，備份檔裡是原始字串：
 
@@ -154,7 +162,7 @@ $k.Dispose()
 
 ## 已驗證可用的操作
 
-直接執行 `mingw64\bin\git.exe`（不經啟動器）測過這些，全部正常：
+直接執行 `mingw64\bin\git.exe`（不經啟動器）測過這些，全部正常（2.56.0 以前的版本）：
 
 - `init` / `config` / `add` / `commit`
 - **pre-commit hook**（`#!/bin/sh`，需要 sh）
