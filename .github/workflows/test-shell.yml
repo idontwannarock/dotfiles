@@ -13,6 +13,7 @@ on:
       - 'home/dot_local/bin/**'
       - 'home/dot_codex/modify_config.toml'
       - 'home/run_after_modify-codex-config.ps1.tmpl'
+      - 'home/run_onchange_configure-windows-terminal.ps1.tmpl'
       - 'home/run_install-04-codex-plugins.sh.tmpl'
       - 'home/run_install-04-codex-plugins.ps1.tmpl'
       # workspaces.test.sh renders this script with the log.sh fragment.
