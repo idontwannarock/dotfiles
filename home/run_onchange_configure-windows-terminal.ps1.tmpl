@@ -50,8 +50,10 @@ try {
     { "id": "Terminal.ResizePaneUp", "keys": "alt+shift+up" },
     { "id": "Terminal.ResizePaneDown", "keys": "alt+shift+down" },
     { "id": "Terminal.FindText", "keys": "ctrl+shift+f" },
-    { "id": "Terminal.PasteFromClipboard", "keys": "ctrl+v" },
-    { "id": "Terminal.CopyToClipboard", "keys": "ctrl+c" }
+    { "id": "Terminal.PasteFromClipboard", "keys": "ctrl+shift+v" },
+    { "id": "Terminal.CopyToClipboard", "keys": "ctrl+shift+c" },
+    { "id": "unbound", "keys": "ctrl+c" },
+    { "id": "unbound", "keys": "ctrl+v" }
   ],
   "profiles": {
     "defaults": {
@@ -72,7 +74,26 @@ try {
         $existing = "{}"
     }
 
-    $merged = ($existing, $patch) | jq -s '.[0] * .[1]'
+    # Arrays need a keyed merge; object multiplication alone discards local entries.
+    $merged = ($existing, $patch) | jq -s '
+      def chord: ascii_downcase | split("+") | sort | join("+");
+      def remove_keys($keys):
+        if has("keys") then
+          if (.keys | type) == "array" then
+            .keys |= map(select(chord as $k | $keys | index($k) | not)) |
+            if .keys == [] then del(.keys) else . end
+          elif (.keys | chord) as $k | $keys | index($k) then del(.keys)
+          else . end
+        else . end;
+      .[0] as $old | .[1] as $patch |
+      ($patch.keybindings | map(.keys | chord)) as $keys |
+      ($patch.actions | map(.id)) as $ids |
+      ($old * $patch) |
+      .keybindings = ([$old.keybindings[]? | remove_keys($keys) | select(has("keys"))] + $patch.keybindings) |
+      .actions = ([$old.actions[]? | remove_keys($keys) | select(.id as $id | $ids | index($id) | not)] +
+        [$patch.actions[] | . as $action |
+          ([$old.actions[]? | select(.id == $action.id) | remove_keys($keys)] | last // {}) * $action])
+    '
     if ($LASTEXITCODE -ne 0) {
         throw "jq merge of Windows Terminal settings failed (exit $LASTEXITCODE)"
     }
