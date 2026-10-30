@@ -41,9 +41,27 @@
 # 5 single-binary CLI tools migrated from Scoop to chezmoi-external to dodge
 # scoop shim + 'current' junction failures under Win32-OpenSSH SSH sessions.
 # Bump versions below and rerun `chezmoi apply` to upgrade.
-{{- if eq .chezmoi.os "windows" }}
+#
+# starship is pinned outside the Windows block: Linux reads the same pin, so one
+# Renovate bump upgrades both. Linux used to run the official installer once and
+# then never again, and the shared starship.toml outran it (pwsh_indicator).
+# macOS stays on brew.
 # renovate: datasource=github-releases depName=starship/starship
 {{- $starshipVersion := "1.27.0" }}
+{{- if eq .chezmoi.os "linux" }}
+{{- $starshipArch := get (dict "amd64" "x86_64" "arm64" "aarch64") .chezmoi.arch }}
+{{- if $starshipArch }}
+
+# musl build: statically linked, so no glibc version dependency.
+# Other arches render no entry: an empty arch would 404 and stop the apply.
+[".local/bin/starship"]
+    type = "archive-file"
+    url = "https://github.com/starship/starship/releases/download/v{{ $starshipVersion }}/starship-{{ $starshipArch }}-unknown-linux-musl.tar.gz"
+    path = "starship"
+    executable = true
+{{- end }}
+{{- end }}
+{{- if eq .chezmoi.os "windows" }}
 # renovate: datasource=github-releases depName=zellij-org/zellij
 {{- $zellijVersion   := "0.45.1" }}
 # renovate: datasource=github-releases depName=astral-sh/uv

@@ -259,7 +259,7 @@ Windows 端此腳本已是**指標對照表，不安裝任何東西**——Wave 
 | Rustup | 官方 rustup-init | 官方 rustup-init（Wave 10 migrate script） |
 | Maven 3 | sdkman | external → `~/.local/opt/maven` |
 | Temurin JDK 8, 11, 17, 21, 25 | sdkman | external → `~/.local/opt/jdk-N` + `java{8,11,17,21,25}.cmd` |
-| Starship | 官方 installer | external |
+| Starship | Linux external（與 Windows 共用版本）；macOS brew | external |
 
 Go 的 base version ≥ 1.24（支援 GOTOOLCHAIN 自動下載專案需求版本）。Rustup 安裝後，每次 `chezmoi apply` 由 `run_update-rust-toolchain` 自動 `rustup update stable` 追蹤最新版。
 

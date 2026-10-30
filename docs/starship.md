@@ -6,6 +6,28 @@
 
 設定檔由 chezmoi 管理，來源是 `home/dot_config/starship.toml.tmpl`，部署到 `~/.config/starship.toml`。Starship 本身也會在 `chezmoi apply` 時自動安裝。
 
+Starship 本身的安裝方式依平台不同：
+
+| 平台 | 安裝方式 | 版本 |
+|------|----------|------|
+| Windows | `home/.chezmoiexternal.toml` → `~/.local/bin/starship.exe` | `$starshipVersion` |
+| Linux / WSL | `home/.chezmoiexternal.toml` → `~/.local/bin/starship`（musl 靜態版） | `$starshipVersion` |
+| macOS | `brew install starship` | brew 自己升級 |
+
+Windows 與 Linux 共用同一個 `$starshipVersion`。Renovate 升一次版本，兩邊一起升。
+
+Linux 以前用官方 installer 裝到 `/usr/local/bin/starship`，裝過就不再更新。設定檔跟著新版加了 `pwsh_indicator`，舊版不認得，每次開 shell 都印出 `Unknown key` 警告。`~/.local/bin` 在 PATH 中排在 `/usr/local/bin` 前面，所以新版會先被找到。舊檔不會自動刪除（需要 sudo），可手動執行：
+
+```bash
+sudo rm /usr/local/bin/starship
+```
+
+starship 同一個 session 只印一次設定警告。要重現警告，必須給新的 session key：
+
+```bash
+STARSHIP_SESSION_KEY=test$RANDOM STARSHIP_SHELL=bash starship prompt >/dev/null
+```
+
 設定檔是模板，只有一處分平台：Windows 會多出一段關閉 git 模組的區塊（見下方「Windows 上關閉 git 模組」）。其餘內容三個平台完全相同。
 
 **路徑不可更動。** `~/.config/starship.toml` 是 starship 唯一的預設搜尋路徑，`~/.config/starship/` 子目錄不會被讀取。設定檔找不到時 starship 不報錯，會套用內建預設值照常畫出 prompt——換言之放錯路徑跟正常運作長得一模一樣。設定曾經一度放在子目錄，`command_timeout` 因此靜默失效（見 `home/.chezmoiremove` 的說明）。若真要換路徑，必須同時在每個 shell 的 rc 匯出 `STARSHIP_CONFIG`。

@@ -3,7 +3,8 @@
 # chezmoi run_once_ script — 開發語言與 runtime 安裝（Unix/macOS/WSL）
 #
 # 安裝策略：
-#   系統工具（vim, starship, go）：Linux apt / 官方 installer、macOS brew
+#   系統工具（vim, go）：Linux apt / 官方 installer、macOS brew
+#   starship : Linux 由 .chezmoiexternal.toml 下載（與 Windows 共用版本）、macOS brew
 #   Node.js  : nvm（兩平台）
 #   Rust     : rustup 官方 installer（兩平台）
 #   uv       : Linux 官方 installer、macOS brew
@@ -64,18 +65,16 @@ else
 {{- end }}
 fi
 
+{{- if eq .chezmoi.os "darwin" }}
 log_section "install starship -- the shell prompt wired up by dot_shell_common"
 if command -v starship &>/dev/null; then
     log_skip "[starship] already installed"
 else
-{{- if eq .chezmoi.os "darwin" }}
     log_step "[starship] installing via brew"
     brew install starship
-{{- else }}
-    log_step "[starship] installing via official installer"
-    curl -sS https://starship.rs/install.sh | sh -s -- --yes
-{{- end }}
 fi
+{{- end }}
+# Linux starship comes from .chezmoiexternal.toml (pinned, shared with Windows).
 
 # Go 官方沒提供像 rustup / sdkman 的 version manager；Go 1.21+ 內建
 # GOTOOLCHAIN 可自動下載 go.mod 需求版本，所以 base 裝一份夠新的即可。
