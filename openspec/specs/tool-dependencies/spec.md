@@ -28,6 +28,10 @@ macOS 上 starship SHALL 由 `run_once_install-01-runtimes.sh.tmpl` 以 Homebrew
 - **WHEN** chezmoi apply 在 Linux（WSL）執行
 - **THEN** `.chezmoiexternal.toml` 從 GitHub Release 下載 pinned 版本的 `starship-<arch>-unknown-linux-musl.tar.gz`（`amd64` → `x86_64`、`arm64` → `aarch64`），抽出 `starship` 至 `~/.local/bin/`，設為 executable
 
+#### Scenario: 不支援的 Linux 架構不下載
+- **WHEN** chezmoi apply 在 Linux 執行，且 `.chezmoi.arch` 不是 `amd64` 或 `arm64`
+- **THEN** `.chezmoiexternal.toml` SHALL NOT 產生 starship entry，`chezmoi apply` 不因 starship 下載失敗而中斷
+
 #### Scenario: Linux 上不再呼叫官方 installer
 - **WHEN** 在 Linux 上的 `run_once_install-01-runtimes.sh.tmpl` 執行
 - **THEN** 該腳本 SHALL NOT 呼叫 `https://starship.rs/install.sh`

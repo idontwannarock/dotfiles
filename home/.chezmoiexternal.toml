@@ -50,13 +50,16 @@
 {{- $starshipVersion := "1.27.0" }}
 {{- if eq .chezmoi.os "linux" }}
 {{- $starshipArch := get (dict "amd64" "x86_64" "arm64" "aarch64") .chezmoi.arch }}
+{{- if $starshipArch }}
 
 # musl build: statically linked, so no glibc version dependency.
+# Other arches render no entry: an empty arch would 404 and stop the apply.
 [".local/bin/starship"]
     type = "archive-file"
     url = "https://github.com/starship/starship/releases/download/v{{ $starshipVersion }}/starship-{{ $starshipArch }}-unknown-linux-musl.tar.gz"
     path = "starship"
     executable = true
+{{- end }}
 {{- end }}
 {{- if eq .chezmoi.os "windows" }}
 # renovate: datasource=github-releases depName=zellij-org/zellij
