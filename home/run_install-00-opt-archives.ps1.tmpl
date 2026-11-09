@@ -72,7 +72,7 @@ $ErrorActionPreference = "Continue"
 # renovate: datasource=golang-version depName=go
 {{- $goVersion := "1.27.3" }}
 # renovate: datasource=github-releases depName=adoptium/temurin8-binaries extractVersion=^jdk(?<version>.+)$
-{{- $jdk8Version := "8u504-b01" }}
+{{- $jdk8Version := "8u512-b09" }}
 {{- $jdk8Asset := $jdk8Version | replace "-" "" }}
 {{- /* 8u504-b01 -> 504. Java 8 reports itself as 1.8.0_504, nothing like the pin. */}}
 {{- $jdk8Update := (splitList "-" $jdk8Version) | first | trimPrefix "8u" }}
