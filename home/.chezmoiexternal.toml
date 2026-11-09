@@ -112,7 +112,7 @@
 # renovate: datasource=github-releases depName=gohugoio/hugo
 {{- $hugoVersion         := "0.169.0" }}
 # renovate: datasource=github-releases depName=nxtrace/NTrace-V1
-{{- $nexttraceVersion    := "1.7.5" }}
+{{- $nexttraceVersion    := "1.7.6" }}
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 {{- $golangciLintVersion := "2.15.0" }}
 
