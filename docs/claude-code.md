@@ -383,6 +383,38 @@ jq -r 'select(.tier=="enriched" and .leaf==true) | .cmd' ~/.cache/twg/help-index
 
 文件：[advisor](https://code.claude.com/docs/en/advisor)、[sub-agents](https://code.claude.com/docs/en/sub-agents)、[model-config](https://code.claude.com/docs/en/model-config)。
 
+### Effort 等級：全域用環境變數，repo 用同名 env 蓋掉（2026-11-10）
+
+**症狀：** 主模型換成 Sonnet 5.5 後，新 session 的 effort 變成 `medium`，
+但 `~/.claude/settings.json` 明明設了 `"effortLevel": "high"`。
+
+**原因：** user settings 的頂層 `effortLevel` 只管 Opus 5 以前的模型。
+Opus 5.5 之後出的模型會忽略它，改用自己的預設（Sonnet 5.5、Opus 5.5、Haiku 5.5 都是 `medium`）。
+`modelSettings.<model-id>.effortLevel` 能逐一指定，但每出一個新模型就要補一行。
+
+**做法：** `dot_claude/modify_settings.json.sh.tmpl` 設 `env.CLAUDE_CODE_EFFORT_LEVEL = "high"`。
+環境變數對所有模型有效，新模型不用再補。頂層 `effortLevel` 仍保留，給舊模型用。
+
+**repo 想用別的等級：** 在該 repo 的 `.claude/settings.json` 設同名 env：
+
+```json
+{ "env": { "CLAUDE_CODE_EFFORT_LEVEL": "medium" } }
+```
+
+實測結果（2026-11-10）：
+
+| 情境 | 結果 |
+|---|---|
+| 只有 user env 設 `high` | 新 session 與當下 session 都是 `high`。 |
+| 再加 repo env 設 `medium` | repo 內的新 session 是 `medium`，當下 session 也立刻變 `medium`。 |
+
+注意事項：
+
+- 只在 repo 設頂層 `effortLevel`（不用 env）蓋不掉。環境變數的優先序比所有 settings 都高。
+- 官方優先序（高到低）：`CLAUDE_CODE_EFFORT_LEVEL` → session 內 `/effort` 或 `/model` → `--effort` → settings → 模型預設。
+  環境變數在最上面，所以 session 內 `/effort` 預期改不動。這點尚未實測。
+- 文件：[model-config](https://code.claude.com/docs/en/model-config)、[settings-reference](https://code.claude.com/docs/en/settings-reference)。
+
 ### Skill Listing Budget（CC 2.x）
 
 Claude Code 2.x 開始強制 `skillListingBudgetFraction`（預設 1%），超過時 skill description 會被截斷，`/doctor` 顯示警告：
