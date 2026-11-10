@@ -77,7 +77,7 @@ $ErrorActionPreference = "Continue"
 {{- /* 8u504-b01 -> 504. Java 8 reports itself as 1.8.0_504, nothing like the pin. */}}
 {{- $jdk8Update := (splitList "-" $jdk8Version) | first | trimPrefix "8u" }}
 # renovate: datasource=github-releases depName=adoptium/temurin11-binaries extractVersion=^jdk-(?<version>.+)$
-{{- $jdk11Version := "11.0.32+9" }}
+{{- $jdk11Version := "11.0.33+10" }}
 # renovate: datasource=github-releases depName=adoptium/temurin17-binaries extractVersion=^jdk-(?<version>.+)$
 {{- $jdk17Version := "17.0.21+9" }}
 # renovate: datasource=github-releases depName=adoptium/temurin21-binaries extractVersion=^jdk-(?<version>.+)$
