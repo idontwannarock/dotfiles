@@ -397,3 +397,4 @@ dotfiles/
 | [Starship](docs/starship.md) | Starship prompt 設定 |
 | [User Scripts](docs/user-scripts.md) | 手動執行的輔助腳本（scoop 更新、pwsh 換裝、SDKMAN 更新、YouTube 影片存檔轉逐字稿、跨模型 review 用的 agent 多工器 adapter） |
 | [Vim](docs/vim.md) | Vim / IdeaVim 設定與快捷鍵 |
+| [開機後在背景啟動 WSL](docs/wsl-background-start.md) | 排程工作怎麼設，Ghostex 才連得到 WSL（不由 chezmoi 管理） |
