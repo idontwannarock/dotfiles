@@ -361,6 +361,28 @@ jq -r 'select(.tier=="enriched" and .leaf==true) | .cmd' ~/.cache/twg/help-index
 
 所以 deny 是補救手段，不是設計手段：真正的解法是一開始就別把它加進 user scope。
 
+### 模型分工：Sonnet 主 session、Haiku subagent、Opus advisor（2026-11-10）
+
+`dot_claude/modify_settings.json.sh.tmpl` 設三個值：
+
+| 設定 | 值 | 作用 |
+|---|---|---|
+| `model` | `claude-sonnet-5-5` | 主 session 與改程式用 Sonnet。 |
+| `advisorModel` | `opus` | Sonnet 遇到難的決定時，呼叫 `advisor` 工具問 Opus。 |
+| `env.CLAUDE_CODE_SUBAGENT_MODEL` | `haiku` | 沒指定模型的 subagent 用 Haiku。 |
+
+注意事項：
+
+- advisor 每次被呼叫都讀整段對話，而且不走快取。對話越長，每次呼叫越貴。
+- advisor 只在 Anthropic API 上可用（Bedrock、Vertex、Foundry 不行）。設了 `DISABLE_TELEMETRY` 會關掉它。CLI 也有隱藏旗標 `claude --advisor opus`，不在 `--help` 裡。
+- 刻意不設 `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1`。FORCE 會蓋掉 agent frontmatter 的 `model:`，`Plan`、`reviewer` 這類需要推理的 agent 也會變成 Haiku。
+- 代價：內建 `Explore` 不看 `CLAUDE_CODE_SUBAGENT_MODEL`，仍跟主模型用 Sonnet。`claude-code-guide` 本來就用 Haiku。
+- 模型優先順序（高到低）：Agent 工具呼叫時的 `model` 參數 → agent frontmatter 的 `model:` → `CLAUDE_CODE_SUBAGENT_MODEL` → 主模型。
+
+驗證方式（新 session）：`claude -p "Reply with only your exact model ID."` 回 `claude-sonnet-5-5`；請它開一個 general-purpose subagent 回報模型，回 `claude-haiku-5-5`；問它工具清單有沒有 `advisor`，回 yes。
+
+文件：[advisor](https://code.claude.com/docs/en/advisor)、[sub-agents](https://code.claude.com/docs/en/sub-agents)、[model-config](https://code.claude.com/docs/en/model-config)。
+
 ### Skill Listing Budget（CC 2.x）
 
 Claude Code 2.x 開始強制 `skillListingBudgetFraction`（預設 1%），超過時 skill description 會被截斷，`/doctor` 顯示警告：
