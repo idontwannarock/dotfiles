@@ -29,7 +29,14 @@
 # - dialogExpiry = "never"：轉發到遠端的權限/詢問對話框不設死線。預設 5m 會在
 #   無人回應時自動解為「取消/拒絕」，遠端操作常常不在螢幕前，那會讓執行結果
 #   不如預期。程式碼的「最嚴格值」對照表也把 never 列為最保守選項。
-# - effortLevel、autoUpdatesChannel、skipDangerousModePermissionPrompt
+# - env.CLAUDE_CODE_EFFORT_LEVEL = high（2026-11-10）：所有模型的 effort 預設。
+#   頂層 effortLevel 在 user settings 只管 Opus 5 以前的模型，Opus 5.5 之後的新
+#   模型（含 Sonnet 5.5）會忽略它而用自己的預設（medium）。環境變數對任何模型都
+#   有效，新模型出來不必再補 modelSettings。代價：優先序最高，session 內 /effort
+#   預期改不動（未實測）。repo 想改就在該 repo 的 .claude/settings.json 的 env 設
+#   同名變數：實測 repo env 會蓋過 user env，且當下 session 立刻生效。
+#   細節見 docs/claude-code.md「Effort 等級」。
+# - effortLevel（保留給舊模型）、autoUpdatesChannel、skipDangerousModePermissionPrompt
 # - outputStyle = ELI5（output style 本體在 output-styles/ELI5.md）
 # - permissions.defaultMode = bypassPermissions
 # - permissions.allow 併入 "Skill(*)"（union + unique，不覆蓋現有 entries）
@@ -153,6 +160,7 @@ echo "$input" | jq \
     | .env.CLAUDE_CODE_NO_FLICKER = "1"
     | .env.TWG_COMMAND_SURFACE_RESTRICTION = "basic-v1"
     | .env.CLAUDE_CODE_SUBAGENT_MODEL = "haiku"
+    | .env.CLAUDE_CODE_EFFORT_LEVEL = "high"
     | .env |= del(.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS)
     | .env |= del(.CLAUDE_CODE_DISABLE_1M_CONTEXT)
 {{- if eq .chezmoi.os "windows" }}

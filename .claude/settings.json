@@ -1,5 +1,4 @@
 {
-  "effortLevel": "medium",
   "enabledPlugins": {
     "mattpocock-skills@claude-plugins-official": true
   },
