@@ -65,8 +65,11 @@ SDKMAN 沒有 scoop `update` 那種「原地升級」指令：`sdk upgrade` 只�
 
 ## `media-fetch` / `media-transcribe` 設計備忘
 
-兩支腳本共用一個資料夾。一支影片一個資料夾，路徑是 `<base>/<上傳日期>-<video id>/`。
-base 依序取 `--base-dir`、`$MEDIA_BASE`、`~/.agent/media`。
+兩支腳本共用一個資料夾。一支影片一個資料夾，路徑是 `<base>/<site>/<上傳日期>-<video id>/`。
+`<site>` 是 yt-dlp metadata 的 `extractor_key` 小寫；沒有就用 `extractor`，再沒有就是 `unknown`。
+base 依序取 `--base-dir`、`$MEDIA_BASE`、`~/archive/video`。
+2026-11-12 以前預設是 `~/.agent/media`，資料夾也沒有 `<site>` 這一層。
+那 115 個舊資料夾仍在 `~/.agent/media/`，等 second-brain 的搬遷腳本處理。
 
 - `media-fetch <url>` 負責所有網路動作。它存影片、縮圖、手寫字幕與 metadata，然後結束。
   只想保留影片時，跑這一支就好。
