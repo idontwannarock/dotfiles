@@ -22,6 +22,15 @@ if [ -d "$HOME/.local/go/bin" ]; then
     esac
 fi
 
+# rustup 的 cargo/rustc（run_once_install-01-runtimes 以 --no-modify-path 安裝，PATH 由這裡負責）
+# — no-op if dir missing
+if [ -d "$HOME/.cargo/bin" ]; then
+    case ":$PATH:" in
+        *":$HOME/.cargo/bin:"*) ;;
+        *) export PATH="$HOME/.cargo/bin:$PATH" ;;
+    esac
+fi
+
 # ── twg (Atlassian Teamwork Graph CLI) ───────────────────────────────────────
 # basic-v1 removes every command and flag that consumes Rovo credits from twg
 # itself, for every caller (any agent, or a human). Run one command with the full

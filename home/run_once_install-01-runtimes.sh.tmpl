@@ -159,7 +159,7 @@ if command -v rustup &>/dev/null; then
     log_skip "[rustup] already installed"
 else
     log_step "[rustup] installing via official installer"
-    # --no-modify-path: 由我們自己在 shell rc 管 PATH（~/.cargo/bin 已在 $HOME/.local/bin 之後）
+    # --no-modify-path: 由我們自己管 PATH（.chezmoitemplates/shell-common/base 加 ~/.cargo/bin）
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
         | sh -s -- -y --default-toolchain stable --no-modify-path
 fi
