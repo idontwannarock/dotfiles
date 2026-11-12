@@ -17,7 +17,7 @@ skill, which calls this one first.
 media-fetch <url>
 ```
 
-Useful options: `--base-dir DIR` (default `~/.agent/media`), and `--no-video` to keep only
+Useful options: `--base-dir DIR` (default `~/archive/video`; the folder is `<base>/<site>/<upload date>-<id>/`), and `--no-video` to keep only
 the audio as `audio.mp3`. `media-fetch --help` lists them. The dotfiles repo's
 `docs/user-scripts.md` carries the design decisions and the traps.
 

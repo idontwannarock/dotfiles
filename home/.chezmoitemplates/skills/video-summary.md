@@ -134,27 +134,17 @@ Give the user the summary's substance and the path to the folder. Do not paste t
 transcript. Name the transcript source and the model that summarised, because both change
 how much they should trust the result.
 
-## Revisit this skill once the knowledge system exists
+## Where the files live
 
-**Status as of 2026-09-10: there is no knowledge system on this machine yet.** The
-artifacts land in `~/.agent/media/`, which has no version control and no cross-machine
-sync. A rebuilt machine loses them.
+Artifacts land in `~/archive/video/<site>/<upload date>-<id>/`. second-brain keeps all raw
+sources under `~/archive/`. Four decisions follow from that:
 
-That directory is a holding area chosen because nothing better existed, **not** a decision
-that video artifacts belong outside a knowledge base. When the user builds one, reopen
-these four questions rather than porting the current shape across:
+- **Where artifacts live.** `~/archive/video/<site>/<upload date>-<id>/`. The folder name
+  is unchanged, so it still equals the note stem in `notes/video/`.
+- **Output file.** `summary.md` stays the output and stays in the video folder. The
+  second-brain `place` skill copies it to `notes/video/<raw_id>.md`.
+- **Media files.** They stay next to the transcript. The user keeps all video files.
+- **Summary step.** This skill still owns it. The second-brain `place` skill calls it.
 
-- **Where artifacts live.** `--base-dir` exists so the answer can move. The per-video
-  folder name (`<upload date>-<video id>`) may not suit a system with its own identifiers.
-- **Whether `summary.md` is still the right output.** A knowledge system may want notes
-  linked into a graph, not one standalone file per video. The frontmatter is designed to
-  survive that move; the file layout is not.
-- **Whether the media files stay next to the notes.** A 6-minute video is about 110 MB at
-  full quality. That is fine in a scratch directory and questionable inside anything
-  synced or version-controlled.
-- **Whether this skill should still own the summary step.** If the knowledge system has
-  its own ingestion and summarisation, this skill shrinks to the download and transcript
-  stages and hands off.
-
-Do not quietly redesign around a knowledge system that does not exist yet. Wait until it
-does, then review this section with the user.
+Videos fetched before 2026-11-12 stay in `~/.agent/media/` until second-brain migrates
+them. Until then, both places are expected.
