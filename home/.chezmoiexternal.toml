@@ -63,7 +63,7 @@
 {{- end }}
 {{- if eq .chezmoi.os "windows" }}
 # renovate: datasource=github-releases depName=zellij-org/zellij
-{{- $zellijVersion   := "0.45.1" }}
+{{- $zellijVersion   := "0.46.0" }}
 # renovate: datasource=github-releases depName=astral-sh/uv
 {{- $uvVersion       := "0.13.7" }}
 # renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
