@@ -41,7 +41,7 @@ Windows 上 `git` 指令的固定開銷,見 [Windows 上的 Git PATH](git-window
 - **v7.7.0 的 release assets 只有 zip 與 `.msixbundle`**，沒有 `win-x64.msi`。最新有 MSI 的是 7.6.x（例如 v7.6.10）。
 - **想留在 MSI，就留在 7.6.x。** 到 GitHub Releases 下載 `PowerShell-7.6.x-win-x64.msi`，提權後 `msiexec /i <msi> /qn /norestart` 覆蓋安裝。安裝前關掉所有 pwsh。
 - **winget 無法把 MSI 升級成 MSIX。** `winget upgrade --id Microsoft.PowerShell` 會回報 `No installed package found matching input criteria`（`0x8A150014`），因為 winget 的 manifest 只剩 `Installer Type: msix`。UniGetUI 呼叫的就是這條指令，所以更新 pwsh 會失敗。2026-11-16 在 7.6.9 → 7.7.0 實際遇到。
-- **`switch-pwsh-to-msi.ps1` 在 7.7.0 發布後會失敗。** 它抓 `releases/latest`，而 latest 是沒有 MSI 的 7.7.0，所以會報 `No win-x64 MSI asset`，什麼都不會安裝。要切到 MSI，需先改成「抓最新一個有 MSI 的 release」。
+- **`switch-pwsh-to-msi.ps1` 會自動改選最新一個有 MSI 的穩定版。** 7.7.0 沒有 MSI，所以它會裝 7.6.x 的最新 MSI（例如 7.6.10），並印一行說明「最新穩定版沒有 MSI，改裝 X」。如果沒有任何穩定版含 MSI，它會在移除 MSIX 之前中止，不動現有安裝。
 - 官方說會持續改善 MSIX 對系統服務、排程工作等情境的支援。MSIX 夠用時，再評估是否換過去。
 
 ## ls / ll
