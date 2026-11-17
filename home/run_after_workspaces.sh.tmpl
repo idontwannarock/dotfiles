@@ -192,4 +192,15 @@ for id in $(jq -r '(.answers // {}) | to_entries[] | select(.value.enabled == tr
         failed=1
     fi
 done
+
+# Always printed, so the last lines of every update/apply say what this machine has.
+log_section "summary: workspaces enabled on this machine"
+summary=$(jq -r '(.answers // {}) | to_entries[] | select(.value.enabled == true) |
+    "\(.key) \(.value.name) -- \(.value.desc)\(if .value.retired then " (retired)" else "" end)"' "$state")
+if [ -n "$summary" ]; then
+    printf '    workspaces on this machine:\n'
+    while IFS= read -r line; do printf '      %s\n' "$line"; done <<<"$summary"
+else
+    printf '    workspaces on this machine: none\n'
+fi
 exit "$failed"
