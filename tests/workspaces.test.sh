@@ -135,6 +135,7 @@ run apply apply 0
 [ "$rc" -eq 0 ] || fail "apply: rc=$rc"
 grep -q 'cannot reach' "$case_dir/out" && fail "apply: tried to fetch the list"
 [ -s "$case_dir/init.log" ] || fail "apply: did not apply the clone"
+tail -n 3 "$case_dir/out" | grep -q 'w1 private -- d$' || fail "apply: summary does not list w1 last: $(cat "$case_dir/out")"
 
 # 7. Offline update: warns, keeps the answers, still applies.
 seed offline "{\"listRepo\": \"$tmp/missing.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"retired\": false}}}"
