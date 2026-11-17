@@ -29,7 +29,7 @@ Describe 'Select-MsiRelease' {
             (New-Release 'v7.6.10' -Msi)
             (New-Release 'v7.6.9'  -Msi)
         )
-        (Select-MsiRelease $releases).tag_name | Should -Be 'v7.6.10'
+        (Select-MsiRelease $releases).Release.tag_name | Should -Be 'v7.6.10'
     }
 
     It 'compares versions as numbers, whatever the order of the list' {
@@ -38,7 +38,7 @@ Describe 'Select-MsiRelease' {
             (New-Release 'v7.4.22' -Msi)
             (New-Release 'v7.6.10' -Msi)
         )
-        (Select-MsiRelease $releases).tag_name | Should -Be 'v7.6.10'
+        (Select-MsiRelease $releases).Release.tag_name | Should -Be 'v7.6.10'
     }
 
     It 'ignores prerelease and draft releases even when they have an MSI' {
@@ -47,7 +47,18 @@ Describe 'Select-MsiRelease' {
             (New-Release 'v7.7.1' -Msi -Draft)
             (New-Release 'v7.6.10' -Msi)
         )
-        (Select-MsiRelease $releases).tag_name | Should -Be 'v7.6.10'
+        (Select-MsiRelease $releases).Release.tag_name | Should -Be 'v7.6.10'
+    }
+
+    It 'returns the MSI asset and the newest stable release, which may have no MSI' {
+        $releases = @(
+            (New-Release 'v7.7.0')
+            (New-Release 'v7.6.10' -Msi)
+        )
+        $sel = Select-MsiRelease $releases
+        $sel.Release.tag_name | Should -Be 'v7.6.10'
+        $sel.Asset.name       | Should -Be 'PowerShell-7.6.10-win-x64.msi'
+        $sel.Newest.tag_name  | Should -Be 'v7.7.0'
     }
 
     It 'returns nothing when no stable release has an MSI' {

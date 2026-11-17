@@ -18,13 +18,18 @@
 
 $ErrorActionPreference = 'Stop'
 
-# Pick the release to install from a list of GitHub release objects.
+# Pick the release to install from a list of GitHub release objects. Returns
+# Release (the newest stable one with a win-x64 MSI), its Asset, and Newest (the
+# newest stable release, with or without an MSI). Returns nothing when no stable
+# release has an MSI.
 function Select-MsiRelease($Releases) {
-    $Releases |
+    $stable = @($Releases |
         Where-Object { -not $_.prerelease -and -not $_.draft } |
-        Where-Object { $_.assets.name -match 'win-x64\.msi$' } |
-        Sort-Object { [version]($_.tag_name -replace '^v') } -Descending |
-        Select-Object -First 1
+        Sort-Object { [version]($_.tag_name -replace '^v') } -Descending)
+    foreach ($r in $stable) {
+        $asset = $r.assets | Where-Object { $_.name -match 'win-x64\.msi$' } | Select-Object -First 1
+        if ($asset) { return [pscustomobject]@{ Release = $r; Asset = $asset; Newest = $stable[0] } }
+    }
 }
 
 # 1. Require elevation (do not self-relaunch: keep all output in this terminal).
@@ -40,13 +45,12 @@ if (-not $isAdmin) {
 #    later ship no MSI (MSIX only), so releases/latest can point at a release with none.
 Write-Host "[1/5] Resolving newest stable PowerShell release with an MSI from GitHub..." -ForegroundColor Cyan
 $releases = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/PowerShell/releases?per_page=100' -Headers @{ 'User-Agent' = 'dotfiles-switch-pwsh' }
-$rel = Select-MsiRelease $releases
-if (-not $rel) { throw "No stable PowerShell release with a win-x64 MSI found. Nothing was changed." }
-$asset = $rel.assets | Where-Object { $_.name -match 'win-x64\.msi$' } | Select-Object -First 1
-$newest = $releases | Where-Object { -not $_.prerelease -and -not $_.draft } |
-    Sort-Object { [version]($_.tag_name -replace '^v') } -Descending | Select-Object -First 1
-if ($newest.tag_name -ne $rel.tag_name) {
-    Write-Host "      Newest stable release $($newest.tag_name) has no MSI. Installing $($rel.tag_name) instead." -ForegroundColor Yellow
+$sel = Select-MsiRelease $releases
+if (-not $sel) { throw "No stable PowerShell release with a win-x64 MSI found in the latest 100 releases. Nothing was changed." }
+$rel   = $sel.Release
+$asset = $sel.Asset
+if ($sel.Newest.tag_name -ne $rel.tag_name) {
+    Write-Host "      Newest stable release $($sel.Newest.tag_name) has no MSI. Installing $($rel.tag_name) instead." -ForegroundColor Yellow
 }
 $msi = Join-Path $env:TEMP $asset.name
 Write-Host "      $($rel.tag_name) -> $($asset.name)" -ForegroundColor Gray
