@@ -4,7 +4,9 @@
 #
 # Why this exists: winget's Microsoft.PowerShell ships an MSIX bundle -- it never
 # lands in Program Files and its install fails 0x80070005 under elevation, so winget
-# can't give you the MSI. The real MSI is only on GitHub releases.
+# can't give you the MSI. The real MSI is only on GitHub releases, and only up to the
+# 7.6 LTS line: 7.7.0 and later ship no MSI. The helper installs the newest stable
+# release that has one.
 #
 # Why it is NOT part of `chezmoi apply`: MSI install needs admin (interactive UAC),
 # the swap is destructive, and pwsh is chezmoi's .ps1 interpreter (chicken-and-egg).
@@ -16,6 +18,15 @@
 
 $ErrorActionPreference = 'Stop'
 
+# Pick the release to install from a list of GitHub release objects.
+function Select-MsiRelease($Releases) {
+    $Releases |
+        Where-Object { -not $_.prerelease -and -not $_.draft } |
+        Where-Object { $_.assets.name -match 'win-x64\.msi$' } |
+        Sort-Object { [version]($_.tag_name -replace '^v') } -Descending |
+        Select-Object -First 1
+}
+
 # 1. Require elevation (do not self-relaunch: keep all output in this terminal).
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
@@ -25,11 +36,18 @@ if (-not $isAdmin) {
     exit 1
 }
 
-# 2. Resolve + download the latest STABLE MSI from GitHub (releases/latest excludes prereleases).
-Write-Host "[1/5] Resolving latest stable PowerShell MSI from GitHub..." -ForegroundColor Cyan
-$rel   = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/PowerShell/releases/latest' -Headers @{ 'User-Agent' = 'dotfiles-switch-pwsh' }
+# 2. Resolve + download the newest STABLE release that ships an MSI. PowerShell 7.7.0 and
+#    later ship no MSI (MSIX only), so releases/latest can point at a release with none.
+Write-Host "[1/5] Resolving newest stable PowerShell release with an MSI from GitHub..." -ForegroundColor Cyan
+$releases = Invoke-RestMethod -Uri 'https://api.github.com/repos/PowerShell/PowerShell/releases?per_page=100' -Headers @{ 'User-Agent' = 'dotfiles-switch-pwsh' }
+$rel = Select-MsiRelease $releases
+if (-not $rel) { throw "No stable PowerShell release with a win-x64 MSI found. Nothing was changed." }
 $asset = $rel.assets | Where-Object { $_.name -match 'win-x64\.msi$' } | Select-Object -First 1
-if (-not $asset) { throw "No win-x64 MSI asset in release $($rel.tag_name)." }
+$newest = $releases | Where-Object { -not $_.prerelease -and -not $_.draft } |
+    Sort-Object { [version]($_.tag_name -replace '^v') } -Descending | Select-Object -First 1
+if ($newest.tag_name -ne $rel.tag_name) {
+    Write-Host "      Newest stable release $($newest.tag_name) has no MSI. Installing $($rel.tag_name) instead." -ForegroundColor Yellow
+}
 $msi = Join-Path $env:TEMP $asset.name
 Write-Host "      $($rel.tag_name) -> $($asset.name)" -ForegroundColor Gray
 Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $msi -UseBasicParsing
