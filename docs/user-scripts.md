@@ -13,6 +13,7 @@
 | `sdkupdate` | Linux/WSL、macOS | 互動式更新 SDKMAN 套件（JDK、Maven、Gradle…） | `sdkupdate`（`~/.local/bin` 已在 PATH，不需 alias） |
 | `media-fetch` | Linux/WSL、macOS | 把一支線上影片（YouTube、Facebook 或其他 yt-dlp 支援的站）存成影片檔、縮圖、手寫字幕與完整 metadata | `media-fetch <url>` |
 | `media-transcribe` | Linux/WSL、macOS | 讀 `media-fetch` 存好的資料夾，產出逐字稿。不連網 | `media-transcribe <資料夾>` |
+| `media-transcript-review` | Linux/WSL、macOS | 校正 whisper 逐字稿的錯字：`prep` 把可疑詞連同前後文和一張影片截圖整理成 `review/cases.md`，`apply` 依模型的判斷改檔。不呼叫模型，也不連網 | 由 `video-summary` skill 的 Stage 2b 呼叫；`media-transcript-review --help` |
 | `youtube-api` | Linux/WSL、macOS | 用 YouTube Data API v3 操作自己的帳號：列播放清單、把影片加進播放清單，或任意一個 API 呼叫 | `youtube-api playlist-add <清單名或 id> <影片網址或 id>`；第一次要先 `youtube-api auth` |
 | `spotify-api` | Linux/WSL、macOS | 用 Spotify Web API 操作自己的帳號：列歌單、列歌單裡的歌，或任意一個 API 呼叫 | `spotify-api items <歌單名或 id>`；第一次要先 `spotify-api auth` |
 | `agent-mux` | Linux/WSL（Windows、macOS 未驗證） | 在 herdr 或 Ghostex 裡開一個 agent、送 prompt、等它結束、關掉。`review-cross-model` 用它，所以 skill 本文不寫任何多工器指令 | `agent-mux --help`；一般不手動呼叫 |
@@ -128,6 +129,31 @@ base 依序取 `--base-dir`、`$MEDIA_BASE`、`~/archive/video`。
 - **沒有人聲的短片，whisper 會編出一句話。** 只有配樂的 Facebook reel 轉出來是
   `Thanks for watching!`。這是 whisper 的已知幻覺，不是腳本壞了。逐字稿只有一兩句時，
   先懷疑影片根本沒人說話。
+
+### `media-transcript-review`：校正流程與量測
+
+流程在 `video-summary` skill 的 Stage 2b：小模型列可疑詞 → `prep` 整理證據 → 中模型
+（Sonnet 級）對照前後文和影片截圖判斷 → `apply` 改檔。全程不問人。腳本本身不呼叫模型，
+只做確定性的部分：對時間、截圖、改五種格式的檔、備份、寫報告。
+
+- **只套用 `high`。** 2026-11-19 在一支 17 分鐘的英文演講上，拿已校正的逐字稿再跑一次，
+  驗證員把 `inverse pyramid`、`innocent` 這類「憑感覺」的改動標成 `medium`。這些改了就是
+  改掉講者的話，所以 `medium` 和 `low` 只列進 `transcript-review.md`，不改檔。
+- **截圖和前後文一次給。** 分成兩次呼叫並沒有更省：只給前後文時，8 個案例對 7 個，
+  `silers`（`compilers`）只能猜；加上截圖後 8/8。
+- **不用重聽音檔。** 用 `medium` 模型重轉可疑處前後 3 秒，沒有比原本的 `small.en` 加前後文
+  好，有一處（`employee requests`）反而變成 `ploy crests`。`large-v3` 沒測，這台沒快取。
+- **瓶頸是第一步的清單，不是驗證。** 同一份原始逐字稿跑一次：清單抓到大部分錯字，
+  但漏了 `Brett Taylor`、`tech dep`、`flop`，第一行的 `Potato` 也沒列。清單沒列的字，
+  後面沒有人檢查。清單是小模型寫的，每次結果不同（同一支影片另一次就有列到 `flop`）。
+- **`line` 要容許偏差。** 小模型數行數會差一行（`tech dep` 報 57，實際在 58）。腳本在
+  前後 2 行內找原文，找不到才記為「未套用」。
+- **同一個錯字出現多處。** 模型一行一行列，會漏重複的。`apply` 改完後會在全文搜一次
+  剛改掉的錯誤寫法，剩下的列進 doubts，不自動全文取代，因為同一個字別處可能是對的。
+- **已知的小缺口。** 只改了 `lean` 沒改前面的 `a`，結果是 `a Lean`；Skill 已要求驗證員
+  可以把片語擴到相鄰的字。`informal`→`formal` 會少一個 `and`，意思仍通。
+
+只測了一支影片，不要當成通則。
 
 ## `mermaid-ascii` 設計備忘
 
