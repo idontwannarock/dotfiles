@@ -1,0 +1,213 @@
+#!/usr/bin/env python3
+"""Fix speech-to-text mistakes in a media-transcribe folder, with a model doing the judging.
+
+  media-transcript-review prep  <folder> <suspects.txt>
+      Read a list of suspect words and write <folder>/review/cases.md: each suspect with
+      the lines around it and, when the video file exists, one frame from that moment.
+
+  media-transcript-review apply <folder> <verdicts.txt>
+      Read the verdicts and fix transcript.{txt,srt,vtt,tsv,json}. Only "high"
+      confidence fixes are applied; medium and low ones are only listed. Writes
+      <folder>/transcript-review.md. The first run copies the originals to
+      <folder>/whisper-raw/.
+
+Both input files hold one row per line, fields split by "|" (a markdown table works):
+  suspects:  line | written text | suggested fix
+  verdicts:  line | written text | corrected text | confidence | evidence
+"line" is the line number in transcript.txt. A row whose first field is not a number
+(header, separator) is skipped. The script never calls a model; the caller does.
+"""
+import csv, json, re, shutil, subprocess, sys
+from pathlib import Path
+
+EXTS = ("txt", "srt", "vtt", "tsv", "json")
+WINDOW = 2  # a model counts lines badly; look this far on each side of its number
+
+
+def die(msg):
+    sys.exit(f"media-transcript-review: {msg}")
+
+
+def parse_rows(path, ncols):
+    rows = []
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        s = raw.strip().strip("|")
+        parts = [p.strip() for p in s.split("|", ncols - 1)]
+        if len(parts) < ncols or not parts[0].isdigit():
+            continue
+        parts[0] = int(parts[0])
+        rows.append(parts)
+    return rows
+
+
+def locate(lines, n, phrase):
+    """Line number (1-based) near n whose text holds phrase, nearest first; else None."""
+    for d in sorted(range(-WINDOW, WINDOW + 1), key=abs):
+        k = n + d
+        if 1 <= k <= len(lines) and phrase in lines[k - 1]:
+            return k
+    return None
+
+
+def load(folder):
+    txt = folder / "transcript.txt"
+    tsv = folder / "transcript.tsv"
+    if not txt.is_file() or not tsv.is_file():
+        die(f"no transcript.txt and transcript.tsv in {folder}; run media-transcribe first")
+    lines = txt.read_text(encoding="utf-8").splitlines()
+    rows = list(csv.reader(tsv.open(encoding="utf-8"), delimiter="\t", quoting=csv.QUOTE_NONE))[1:]
+    if len(rows) != len(lines):
+        die(f"transcript.txt has {len(lines)} lines but transcript.tsv has {len(rows)} rows")
+    return lines, rows
+
+
+def prep(folder, suspects):
+    lines, rows = load(folder)
+    video = next(iter(sorted(folder.glob("video.*"))), None)
+    out_dir = folder / "review"
+    (out_dir / "frames").mkdir(parents=True, exist_ok=True)
+    blocks, dropped = [], []
+    for n, written, suggest in parse_rows(suspects, 3):
+        k = locate(lines, n, written)
+        if k is None:
+            dropped.append(f"{n} | {written}")
+            continue
+        i = len(blocks) + 1
+        start, end = int(rows[k - 1][0]) / 1000, int(rows[k - 1][1]) / 1000
+        ctx = "\n".join(
+            f"{'>>' if j == k else '  '} {lines[j - 1].strip()}"
+            for j in range(max(1, k - 3), min(len(lines), k + 3) + 1)
+        )
+        b = (f'## Case {i}\nLine: {k}\nSuspect phrase: "{written}"\nSuggested by the first pass: "{suggest}"\n'
+             f"Time in video: {int(start // 60)}:{int(start % 60):02d}\n"
+             f"Context (>> marks the line with the suspect):\n{ctx}\n")
+        if video and shutil.which("ffmpeg"):
+            frame = out_dir / "frames" / f"case{i}.png"
+            r = subprocess.run(
+                ["ffmpeg", "-loglevel", "error", "-y", "-ss", f"{(start + end) / 2:.2f}", "-i", str(video),
+                 "-frames:v", "1", "-vf", "scale=1280:-1", str(frame)], capture_output=True)
+            if r.returncode == 0 and frame.is_file():
+                b += f"Frame at that time: {frame}\n"
+        blocks.append(b)
+    cases = out_dir / "cases.md"
+    cases.write_text("# Suspect words in a speech-to-text transcript\n\n" + "\n".join(blocks), encoding="utf-8")
+    print(f"cases:   {len(blocks)}")
+    print(f"dropped: {len(dropped)} (phrase not within {WINDOW} lines of the given number)")
+    for d in dropped:
+        print(f"  {d}")
+    print(f"cases_file: {cases}")
+
+
+def backup(folder):
+    raw = folder / "whisper-raw"
+    if raw.exists():
+        return
+    raw.mkdir()
+    for e in EXTS:
+        f = folder / f"transcript.{e}"
+        if f.is_file():
+            shutil.copy2(f, raw / f.name)
+
+
+def replace_in_blocks(text, k, old, new, first_block_offset):
+    """srt/vtt: cue k (1-based) is the k-th blank-line separated block, after any header block."""
+    blocks = text.split("\n\n")
+    i = k - 1 + first_block_offset
+    if i >= len(blocks) or old not in blocks[i]:
+        return text, False
+    blocks[i] = blocks[i].replace(old, new, 1)
+    return "\n\n".join(blocks), True
+
+
+def replace_in_json(node, old, new):
+    if isinstance(node, str):
+        return node.replace(old, new, 1) if old in node else node
+    if isinstance(node, list):
+        return [replace_in_json(x, old, new) for x in node]
+    if isinstance(node, dict):
+        return {key: replace_in_json(v, old, new) for key, v in node.items()}
+    return node
+
+
+def apply(folder, verdicts):
+    lines, _ = load(folder)
+    backup(folder)
+    applied, doubts, kept = [], [], 0
+    warn = []
+    for n, written, fixed, conf, why in sorted(parse_rows(verdicts, 5), key=lambda r: r[0]):
+        conf = conf.lower().split()[0] if conf.strip() else "low"
+        if fixed in ("", "-") or fixed == written:
+            kept += 1
+            continue
+        k = locate(lines, n, written)
+        if k is None:
+            doubts.append((n, written, fixed, conf, "not applied: phrase not near that line"))
+            continue
+        if conf != "high":
+            doubts.append((k, written, fixed, conf, why))
+            continue
+        old, new = lines[k - 1], lines[k - 1].replace(written, fixed)
+        lines[k - 1] = new
+        o, nw = old.strip(), new.strip()
+        for ext in ("srt", "vtt", "tsv"):
+            f = folder / f"transcript.{ext}"
+            if not f.is_file():
+                continue
+            text = f.read_text(encoding="utf-8")
+            if ext == "tsv":
+                tl = text.split("\n")
+                if o in tl[k]:
+                    tl[k] = tl[k].replace(o, nw, 1)
+                    text, ok = "\n".join(tl), True
+                else:
+                    ok = False
+            else:
+                text, ok = replace_in_blocks(text, k, o, nw, 0 if ext == "srt" else 1)
+            if ok:
+                f.write_text(text, encoding="utf-8")
+            else:
+                warn.append(f"line {k}: not found in transcript.{ext}")
+        jf = folder / "transcript.json"
+        if jf.is_file():
+            jf.write_text(json.dumps(replace_in_json(json.loads(jf.read_text(encoding="utf-8")), o, nw),
+                                     ensure_ascii=False), encoding="utf-8")
+        applied.append((k, written, fixed, conf, why))
+    (folder / "transcript.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # A model lists a mistake per line and misses repeats. Report the leftovers; do not
+    # replace them blindly, because the same word can be right somewhere else.
+    for _, written, fixed, _, _ in applied:
+        for j, ln in enumerate(lines, 1):
+            if re.search(rf"(?<!\w){re.escape(written)}(?!\w)", ln):
+                doubts.append((j, written, fixed, "low", "same wrong form still here; not changed"))
+
+    def table(rows, head):
+        if not rows:
+            return "(none)\n"
+        out = f"| line | written | {head} | confidence | evidence |\n|---|---|---|---|---|\n"
+        return out + "".join(f"| {a} | {b} | {c} | {d} | {e} |\n" for a, b, c, d, e in rows)
+
+    report = ("# Transcript review\n\n"
+              "A model checked suspect words against the lines around them and one video frame.\n"
+              "The originals are in `whisper-raw/`.\n\n"
+              f"## Applied ({len(applied)})\n\n{table(applied, 'fixed to')}\n"
+              f"## Doubts, not changed ({len(doubts)})\n\n{table(doubts, 'maybe')}")
+    (folder / "transcript-review.md").write_text(report, encoding="utf-8")
+    print(f"applied: {len(applied)}   doubts: {len(doubts)}   kept as is: {kept}")
+    for w in warn:
+        print(f"warning: {w}")
+    print(f"report: {folder / 'transcript-review.md'}")
+
+
+def main(argv):
+    if len(argv) != 4 or argv[1] not in ("prep", "apply") or argv[1] == "-h":
+        print(__doc__.strip(), file=sys.stderr)
+        sys.exit(0 if argv[1:2] in (["-h"], ["--help"]) else 1)
+    folder, data = Path(argv[2]).resolve(), argv[3]
+    if not folder.is_dir() or not Path(data).is_file():
+        die("folder or input file not found")
+    (prep if argv[1] == "prep" else apply)(folder, data)
+
+
+if __name__ == "__main__":
+    main(sys.argv)

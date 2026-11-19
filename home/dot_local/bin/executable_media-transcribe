@@ -106,6 +106,16 @@ if [ -z "$TRANSCRIPT_SOURCE" ]; then
   log "transcribing $(basename "$MEDIA") with whisper model=$WHISPER_MODEL lang=$STT_LANG"
   W_ARGS=(--model "$WHISPER_MODEL" --output_format all --output_dir "$OUT_DIR")
   [ "$STT_LANG" != "unknown" ] && W_ARGS+=(--language "$STT_LANG")
+  # Proper nouns are the usual whisper errors: the model has never seen "Grok Bot"
+  # or "poteto". The title and the first paragraph of the description name them,
+  # so hand that text over as hotwords. Capped at 600 chars; a longer hint hurts.
+  HINT="$(python3 -c '
+import json,sys
+m=json.load(open(sys.argv[1]))
+d=(m.get("description") or "").strip().split("\n\n")[0].replace("\n"," ")
+print(((m.get("title") or "")+". "+d)[:600].strip())
+' "$OUT_DIR/metadata.json")"
+  [ -n "$HINT" ] && W_ARGS+=(--hotwords "$HINT")
   uvx --from whisper-ctranslate2 whisper-ctranslate2 "${W_ARGS[@]}" "$MEDIA" >&2 \
     || die "transcription failed"
   # whisper names its output after the input file.
