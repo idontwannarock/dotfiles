@@ -99,7 +99,7 @@ base 依序取 `--base-dir`、`$MEDIA_BASE`、`~/archive/video`。
 `transcript_source` 是 `subtitles:<語言>` 或 `whisper:<模型>`。2026-10-12 以前的
 資料夾寫的是 `youtube-subtitles:<語言>`，意思相同。
 
-### 四個刻意的決定
+### 五個刻意的決定
 
 - **不使用自動字幕。** YouTube 的自動字幕是滾動視窗格式：同一句話會在連續兩三個 cue
   裡重複出現，內部還夾著逐字時間標記。攤平成散文要真的做去重，而且結果仍然比
@@ -109,6 +109,12 @@ base 依序取 `--base-dir`、`$MEDIA_BASE`、`~/archive/video`。
   代價是檔案可能到十幾 MB，因為 `--print-json` 會帶上所有格式與字幕軌清單。
 - **縮圖不轉檔。** 不加 `--convert-thumbnails`：轉檔是重新編碼，存下來的就不再是
   網站實際給的那個檔。原生格式通常是 `.webp`。
+- **跑 whisper 時帶 `--hotwords`，內容是影片標題加說明欄第一段（上限 600 字）。**
+  whisper 的錯字大多是專有名詞：沒看過 `Grok Bot`、`poteto`。標題和說明欄剛好寫著這些名字。
+  2026-11-19 在一支 17 分鐘的英文演講（`small.en`）上比過：不帶提示時 `Poteto`、`pstack`、
+  `Lean`、`pull requests` 都錯；`--hotwords` 全部修正；`--initial_prompt` 只修正了其中一部分。
+  沒修好的是不屬於提示內容的字：`Bret Taylor`（聽成 Brett）、`jank`（聽成 jang）、
+  `prose`（聽成 pros）。只量過這一支，不要當成通則。
 - **字幕的貢獻者掛名要濾掉。** TED 這類社群翻譯會把 `Translator:` / `Reviewer:`
   放在第一個 cue 裡。那不是講出來的話，留著會污染摘要。
 
