@@ -13,7 +13,7 @@
 | `sdkupdate` | Linux/WSL、macOS | 互動式更新 SDKMAN 套件（JDK、Maven、Gradle…） | `sdkupdate`（`~/.local/bin` 已在 PATH，不需 alias） |
 | `media-fetch` | Linux/WSL、macOS | 把一支線上影片（YouTube、Facebook 或其他 yt-dlp 支援的站）存成影片檔、縮圖、手寫字幕與完整 metadata | `media-fetch <url>` |
 | `media-transcribe` | Linux/WSL、macOS | 讀 `media-fetch` 存好的資料夾，產出逐字稿。不連網 | `media-transcribe <資料夾>` |
-| `media-transcript-review` | Linux/WSL、macOS | 校正 whisper 逐字稿的錯字：`prep` 把可疑詞連同前後文和一張影片截圖整理成 `review/cases.md`，`apply` 依模型的判斷改檔。不呼叫模型，也不連網 | 由 `video-summary` skill 的 Stage 2b 呼叫；`media-transcript-review --help` |
+| `media-transcript-review` | Linux/WSL、macOS | 校正 whisper 逐字稿的錯字：`prep` 把可疑詞連同前後文和一張影片截圖整理成 `review/cases.md`，`apply` 依模型的判斷改檔。不呼叫模型，也不連網 | 由 `media-transcribe` skill 的第 2 步呼叫；`media-transcript-review --help` |
 | `youtube-api` | Linux/WSL、macOS | 用 YouTube Data API v3 操作自己的帳號：列播放清單、把影片加進播放清單，或任意一個 API 呼叫 | `youtube-api playlist-add <清單名或 id> <影片網址或 id>`；第一次要先 `youtube-api auth` |
 | `spotify-api` | Linux/WSL、macOS | 用 Spotify Web API 操作自己的帳號：列歌單、列歌單裡的歌，或任意一個 API 呼叫 | `spotify-api items <歌單名或 id>`；第一次要先 `spotify-api auth` |
 | `agent-mux` | Linux/WSL（Windows、macOS 未驗證） | 在 herdr 或 Ghostex 裡開一個 agent、送 prompt、等它結束、關掉。`review-cross-model` 用它，所以 skill 本文不寫任何多工器指令 | `agent-mux --help`；一般不手動呼叫 |
@@ -132,7 +132,7 @@ base 依序取 `--base-dir`、`$MEDIA_BASE`、`~/archive/video`。
 
 ### `media-transcript-review`：校正流程與量測
 
-流程在 `video-summary` skill 的 Stage 2b：小模型列可疑詞 → `prep` 整理證據 → 中模型
+流程在 `media-transcribe` skill 的第 2 步（2026-11-20 從 `video-summary` 搬來：修的是逐字稿，不是摘要，所以不管誰呼叫轉逐字稿，都會得到修過的版本）：小模型列可疑詞 → `prep` 整理證據 → 中模型
 （Sonnet 級）對照前後文和影片截圖判斷 → `apply` 改檔。全程不問人。腳本本身不呼叫模型，
 只做確定性的部分：對時間、截圖、改五種格式的檔、備份、寫報告。
 
