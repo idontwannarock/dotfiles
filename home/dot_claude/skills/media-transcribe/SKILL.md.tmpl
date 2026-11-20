@@ -1,0 +1,10 @@
+---
+{{- /* Claude name-map for the shared media-transcribe body */ -}}
+{{- $n := dict
+    "tool" "claude" -}}
+---
+name: media-transcribe
+description: "Use when the user wants the transcript of a video that media-fetch already saved, or asks to re-run speech-to-text on it — 「重做逐字稿」、「換個模型轉一次」、「這個資料夾轉逐字稿」, or \"redo the transcript\", \"transcribe this folder\". Runs the media-transcribe script, then fixes whisper's name and look-alike mistakes with a small and a medium agent when the transcript is English speech-to-text. Never downloads and never summarises: a question about what the video says is the video-summary skill, which calls this one."
+---
+
+{{ template "skills/media-transcribe.md" (dict "n" $n) -}}

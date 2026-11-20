@@ -2,13 +2,12 @@
 
 ## Overview
 
-Stages 1 and 2 cost no model context. Stage 2b and Stage 3 each dispatch agents.
+Stage 1 costs no model context. Stage 2 and Stage 3 each dispatch agents.
 
 | Stage | Who does it | Context cost |
 |---|---|---|
 | Download video, thumbnail, subtitles, metadata | the `media-fetch` skill | none |
-| Produce the transcript | `media-transcribe` (shell) | none |
-| Fix speech-to-text mistakes (English whisper transcripts only) | two agents and `media-transcript-review` | two short tables |
+| Produce the transcript, and fix speech-to-text mistakes | the `media-transcribe` skill | two short tables |
 | Summarise the transcript | the summariser for the tier; the result goes to a file | see below |
 
 The URL can come from any site `yt-dlp` supports, not only YouTube. Facebook reels work.
@@ -27,65 +26,13 @@ downloads nothing again. Pass `--no-video` when the user only wants the words.
 
 ## Stage 2: transcribe
 
-```
-media-transcribe <out_dir>
-```
+Follow the `media-transcribe` skill and take `out_dir`, `transcript`, `transcript_source`,
+`est_tokens`, `recommended_tier` and `summary_target` from its manifest. That skill also
+fixes whisper's mistakes in the transcript. This skill does not touch the transcript text.
 
-Useful options: `--lang CODE` and `--model NAME` override language detection and the
-speech-to-text model; `--no-subs` ignores saved subtitles. `media-transcribe --help`
-lists them.
-
-The script prints a manifest. Read `out_dir`, `transcript`, `est_tokens`,
-`recommended_tier` and `summary_target` from it. Everything else you need is on disk.
-
-A run takes seconds when the uploader wrote subtitles, and a few minutes when
-speech-to-text has to run. Say which happened; `transcript_source` in the manifest tells
-you.
-
-**If the script fails, stop and report the error.** Do not hand a broken pipeline to a
-summariser, and do not substitute your own download commands. The failures worth naming:
-a stale `yt-dlp`, a missing JS runtime, and `HTTP 429` on the subtitle endpoint.
-
-## Stage 2b: fix speech-to-text mistakes
-
-Run this only when `transcript_source` starts with `whisper:` and the language is English.
-Skip it for saved subtitles (a person wrote them) and for any other language (not tested).
-
-Whisper mistakes are mostly names and look-alike words: "pros" for "prose", "Graphbot" for
-"Grokbot". Context alone settles most of them, and a video frame settles more: a slide
-often spells the word. No person confirms anything here. The step fixes what it is sure
-of, and lists the rest.
-
-1. **List the suspects.** Dispatch an agent of the `small` tier. Directive: read
-   `transcript.txt` and `metadata.md` (absolute paths); list misheard or misspelled words,
-   look-alike words that do not fit the sentence, the same name spelled two ways, and
-   **every** person, company, product and tool name; skip spoken-style grammar; one row per
-   occurrence; reply with one table, columns `line | written text | suggested fix`, and
-   nothing else. Create `<out_dir>/review/` and write the reply to `review/suspects.txt`.
-2. **Collect the evidence.** `media-transcript-review prep <out_dir> <out_dir>/review/suspects.txt`
-   writes `review/cases.md`: each suspect with the lines around it and, when `video.*` is
-   on disk, one frame from that moment. It tolerates a line number that is off by two.
-3. **Judge.** Dispatch an agent of the `medium` tier, whatever the transcript size: the job
-   is to read images and weigh evidence, not to read a lot of text. Directive: read
-   `review/cases.md`; open every frame; a slide may hold no useful text; spell a name the
-   way the slide does; give `-` as the fix when the phrase is right; the written text may
-   widen to a neighbouring word (`a lean` to `Lean`) but must stay exact text from the line;
-   `high` only when the context or a frame settles it, `medium` when it rests on world
-   knowledge, `low` for a guess; reply with one table, columns
-   `line | written text | corrected text | confidence | evidence`. Write the reply to
-   `review/verdicts.txt`.
-4. **Apply.** `media-transcript-review apply <out_dir> <out_dir>/review/verdicts.txt`.
-   It fixes the `high` rows in all five transcript files, copies the originals to
-   `whisper-raw/` the first time, and writes `transcript-review.md` with what it changed
-   and what it left in doubt.
-
-Dispatch both agents as Stage 3 dispatches the summariser, with one difference: they reply
-with the table as text and you write the file. Report the two counts the script prints
-(applied, doubts) and name `transcript-review.md`.
-
-This step improves the transcript; it does not gate the summary. If an agent or the script
-fails, say so and go on to Stage 3 with the transcript as it is. Stage 3 reads the fixed
-transcript.
+Say whether speech-to-text ran or saved subtitles were used; `transcript_source` tells
+you. If the skill fails, stop and report the error. Do not hand a broken pipeline to a
+summariser.
 
 ## Stage 3: summarise
 
