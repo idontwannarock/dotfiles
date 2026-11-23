@@ -65,7 +65,7 @@
 # renovate: datasource=github-releases depName=zellij-org/zellij
 {{- $zellijVersion   := "0.46.0" }}
 # renovate: datasource=github-releases depName=astral-sh/uv
-{{- $uvVersion       := "0.13.8" }}
+{{- $uvVersion       := "0.13.9" }}
 # renovate: datasource=github-releases depName=jqlang/jq extractVersion=^jq-(?<version>.+)$
 {{- $jqVersion       := "1.8.2" }}
 # renovate: datasource=github-releases depName=BurntSushi/ripgrep
