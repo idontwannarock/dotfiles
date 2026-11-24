@@ -40,6 +40,8 @@
 5. 對每個勾選的 workspace 跑 `chezmoi init --apply`。`init` 會重新產生它的設定，所以它新增的 prompt 也會在這裡問。
    沒有 TTY 時改跑 `chezmoi apply`，用已存的設定套用；新的問題等下次在終端機裡跑時再問。
    workspace 有 `.chezmoi.*.tmpl` 但還沒有存過設定時，沒有 TTY 就整個跳過並警告：沒有答案就不知道要裝什麼。
+   兩種跑法都帶 `--keep-going`：某個檔案寫不進去（例如執行中的 `bw.exe` 被鎖住），chezmoi 記下錯誤，繼續處理後面的檔案。
+   workspace 的 apply 失敗只印警告，不會讓外層的 `chezmoi update` 中止。
 
 `chezmoi apply` 只做第 5 步，不連網路。
 

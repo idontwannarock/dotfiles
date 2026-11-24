@@ -125,7 +125,6 @@ if [ "${CHEZMOI_COMMAND:-}" = update ]; then
     fi
 fi
 
-failed=0
 for id in $(jq -r '(.answers // {}) | to_entries[] | select(.value.enabled == true) | .key' "$state"); do
     name=$(jq -r --arg id "$id" '.answers[$id].name' "$state")
     url=$(jq -r --arg id "$id" '.answers[$id].url' "$state")
@@ -187,9 +186,10 @@ for id in $(jq -r '(.answers // {}) | to_entries[] | select(.value.enabled == tr
                 --config "$cfg" --persistent-state "$st"
         done
     fi
-    if ! "$cz" "$@" --source "$dir" --config "$cfg" --persistent-state "$st"; then
-        log_warn "$name: chezmoi apply failed"
-        failed=1
+    # --keep-going: one target that cannot be written (a locked .exe) must not
+    # stop the targets after it. A failure is logged and does not fail the update.
+    if ! "$cz" "$@" --keep-going --source "$dir" --config "$cfg" --persistent-state "$st"; then
+        log_warn "$name: chezmoi apply had errors -- see above; the other targets were applied"
     fi
 done
 
@@ -203,4 +203,4 @@ if [ -n "$summary" ]; then
 else
     printf '    workspaces on this machine: none\n'
 fi
-exit "$failed"
+exit 0

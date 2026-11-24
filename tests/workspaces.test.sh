@@ -33,7 +33,7 @@ cat >"$tmp/cz-stub" <<STUB
 #!/bin/sh
 case "\$1" in
     execute-template) exec "$real_cz" "\$@" ;;
-    init|apply) printf '%s\n' "\$*" >>"\$CZ_STUB_LOG" ;;
+    init|apply) printf '%s\n' "\$*" >>"\$CZ_STUB_LOG"; [ -z "\${CZ_STUB_FAIL:-}" ] || exit 1 ;;
     state) case "\$2" in
         dump) printf '%s\n' "\${CZ_STUB_STATE:-{\}}" ;;
         delete) printf '%s\n' "\$*" >>"\$CZ_STUB_LOG" ;;
@@ -264,6 +264,17 @@ grep -q "^state delete --bucket entryState --key $tmp/case-prune/gone " "$case_d
 grep -q -- "--key $tmp/case-prune/kept " "$case_dir/init.log" && fail "prune: forgot a target that exists"
 [ "$(grep -n '^state delete' "$case_dir/init.log" | cut -d: -f1)" -lt "$(grep -n '^apply ' "$case_dir/init.log" | cut -d: -f1)" ] ||
     fail "prune: forgot after apply, not before"
+
+# 8. A failed workspace apply (a locked bw.exe) is logged, not fatal; apply keeps going.
+seed keepgoing "{\"listRepo\": \"$tmp/missing.git\", \"answers\": {\"w1\": {\"enabled\": true, \"name\": \"private\", \"url\": \"$tmp/ws.git\", \"desc\": \"d\", \"retired\": false}}}"
+mkdir -p "$tmp/case-keepgoing/ws/dotfiles-private"
+CZ_STUB_FAIL=1
+export CZ_STUB_FAIL
+run keepgoing apply 0
+unset CZ_STUB_FAIL
+[ "$rc" -eq 0 ] || fail "keepgoing: rc=$rc, a failed workspace apply must not fail the run"
+grep -q 'chezmoi apply had errors' "$case_dir/out" || fail "keepgoing: no warning"
+grep -q -- "--keep-going" "$case_dir/init.log" || fail "keepgoing: nested chezmoi runs without --keep-going"
 
 if [ "$failures" -gt 0 ]; then
     printf '%d failure(s)\n' "$failures" >&2
