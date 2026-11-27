@@ -27,6 +27,19 @@ dot_claude/                 # ~/.claude/ 設定（chezmoi 管理）
 
 因此退役一個 command/skill/output style 時，必須在 `home/.chezmoiremove` 點名該路徑，移除才會傳播到每台機器。
 
+### Output style（ELI5）同時給 Claude 與 Codex
+
+Output style 的內文只有一份：`home/.chezmoitemplates/output-style.md`。兩個薄 wrapper 取用它：
+
+- Claude：`home/dot_claude/output-styles/ELI5.md.tmpl`，加 frontmatter，內文用 `{{ template }}`。
+- Codex：`home/dot_codex/AGENTS.md.tmpl`，接在共用 prompt 後面，標題 `# Output style`。
+
+Codex 沒有 output style 這個檔案類型，所以內文以一般指令的形式進 `AGENTS.md`。約束力是否與 Claude 相同，未確認。
+
+內文含三組可檢查的規則，改寫自 [ste-zht](https://github.com/dualface/ste-zht)（MIT）：寫作規則、10 個狀態詞、固定回報模板。另有一條「解釋深度隨使用者熟悉度調整」，這條是自家的，不在 ste-zht 裡。
+
+改內文時改 `output-style.md`，不要改 wrapper。不要把這份內文放進 `user-system-prompt.md`：那份同時是 `CLAUDE.md`，Claude 會讀到兩次。
+
 ## Global Instructions (CLAUDE.md)
 
 全域指令檔，設定 Claude Code 的預設行為。
@@ -141,7 +154,7 @@ skill 本身另外 gate 在 `HERDR_ENV=1`，不在 herdr pane 裡會自己拒絕
 | superpowers | workflow skills 已由 `~/.claude/skills/` 自家 discipline skills 取代 |
 | claude-md-management、context7、playwright、commit-commands、security-guidance、pyright-lsp、jdtls-lsp、claude-code-setup | 未使用 |
 | code-simplifier、pr-review-toolkit | 未使用；repo 曾有同名 agent，已隨 review lens 改制退役，與這兩個 plugin 始終無關 |
-| explanatory-output-style、learning-output-style | 兩者都靠 SessionStart hook 注入輸出風格；explanatory 那段寫「可以超過長度限制」，與 `output-styles/ELI5.md` 的「短句、只給必要的」直接對衝。輸出風格單一來源＝ELI5.md |
+| explanatory-output-style、learning-output-style | 兩者都靠 SessionStart hook 注入輸出風格；explanatory 那段寫「可以超過長度限制」，與 `output-styles/ELI5.md` 的「短句、只給必要的」直接對衝。輸出風格單一來源＝`.chezmoitemplates/output-style.md`（`ELI5.md.tmpl` 是它的 wrapper） |
 | code-review | 唯一入口是 `/code-review`，與自家 `code:review-*` 重疊；508 份 transcript 中自家版用 61 次、它 0 次 |
 | elements-of-style | Strunk 的規則是修辭取向，寫給「想繼續讀下去」的讀者；commit message、MR 描述、docs、工作對話的讀者想趕快讀完。改由 CLAUDE.md/AGENTS.md §3 的 ASD-STE100 原則承擔 |
 | episodic-memory | 508 份 transcript 只有 27 次實際呼叫（search 20、read 7、subagent 1），散在 9 個 session；代價是磁碟 2.3 GB（plugin cache 1.1 GB ＋ `~/.config/superpowers/` 的 archive 與 index 1.2 GB，皆為 du 實測）與安裝腳本裡一段專屬的 onnxruntime 修補。後者不在 plugin cache 底下，腳本的 cache 清理迴圈掃不到，故由 `.chezmoiremove` 點名。關鍵字查找改用 `rg` / `jq` 直接掃 `~/.claude/projects/` 的 jsonl |

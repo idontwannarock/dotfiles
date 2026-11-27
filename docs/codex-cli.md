@@ -229,5 +229,6 @@ codex -p research
 - Claude slash commands：改用 Codex skills / review mode / subagents
 - Claude plugins：依能力改用 Codex 原生 plugins 或 MCP，不直接搬用 Claude plugin 設定
 - Claude 全域 prompt 覆寫：改用 `instructions` + `AGENTS.md` + skills
+- Claude output style（ELI5）：Codex 沒有對應檔案類型。內文由 `home/.chezmoitemplates/output-style.md` 共用，附在 `AGENTS.md` 的 `# Output style` 節。詳見 [claude-code.md](claude-code.md)
 
 這樣的好處是比較貼近 Codex 官方設計，也比較不容易在版本升級後失效。
