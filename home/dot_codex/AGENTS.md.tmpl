@@ -3,4 +3,7 @@
     "tool" "codex" -}}
 # AGENTS.md
 
-{{ template "user-system-prompt.md" (dict "n" $n "chez" .chezmoi) -}}
+{{ template "user-system-prompt.md" (dict "n" $n "chez" .chezmoi) }}
+# Output style
+
+{{ template "output-style.md" . -}}
